@@ -2,7 +2,7 @@ import struct
 
 def _initHelper (obj, kw):
   for k,v in kw:
-    if not hasattr(obj, k):      
+    if not hasattr(obj, k):
       if k == 'xid' and hasattr(obj, 'header'): # Special case
         obj.header.xid = v
         continue
@@ -465,13 +465,21 @@ class ofp_queue_prop_min_rate:
 
 ##2.3 Flow Match Structures
 class ofp_match:
-    def __init__(self):
+    def __init__(self, **kw):
         """Initialize
         Declare members and default values
         """
         for k,v in ofp_match_data.iteritems():
           setattr(self, '_' + k, v)
         self.wildcards = self._normalize_wildcards(OFPFW_ALL)
+
+        # This is basically _initHelper(), but tweaked slightly since this
+        # class does some magic of its own.
+        for k,v in kw:
+          if not hasattr(self, '_'+k):
+            raise TypeError(self.__class__.__name__ + " constructor got "
+              + "unexpected keyword argument '" + k + "'")
+          setattr(obj, k, v)
 
     def get_nw_dst (self):
       if (self.wildcards & OFPFW_NW_DST_ALL) == OFPFW_NW_DST_ALL: return (None, 0)
@@ -3151,12 +3159,14 @@ class ofp_barrier_reply:
         return outstr
 
 class ofp_barrier_request:
-    def __init__(self):
+    def __init__(self, **kw):
         """Initialize
         Declare members and default values
         """
         self.header = ofp_header()
         self.header.type = OFPT_BARRIER_REQUEST
+
+        _initHelper(self, kw)
 
     def __assert(self):
         """Sanity check
