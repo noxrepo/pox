@@ -1,5 +1,15 @@
 import struct
 
+def _initHelper (obj, kw):
+  for k,v in kw:
+    if not hasattr(obj, k):      
+      if k == 'xid' and hasattr(obj, 'header'): # Special case
+        obj.header.xid = v
+        continue
+      raise TypeError(obj.__class__.__name__ + " constructor got "
+        + "unexpected keyword argument '" + k + "'")
+    setattr(obj, k, v)
+    
 # Structure definitions
 
 #1. Openflow Header
@@ -1643,7 +1653,7 @@ ofp_config_flags_map = {
 
 ##3.3 Modify State Messages
 class ofp_flow_mod:
-    def __init__(self):
+    def __init__(self, **kw):
         """Initialize
         Declare members and default values
         """
@@ -1660,6 +1670,8 @@ class ofp_flow_mod:
         self.flags = 0
         self.actions= []
 
+        _initHelper(self, kw)
+          
     def __assert(self):
         """Sanity check
         """
