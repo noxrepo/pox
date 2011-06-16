@@ -39,6 +39,8 @@ NDP_MULTICAST        = '\x01\x23\x20\x00\x00\x01' # Nicira discovery
 class ethernet(packet_base):
     "Ethernet packet struct"
 
+    resolve_names = False
+
     MIN_LEN = 14
 
     IP_TYPE   = 0x0800
@@ -101,7 +103,7 @@ class ethernet(packet_base):
             self.next = self.arr[ethernet.MIN_LEN:].tostring()
 
     def __str__(self): 
-        s = ''.join(('[',mac_to_str(self.src,True),'>',mac_to_str(self.dst,True),':',ethtype_to_str(self.type),']'))
+        s = ''.join(('[',mac_to_str(self.src,ethernet.resolve_names),'>',mac_to_str(self.dst,ethernet.resolve_names),':',ethtype_to_str(self.type),']'))
         if self.next == None:
             return s
         elif type(self.next) == type(""):
@@ -119,17 +121,3 @@ class ethernet(packet_base):
             src = src.tostring()
         return struct.pack('!6s6sH', dst, src, self.type)
 
-"""
-# trying to bypass a hairy cyclical include problems
-from vlan import vlan
-ethernet.type_parsers[ethernet.VLAN_TYPE] = vlan
-from arp  import arp 
-ethernet.type_parsers[ethernet.ARP_TYPE]  = arp
-ethernet.type_parsers[ethernet.RARP_TYPE] = arp
-from ipv4 import ipv4 
-ethernet.type_parsers[ethernet.IP_TYPE]   = ipv4
-from lldp import lldp 
-ethernet.type_parsers[ethernet.LLDP_TYPE] = lldp
-from eapol import eapol 
-ethernet.type_parsers[ethernet.PAE_TYPE]  = eapol
-"""
