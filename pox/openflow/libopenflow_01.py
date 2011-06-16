@@ -470,7 +470,7 @@ class ofp_match:
         Declare members and default values
         """
         for k,v in ofp_match_data.iteritems():
-          setattr(self, '_' + k, v)
+          setattr(self, '_' + k, v[0])
         self.wildcards = self._normalize_wildcards(OFPFW_ALL)
 
         # This is basically _initHelper(), but tweaked slightly since this
@@ -568,25 +568,25 @@ class ofp_match:
     def __assert(self):
         """Sanity check
         """
-        if(not isinstance(self.dl_src, list)):
+        if(not isinstance(self._dl_src, list)):
             return (False, "self.dl_src is not list as expected.")
-        if(len(self.dl_src) != 6):
+        if(len(self._dl_src) != 6):
             return (False, "self.dl_src is not of size 6 as expected.")
-        if(not isinstance(self.dl_dst, list)):
+        if(not isinstance(self._dl_dst, list)):
             return (False, "self.dl_dst is not list as expected.")
-        if(len(self.dl_dst) != 6):
+        if(len(self._dl_dst) != 6):
             return (False, "self.dl_dst is not of size 6 as expected.")
-        if(not isinstance(self.pad1, list)):
+        if(not isinstance(self._pad1, list)):
             return (False, "self.pad1 is not list as expected.")
-        if(len(self.pad1) != 1):
+        if(len(self._pad1) != 1):
             return (False, "self.pad1 is not of size 1 as expected.")
-        if(not isinstance(self.pad2, list)):
+        if(not isinstance(self._pad2, list)):
             return (False, "self.pad2 is not list as expected.")
-        if(len(self.pad2) != 2):
+        if(len(self._pad2) != 2):
             return (False, "self.pad2 is not of size 2 as expected.")
         return (True, None)
 
-    def pack(self, assertstruct=False):
+    def pack(self, assertstruct=True):
         """Pack message
         Packs empty array used as placeholder
         """
