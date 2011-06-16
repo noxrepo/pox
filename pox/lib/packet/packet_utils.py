@@ -152,28 +152,32 @@ def ipproto_to_str(t):
         return "%x" % t
 
 def load_oui_names():
-    import os
-    filename = 'pox/lib/packet/oui.txt'
-    #FIXME: We should actually base this on path of current file
-    if not os.access(filename, os.R_OK):
-        return None
-    for line in open(filename).readlines():
-        if len(line) < 1:
-            continue
-        if line[0].isspace():
-            continue
-        split = line.split(' ')
-        if not '-' in split[0]:
-            continue
-        # grab 3-byte OUI
-        oui_str  = split[0].replace('-','')
-        # strip off (hex) identifer and keep rest of name 
-        end = ' '.join(split[1:]).strip()
-        end = end.split('\t')
-        end.remove('(hex)')
-        oui_name = ' '.join(end)  
-        # convert oui to int
-        oui = int(oui_str, 16)
-        _ethoui2name[oui] = oui_name.strip()
-
+    import inspect
+    import os.path
+    filename = os.path.join(os.path.dirname(inspect.stack()[0][1]), 'oui.txt')
+    f = None
+    try:
+        f = open(filename)
+        for line in f.readlines():
+            if len(line) < 1:
+                continue
+            if line[0].isspace():
+                continue
+            split = line.split(' ')
+            if not '-' in split[0]:
+                continue
+            # grab 3-byte OUI
+            oui_str  = split[0].replace('-','')
+            # strip off (hex) identifer and keep rest of name 
+            end = ' '.join(split[1:]).strip()
+            end = end.split('\t')
+            end.remove('(hex)')
+            oui_name = ' '.join(end)  
+            # convert oui to int
+            oui = int(oui_str, 16)
+            _ethoui2name[oui] = oui_name.strip()
+    except:
+        import logging
+        logging.getLogger().warn("Could not load OUI list")
+    if f: f.close()
 load_oui_names()
