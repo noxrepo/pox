@@ -1677,6 +1677,7 @@ class ofp_flow_mod:
             if(not self.__assert()[0]):
                 return None
         packed = ""
+        self.header.len = len(self)
         packed += self.header.pack()
         packed += self.match.pack()
         packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags)
