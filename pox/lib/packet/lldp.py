@@ -65,6 +65,9 @@ from array  import *
 
 from packet_base import packet_base 
 
+import logging
+lg = logging.getLogger('packet')
+
 #======================================================================
 #                          TLV definitions
 #======================================================================
@@ -224,7 +227,7 @@ class ttl:
         assert(self.type == 3)
         self.strlen = typelen & 0x01ff 
         if (self.strlen != 2):
-            self.msg('(ttl tlv parse) length incorrect (should be 2) %u' % (self.strlen))
+            lg.info('(ttl tlv parse) length incorrect (should be 2) %u' % (self.strlen))
             return
         (self.ttl,) = struct.unpack("!H",self.arr[2:4])
 
@@ -255,7 +258,7 @@ class end_tlv:
         assert(self.type == 0)
         self.strlen = typelen & 0x01ff 
         if (self.strlen != 0):
-            self.msg('(tl end parse) length incorrect (should be 0) %u' % (self.strlen))
+            lg.info('(tl end parse) length incorrect (should be 0) %u' % (self.strlen))
             return
 
     def __str__(self): 

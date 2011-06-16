@@ -49,6 +49,9 @@ from array import *
 
 from packet_base import packet_base 
 
+import logging
+lg = logging.getLogger('packet')
+
 class tcp_opt:
 
     EOL      = 0
@@ -72,10 +75,14 @@ class tcp_opt:
             return struct.pack('!BBB',self.type,3,self.val) 
         elif self.type == tcp_opt.SACKPERM:
             return struct.pack('!BB',self.type,2) 
+        elif self.type == tcp_opt.SACK:
+            return struct.pack("!" + "II" * len(self.val),
+                               [x for p in self.val for x in p])
         elif self.type == tcp_opt.TSOPT:
             return struct.pack('!BBII',self.type,10,self.val[0],self.val[1]) 
         else:    
-            self.msg('(tcp_opt to_bytes) warning, unknown option')
+            lg.info('(tcp_opt to_bytes) warning, unknown option type ' +
+                    str(self.type))
             return '' 
 
 class tcp(packet_base):
@@ -150,7 +157,7 @@ class tcp(packet_base):
             elif arr[i] == tcp_opt.MSS:    
                 if arr[i+1] != 4:
                     raise Exception() 
-                val = struct.unpack('!H',arr[i+2:i+4])    
+                val = struct.unpack('!H',arr[i+2:i+4])[0]
                 self.options.append(tcp_opt(tcp_opt.MSS,val))
             elif arr[i] == tcp_opt.WSOPT:    
                 if arr[i+1] != 3:
@@ -160,6 +167,14 @@ class tcp(packet_base):
                 if arr[i+1] != 2:
                     raise Exception() 
                 self.options.append(tcp_opt(tcp_opt.SACKPERM, None))
+            elif arr[i] == tcp_opt.SACK:
+                if arr[i+1] >= 2 and ((arr[i+1]-2) % 8) == 0:
+                    num = (arr[i+1] - 2) / 8
+                    val = struct.unpack("!" + "II" * num, arr[i+2:])
+                    val = [(x,y) for x,y in zip(val[0::2],val[1::2])]
+                    self.options.append(tcp_opt(tcp_opt.SACK, val))
+                else:
+                    raise Exception()
             elif arr[i] == tcp_opt.TSOPT:    
                 if arr[i+1] != 10:
                     raise Exception() 
