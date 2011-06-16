@@ -10,7 +10,7 @@ class ofp_header:
         """
         self.version = OFP_VERSION
         self.type = 0
-        self.length = 0
+        self.len = 0
         self.xid = 0
 
     def __assert(self):
@@ -28,7 +28,7 @@ class ofp_header:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!BBHL", self.version, self.type, self.length, self.xid)
+        packed += struct.pack("!BBHL", self.version, self.type, self.len, self.xid)
         return packed
 
     def unpack(self, binaryString):
@@ -38,7 +38,7 @@ class ofp_header:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.version, self.type, self.length, self.xid) = struct.unpack_from("!BBHL", binaryString, 0)
+        (self.version, self.type, self.len, self.xid) = struct.unpack_from("!BBHL", binaryString, 0)
         return binaryString[8:]
 
     def __len__(self):
@@ -53,7 +53,7 @@ class ofp_header:
         if type(self) != type(other): return False
         if self.version !=  other.version: return False
         if self.type !=  other.type: return False
-        if self.length !=  other.length: return False
+        if self.len !=  other.length: return False
         if self.xid !=  other.xid: return False
         return True
 
@@ -65,7 +65,7 @@ class ofp_header:
         outstr = ''
         outstr += prefix + 'version: ' + str(self.version) + '\n'
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'length: ' + str(self.length) + '\n'
+        outstr += prefix + 'length: ' + str(self.len) + '\n'
         outstr += prefix + 'xid: ' + str(self.xid) + '\n'
         return outstr
 
@@ -2354,7 +2354,7 @@ class ofp_flow_stats:
         """Initialize
         Declare members and default values
         """
-        self.length = 0
+        self.len = 0
         self.table_id = 0
         self.pad = 0
         self.match = ofp_match()
@@ -2388,7 +2388,7 @@ class ofp_flow_stats:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HBB", self.length, self.table_id, self.pad)
+        packed += struct.pack("!HBB", self.len, self.table_id, self.pad)
         packed += self.match.pack()
         packed += struct.pack("!LLHHH", self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout)
         packed += struct.pack("!BBBBBB", self.pad2[0], self.pad2[1], self.pad2[2], self.pad2[3], self.pad2[4], self.pad2[5])
@@ -2404,7 +2404,7 @@ class ofp_flow_stats:
         """
         if (len(binaryString) < 88):
             return binaryString
-        (self.length, self.table_id, self.pad) = struct.unpack_from("!HBB", binaryString, 0)
+        (self.len, self.table_id, self.pad) = struct.unpack_from("!HBB", binaryString, 0)
         self.match.unpack(binaryString[4:])
         (self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout) = struct.unpack_from("!LLHHH", binaryString, 44)
         (self.pad2[0], self.pad2[1], self.pad2[2], self.pad2[3], self.pad2[4], self.pad2[5]) = struct.unpack_from("!BBBBBB", binaryString, 58)
@@ -2423,7 +2423,7 @@ class ofp_flow_stats:
         """Return True if self and other have same values
         """
         if type(self) != type(other): return False
-        if self.length !=  other.length: return False
+        if self.len !=  other.length: return False
         if self.table_id !=  other.table_id: return False
         if self.pad !=  other.pad: return False
         if self.match !=  other.match: return False
@@ -2445,7 +2445,7 @@ class ofp_flow_stats:
         """Generate string showing basic members of structure
         """
         outstr = ''
-        outstr += prefix + 'length: ' + str(self.length) + '\n'
+        outstr += prefix + 'length: ' + str(self.len) + '\n'
         outstr += prefix + 'table_id: ' + str(self.table_id) + '\n'
         outstr += prefix + 'match: \n'
         self.match.show(prefix + '  ')
