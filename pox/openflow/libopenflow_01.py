@@ -20,7 +20,7 @@ class ofp_header:
         """
         self.version = OFP_VERSION
         self.type = 0
-        self.len = 0
+        self.length = 0
         self.xid = 0
 
     def __assert(self):
@@ -38,7 +38,7 @@ class ofp_header:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!BBHL", self.version, self.type, self.len, self.xid)
+        packed += struct.pack("!BBHL", self.version, self.type, self.length, self.xid)
         return packed
 
     def unpack(self, binaryString):
@@ -48,7 +48,7 @@ class ofp_header:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.version, self.type, self.len, self.xid) = struct.unpack_from("!BBHL", binaryString, 0)
+        (self.version, self.type, self.length, self.xid) = struct.unpack_from("!BBHL", binaryString, 0)
         return binaryString[8:]
 
     def __len__(self):
@@ -63,7 +63,7 @@ class ofp_header:
         if type(self) != type(other): return False
         if self.version !=  other.version: return False
         if self.type !=  other.type: return False
-        if self.len !=  other.length: return False
+        if self.length !=  other.length: return False
         if self.xid !=  other.xid: return False
         return True
 
@@ -75,7 +75,7 @@ class ofp_header:
         outstr = ''
         outstr += prefix + 'version: ' + str(self.version) + '\n'
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'length: ' + str(self.len) + '\n'
+        outstr += prefix + 'length: ' + str(self.length) + '\n'
         outstr += prefix + 'xid: ' + str(self.xid) + '\n'
         return outstr
 
@@ -249,7 +249,7 @@ class ofp_packet_queue:
         Declare members and default values
         """
         self.queue_id = 0
-        self.len = 0
+        self.length = 0
         self.pad= [0,0]
         self.properties= []
 
@@ -270,7 +270,7 @@ class ofp_packet_queue:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!LH", self.queue_id, self.len)
+        packed += struct.pack("!LH", self.queue_id, self.length)
         packed += struct.pack("!BB", self.pad[0], self.pad[1])
         for i in self.properties:
             packed += i.pack(assertstruct)
@@ -283,7 +283,7 @@ class ofp_packet_queue:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.queue_id, self.len) = struct.unpack_from("!LH", binaryString, 0)
+        (self.queue_id, self.length) = struct.unpack_from("!LH", binaryString, 0)
         (self.pad[0], self.pad[1]) = struct.unpack_from("!BB", binaryString, 6)
         return binaryString[8:]
 
@@ -300,7 +300,7 @@ class ofp_packet_queue:
         """
         if type(self) != type(other): return False
         if self.queue_id !=  other.queue_id: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.pad !=  other.pad: return False
         if self.properties !=  other.properties: return False
         return True
@@ -312,7 +312,7 @@ class ofp_packet_queue:
         """
         outstr = ''
         outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         outstr += prefix + 'properties: \n'
         for obj in self.properties:
             outstr += obj.show(prefix + '  ')
@@ -332,7 +332,7 @@ class ofp_queue_prop_header:
         Declare members and default values
         """
         self.property = 0
-        self.len = 0
+        self.length = 0
         self.pad= [0,0,0,0]
 
     def __assert(self):
@@ -352,7 +352,7 @@ class ofp_queue_prop_header:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HH", self.property, self.len)
+        packed += struct.pack("!HH", self.property, self.length)
         packed += struct.pack("!BBBB", self.pad[0], self.pad[1], self.pad[2], self.pad[3])
         return packed
 
@@ -363,7 +363,7 @@ class ofp_queue_prop_header:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.property, self.len) = struct.unpack_from("!HH", binaryString, 0)
+        (self.property, self.length) = struct.unpack_from("!HH", binaryString, 0)
         (self.pad[0], self.pad[1], self.pad[2], self.pad[3]) = struct.unpack_from("!BBBB", binaryString, 4)
         return binaryString[8:]
 
@@ -378,7 +378,7 @@ class ofp_queue_prop_header:
         """
         if type(self) != type(other): return False
         if self.property !=  other.property: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.pad !=  other.pad: return False
         return True
 
@@ -389,7 +389,7 @@ class ofp_queue_prop_header:
         """
         outstr = ''
         outstr += prefix + 'property: ' + str(self.property) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         return outstr
 
 class ofp_queue_prop_min_rate:
@@ -586,7 +586,7 @@ class ofp_match:
             return (False, "self.pad2 is not of size 2 as expected.")
         return (True, None)
 
-    def pack(self, assertstruct=True):
+    def pack(self, assertstruct=False):
         """Pack message
         Packs empty array used as placeholder
         """
@@ -787,7 +787,7 @@ class ofp_action_header:
         Declare members and default values
         """
         self.type = 0
-        self.len = 0
+        self.length = 0
         self.pad= [0,0,0,0]
 
     def __assert(self):
@@ -807,7 +807,7 @@ class ofp_action_header:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HH", self.type, self.len)
+        packed += struct.pack("!HH", self.type, self.length)
         packed += struct.pack("!BBBB", self.pad[0], self.pad[1], self.pad[2], self.pad[3])
         return packed
 
@@ -818,7 +818,7 @@ class ofp_action_header:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.type, self.len) = struct.unpack_from("!HH", binaryString, 0)
+        (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
         (self.pad[0], self.pad[1], self.pad[2], self.pad[3]) = struct.unpack_from("!BBBB", binaryString, 4)
         return binaryString[8:]
 
@@ -833,7 +833,7 @@ class ofp_action_header:
         """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.pad !=  other.pad: return False
         return True
 
@@ -844,7 +844,7 @@ class ofp_action_header:
         """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         return outstr
 
 class ofp_action_output:
@@ -853,7 +853,7 @@ class ofp_action_output:
         Declare members and default values
         """
         self.type = OFPAT_OUTPUT
-        self.len = 0
+        self.length = 0
         self.port = 0
         self.max_len = 0
 
@@ -870,7 +870,7 @@ class ofp_action_output:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HHHH", self.type, self.len, self.port, self.max_len)
+        packed += struct.pack("!HHHH", self.type, self.length, self.port, self.max_len)
         return packed
 
     def unpack(self, binaryString):
@@ -880,7 +880,7 @@ class ofp_action_output:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.type, self.len, self.port, self.max_len) = struct.unpack_from("!HHHH", binaryString, 0)
+        (self.type, self.length, self.port, self.max_len) = struct.unpack_from("!HHHH", binaryString, 0)
         return binaryString[8:]
 
     def __len__(self):
@@ -894,7 +894,7 @@ class ofp_action_output:
         """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.port !=  other.port: return False
         if self.max_len !=  other.max_len: return False
         return True
@@ -906,7 +906,7 @@ class ofp_action_output:
         """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         outstr += prefix + 'port: ' + str(self.port) + '\n'
         outstr += prefix + 'max_len: ' + str(self.max_len) + '\n'
         return outstr
@@ -917,7 +917,7 @@ class ofp_action_enqueue:
         Declare members and default values
         """
         self.type = 0
-        self.len = 0
+        self.length = 0
         self.port = 0
         self.pad= [0,0,0,0,0,0]
         self.queue_id = 0
@@ -939,7 +939,7 @@ class ofp_action_enqueue:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HHH", self.type, self.len, self.port)
+        packed += struct.pack("!HHH", self.type, self.length, self.port)
         packed += struct.pack("!BBBBBB", self.pad[0], self.pad[1], self.pad[2], self.pad[3], self.pad[4], self.pad[5])
         packed += struct.pack("!L", self.queue_id)
         return packed
@@ -951,7 +951,7 @@ class ofp_action_enqueue:
         """
         if (len(binaryString) < 16):
             return binaryString
-        (self.type, self.len, self.port) = struct.unpack_from("!HHH", binaryString, 0)
+        (self.type, self.length, self.port) = struct.unpack_from("!HHH", binaryString, 0)
         (self.pad[0], self.pad[1], self.pad[2], self.pad[3], self.pad[4], self.pad[5]) = struct.unpack_from("!BBBBBB", binaryString, 6)
         (self.queue_id,) = struct.unpack_from("!L", binaryString, 12)
         return binaryString[16:]
@@ -967,7 +967,7 @@ class ofp_action_enqueue:
         """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.port !=  other.port: return False
         if self.pad !=  other.pad: return False
         if self.queue_id !=  other.queue_id: return False
@@ -980,7 +980,7 @@ class ofp_action_enqueue:
         """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         outstr += prefix + 'port: ' + str(self.port) + '\n'
         outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
         return outstr
@@ -991,7 +991,7 @@ class ofp_action_vlan_vid:
         Declare members and default values
         """
         self.type = OFPAT_SET_VLAN_VID
-        self.len = 0
+        self.length = 0
         self.vlan_vid = 0
         self.pad= [0,0]
 
@@ -1012,7 +1012,7 @@ class ofp_action_vlan_vid:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HHH", self.type, self.len, self.vlan_vid)
+        packed += struct.pack("!HHH", self.type, self.length, self.vlan_vid)
         packed += struct.pack("!BB", self.pad[0], self.pad[1])
         return packed
 
@@ -1023,7 +1023,7 @@ class ofp_action_vlan_vid:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.type, self.len, self.vlan_vid) = struct.unpack_from("!HHH", binaryString, 0)
+        (self.type, self.length, self.vlan_vid) = struct.unpack_from("!HHH", binaryString, 0)
         (self.pad[0], self.pad[1]) = struct.unpack_from("!BB", binaryString, 6)
         return binaryString[8:]
 
@@ -1038,7 +1038,7 @@ class ofp_action_vlan_vid:
         """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.vlan_vid !=  other.vlan_vid: return False
         if self.pad !=  other.pad: return False
         return True
@@ -1050,7 +1050,7 @@ class ofp_action_vlan_vid:
         """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         outstr += prefix + 'vlan_vid: ' + str(self.vlan_vid) + '\n'
         return outstr
 
@@ -1060,7 +1060,7 @@ class ofp_action_vlan_pcp:
         Declare members and default values
         """
         self.type = OFPAT_SET_VLAN_PCP
-        self.len = 0
+        self.length = 0
         self.vlan_pcp = 0
         self.pad= [0,0,0]
 
@@ -1081,7 +1081,7 @@ class ofp_action_vlan_pcp:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HHB", self.type, self.len, self.vlan_pcp)
+        packed += struct.pack("!HHB", self.type, self.length, self.vlan_pcp)
         packed += struct.pack("!BBB", self.pad[0], self.pad[1], self.pad[2])
         return packed
 
@@ -1092,7 +1092,7 @@ class ofp_action_vlan_pcp:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.type, self.len, self.vlan_pcp) = struct.unpack_from("!HHB", binaryString, 0)
+        (self.type, self.length, self.vlan_pcp) = struct.unpack_from("!HHB", binaryString, 0)
         (self.pad[0], self.pad[1], self.pad[2]) = struct.unpack_from("!BBB", binaryString, 5)
         return binaryString[8:]
 
@@ -1107,7 +1107,7 @@ class ofp_action_vlan_pcp:
         """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.vlan_pcp !=  other.vlan_pcp: return False
         if self.pad !=  other.pad: return False
         return True
@@ -1119,7 +1119,7 @@ class ofp_action_vlan_pcp:
         """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         outstr += prefix + 'vlan_pcp: ' + str(self.vlan_pcp) + '\n'
         return outstr
 
@@ -1129,7 +1129,7 @@ class ofp_action_dl_addr:
         Declare members and default values
         """
         self.type = 0
-        self.len = 0
+        self.length = 0
         self.dl_addr= [0,0,0,0,0,0]
         self.pad= [0,0,0,0,0,0]
 
@@ -1154,7 +1154,7 @@ class ofp_action_dl_addr:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HH", self.type, self.len)
+        packed += struct.pack("!HH", self.type, self.length)
         packed += struct.pack("!BBBBBB", self.dl_addr[0], self.dl_addr[1], self.dl_addr[2], self.dl_addr[3], self.dl_addr[4], self.dl_addr[5])
         packed += struct.pack("!BBBBBB", self.pad[0], self.pad[1], self.pad[2], self.pad[3], self.pad[4], self.pad[5])
         return packed
@@ -1166,7 +1166,7 @@ class ofp_action_dl_addr:
         """
         if (len(binaryString) < 16):
             return binaryString
-        (self.type, self.len) = struct.unpack_from("!HH", binaryString, 0)
+        (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
         (self.dl_addr[0], self.dl_addr[1], self.dl_addr[2], self.dl_addr[3], self.dl_addr[4], self.dl_addr[5]) = struct.unpack_from("!BBBBBB", binaryString, 4)
         (self.pad[0], self.pad[1], self.pad[2], self.pad[3], self.pad[4], self.pad[5]) = struct.unpack_from("!BBBBBB", binaryString, 10)
         return binaryString[16:]
@@ -1182,7 +1182,7 @@ class ofp_action_dl_addr:
         """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.dl_addr !=  other.dl_addr: return False
         if self.pad !=  other.pad: return False
         return True
@@ -1194,7 +1194,7 @@ class ofp_action_dl_addr:
         """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         outstr += prefix + 'dl_addr: ' + str(self.dl_addr) + '\n'
         return outstr
 
@@ -1204,7 +1204,7 @@ class ofp_action_nw_addr:
         Declare members and default values
         """
         self.type = 0
-        self.len = 0
+        self.length = 0
         self.nw_addr = 0
 
     def __assert(self):
@@ -1220,7 +1220,7 @@ class ofp_action_nw_addr:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HHL", self.type, self.len, self.nw_addr)
+        packed += struct.pack("!HHL", self.type, self.length, self.nw_addr)
         return packed
 
     def unpack(self, binaryString):
@@ -1230,7 +1230,7 @@ class ofp_action_nw_addr:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.type, self.len, self.nw_addr) = struct.unpack_from("!HHL", binaryString, 0)
+        (self.type, self.length, self.nw_addr) = struct.unpack_from("!HHL", binaryString, 0)
         return binaryString[8:]
 
     def __len__(self):
@@ -1244,7 +1244,7 @@ class ofp_action_nw_addr:
         """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.nw_addr !=  other.nw_addr: return False
         return True
 
@@ -1255,7 +1255,7 @@ class ofp_action_nw_addr:
         """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         outstr += prefix + 'nw_addr: ' + str(self.nw_addr) + '\n'
         return outstr
 
@@ -1265,7 +1265,7 @@ class ofp_action_nw_tos:
         Declare members and default values
         """
         self.type = 0
-        self.len = 0
+        self.length = 0
         self.nw_tos = 0
         self.pad= [0,0,0]
 
@@ -1286,7 +1286,7 @@ class ofp_action_nw_tos:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HHB", self.type, self.len, self.nw_tos)
+        packed += struct.pack("!HHB", self.type, self.length, self.nw_tos)
         packed += struct.pack("!BBB", self.pad[0], self.pad[1], self.pad[2])
         return packed
 
@@ -1297,7 +1297,7 @@ class ofp_action_nw_tos:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.type, self.len, self.nw_tos) = struct.unpack_from("!HHB", binaryString, 0)
+        (self.type, self.length, self.nw_tos) = struct.unpack_from("!HHB", binaryString, 0)
         (self.pad[0], self.pad[1], self.pad[2]) = struct.unpack_from("!BBB", binaryString, 5)
         return binaryString[8:]
 
@@ -1312,7 +1312,7 @@ class ofp_action_nw_tos:
         """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.nw_tos !=  other.nw_tos: return False
         if self.pad !=  other.pad: return False
         return True
@@ -1324,7 +1324,7 @@ class ofp_action_nw_tos:
         """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         outstr += prefix + 'nw_tos: ' + str(self.nw_tos) + '\n'
         return outstr
 
@@ -1334,7 +1334,7 @@ class ofp_action_tp_port:
         Declare members and default values
         """
         self.type = 0
-        self.len = 0
+        self.length = 0
         self.tp_port = 0
         self.pad= [0,0]
 
@@ -1355,7 +1355,7 @@ class ofp_action_tp_port:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HHH", self.type, self.len, self.tp_port)
+        packed += struct.pack("!HHH", self.type, self.length, self.tp_port)
         packed += struct.pack("!BB", self.pad[0], self.pad[1])
         return packed
 
@@ -1366,7 +1366,7 @@ class ofp_action_tp_port:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.type, self.len, self.tp_port) = struct.unpack_from("!HHH", binaryString, 0)
+        (self.type, self.length, self.tp_port) = struct.unpack_from("!HHH", binaryString, 0)
         (self.pad[0], self.pad[1]) = struct.unpack_from("!BB", binaryString, 6)
         return binaryString[8:]
 
@@ -1381,7 +1381,7 @@ class ofp_action_tp_port:
         """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.tp_port !=  other.tp_port: return False
         if self.pad !=  other.pad: return False
         return True
@@ -1393,7 +1393,7 @@ class ofp_action_tp_port:
         """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         outstr += prefix + 'tp_port: ' + str(self.tp_port) + '\n'
         return outstr
 
@@ -1403,7 +1403,7 @@ class ofp_action_vendor_header:
         Declare members and default values
         """
         self.type = OFPAT_VENDOR
-        self.len = 0
+        self.length = 0
         self.vendor = 0
 
     def __assert(self):
@@ -1419,7 +1419,7 @@ class ofp_action_vendor_header:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HHL", self.type, self.len, self.vendor)
+        packed += struct.pack("!HHL", self.type, self.length, self.vendor)
         return packed
 
     def unpack(self, binaryString):
@@ -1429,7 +1429,7 @@ class ofp_action_vendor_header:
         """
         if (len(binaryString) < 8):
             return binaryString
-        (self.type, self.len, self.vendor) = struct.unpack_from("!HHL", binaryString, 0)
+        (self.type, self.length, self.vendor) = struct.unpack_from("!HHL", binaryString, 0)
         return binaryString[8:]
 
     def __len__(self):
@@ -1443,7 +1443,7 @@ class ofp_action_vendor_header:
         """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
-        if self.len !=  other.len: return False
+        if self.length !=  other.length: return False
         if self.vendor !=  other.vendor: return False
         return True
 
@@ -1454,7 +1454,7 @@ class ofp_action_vendor_header:
         """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
-        outstr += prefix + 'len: ' + str(self.len) + '\n'
+        outstr += prefix + 'len: ' + str(self.length) + '\n'
         outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
         return outstr
 
@@ -1697,7 +1697,7 @@ class ofp_flow_mod:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        self.header.len = len(self)
+        self.header.length = len(self)
         packed += self.header.pack()
         packed += self.match.pack()
         packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags)
@@ -2375,7 +2375,7 @@ class ofp_flow_stats:
         """Initialize
         Declare members and default values
         """
-        self.len = 0
+        self.length = 0
         self.table_id = 0
         self.pad = 0
         self.match = ofp_match()
@@ -2409,7 +2409,7 @@ class ofp_flow_stats:
             if(not self.__assert()[0]):
                 return None
         packed = ""
-        packed += struct.pack("!HBB", self.len, self.table_id, self.pad)
+        packed += struct.pack("!HBB", self.length, self.table_id, self.pad)
         packed += self.match.pack()
         packed += struct.pack("!LLHHH", self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout)
         packed += struct.pack("!BBBBBB", self.pad2[0], self.pad2[1], self.pad2[2], self.pad2[3], self.pad2[4], self.pad2[5])
@@ -2425,7 +2425,7 @@ class ofp_flow_stats:
         """
         if (len(binaryString) < 88):
             return binaryString
-        (self.len, self.table_id, self.pad) = struct.unpack_from("!HBB", binaryString, 0)
+        (self.length, self.table_id, self.pad) = struct.unpack_from("!HBB", binaryString, 0)
         self.match.unpack(binaryString[4:])
         (self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout) = struct.unpack_from("!LLHHH", binaryString, 44)
         (self.pad2[0], self.pad2[1], self.pad2[2], self.pad2[3], self.pad2[4], self.pad2[5]) = struct.unpack_from("!BBBBBB", binaryString, 58)
@@ -2444,7 +2444,7 @@ class ofp_flow_stats:
         """Return True if self and other have same values
         """
         if type(self) != type(other): return False
-        if self.len !=  other.length: return False
+        if self.length !=  other.length: return False
         if self.table_id !=  other.table_id: return False
         if self.pad !=  other.pad: return False
         if self.match !=  other.match: return False
@@ -2466,7 +2466,7 @@ class ofp_flow_stats:
         """Generate string showing basic members of structure
         """
         outstr = ''
-        outstr += prefix + 'length: ' + str(self.len) + '\n'
+        outstr += prefix + 'length: ' + str(self.length) + '\n'
         outstr += prefix + 'table_id: ' + str(self.table_id) + '\n'
         outstr += prefix + 'match: \n'
         self.match.show(prefix + '  ')
