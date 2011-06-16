@@ -153,7 +153,8 @@ def ipproto_to_str(t):
 
 def load_oui_names():
     import os
-    filename = 'nox/lib/packet/oui.txt'
+    filename = 'pox/lib/packet/oui.txt'
+    #FIXME: We should actually base this on path of current file
     if not os.access(filename, os.R_OK):
         return None
     for line in open(filename).readlines():
