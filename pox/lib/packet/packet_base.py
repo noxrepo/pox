@@ -54,7 +54,7 @@
 import logging
 lg = logging.getLogger('packet')
 
-class packet_base:
+class packet_base (object):
     next = None 
     prev = None 
     parsed = False
