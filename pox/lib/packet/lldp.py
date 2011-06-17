@@ -125,7 +125,7 @@ class chassis_id:
         typelen = self.type << 9
         typelen = typelen | (self.strlen & 0x01ff) 
         pack_str = '!HB'+str(self.strlen-1)+'s'
-        return struct.pack(pack_str, typelen, self.subtype, self.id.pack())
+        return struct.pack(pack_str, typelen, self.subtype, self.id.tostring())
 
     def pack(self):
         packet = self.hdr()
@@ -200,7 +200,7 @@ class port_id:
         typelen = self.type << 9
         typelen = typelen | (self.strlen & 0x01ff) 
         pack_str = '!HB'+str(self.strlen-1)+'s'
-        return struct.pack(pack_str, typelen, self.subtype, self.id.pack())
+        return struct.pack(pack_str, typelen, self.subtype, self.id.tostring())
 
 class ttl:
 
@@ -288,7 +288,7 @@ class unknown_tlv:
         (typelen,) = struct.unpack("!H",self.arr[0:2])
         self.type   = typelen >> 9
         self.len  = typelen & 0x01ff 
-        self.next = self.arr[2:].pack()
+        self.next = self.arr[2:].tostring()
 
     def pack(self):
         typelen = 0

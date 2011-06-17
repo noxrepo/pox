@@ -100,7 +100,7 @@ class ethernet(packet_base):
         if self.type in ethernet.type_parsers:
             self.next = ethernet.type_parsers[self.type](self.arr[ethernet.MIN_LEN:], self)
         else:
-            self.next = self.arr[ethernet.MIN_LEN:].pack()
+            self.next = self.arr[ethernet.MIN_LEN:].tostring()
 
     def __str__(self): 
         s = ''.join(('[',mac_to_str(self.src,ethernet.resolve_names),'>',mac_to_str(self.dst,ethernet.resolve_names),':',ethtype_to_str(self.type),']'))
@@ -116,8 +116,8 @@ class ethernet(packet_base):
         dst = self.dst
         src = self.src
         if type(dst) != type(""):
-            dst = dst.pack()
+            dst = dst.tostring()
         if type(src) != type(""):
-            src = src.pack()
+            src = src.tostring()
         return struct.pack('!6s6sH', dst, src, self.type)
 

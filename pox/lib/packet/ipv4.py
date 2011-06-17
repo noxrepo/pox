@@ -149,10 +149,10 @@ class ipv4(packet_base):
         elif dlen < self.iplen:
             self.msg('(ip parse) warning IP packet data shorter than IP len: %u < %u' % (dlen, self.iplen))
         else:
-            self.next =  self.arr[self.hl*4:length].pack()
+            self.next =  self.arr[self.hl*4:length].tostring()
 
         if isinstance(self.next, packet_base) and not self.next.parsed:
-            self.next =  self.arr[self.hl*4:length].pack()
+            self.next =  self.arr[self.hl*4:length].tostring()
 
     def checksum(self):    
         data = struct.pack('!BBHHHBBHII', (self.v << 4) + self.hl, self.tos, \

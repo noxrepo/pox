@@ -95,7 +95,7 @@ class packet_base (object):
         elif type(payload) == type(''):
             self.next = payload
         elif type(payload) == array.array:
-            self.next = payload.pack()
+            self.next = payload.tostring()
         else:    
             self.msg('warning, payload must be string, array or type packet_base')
 

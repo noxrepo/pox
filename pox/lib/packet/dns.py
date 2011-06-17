@@ -286,7 +286,7 @@ class dns(packet_base):
             if chunk_size == 0:
                 break
             index += 1    
-            retlist.append(l[index : index + chunk_size].pack())
+            retlist.append(l[index : index + chunk_size].tostring())
             index += chunk_size
         return index
 

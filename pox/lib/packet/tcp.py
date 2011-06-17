@@ -218,7 +218,7 @@ class tcp(packet_base):
             self.msg(e) 
             return
 
-        self.next   = self.arr[self.hdr_len:].pack()
+        self.next   = self.arr[self.hdr_len:].tostring()
         self.parsed = True
 
     def hdr(self):    

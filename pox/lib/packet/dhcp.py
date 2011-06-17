@@ -223,9 +223,9 @@ class dhcp(packet_base):
         return struct.pack(fmt, self.op, self.htype, self.hlen, \
                     self.hops, self.xid, self.secs, self.flags, \
                     self.ciaddr, self.yiaddr, self.siaddr, self.giaddr, \
-                    self.chaddr.pack(), self.sname.pack(), \
-                    self.file.pack(), self.magic.pack(), \
-                    self.options.pack())
+                    self.chaddr.tostring(), self.sname.tostring(), \
+                    self.file.tostring(), self.magic.tostring(), \
+                    self.options.tostring())
 
     def hasParsedOption(self, opt, len):
         if self.parsedOptions.has_key(opt) == False:

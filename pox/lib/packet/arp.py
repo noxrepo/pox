@@ -106,21 +106,21 @@ class arp(packet_base):
         self.hwdst = self.arr[18:24]
         self.protodst = struct.unpack('!I',self.arr[24:28])[0]
 
-        self.next = self.arr[28:].pack()
+        self.next = self.arr[28:].tostring()
         self.parsed = True
 
     def hdr(self):    
         buf = struct.pack('!HHBBH', self.hwtype, self.prototype,\
         self.hwlen, self.protolen,self.opcode)
-        if type(self.hwsrc) == type(''):
+        if type(self.hwsrc) == str:
             buf += self.hwsrc
         else:    
-            buf += self.hwsrc.pack()
+            buf += self.hwsrc.tostring()
         buf += struct.pack('!I',self.protosrc)
-        if type(self.hwdst) == type(''):
+        if type(self.hwdst) == str:
             buf += self.hwdst
         else:    
-            buf += self.hwdst.pack()
+            buf += self.hwdst.tostring()
         buf += struct.pack('!I',self.protodst)
         return buf
 
