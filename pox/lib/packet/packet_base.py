@@ -72,7 +72,7 @@ class packet_base (object):
         return self.parsed == True
 
     def __len__(self):
-        return len(self.tostring())
+        return len(self.pack())
 
     def __str__(self):
         return "%s: Undefined representation" % self.__class__.__name__
@@ -95,7 +95,7 @@ class packet_base (object):
         elif type(payload) == type(''):
             self.next = payload
         elif type(payload) == array.array:
-            self.next = payload.tostring()
+            self.next = payload.pack()
         else:    
             self.msg('warning, payload must be string, array or type packet_base')
 
@@ -108,13 +108,13 @@ class packet_base (object):
         self.err('** error ** no hdr method defined')
         return ''
 
-    def tostring(self):
+    def pack(self):
         '''Convert header and payload to str'''
         buf = self.hdr()
 
         if self.next == None:
             return buf
         elif isinstance(self.next, packet_base):    
-            return ''.join((buf, self.next.tostring()))
+            return ''.join((buf, self.next.pack()))
         else:    
             return ''.join((buf, self.next))

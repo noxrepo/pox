@@ -125,9 +125,9 @@ class chassis_id:
         typelen = self.type << 9
         typelen = typelen | (self.strlen & 0x01ff) 
         pack_str = '!HB'+str(self.strlen-1)+'s'
-        return struct.pack(pack_str, typelen, self.subtype, self.id.tostring())
+        return struct.pack(pack_str, typelen, self.subtype, self.id.pack())
 
-    def tostring(self):    
+    def pack(self):
         packet = self.hdr()
         return packet
 
@@ -195,12 +195,12 @@ class port_id:
 
         return ''.join(['<port ID:',id_str,'>'])
 
-    def tostring(self):    
+    def pack(self):
         typelen = 0
         typelen = self.type << 9
         typelen = typelen | (self.strlen & 0x01ff) 
         pack_str = '!HB'+str(self.strlen-1)+'s'
-        return struct.pack(pack_str, typelen, self.subtype, self.id.tostring())
+        return struct.pack(pack_str, typelen, self.subtype, self.id.pack())
 
 class ttl:
 
@@ -234,7 +234,7 @@ class ttl:
     def __str__(self): 
         return ''.join(['<ttl:',str(self.ttl),'>'])
 
-    def tostring(self):    
+    def pack(self):
         typelen = 0
         typelen = self.type << 9
         typelen = typelen | (self.strlen & 0x01ff) 
@@ -264,7 +264,7 @@ class end_tlv:
     def __str__(self): 
         return ''.join(['<tlv end>'])
 
-    def tostring(self):    
+    def pack(self):
         typelen = 0
         typelen = self.type << 9
         typelen = typelen | (self.strlen & 0x01ff) 
@@ -288,9 +288,9 @@ class unknown_tlv:
         (typelen,) = struct.unpack("!H",self.arr[0:2])
         self.type   = typelen >> 9
         self.len  = typelen & 0x01ff 
-        self.next = self.arr[2:].tostring()
+        self.next = self.arr[2:].pack()
 
-    def tostring(self):    
+    def pack(self):
         typelen = 0
         typelen = self.type << 9
         typelen = typelen | (self.len & 0x01ff) 
@@ -436,5 +436,5 @@ class lldp (packet_base):
     def hdr(self):
         packet = ''
         for tlv in self.tlvs:
-            packet += tlv.tostring()
+            packet += tlv.pack()
         return packet    

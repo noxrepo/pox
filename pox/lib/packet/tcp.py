@@ -218,7 +218,7 @@ class tcp(packet_base):
             self.msg(e) 
             return
 
-        self.next   = self.arr[self.hdr_len:].tostring()
+        self.next   = self.arr[self.hdr_len:].pack()
         self.parsed = True
 
     def hdr(self):    
@@ -244,7 +244,7 @@ class tcp(packet_base):
                                          len(self.arr))
         tcphdr = self.hdr()                                
         if isinstance(self.next, packet_base):
-            return checksum(ippacket + tcphdr + self.next.tostring(), 0, 14)
+            return checksum(ippacket + tcphdr + self.next.pack(), 0, 14)
         else:    
             return checksum(ippacket + tcphdr + self.next, 0, 14)
 

@@ -121,7 +121,7 @@ class udp(packet_base):
                                          len(self.arr))
         udphdr = self.hdr()
         if isinstance(self.next, packet_base):
-            return checksum(ippacket + udphdr + self.next.tostring(), 0, 9)
+            return checksum(ippacket + udphdr + self.next.pack(), 0, 9)
         else:
             return checksum(ippacket + udphdr + self.next, 0, 9)
            

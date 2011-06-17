@@ -99,18 +99,18 @@ class echo(packet_base):
             = struct.unpack('!HH', self.arr[:self.MIN_LEN])
 
         self.parsed = True
-        self.next = self.arr[echo.MIN_LEN:].tostring()
+        self.next = self.arr[echo.MIN_LEN:].pack()
 
     def hdr(self):    
         return struct.pack('!HH', self.id, self.seq)
 
-    def tostring(self):    
+    def pack(self):
         buf = self.hdr()
 
         if self.next == None:
             return buf
         elif isinstance(self.next, packet_base):
-            return ''.join((buf, self.next.tostring()))
+            return ''.join((buf, self.next.pack()))
         else: 
             return ''.join((buf, self.next))
 
@@ -172,20 +172,20 @@ class unreach(packet_base):
             import ipv4
             self.next = ipv4.ipv4(arr=self.arr[unreach.MIN_LEN:],prev=self)
         else:
-            self.next = self.arr[unreach.MIN_LEN:].tostring()
+            self.next = self.arr[unreach.MIN_LEN:].pack()
 
     def hdr(self):    
         return struct.pack('!HH', self.unused, self.next_mtu)
 
-    def tostring(self):    
+    def pack(self):
         buf = self.hdr()
 
         if self.next == None:
             return buf
         elif isinstance(self.next, packet_base):
-            self.next.tostring()
+            self.next.pack()
 
-            return ''.join((buf, self.next.tostring()))
+            return ''.join((buf, self.next.pack()))
         else: 
             return ''.join((buf, self.next))
 
