@@ -6,7 +6,7 @@ if not hasattr(globals()['__builtins__'], 'long'):
   long = int
 
 class EthAddr (object):
-  def __init__ (addr):
+  def __init__ (self, addr):
 
     # Always stores as a 6 character string
 
@@ -14,7 +14,7 @@ class EthAddr (object):
       if len(addr) == 17 or len(addr) == 12:
         # hex
         if len(addr) == 17:
-          if addr[2::3] != ':' and addr[2::3] != '-':
+          if addr[2::3] != ':::::' and addr[2::3] != '-----':
             raise RuntimeError("Bad format for ethernet address")
           addr = ''.join((addr[x*3:x*3+2] for x in xrange(0,6)))
         addr = ''.join((chr(int(addr[x*2:x*2+2], 16)) for x in range(0,6)))
@@ -44,8 +44,8 @@ class EthAddr (object):
   def toStr (self, separator = ':'): #TODO: show OUI info from packet lib
     def h (n):
       if n <= 0xf:
-        return "0" + hex(n)
-      return hex(n)
+        return "0" + hex(n)[2:]
+      return hex(n)[2:]
     return separator.join((h(ord(x)) for x in self._value))
 
   def __str__ (self):
@@ -62,6 +62,8 @@ class EthAddr (object):
   def __hash__ (self):
     return self._value.__hash__()
 
+  def __repr__ (self):
+    return self.__class__.__name__ + "('" + self.toStr() + "')"
 
 class IPAddr (object):
   def __init__ (self, addr, networkOrder = False):
@@ -109,6 +111,7 @@ class IPAddr (object):
     return self._value & 0xffFFffFF
 
   def toStr (self):
+    """ Return dotted quad representation """
     return socket.inet_ntoa(self.toRaw())
 
   def __str__ (self):
@@ -124,6 +127,9 @@ class IPAddr (object):
 
   def __hash__ (self):
     return self._value.__hash__()
+
+  def __repr__ (self):
+    return self.__class__.__name__ + "('" + self.toStr() + "')"
 
 if __name__ == '__main__':
   import code
