@@ -1,6 +1,8 @@
 import operator
 import weakref
 
+showEventExceptions = False
+
 nextEventID = 0
 def generateEventID ():
   global nextEventID
@@ -46,7 +48,10 @@ class EventMixin (object):
     try:
       self.raiseEvent(event, *args, **kw)
     except:
-      print "Event handler raised error"
+      print "Event handler raised exception"
+      if showEventExceptions:
+        import traceback
+        traceback.print_exc()
       
   def raiseEvent (self, event, *args, **kw):
     self._eventMixin_init()
