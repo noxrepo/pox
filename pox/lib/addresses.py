@@ -132,6 +132,7 @@ class IPAddr (object):
     return self.__class__.__name__ + "('" + self.toStr() + "')"
 
 if __name__ == '__main__':
+  # A couple sanity checks
   import code
   a = IPAddr('255.0.0.1')
   for v in [('255.0.0.1',True), (0xff000001, True), (0x010000ff, False)]:
