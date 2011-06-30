@@ -27,6 +27,8 @@ from packet_base import packet_base
 
 from packet_utils import  *
 
+import pox.lib.util
+
 ETHER_ANY            = b"\x00\x00\x00\x00\x00\x00"
 ETHER_BROADCAST      = b"\xff\xff\xff\xff\xff\xff"
 BRIDGE_GROUP_ADDRESS = b"\x01\x80\xC2\x00\x00\x00"
@@ -51,9 +53,9 @@ class ethernet(packet_base):
 
   type_parsers = {}
 
-  def __init__(self, arr=None, prev=None):
+  def __init__(self, arr=None, prev=None, **kw):
     if len(ethernet.type_parsers) == 0:
-      # trying to bypass a hairy cyclical include problems
+      # trying to bypass hairy cyclical include problems
       from vlan import vlan
       ethernet.type_parsers[ethernet.VLAN_TYPE] = vlan
       from arp  import arp
@@ -71,7 +73,9 @@ class ethernet(packet_base):
     self.dst  = ETHER_ANY
     self.src  = ETHER_ANY
     self.type = 0
-    self.next = ''
+    self.next = b''
+
+    pox.lib.util.initHelper(self, kw)
 
     if arr != None:
       assert(type(arr) == bytes)
@@ -103,7 +107,7 @@ class ethernet(packet_base):
     s = ''.join(('[',mac_to_str(self.src,ethernet.resolve_names),'>',mac_to_str(self.dst,ethernet.resolve_names),':',ethtype_to_str(self.type),']'))
     if self.next == None:
       return s
-    elif type(self.next) == type(""):
+    elif type(self.next) == bytes:
       return s
     else:
       return ''.join((s, str(self.next)))
