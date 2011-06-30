@@ -32,5 +32,5 @@ if __name__ == '__main__':
     traceback.print_exc()
 
   import code
-  code.interact('Ready.')
+  code.interact('Ready.', local=locals())
   pox.core.core.quit()
