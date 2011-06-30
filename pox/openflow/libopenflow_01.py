@@ -9,31 +9,23 @@ def _initHelper (obj, kw):
       raise TypeError(obj.__class__.__name__ + " constructor got "
         + "unexpected keyword argument '" + k + "'")
     setattr(obj, k, v)
-    
+
 # Structure definitions
 
 #1. Openflow Header
 class ofp_header:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.version = OFP_VERSION
         self.type = 0
         self.length = 0
         self.xid = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if (not (self.type in ofp_type_map.keys())):
             return (False, "type must have values from ofp_type_map.keys()")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -42,24 +34,16 @@ class ofp_header:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.version, self.type, self.length, self.xid) = struct.unpack_from("!BBHL", binaryString, 0)
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.version !=  other.version: return False
         if self.type !=  other.type: return False
@@ -70,8 +54,6 @@ class ofp_header:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'version: ' + str(self.version) + '\n'
         outstr += prefix + 'type: ' + str(self.type) + '\n'
@@ -83,9 +65,6 @@ class ofp_header:
 ##2.1 Port Structures
 class ofp_phy_port:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.port_no = 0
         self.hw_addr= [0,0,0,0,0,0]
         self.name= ""
@@ -97,8 +76,6 @@ class ofp_phy_port:
         self.peer = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.hw_addr, list)):
             return (False, "self.hw_addr is not list as expected.")
         if(len(self.hw_addr) != 6):
@@ -110,9 +87,6 @@ class ofp_phy_port:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -124,10 +98,6 @@ class ofp_phy_port:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 48):
             return binaryString
         (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
@@ -137,14 +107,10 @@ class ofp_phy_port:
         return binaryString[48:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 48
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.port_no !=  other.port_no: return False
         if self.hw_addr !=  other.hw_addr: return False
@@ -160,8 +126,6 @@ class ofp_phy_port:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
         outstr += prefix + 'hw_addr: ' + str(self.hw_addr) + '\n'
@@ -245,17 +209,12 @@ ofp_port_features_map = {
 ##2.2 Queue Structures
 class ofp_packet_queue:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.queue_id = 0
         self.length = 0
         self.pad= [0,0]
         self.properties= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 2):
@@ -263,9 +222,6 @@ class ofp_packet_queue:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -277,10 +233,6 @@ class ofp_packet_queue:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.queue_id, self.length) = struct.unpack_from("!LH", binaryString, 0)
@@ -288,16 +240,12 @@ class ofp_packet_queue:
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         for i in self.properties:
             l += i.length()
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.queue_id !=  other.queue_id: return False
         if self.length !=  other.length: return False
@@ -308,8 +256,6 @@ class ofp_packet_queue:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -328,16 +274,11 @@ ofp_queue_properties_map = {
 
 class ofp_queue_prop_header:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.property = 0
         self.length = 0
         self.pad= [0,0,0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 4):
@@ -345,9 +286,6 @@ class ofp_queue_prop_header:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -357,10 +295,6 @@ class ofp_queue_prop_header:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.property, self.length) = struct.unpack_from("!HH", binaryString, 0)
@@ -368,14 +302,10 @@ class ofp_queue_prop_header:
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.property !=  other.property: return False
         if self.length !=  other.length: return False
@@ -385,8 +315,6 @@ class ofp_queue_prop_header:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'property: ' + str(self.property) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -394,16 +322,11 @@ class ofp_queue_prop_header:
 
 class ofp_queue_prop_min_rate:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.prop_header = ofp_queue_prop_header()
         self.rate = 0
         self.pad= [0,0,0,0,0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.prop_header, ofp_queue_prop_header)):
             return (False, "self.prop_header is not class ofp_queue_prop_header as expected.")
         if(not isinstance(self.pad, list)):
@@ -413,9 +336,6 @@ class ofp_queue_prop_min_rate:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -426,10 +346,6 @@ class ofp_queue_prop_min_rate:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 16):
             return binaryString
         self.prop_header.unpack(binaryString[0:])
@@ -438,14 +354,10 @@ class ofp_queue_prop_min_rate:
         return binaryString[16:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 16
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.prop_header !=  other.prop_header: return False
         if self.rate !=  other.rate: return False
@@ -455,8 +367,6 @@ class ofp_queue_prop_min_rate:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'prop_header: \n'
         self.prop_header.show(prefix + '  ')
@@ -466,9 +376,6 @@ class ofp_queue_prop_min_rate:
 ##2.3 Flow Match Structures
 class ofp_match:
     def __init__(self, **kw):
-        """Initialize
-        Declare members and default values
-        """
         for k,v in ofp_match_data.iteritems():
           setattr(self, '_' + k, v[0])
         self.wildcards = self._normalize_wildcards(OFPFW_ALL)
@@ -566,8 +473,6 @@ class ofp_match:
       raise AttributeError
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self._dl_src, list)):
             return (False, "self.dl_src is not list as expected.")
         if(len(self._dl_src) != 6):
@@ -587,9 +492,6 @@ class ofp_match:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -624,10 +526,6 @@ class ofp_match:
       return wildcards
 
     def unpack (self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 40):
             return binaryString
         (wildcards, self._in_port) = struct.unpack_from("!LH", binaryString, 0)
@@ -643,14 +541,10 @@ class ofp_match:
         return binaryString[40:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 40
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.wildcards !=  other.wildcards: return False
         if self.in_port !=  other.in_port: return False
@@ -672,8 +566,6 @@ class ofp_match:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         def binstr (n):
           s = ''
           while True:
@@ -783,16 +675,11 @@ ofp_action_type_map = {
 
 class ofp_action_header:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.type = 0
         self.length = 0
         self.pad= [0,0,0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 4):
@@ -800,9 +687,6 @@ class ofp_action_header:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -812,10 +696,6 @@ class ofp_action_header:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
@@ -823,14 +703,10 @@ class ofp_action_header:
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
         if self.length !=  other.length: return False
@@ -840,8 +716,6 @@ class ofp_action_header:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -849,23 +723,15 @@ class ofp_action_header:
 
 class ofp_action_output:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.type = OFPAT_OUTPUT
         self.length = 0
         self.port = 0
         self.max_len = 0
 
     def __assert(self):
-        """Sanity check
-        """
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -874,24 +740,16 @@ class ofp_action_output:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.type, self.length, self.port, self.max_len) = struct.unpack_from("!HHHH", binaryString, 0)
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
         if self.length !=  other.length: return False
@@ -902,8 +760,6 @@ class ofp_action_output:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -913,9 +769,6 @@ class ofp_action_output:
 
 class ofp_action_enqueue:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.type = 0
         self.length = 0
         self.port = 0
@@ -923,8 +776,6 @@ class ofp_action_enqueue:
         self.queue_id = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 6):
@@ -932,9 +783,6 @@ class ofp_action_enqueue:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -945,10 +793,6 @@ class ofp_action_enqueue:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 16):
             return binaryString
         (self.type, self.length, self.port) = struct.unpack_from("!HHH", binaryString, 0)
@@ -957,14 +801,10 @@ class ofp_action_enqueue:
         return binaryString[16:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 16
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
         if self.length !=  other.length: return False
@@ -976,8 +816,6 @@ class ofp_action_enqueue:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -987,17 +825,12 @@ class ofp_action_enqueue:
 
 class ofp_action_vlan_vid:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.type = OFPAT_SET_VLAN_VID
         self.length = 0
         self.vlan_vid = 0
         self.pad= [0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 2):
@@ -1005,9 +838,6 @@ class ofp_action_vlan_vid:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1017,10 +847,6 @@ class ofp_action_vlan_vid:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.type, self.length, self.vlan_vid) = struct.unpack_from("!HHH", binaryString, 0)
@@ -1028,14 +854,10 @@ class ofp_action_vlan_vid:
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
         if self.length !=  other.length: return False
@@ -1046,8 +868,6 @@ class ofp_action_vlan_vid:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -1056,17 +876,12 @@ class ofp_action_vlan_vid:
 
 class ofp_action_vlan_pcp:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.type = OFPAT_SET_VLAN_PCP
         self.length = 0
         self.vlan_pcp = 0
         self.pad= [0,0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 3):
@@ -1074,9 +889,6 @@ class ofp_action_vlan_pcp:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1086,10 +898,6 @@ class ofp_action_vlan_pcp:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.type, self.length, self.vlan_pcp) = struct.unpack_from("!HHB", binaryString, 0)
@@ -1097,14 +905,10 @@ class ofp_action_vlan_pcp:
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
         if self.length !=  other.length: return False
@@ -1115,8 +919,6 @@ class ofp_action_vlan_pcp:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -1125,17 +927,12 @@ class ofp_action_vlan_pcp:
 
 class ofp_action_dl_addr:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.type = 0
         self.length = 0
         self.dl_addr= [0,0,0,0,0,0]
         self.pad= [0,0,0,0,0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.dl_addr, list)):
             return (False, "self.dl_addr is not list as expected.")
         if(len(self.dl_addr) != 6):
@@ -1147,9 +944,6 @@ class ofp_action_dl_addr:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1160,10 +954,6 @@ class ofp_action_dl_addr:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 16):
             return binaryString
         (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
@@ -1172,14 +962,10 @@ class ofp_action_dl_addr:
         return binaryString[16:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 16
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
         if self.length !=  other.length: return False
@@ -1190,8 +976,6 @@ class ofp_action_dl_addr:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -1200,22 +984,14 @@ class ofp_action_dl_addr:
 
 class ofp_action_nw_addr:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.type = 0
         self.length = 0
         self.nw_addr = 0
 
     def __assert(self):
-        """Sanity check
-        """
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1224,24 +1000,16 @@ class ofp_action_nw_addr:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.type, self.length, self.nw_addr) = struct.unpack_from("!HHL", binaryString, 0)
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
         if self.length !=  other.length: return False
@@ -1251,8 +1019,6 @@ class ofp_action_nw_addr:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -1261,17 +1027,12 @@ class ofp_action_nw_addr:
 
 class ofp_action_nw_tos:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.type = 0
         self.length = 0
         self.nw_tos = 0
         self.pad= [0,0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 3):
@@ -1279,9 +1040,6 @@ class ofp_action_nw_tos:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1291,10 +1049,6 @@ class ofp_action_nw_tos:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.type, self.length, self.nw_tos) = struct.unpack_from("!HHB", binaryString, 0)
@@ -1302,14 +1056,10 @@ class ofp_action_nw_tos:
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
         if self.length !=  other.length: return False
@@ -1320,8 +1070,6 @@ class ofp_action_nw_tos:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -1330,17 +1078,12 @@ class ofp_action_nw_tos:
 
 class ofp_action_tp_port:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.type = 0
         self.length = 0
         self.tp_port = 0
         self.pad= [0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 2):
@@ -1348,9 +1091,6 @@ class ofp_action_tp_port:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1360,10 +1100,6 @@ class ofp_action_tp_port:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.type, self.length, self.tp_port) = struct.unpack_from("!HHH", binaryString, 0)
@@ -1371,14 +1107,10 @@ class ofp_action_tp_port:
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
         if self.length !=  other.length: return False
@@ -1389,8 +1121,6 @@ class ofp_action_tp_port:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -1399,22 +1129,14 @@ class ofp_action_tp_port:
 
 class ofp_action_vendor_header:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.type = OFPAT_VENDOR
         self.length = 0
         self.vendor = 0
 
     def __assert(self):
-        """Sanity check
-        """
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1423,24 +1145,16 @@ class ofp_action_vendor_header:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.type, self.length, self.vendor) = struct.unpack_from("!HHL", binaryString, 0)
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.type !=  other.type: return False
         if self.length !=  other.length: return False
@@ -1450,8 +1164,6 @@ class ofp_action_vendor_header:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'type: ' + str(self.type) + '\n'
         outstr += prefix + 'len: ' + str(self.length) + '\n'
@@ -1464,9 +1176,6 @@ class ofp_action_vendor_header:
 # was ofp_switch_features
 class ofp_features_reply:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_FEATURES_REPLY
         self.datapath_id = 0
@@ -1478,8 +1187,6 @@ class ofp_features_reply:
         self.ports= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         if(not isinstance(self.pad, list)):
@@ -1489,9 +1196,6 @@ class ofp_features_reply:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1505,10 +1209,6 @@ class ofp_features_reply:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 32):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -1518,16 +1218,12 @@ class ofp_features_reply:
         return binaryString[32:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 32
         for i in self.ports:
             l += i.length()
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.datapath_id !=  other.datapath_id: return False
@@ -1542,8 +1238,6 @@ class ofp_features_reply:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -1582,24 +1276,16 @@ ofp_capabilities_map = {
 ##3.2 Switch Configuration
 class ofp_switch_config:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.flags = 0
         self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1609,10 +1295,6 @@ class ofp_switch_config:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 12):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -1620,14 +1302,10 @@ class ofp_switch_config:
         return binaryString[12:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 12
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.flags !=  other.flags: return False
@@ -1637,8 +1315,6 @@ class ofp_switch_config:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -1662,9 +1338,6 @@ ofp_config_flags_map = {
 ##3.3 Modify State Messages
 class ofp_flow_mod:
     def __init__(self, **kw):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_FLOW_MOD
         self.match = ofp_match()
@@ -1679,10 +1352,8 @@ class ofp_flow_mod:
         self.actions= []
 
         _initHelper(self, kw)
-          
+
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         if(not isinstance(self.match, ofp_match)):
@@ -1690,9 +1361,6 @@ class ofp_flow_mod:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1706,10 +1374,6 @@ class ofp_flow_mod:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 72):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -1718,16 +1382,12 @@ class ofp_flow_mod:
         return binaryString[72:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 72
         for i in self.actions:
             l += len(i)#.length()
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.match !=  other.match: return False
@@ -1745,8 +1405,6 @@ class ofp_flow_mod:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -1793,9 +1451,6 @@ ofp_flow_mod_flags_map = {
 
 class ofp_port_mod:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_PORT_MOD
         self.port_no = 0
@@ -1806,8 +1461,6 @@ class ofp_port_mod:
         self.pad= [0,0,0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         if(not isinstance(self.hw_addr, list)):
@@ -1821,9 +1474,6 @@ class ofp_port_mod:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1836,10 +1486,6 @@ class ofp_port_mod:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 32):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -1850,14 +1496,10 @@ class ofp_port_mod:
         return binaryString[32:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 32
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.port_no !=  other.port_no: return False
@@ -1871,8 +1513,6 @@ class ofp_port_mod:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -1886,16 +1526,11 @@ class ofp_port_mod:
 ##3.4 Queue Configuration Messages
 class ofp_queue_get_config_request:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.port = 0
         self.pad= [0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         if(not isinstance(self.pad, list)):
@@ -1905,9 +1540,6 @@ class ofp_queue_get_config_request:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1918,10 +1550,6 @@ class ofp_queue_get_config_request:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 12):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -1930,14 +1558,10 @@ class ofp_queue_get_config_request:
         return binaryString[12:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 12
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.port !=  other.port: return False
@@ -1947,8 +1571,6 @@ class ofp_queue_get_config_request:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -1957,17 +1579,12 @@ class ofp_queue_get_config_request:
 
 class ofp_queue_get_config_reply:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.port = 0
         self.pad= [0,0,0,0,0,0]
         self.queues= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         if(not isinstance(self.pad, list)):
@@ -1977,9 +1594,6 @@ class ofp_queue_get_config_reply:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -1992,10 +1606,6 @@ class ofp_queue_get_config_reply:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 16):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -2004,16 +1614,12 @@ class ofp_queue_get_config_reply:
         return binaryString[16:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 16
         for i in self.queues:
             l += i.length()
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.port !=  other.port: return False
@@ -2024,8 +1630,6 @@ class ofp_queue_get_config_reply:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -2038,9 +1642,6 @@ class ofp_queue_get_config_reply:
 ##3.5 Read State Messages
 class ofp_stats_request:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_STATS_REQUEST
         self.type = 0
@@ -2048,16 +1649,11 @@ class ofp_stats_request:
         self.body= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2069,10 +1665,6 @@ class ofp_stats_request:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 12):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -2080,15 +1672,11 @@ class ofp_stats_request:
         return binaryString[12:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 12
         l += len(self.body)*1
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.type !=  other.type: return False
@@ -2099,8 +1687,6 @@ class ofp_stats_request:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -2111,9 +1697,6 @@ class ofp_stats_request:
 
 class ofp_stats_reply:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_STATS_REPLY
         self.type = 0
@@ -2121,16 +1704,11 @@ class ofp_stats_reply:
         self.body= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2142,10 +1720,6 @@ class ofp_stats_reply:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 12):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -2153,15 +1727,11 @@ class ofp_stats_reply:
         return binaryString[12:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 12
         l += len(self.body)*1
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.type !=  other.type: return False
@@ -2172,8 +1742,6 @@ class ofp_stats_reply:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -2209,9 +1777,6 @@ ofp_stats_reply_flags_map = {
 
 class ofp_desc_stats:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.mfr_desc= ""
         self.hw_desc= ""
         self.sw_desc= ""
@@ -2219,8 +1784,6 @@ class ofp_desc_stats:
         self.dp_desc= ""
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.mfr_desc, str)):
             return (False, "self.mfr_desc is not string as expected.")
         if(len(self.mfr_desc) > 256):
@@ -2244,9 +1807,6 @@ class ofp_desc_stats:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2259,10 +1819,6 @@ class ofp_desc_stats:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 1056):
             return binaryString
         self.mfr_desc = binaryString[0:256].replace("\0","")
@@ -2273,14 +1829,10 @@ class ofp_desc_stats:
         return binaryString[1056:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 1056
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.mfr_desc !=  other.mfr_desc: return False
         if self.hw_desc !=  other.hw_desc: return False
@@ -2292,8 +1844,6 @@ class ofp_desc_stats:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'mfr_desc: ' + str(self.mfr_desc) + '\n'
         outstr += prefix + 'hw_desc: ' + str(self.hw_desc) + '\n'
@@ -2304,25 +1854,17 @@ class ofp_desc_stats:
 
 class ofp_flow_stats_request:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.match = ofp_match()
         self.table_id = 0
         self.pad = 0
         self.out_port = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.match, ofp_match)):
             return (False, "self.match is not class ofp_match as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2332,10 +1874,6 @@ class ofp_flow_stats_request:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 44):
             return binaryString
         self.match.unpack(binaryString[0:])
@@ -2343,14 +1881,10 @@ class ofp_flow_stats_request:
         return binaryString[44:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 44
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.match !=  other.match: return False
         if self.table_id !=  other.table_id: return False
@@ -2361,8 +1895,6 @@ class ofp_flow_stats_request:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'match: \n'
         self.match.show(prefix + '  ')
@@ -2372,9 +1904,6 @@ class ofp_flow_stats_request:
 
 class ofp_flow_stats:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.length = 0
         self.table_id = 0
         self.pad = 0
@@ -2391,8 +1920,6 @@ class ofp_flow_stats:
         self.actions= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.match, ofp_match)):
             return (False, "self.match is not class ofp_match as expected.")
         if(not isinstance(self.pad2, list)):
@@ -2402,9 +1929,6 @@ class ofp_flow_stats:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2419,10 +1943,6 @@ class ofp_flow_stats:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 88):
             return binaryString
         (self.length, self.table_id, self.pad) = struct.unpack_from("!HBB", binaryString, 0)
@@ -2433,16 +1953,12 @@ class ofp_flow_stats:
         return binaryString[88:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 88
         for i in self.actions:
             l += i.length()
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.length !=  other.length: return False
         if self.table_id !=  other.table_id: return False
@@ -2463,8 +1979,6 @@ class ofp_flow_stats:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'length: ' + str(self.length) + '\n'
         outstr += prefix + 'table_id: ' + str(self.table_id) + '\n'
@@ -2485,25 +1999,17 @@ class ofp_flow_stats:
 
 class ofp_aggregate_stats_request:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.match = ofp_match()
         self.table_id = 0
         self.pad = 0
         self.out_port = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.match, ofp_match)):
             return (False, "self.match is not class ofp_match as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2513,10 +2019,6 @@ class ofp_aggregate_stats_request:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 44):
             return binaryString
         self.match.unpack(binaryString[0:])
@@ -2524,14 +2026,10 @@ class ofp_aggregate_stats_request:
         return binaryString[44:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 44
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.match !=  other.match: return False
         if self.table_id !=  other.table_id: return False
@@ -2542,8 +2040,6 @@ class ofp_aggregate_stats_request:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'match: \n'
         self.match.show(prefix + '  ')
@@ -2553,17 +2049,12 @@ class ofp_aggregate_stats_request:
 
 class ofp_aggregate_stats_reply:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.packet_count = 0
         self.byte_count = 0
         self.flow_count = 0
         self.pad= [0,0,0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 4):
@@ -2571,9 +2062,6 @@ class ofp_aggregate_stats_reply:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2583,10 +2071,6 @@ class ofp_aggregate_stats_reply:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 24):
             return binaryString
         (self.packet_count, self.byte_count, self.flow_count) = struct.unpack_from("!QQL", binaryString, 0)
@@ -2594,14 +2078,10 @@ class ofp_aggregate_stats_reply:
         return binaryString[24:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 24
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.packet_count !=  other.packet_count: return False
         if self.byte_count !=  other.byte_count: return False
@@ -2612,8 +2092,6 @@ class ofp_aggregate_stats_reply:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'packet_count: ' + str(self.packet_count) + '\n'
         outstr += prefix + 'byte_count: ' + str(self.byte_count) + '\n'
@@ -2622,9 +2100,6 @@ class ofp_aggregate_stats_reply:
 
 class ofp_table_stats:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.table_id = 0
         self.pad= [0,0,0]
         self.name= ""
@@ -2635,8 +2110,6 @@ class ofp_table_stats:
         self.matched_count = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 3):
@@ -2648,9 +2121,6 @@ class ofp_table_stats:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2662,10 +2132,6 @@ class ofp_table_stats:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 64):
             return binaryString
         (self.table_id,) = struct.unpack_from("!B", binaryString, 0)
@@ -2675,14 +2141,10 @@ class ofp_table_stats:
         return binaryString[64:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 64
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.table_id !=  other.table_id: return False
         if self.pad !=  other.pad: return False
@@ -2697,8 +2159,6 @@ class ofp_table_stats:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'table_id: ' + str(self.table_id) + '\n'
         outstr += prefix + 'name: ' + str(self.name) + '\n'
@@ -2711,15 +2171,10 @@ class ofp_table_stats:
 
 class ofp_port_stats_request:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.port_no = 0
         self.pad= [0,0,0,0,0,0]
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 6):
@@ -2727,9 +2182,6 @@ class ofp_port_stats_request:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2739,10 +2191,6 @@ class ofp_port_stats_request:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
@@ -2750,14 +2198,10 @@ class ofp_port_stats_request:
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.port_no !=  other.port_no: return False
         if self.pad !=  other.pad: return False
@@ -2766,17 +2210,12 @@ class ofp_port_stats_request:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
         return outstr
 
 class ofp_port_stats:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.port_no = 0
         self.pad= [0,0,0,0,0,0]
         self.rx_packets = 0
@@ -2793,8 +2232,6 @@ class ofp_port_stats:
         self.collisions = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 6):
@@ -2802,9 +2239,6 @@ class ofp_port_stats:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2815,10 +2249,6 @@ class ofp_port_stats:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 104):
             return binaryString
         (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
@@ -2827,14 +2257,10 @@ class ofp_port_stats:
         return binaryString[104:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 104
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.port_no !=  other.port_no: return False
         if self.pad !=  other.pad: return False
@@ -2855,8 +2281,6 @@ class ofp_port_stats:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
         outstr += prefix + 'rx_packets: ' + str(self.rx_packets) + '\n'
@@ -2875,16 +2299,11 @@ class ofp_port_stats:
 
 class ofp_queue_stats_request:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.port_no = 0
         self.pad= [0,0]
         self.queue_id = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 2):
@@ -2892,9 +2311,6 @@ class ofp_queue_stats_request:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2905,10 +2321,6 @@ class ofp_queue_stats_request:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
@@ -2917,14 +2329,10 @@ class ofp_queue_stats_request:
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.port_no !=  other.port_no: return False
         if self.pad !=  other.pad: return False
@@ -2934,8 +2342,6 @@ class ofp_queue_stats_request:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
         outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
@@ -2943,9 +2349,6 @@ class ofp_queue_stats_request:
 
 class ofp_queue_stats:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.port_no = 0
         self.pad= [0,0]
         self.queue_id = 0
@@ -2954,8 +2357,6 @@ class ofp_queue_stats:
         self.tx_errors = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.pad, list)):
             return (False, "self.pad is not list as expected.")
         if(len(self.pad) != 2):
@@ -2963,9 +2364,6 @@ class ofp_queue_stats:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -2976,10 +2374,6 @@ class ofp_queue_stats:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 32):
             return binaryString
         (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
@@ -2988,14 +2382,10 @@ class ofp_queue_stats:
         return binaryString[32:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 32
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.port_no !=  other.port_no: return False
         if self.pad !=  other.pad: return False
@@ -3008,8 +2398,6 @@ class ofp_queue_stats:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
         outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
@@ -3021,9 +2409,6 @@ class ofp_queue_stats:
 ##3.6 Send Packet Message
 class ofp_packet_out:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_PACKET_OUT
         self.buffer_id = 4294967295
@@ -3032,16 +2417,11 @@ class ofp_packet_out:
         self.actions= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3053,10 +2433,6 @@ class ofp_packet_out:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 16):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -3064,16 +2440,12 @@ class ofp_packet_out:
         return binaryString[16:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 16
         for i in self.actions:
             l += i.length()
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.buffer_id !=  other.buffer_id: return False
@@ -3085,8 +2457,6 @@ class ofp_packet_out:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3101,23 +2471,15 @@ class ofp_packet_out:
 ##3.7 Barrier Message
 class ofp_barrier_reply:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_BARRIER_REPLY
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3126,24 +2488,16 @@ class ofp_barrier_reply:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         self.header.unpack(binaryString[0:])
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         return True
@@ -3151,8 +2505,6 @@ class ofp_barrier_reply:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3160,25 +2512,17 @@ class ofp_barrier_reply:
 
 class ofp_barrier_request:
     def __init__(self, **kw):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_BARRIER_REQUEST
 
         _initHelper(self, kw)
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3187,24 +2531,16 @@ class ofp_barrier_request:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         self.header.unpack(binaryString[0:])
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         return True
@@ -3212,8 +2548,6 @@ class ofp_barrier_request:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3222,9 +2556,6 @@ class ofp_barrier_request:
 #4 Asynchronous Messages
 class ofp_packet_in:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_PACKET_IN
         self.buffer_id = 0
@@ -3235,16 +2566,11 @@ class ofp_packet_in:
         self.data= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3256,10 +2582,6 @@ class ofp_packet_in:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 18):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -3270,15 +2592,11 @@ class ofp_packet_in:
         return binaryString[self.header.length:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 18
         l += len(self.data)*1
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.buffer_id !=  other.buffer_id: return False
@@ -3292,8 +2610,6 @@ class ofp_packet_in:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3314,9 +2630,6 @@ ofp_packet_in_reason_map = {
 
 class ofp_flow_removed:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_FLOW_REMOVED
         self.match = ofp_match()
@@ -3332,8 +2645,6 @@ class ofp_flow_removed:
         self.byte_count = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         if(not isinstance(self.match, ofp_match)):
@@ -3349,9 +2660,6 @@ class ofp_flow_removed:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3366,10 +2674,6 @@ class ofp_flow_removed:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 88):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -3382,14 +2686,10 @@ class ofp_flow_removed:
         return binaryString[88:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 88
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.match !=  other.match: return False
@@ -3408,8 +2708,6 @@ class ofp_flow_removed:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3438,9 +2736,6 @@ ofp_flow_removed_reason_map = {
 
 class ofp_port_status:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_PORT_STATUS
         self.reason = 0
@@ -3448,8 +2743,6 @@ class ofp_port_status:
         self.desc = ofp_phy_port()
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         if(not isinstance(self.pad, list)):
@@ -3461,9 +2754,6 @@ class ofp_port_status:
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3475,10 +2765,6 @@ class ofp_port_status:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 64):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -3488,14 +2774,10 @@ class ofp_port_status:
         return binaryString[64:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 64
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.reason !=  other.reason: return False
@@ -3506,8 +2788,6 @@ class ofp_port_status:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3529,9 +2809,6 @@ ofp_port_reason_map = {
 #WAS class ofp_error_msg: (why changed? it's still ofp_error_msg in 1.0/1.1 spec)
 class ofp_error:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_ERROR
         self.type = 0
@@ -3539,16 +2816,11 @@ class ofp_error:
         self.data= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3560,10 +2832,6 @@ class ofp_error:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 12):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -3571,15 +2839,11 @@ class ofp_error:
         return binaryString[12:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 12
         l += len(self.data)*1
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.type !=  other.type: return False
@@ -3590,8 +2854,6 @@ class ofp_error:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3717,24 +2979,16 @@ ofp_queue_op_failed_code_map = {
 #5. Symmetric Messages
 class ofp_hello:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_HELLO
         self.header.length = len(self)
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3743,24 +2997,16 @@ class ofp_hello:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         self.header.unpack(binaryString[0:])
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         return True
@@ -3768,8 +3014,6 @@ class ofp_hello:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3777,24 +3021,16 @@ class ofp_hello:
 
 class ofp_echo_request:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_ECHO_REQUEST
         self.body= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3805,10 +3041,6 @@ class ofp_echo_request:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -3821,15 +3053,11 @@ class ofp_echo_request:
         return binaryString[8 + l:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         l += len(self.body)*1
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.body !=  other.body: return False
@@ -3838,8 +3066,6 @@ class ofp_echo_request:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3848,24 +3074,16 @@ class ofp_echo_request:
 
 class ofp_echo_reply:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_ECHO_REPLY
         self.body= []
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3876,10 +3094,6 @@ class ofp_echo_reply:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -3892,15 +3106,11 @@ class ofp_echo_reply:
         return binaryString[8 + l:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         l += len(self.body)*1
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.body !=  other.body: return False
@@ -3909,8 +3119,6 @@ class ofp_echo_reply:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3919,24 +3127,16 @@ class ofp_echo_reply:
 
 class ofp_vendor_header:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_VENDOR
         self.vendor = 0
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -3946,10 +3146,6 @@ class ofp_vendor_header:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 12):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -3957,14 +3153,10 @@ class ofp_vendor_header:
         return binaryString[12:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 12
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.vendor !=  other.vendor: return False
@@ -3973,8 +3165,6 @@ class ofp_vendor_header:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -3983,25 +3173,17 @@ class ofp_vendor_header:
 
 class ofp_vendor:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_VENDOR
         self.vendor = 0
         self.data = ''
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -4012,10 +3194,6 @@ class ofp_vendor:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 12):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -4026,15 +3204,11 @@ class ofp_vendor:
         return binaryString[self.header.length:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 12
         l += len(self.data)
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.vendor !=  other.vendor: return False
@@ -4044,8 +3218,6 @@ class ofp_vendor:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -4055,24 +3227,16 @@ class ofp_vendor:
 
 class ofp_features_request:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_FEATURES_REQUEST
         self.header.length = 8
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -4081,24 +3245,16 @@ class ofp_features_request:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         self.header.unpack(binaryString[0:])
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         return True
@@ -4106,8 +3262,6 @@ class ofp_features_request:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -4115,23 +3269,15 @@ class ofp_features_request:
 
 class ofp_get_config_request:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_GET_CONFIG_REQUEST
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -4140,24 +3286,16 @@ class ofp_get_config_request:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 8):
             return binaryString
         self.header.unpack(binaryString[0:])
         return binaryString[8:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 8
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         return True
@@ -4165,8 +3303,6 @@ class ofp_get_config_request:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -4174,25 +3310,17 @@ class ofp_get_config_request:
 
 class ofp_get_config_reply:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_GET_CONFIG_REPLY
         self.flags = 0
         self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -4202,10 +3330,6 @@ class ofp_get_config_reply:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 12):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -4213,14 +3337,10 @@ class ofp_get_config_reply:
         return binaryString[12:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 12
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.flags !=  other.flags: return False
@@ -4230,8 +3350,6 @@ class ofp_get_config_reply:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
@@ -4241,25 +3359,17 @@ class ofp_get_config_reply:
 
 class ofp_set_config:
     def __init__(self):
-        """Initialize
-        Declare members and default values
-        """
         self.header = ofp_header()
         self.header.type = OFPT_SET_CONFIG
         self.flags = 0
         self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
     def __assert(self):
-        """Sanity check
-        """
         if(not isinstance(self.header, ofp_header)):
             return (False, "self.header is not class ofp_header as expected.")
         return (True, None)
 
     def pack(self, assertstruct=True):
-        """Pack message
-        Packs empty array used as placeholder
-        """
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
@@ -4269,10 +3379,6 @@ class ofp_set_config:
         return packed
 
     def unpack(self, binaryString):
-        """Unpack message
-        Do not unpack empty array used as placeholder
-        since they can contain heterogeneous type
-        """
         if (len(binaryString) < 12):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -4280,14 +3386,10 @@ class ofp_set_config:
         return binaryString[12:]
 
     def __len__(self):
-        """Return length of message
-        """
         l = 12
         return l
 
     def __eq__(self, other):
-        """Return True if self and other have same values
-        """
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.flags !=  other.flags: return False
@@ -4297,8 +3399,6 @@ class ofp_set_config:
     def __ne__(self, other): return not self.__eq__(other)
 
     def show(self, prefix=''):
-        """Generate string showing basic members of structure
-        """
         outstr = ''
         outstr += prefix + 'header: \n'
         self.header.show(prefix + '  ')
