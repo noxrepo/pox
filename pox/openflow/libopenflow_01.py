@@ -1,4 +1,12 @@
 import struct
+import operator
+from pox.lib.packet.ethernet import ethernet
+from pox.lib.packet.vlan import vlan
+from pox.lib.packet.ipv4 import ipv4
+from pox.lib.packet.udp import udp
+from pox.lib.packet.tcp import tcp
+from pox.lib.packet.icmp import icmp
+from pox.lib.packet.arp import arp
 
 def _initHelper (obj, kw):
   for k,v in kw:
@@ -17,7 +25,7 @@ class ofp_header:
     def __init__ (self):
         self.version = OFP_VERSION
         self.type = 0
-        self.length = 0
+        self.length = 8
         self.xid = 0
 
     def __assert (self):
@@ -40,8 +48,7 @@ class ofp_header:
         return binaryString[8:]
 
     def __len__ (self):
-        l = 8
-        return l
+        return 8
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -107,8 +114,7 @@ class ofp_phy_port:
         return binaryString[48:]
 
     def __len__ (self):
-        l = 48
-        return l
+        return 48
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -275,7 +281,7 @@ ofp_queue_properties_map = {
 class ofp_queue_prop_header:
     def __init__ (self):
         self.property = 0
-        self.length = 0
+        self.length = 8
         self.pad= [0,0,0,0]
 
     def __assert (self):
@@ -302,8 +308,7 @@ class ofp_queue_prop_header:
         return binaryString[8:]
 
     def __len__ (self):
-        l = 8
-        return l
+        return 8
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -375,6 +380,44 @@ class ofp_queue_prop_min_rate:
 
 ##2.3 Flow Match Structures
 class ofp_match:
+    @classmethod
+    def from_packet (cls, packet):
+        #NOTE: this may not belong here and may be moved
+
+        assert(isinstance(packet, ethernet))
+        match = cls()
+        match.dl_src = p.src
+        match.dl_dst = p.dst
+        match.dl_type = p.type
+        p = ethernet.next
+
+        if isinstance(p, vlan):
+            match.dl_vlan = p.id
+            match.dl_vlan_pcp = p.pcp
+            p = p.next
+        else:
+            match.dl_vlan = OFP_VLAN_NONE
+
+        if isinstance(p, ipv4):
+            match.nw_src = p.srcip
+            match.nw_dst = p.dstip
+            match.nw_proto = p.protocol
+            p = p.next
+
+            if isinstance(p, udp) or isinstance(p, tcp):
+                match.tp_src = p.srcport
+                match.tp_dst = p.dstport
+            elif isinstance(p, icmp):
+                match.tp_src = p.type
+                match.tp_dst = p.code
+        elif isinstance(p, arp):
+          if p.opcode <= 255:
+            match.nw_proto = p.opcode
+          match.tp_src = p.protosrc
+          match.tp_dst = p.protodst
+
+        return match
+
     def __init__ (self, **kw):
         for k,v in ofp_match_data.iteritems():
           setattr(self, '_' + k, v[0])
@@ -402,17 +445,28 @@ class ofp_match:
 
     def set_nw_dst (self, *args, **kw):
       a = self._make_addr(*args, **kw)
+      if a == None:
+        self._nw_src = ofp_match_data['nw_dst'][0]
+        self.wildcards &= ~OFPFW_NW_DST_MASK
+        self.wildcards |= ofp_match_data['nw_dst'][1]
+        return
       self._nw_dst = a[0]
       self.wildcards &= ~OFPFW_NW_DST_MASK
       self.wildcards |= ((32-a[1]) << OFPFW_NW_DST_SHIFT)
 
     def set_nw_src (self, *args, **kw):
       a = self._make_addr(*args, **kw)
+      if a == None:
+        self._nw_src = ofp_match_data['nw_src'][0]
+        self.wildcards &= ~OFPFW_NW_SRC_MASK
+        self.wildcards |= ofp_match_data['nw_src'][1]
+        return
       self._nw_src = a[0]
       self.wildcards &= ~OFPFW_NW_SRC_MASK
       self.wildcards |= ((32-a[1]) << OFPFW_NW_SRC_SHIFT)
 
     def _make_addr (self, ipOrIPAndBits, bits=None):
+      if ipOrIPAndBits == None: return None
       b = None
       if type(ipOrIPAndBits) is tuple:
         ip = ipOrIPAndBits[0]
@@ -676,7 +730,7 @@ ofp_action_type_map = {
 class ofp_action_header:
     def __init__ (self):
         self.type = 0
-        self.length = 0
+        self.length = 8
         self.pad= [0,0,0,0]
 
     def __assert (self):
@@ -703,8 +757,7 @@ class ofp_action_header:
         return binaryString[8:]
 
     def __len__ (self):
-        l = 8
-        return l
+        return 8
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -724,9 +777,11 @@ class ofp_action_header:
 class ofp_action_output:
     def __init__ (self):
         self.type = OFPAT_OUTPUT
-        self.length = 0
+        self.length = 8
         self.port = 0
         self.max_len = 0
+
+        _initHelper(self, kw)
 
     def __assert (self):
         return (True, None)
@@ -746,8 +801,7 @@ class ofp_action_output:
         return binaryString[8:]
 
     def __len__ (self):
-        l = 8
-        return l
+        return 8
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -770,7 +824,7 @@ class ofp_action_output:
 class ofp_action_enqueue:
     def __init__ (self):
         self.type = 0
-        self.length = 0
+        self.length = 16
         self.port = 0
         self.pad= [0,0,0,0,0,0]
         self.queue_id = 0
@@ -801,8 +855,7 @@ class ofp_action_enqueue:
         return binaryString[16:]
 
     def __len__ (self):
-        l = 16
-        return l
+        return 16
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -826,7 +879,7 @@ class ofp_action_enqueue:
 class ofp_action_vlan_vid:
     def __init__ (self):
         self.type = OFPAT_SET_VLAN_VID
-        self.length = 0
+        self.length = 8
         self.vlan_vid = 0
         self.pad= [0,0]
 
@@ -854,8 +907,7 @@ class ofp_action_vlan_vid:
         return binaryString[8:]
 
     def __len__ (self):
-        l = 8
-        return l
+        return 8
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -877,7 +929,7 @@ class ofp_action_vlan_vid:
 class ofp_action_vlan_pcp:
     def __init__ (self):
         self.type = OFPAT_SET_VLAN_PCP
-        self.length = 0
+        self.length = 8
         self.vlan_pcp = 0
         self.pad= [0,0,0]
 
@@ -905,8 +957,7 @@ class ofp_action_vlan_pcp:
         return binaryString[8:]
 
     def __len__ (self):
-        l = 8
-        return l
+        return 8
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -928,7 +979,7 @@ class ofp_action_vlan_pcp:
 class ofp_action_dl_addr:
     def __init__ (self):
         self.type = 0
-        self.length = 0
+        self.length = 16
         self.dl_addr= [0,0,0,0,0,0]
         self.pad= [0,0,0,0,0,0]
 
@@ -962,8 +1013,7 @@ class ofp_action_dl_addr:
         return binaryString[16:]
 
     def __len__ (self):
-        l = 16
-        return l
+        return 16
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -985,7 +1035,7 @@ class ofp_action_dl_addr:
 class ofp_action_nw_addr:
     def __init__ (self):
         self.type = 0
-        self.length = 0
+        self.length = 8
         self.nw_addr = 0
 
     def __assert (self):
@@ -1006,8 +1056,7 @@ class ofp_action_nw_addr:
         return binaryString[8:]
 
     def __len__ (self):
-        l = 8
-        return l
+        return 8
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -1028,7 +1077,7 @@ class ofp_action_nw_addr:
 class ofp_action_nw_tos:
     def __init__ (self):
         self.type = 0
-        self.length = 0
+        self.length = 8
         self.nw_tos = 0
         self.pad= [0,0,0]
 
@@ -1056,8 +1105,7 @@ class ofp_action_nw_tos:
         return binaryString[8:]
 
     def __len__ (self):
-        l = 8
-        return l
+        return 8
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -1079,7 +1127,7 @@ class ofp_action_nw_tos:
 class ofp_action_tp_port:
     def __init__ (self):
         self.type = 0
-        self.length = 0
+        self.length = 8
         self.tp_port = 0
         self.pad= [0,0]
 
@@ -1107,8 +1155,7 @@ class ofp_action_tp_port:
         return binaryString[8:]
 
     def __len__ (self):
-        l = 8
-        return l
+        return 8
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -1130,7 +1177,7 @@ class ofp_action_tp_port:
 class ofp_action_vendor_header:
     def __init__ (self):
         self.type = OFPAT_VENDOR
-        self.length = 0
+        self.length = 8
         self.vendor = 0
 
     def __assert (self):
@@ -1151,8 +1198,7 @@ class ofp_action_vendor_header:
         return binaryString[8:]
 
     def __len__ (self):
-        l = 8
-        return l
+        return 8
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
@@ -1374,6 +1420,7 @@ class ofp_flow_mod:
         return packed
 
     def unpack (self, binaryString):
+        #TODO: unpack actions
         if (len(binaryString) < 72):
             return binaryString
         self.header.unpack(binaryString[0:])
@@ -2408,13 +2455,24 @@ class ofp_queue_stats:
 
 ##3.6 Send Packet Message
 class ofp_packet_out:
-    def __init__ (self):
+    def __init__ (self, **kw):
         self.header = ofp_header()
         self.header.type = OFPT_PACKET_OUT
         self.buffer_id = 4294967295
         self.in_port = 0
-        self.actions_len = 0
-        self.actions= []
+        self.actions = []
+        self.data = bytes()
+
+        # Allow "action" as a synonym for "actions"
+        if 'action' in kw and 'actions' not in kw:
+          kw['actions'] = kw['action']
+          del kw['action']
+
+        _initHelper(self, kw)
+
+        # Allow use of actions=<a single action> for kw args.
+        if not hasattr(self.actions, '__getitem__'):
+          self.actions = [self.actions]
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
@@ -2422,35 +2480,35 @@ class ofp_packet_out:
         return (True, None)
 
     def pack (self, assertstruct=True):
+        self.header.length = 16 + len(data)
         if(assertstruct):
             if(not self.__assert()[0]):
                 return None
-        packed = ""
-        packed += self.header.pack()
-        packed += struct.pack("!LHH", self.buffer_id, self.in_port, self.actions_len)
-        for i in self.actions:
-            packed += i.pack(assertstruct)
+        actions = b''.join((i.pack(assertstruct) for i in self.actions))
+        actions_len = len(actions)
+        packed = self.header.pack()
+        packed += struct.pack("!LHH", self.buffer_id, self.in_port, actions_len)
+        packed += actions
+        packed += data
+
         return packed
 
     def unpack (self, binaryString):
         if (len(binaryString) < 16):
             return binaryString
         self.header.unpack(binaryString[0:])
-        (self.buffer_id, self.in_port, self.actions_len) = struct.unpack_from("!LHH", binaryString, 8)
+        (self.buffer_id, self.in_port, actions_len) = struct.unpack_from("!LHH", binaryString, 8)
+        self.actions = [None] * actions_len #TODO: unpack actions for real!
         return binaryString[16:]
 
     def __len__ (self):
-        l = 16
-        for i in self.actions:
-            l += i.length()
-        return l
+        return 16 + reduce(operator.add, (a.length for a in self.actions))
 
     def __eq__ (self, other):
         if type(self) != type(other): return False
         if self.header !=  other.header: return False
         if self.buffer_id !=  other.buffer_id: return False
         if self.in_port !=  other.in_port: return False
-        if self.actions_len !=  other.actions_len: return False
         if self.actions !=  other.actions: return False
         return True
 
@@ -2462,7 +2520,7 @@ class ofp_packet_out:
         self.header.show(prefix + '  ')
         outstr += prefix + 'buffer_id: ' + str(self.buffer_id) + '\n'
         outstr += prefix + 'in_port: ' + str(self.in_port) + '\n'
-        outstr += prefix + 'actions_len: ' + str(self.actions_len) + '\n'
+        outstr += prefix + 'actions_len: ' + str(len(self.actions)) + '\n'
         outstr += prefix + 'actions: \n'
         for obj in self.actions:
             outstr += obj.show(prefix + '  ')
