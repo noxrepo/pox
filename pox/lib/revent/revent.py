@@ -37,7 +37,7 @@ class EventMixin (object):
     elif self._eventMixin_events == None:
       self._eventMixin_events = set()
     self._eventMixin_events.add(eventType)
-  
+
   def _eventMixin_init (self):
     if not hasattr(self, "_eventMixin_events"):
       setattr(self, "_eventMixin_events", True)
@@ -45,6 +45,8 @@ class EventMixin (object):
       setattr(self, "_eventMixin_handlers", {})
 
   def raiseEventNoErrors (self, event, *args, **kw):
+    #TODO: this should really keep subsequent events executing and print the
+    #      specific handler that failed...
     try:
       self.raiseEvent(event, *args, **kw)
     except:
@@ -52,7 +54,7 @@ class EventMixin (object):
       if showEventExceptions:
         import traceback
         traceback.print_exc()
-      
+
   def raiseEvent (self, event, *args, **kw):
     self._eventMixin_init()
 
@@ -79,18 +81,18 @@ class EventMixin (object):
         if handler == None:
           self.removeListener(eid)
           continue
-        
+
       if classCall:
-        rv = event._invoke(handler, *args, **kw) 
+        rv = event._invoke(handler, *args, **kw)
       else:
         rv = handler(event, *args, **kw)
       if once: self.removeListener(eid)
       if rv == None: continue
       if rv == False:
-        self.removeListener(eid) 
+        self.removeListener(eid)
       if type(rv) == type(tuple):
         if rv[1] == True:
-          self.removeListener(eid) 
+          self.removeListener(eid)
         if rv[0]:
           break
       if classCall and hasattr(event, "halt") and event.halt:
@@ -99,7 +101,7 @@ class EventMixin (object):
   def removeListener (self, handlerOrEID, eventType=None):
     self._eventMixin_init()
     handler = handlerOrEID
-    
+
     altered = False
     if type(handler) == tuple:
       # It's a type/eid pair
@@ -135,26 +137,26 @@ class EventMixin (object):
         altered = altered or l != len(self._eventmixin_handlers[eventType])
 
     return altered
- 
+
   def addListener (self, eventType, handler, once=False, weak=False, priority=None):
     self._eventMixin_init()
     if self._eventMixin_events != True and eventType not in self._eventMixin_events:
-      raise RuntimeError("Event " + str(eventType) + " not defined on this object") 
+      raise RuntimeError("Event " + str(eventType) + " not defined on this object")
     if eventType not in self._eventMixin_handlers:
       l = self._eventMixin_handlers[eventType] = set()
       self._eventMixin_handlers[eventType] = l
     else:
       l = self._eventMixin_handlers[eventType]
-    
+
     eid = generateEventID()
 
     if weak: handler = weakref.ref(handler, lambda o: self.removeListener((eventType, eid)))
-    
+
     doSort = priority != None
     if priority == None: priority = 0
     l.add((priority, handler, once, eid))
     if doSort: l.sort(reverse = True, key = operator.itemgetter(0))
-      
+
     return (eventType,eid)
 
   def listenTo (self, *args, **kv):
@@ -167,14 +169,14 @@ def autoBindEvents (sink, source, prefix='', weak=False):
   if len(prefix) > 0 and prefix[0] != '_': prefix = '_' + prefix
   if hasattr(source, '_eventMixin_events') == False:
     return False
-    
+
   events = {}
   for e in source._eventMixin_events:
     if type(e) == str:
       events[e] = e
     else:
       events[e.__name__] = e
-      
+
   for m in dir(sink):
     a = getattr(sink, m)
     if callable(a):
@@ -182,9 +184,10 @@ def autoBindEvents (sink, source, prefix='', weak=False):
         m = m[8+len(prefix):]
         if m in events:
           source.addListener(events[m], a, weak)
+          #print "autoBind: ",source,m,"to",sink
 
   return True
-  
+
 """
 TODO
 ----
