@@ -392,9 +392,9 @@ class ofp_match:
     if in_port is not None:
       match.in_port = in_port
 
-    match.dl_src = p.src
-    match.dl_dst = p.dst
-    match.dl_type = p.type
+    match.dl_src = packet.src
+    match.dl_dst = packet.dst
+    match.dl_type = packet.type
     p = ethernet.next
 
     if isinstance(p, vlan):
@@ -533,37 +533,41 @@ class ofp_match:
     raise AttributeError
 
   def _assert (self):
-    if(not isinstance(self._dl_src, list)):
-      return (False, "self.dl_src is not list as expected.")
-    if(len(self._dl_src) != 6):
-      return (False, "self.dl_src is not of size 6 as expected.")
-    if(not isinstance(self._dl_dst, list)):
-      return (False, "self.dl_dst is not list as expected.")
-    if(len(self._dl_dst) != 6):
-      return (False, "self.dl_dst is not of size 6 as expected.")
-    if(not isinstance(self._pad1, list)):
-      return (False, "self.pad1 is not list as expected.")
-    if(len(self._pad1) != 1):
-      return (False, "self.pad1 is not of size 1 as expected.")
-    if(not isinstance(self._pad2, list)):
-      return (False, "self.pad2 is not list as expected.")
-    if(len(self._pad2) != 2):
-      return (False, "self.pad2 is not of size 2 as expected.")
-    return (True, None)
+    #if not isinstance(self._dl_src, list):
+    #  return "self.dl_src is not list as expected."
+    #if len(self._dl_src) != 6:
+    #  return "self.dl_src is not of size 6 as expected."
+    #if not isinstance(self._dl_dst, list):
+    #  return "self.dl_dst is not list as expected."
+    if len(self._dl_dst) != 6:
+      return "self.dl_dst is not of size 6 as expected."
+    if not isinstance(self._pad1, list):
+      return "self.pad1 is not list as expected."
+    if len(self._pad1) != 1:
+      return "self.pad1 is not of size 1 as expected."
+    if not isinstance(self._pad2, list):
+      return "self.pad2 is not list as expected."
+    if len(self._pad2) != 2:
+      return "self.pad2 is not of size 2 as expected."
+    return None
 
   def pack (self, assertstruct=True):
     if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+      if self._assert() is not None:
+        raise RuntimeError(self._assert())
 
     packed = ""
     packed += struct.pack("!LH", self.wildcards, self.in_port or 0)
     if self.dl_src == None:
       packed += '\x00\x00\x00\x00\x00\x00'
+    elif type(self.dl_src) is bytes:
+      packed += self.dl_src
     else:
       packed += struct.pack("!BBBBBB", self.dl_src[0], self.dl_src[1], self.dl_src[2], self.dl_src[3], self.dl_src[4], self.dl_src[5])
     if self.dl_dst == None:
       packed += '\x00\x00\x00\x00\x00\x00'
+    elif type(self.dl_dst) is bytes:
+      packed += self.dl_dst
     else:
       packed += struct.pack("!BBBBBB", self.dl_dst[0], self.dl_dst[1], self.dl_dst[2], self.dl_dst[3], self.dl_dst[4], self.dl_dst[5])
     packed += struct.pack("!HB", self.dl_vlan or 0, self.dl_vlan_pcp or 0)
@@ -1403,7 +1407,18 @@ class ofp_flow_mod:
     self.flags = 0
     self.actions = []
 
+    # ofp_flow_mod and ofp_packet_out do some special handling of 'actions'...
+
+    # Allow "action" as a synonym for "actions"
+    if 'action' in kw and 'actions' not in kw:
+      kw['actions'] = kw['action']
+      del kw['action']
+
     _initHelper(self, kw)
+
+    # Allow use of actions=<a single action> for kw args.
+    if not hasattr(self.actions, '__getitem__'):
+      self.actions = [self.actions]
 
   def _assert (self):
     if(not isinstance(self.header, ofp_header)):
@@ -2469,6 +2484,8 @@ class ofp_packet_out:
     self.actions = []
     self.data = None
 
+    # ofp_flow_mod and ofp_packet_out do some special handling of 'actions'...
+
     # Allow "action" as a synonym for "actions"
     if 'action' in kw and 'actions' not in kw:
       kw['actions'] = kw['action']
@@ -2488,12 +2505,16 @@ class ofp_packet_out:
     return True
 
   def pack (self, assertstruct=True):
-    self.header.length = 16 + (0 if self.data is None else len(self.data))
     if(assertstruct):
       if self._assert() is not True:
         raise RuntimeError(self._assert())
+
     actions = b''.join((i.pack(assertstruct) for i in self.actions))
     actions_len = len(actions)
+
+    self.header.length = 16 + actions_len
+    if self.data is not None:
+      self.header.length += len(self.data)
 
     if self.data is not None:
       return b''.join((self.header.pack(),
