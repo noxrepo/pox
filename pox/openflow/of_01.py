@@ -207,7 +207,7 @@ class DeferredSender (threading.Thread):
             except:
               pass
 
-#deferredSender = DeferredSender()
+deferredSender = DeferredSender()
 
 class Connection:
   ID = 0
@@ -252,7 +252,8 @@ class Connection:
       openflowHub.raiseEventNoErrors(ConnectionDown(self))
 
     try:
-      deferredSender.kill(self)
+      #deferredSender.kill(self)
+      pass
     except:
       pass
     try:
