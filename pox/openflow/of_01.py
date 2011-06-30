@@ -260,6 +260,7 @@ class Connection:
       pass
 
   def send (self, data):
+    # This needs some work, as currently it can reorder messages
     try:
       l = self.sock.send(data)
       if l != len(data):
