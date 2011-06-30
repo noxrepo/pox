@@ -8,8 +8,13 @@ from threading import Thread
 import select
 import traceback
 import os
+import socket
 
 CYCLE_MAXIMUM = 2
+
+# A ReturnFunction can return this to skip a scheduled slice at the last
+# moment.
+ABORT = object()
 
 defaultScheduler = None
 
@@ -30,6 +35,7 @@ class BaseTask  (object):
     self.id = generateTaskID()
     self.gen = self.run(*args, **kw)
     self.rv = None
+    self.rf = None # ReturnFunc
 
   def start (self, scheduler = None, priority = None):
     if scheduler is None: scheduler = defaultScheduler
@@ -37,8 +43,15 @@ class BaseTask  (object):
     scheduler.schedule(self)
 
   def execute (self):
-    v = self.rv
-    self.rv = None
+    if self.rf is not None:
+      v = self.rf(self)
+      self.rf = None
+      self.rv = None
+      if v == ABORT:
+        return False
+    else:
+      v = self.rv
+      self.rv = None
     return self.gen.send(v)
 
   def run (self):
@@ -165,14 +178,14 @@ class Scheduler (object):
     except StopIteration:
       return True
     except:
-      print("Task ", t, " caused exception and was de-scheduled")
+      print("Task", t, "caused exception and was de-scheduled")
       traceback.print_exc()
 
     if isinstance(rv, BlockingOperation):
       try:
         rv.execute(t, self)
       except:
-        print("Task ", t, " caused exception during a blocking operation and was de-scheduled")
+        print("Task", t, "caused exception during a blocking operation and was de-scheduled")
         traceback.print_exc()
     elif rv is False:
       # Just unschedule/sleep
@@ -254,6 +267,67 @@ class Select (BlockingOperation):
   def execute (self, task, scheduler):
     scheduler._selectHub.registerSelect(task, *self._args, **self._kw)
 
+
+class Recv (BlockingOperation):
+  def __init__ (self, fd, bufsize = 1024*8, flags = socket.MSG_DONTWAIT, timeout = None):
+    self._fd = fd
+    self._length = bufsize
+    self._timeout = timeout
+    self._flags = flags
+
+  def _returnFunc (task):
+    # Select() will have placed file descriptors in rv
+    sock = task.rv[0]
+    if len(task.rv[2]) != 0:
+      # Socket error
+      task.rv = None
+      return None
+    task.rv = None
+    try:
+      return sock.recv(self._length, flags = self._flags)
+    except:
+      return b''
+
+  def execute (self, task, scheduler):
+    task.rf = self._returnFunc
+    scheduler._selectHub.registerSelect(task, [self._fd], None, [self._fd], timeout=self._timeout)
+
+
+class Send (BlockingOperation):
+  def __init__ (self, fd, data):
+    self._fd = fd
+    self._data = data
+    self._sent = 0
+    self._scheduler = None
+
+  def _returnFunc (task):
+    # Select() will have placed file descriptors in rv
+    sock = task.rv[1]
+    if len(task.rv[2]) != 0:
+      # Socket error
+      task.rv = None
+      return self._sent
+    task.rv = None
+    try:
+      if len(self._data) > 1024:
+        data = self._data[:1024]
+        self._data = self._data[1024:]
+      l = sock.send(data, flags = socket.MSG_DONTWAIT)
+      self._sent += l
+      if l == len(data) and len(self._data) == 0:
+        return self._sent
+      self._data = data[l:] + self._data
+    except:
+      pass
+
+    # Still have data to send...
+    self.execute(task, self._scheduler)
+    return ABORT
+
+  def execute (self, task, scheduler):
+    self._scheduler = scheduler
+    task.rf = self._returnFunc
+    scheduler._selectHub.registerSelect(task, None, [self._fd], [self._fd])
 
 
 #TODO: just merge this in with Scheduler?
@@ -373,7 +447,6 @@ class SelectHub (object):
         for t,v in rets.iteritems():
           del tasks[t]
           self._return(t, v)
-
 
   def registerSelect (self, task, rlist = None, wlist = None, xlist = None, timeout = None, timeIsAbsolute = False):
     if not timeIsAbsolute:
