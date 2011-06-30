@@ -1,23 +1,23 @@
 # Copyright 2008 (C) Nicira, Inc.
-# 
+#
 # This file is part of NOX.
-# 
+#
 # NOX is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # NOX is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with NOX.  If not, see <http://www.gnu.org/licenses/>.
 #======================================================================
 #
 # From RFC 3748 "Extensible Authentication Protocol (EAP)":
-# 
+#
 #    0                   1                   2                   3
 #    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 #   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -71,7 +71,7 @@
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 #
 # Valid type values are as follows:
-# 
+#
 #       1       Identity
 #       2       Notification
 #       3       Nak (Response only)
@@ -80,14 +80,13 @@
 #       6       Generic Token Card (GTC)
 #     254       Expanded Types
 #     255       Experimental use
-# 
+#
 #======================================================================
 import struct
 from packet_utils       import *
 from packet_exceptions  import *
-from array import *
 
-from packet_base import packet_base 
+from packet_base import packet_base
 
 class eap(packet_base):
     "Extensible Authentication Protocol packet"
@@ -115,11 +114,11 @@ class eap(packet_base):
 
     type_names = { IDENTITY_TYPE : "identity",
                    NOTIFICATION_TYPE : "notification",
-                   NAK_TYPE         : "nak", 
-                   MD5_TYPE  : "md5-challenge", 
-                   OTP_TYPE  : "OTP", 
-                   GTC_TYPE  : "GTC", 
-                   EXPANDED_TYPE  : "expanded", 
+                   NAK_TYPE         : "nak",
+                   MD5_TYPE  : "md5-challenge",
+                   OTP_TYPE  : "OTP",
+                   GTC_TYPE  : "GTC",
+                   EXPANDED_TYPE  : "expanded",
                    EXPERIMENTAL_TYPE : "experimental"
                  }
 
@@ -133,15 +132,13 @@ class eap(packet_base):
 
     def __init__(self, arr=None, prev=None):
         self.prev = prev
-        if type(arr) == type(''):
-            arr = array('B', arr)
 
         self.code = self.REQUEST_CODE
         self.id = 0
         self.length = 0
 
         if arr != None:
-            assert(type(arr) == array)
+            assert(type(arr) == bytes)
             self.arr = arr
             self.parse()
 
@@ -183,6 +180,6 @@ class eap(packet_base):
 
     def set_payload(self, payload):
         self.next = payload
-                            
+
     def hdr(self):
         return struct.pack('!BBH', self.code, self.id, self.length)

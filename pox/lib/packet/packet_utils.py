@@ -1,17 +1,17 @@
 # Copyright 2008 (C) Nicira, Inc.
-# 
+#
 # This file is part of NOX.
-# 
+#
 # NOX is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # NOX is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with NOX.  If not, see <http://www.gnu.org/licenses/>.
 #======================================================================
@@ -58,7 +58,7 @@ def checksum(data, start, skip_word = 0):
             if i == skip_word:
                 continue
             start +=  arr[i]
-    else:        
+    else:
         for i in range(0, len(arr)):
             start +=  arr[i]
 
@@ -76,7 +76,7 @@ def ip_to_str(a):
                             (a >> 8) & 0xff, a & 0xff)
 
 
-def ipstr_to_int(a):                            
+def ipstr_to_int(a):
     octets = a.split('.')
     return int(octets[0]) << 24 |\
            int(octets[1]) << 16 |\
@@ -86,28 +86,32 @@ def ipstr_to_int(a):
 def array_to_ipstr(a):
     return "%d.%d.%d.%d" % (a[0], a[1], a[2], a[3])
 
+"""
 def octstr_to_array(ocstr):
     a = array.array('B')
     for item in ocstr.split(':'):
         a.append(int(item, 16))
-    return a    
-                          
+    return a
+"""
+
 def array_to_octstr(arr):
     bstr = ''
     for byte in arr:
         if bstr != '':
             bstr += ':%02x' % (byte,)
-        else:    
+        else:
             bstr += '%02x' %(byte,)
-    return bstr        
+    return bstr
 
+"""
 def longlong_to_octstr(ll):
     return array_to_octstr(array.array('B',struct.pack('!Q',ll)))
+"""
 
 def mac_to_oui(a):
     if type(a) == type(1L):
         a = struct.pack('!Q', a)[2:]
-    if type(a) == type(''):
+    if type(a) == bytes:
         a = array.array('B',a)
 
     oui = int(a[0]) << 16 | int(a[1]) << 8 | int(a[2])
@@ -120,7 +124,7 @@ def mac_to_oui(a):
 def mac_to_str(a, resolve_name = False):
     if type(a) == type(1L):
         a = struct.pack('!Q', a)[2:]
-    if type(a) == type(''):
+    if type(a) == bytes:
         a = array.array('B', a)
 
     oui = int(a[0]) << 16 | int(a[1]) << 8 | int(a[2])
@@ -129,7 +133,7 @@ def mac_to_str(a, resolve_name = False):
     if resolve_name and not (a[0] & 0x2):
         if _ethoui2name.has_key(oui):
             return "(%s):%02x:%02x:%02x" %( _ethoui2name[oui], a[3],a[4],a[5])
-    return array_to_octstr(a) 
+    return array_to_octstr(a)
 
 def mac_to_int(mac):
     value = 0
@@ -142,13 +146,13 @@ def ethtype_to_str(t):
         return "llc"
     if _ethtype_to_str.has_key(t):
         return _ethtype_to_str[t]
-    else:    
+    else:
         return "%x" % t
 
 def ipproto_to_str(t):
     if _ipproto_to_str.has_key(t):
         return _ipproto_to_str[t]
-    else:    
+    else:
         return "%x" % t
 
 def load_oui_names():
@@ -168,11 +172,11 @@ def load_oui_names():
                 continue
             # grab 3-byte OUI
             oui_str  = split[0].replace('-','')
-            # strip off (hex) identifer and keep rest of name 
+            # strip off (hex) identifer and keep rest of name
             end = ' '.join(split[1:]).strip()
             end = end.split('\t')
             end.remove('(hex)')
-            oui_name = ' '.join(end)  
+            oui_name = ' '.join(end)
             # convert oui to int
             oui = int(oui_str, 16)
             _ethoui2name[oui] = oui_name.strip()

@@ -1,17 +1,17 @@
 # Copyright 2008 (C) Nicira, Inc.
-# 
+#
 # This file is part of NOX.
-# 
+#
 # NOX is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # NOX is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with NOX.  If not, see <http://www.gnu.org/licenses/>.
 #======================================================================
@@ -24,9 +24,8 @@
 import struct
 from packet_utils       import *
 from packet_exceptions  import *
-from array import *
 
-from packet_base import packet_base 
+from packet_base import packet_base
 
 class llc(packet_base):
     "llc packet struct"
@@ -50,12 +49,12 @@ class llc(packet_base):
 
     def parse(self):
         plen = self.prev.get_payload_len()
-        if plen != None and plan < LlcPacket.LEN: 
+        if plen != None and plan < LlcPacket.LEN:
             self.msg('(llc parse) data too short to be an llc packet %u' % plen)
             return
 
         dlen = len(self.get_layer())
-        if dlen != None and plan < LlcPacket.LEN: 
+        if dlen != None and plan < LlcPacket.LEN:
             self.msg('(llc parse) data too truncated to parse llc packet %u' % plen)
             return
 

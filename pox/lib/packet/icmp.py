@@ -1,25 +1,25 @@
 # Copyright 2008 (C) Nicira, Inc.
-# 
+#
 # This file is part of NOX.
-# 
+#
 # NOX is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # NOX is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with NOX.  If not, see <http://www.gnu.org/licenses/>.
 #======================================================================
 #
 #                            ICMP Header Format
 #
-#   0                   1                   2                   3   
-#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #  |      Type     |      Code     |           Checksum            |
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -32,9 +32,8 @@ import struct
 import random
 from packet_utils       import *
 from packet_exceptions  import *
-from array import *
 
-from packet_base import packet_base 
+from packet_base import packet_base
 
 
 TYPE_ECHO_REPLY   = 0
@@ -54,8 +53,8 @@ CODE_UNREACH_SRC_RTE = 5
 #----------------------------------------------------------------------
 #
 #  Echo Request/Reply
-#   0                   1                   2                   3   
-#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #  |           Identifier          |        Sequence Number        |
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -71,14 +70,12 @@ class echo(packet_base):
     def __init__(self, arr=None, prev=None):
 
         self.prev = prev
-        if type(arr) == type(''):
-            arr = array('B', arr)
 
         self.id  = random.randint(0, 65535)
         self.seq = 0
 
         if arr != None:
-            assert(type(arr) == array)
+            assert(type(arr) == bytes)
             self.arr = arr
             self.parse()
 
@@ -99,9 +96,9 @@ class echo(packet_base):
             = struct.unpack('!HH', self.arr[:self.MIN_LEN])
 
         self.parsed = True
-        self.next = self.arr[echo.MIN_LEN:].tostring()
+        self.next = self.arr[echo.MIN_LEN:]
 
-    def hdr(self):    
+    def hdr(self):
         return struct.pack('!HH', self.id, self.seq)
 
     def pack(self):
@@ -111,14 +108,14 @@ class echo(packet_base):
             return buf
         elif isinstance(self.next, packet_base):
             return ''.join((buf, self.next.pack()))
-        else: 
+        else:
             return ''.join((buf, self.next))
 
 #----------------------------------------------------------------------
 #
 #  Destination Unreachable
-#   0                   1                   2                   3   
-#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #  |            Unused             |         Next-Hop MTU          |
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -134,14 +131,12 @@ class unreach(packet_base):
     def __init__(self, arr=None, prev=None):
 
         self.prev = prev
-        if type(arr) == type(''):
-            arr = array('B', arr)
 
         self.unused = 0
         self.next_mtu = 0
 
         if arr != None:
-            assert(type(arr) == array)
+            assert(type(arr) == bytes)
             self.arr = arr
             self.parse()
 
@@ -154,7 +149,7 @@ class unreach(packet_base):
         if self.next == None:
             return s
 
-        return ''.join((s, str(self.next))) 
+        return ''.join((s, str(self.next)))
 
     def parse(self):
         dlen = len(self.arr)
@@ -172,9 +167,9 @@ class unreach(packet_base):
             import ipv4
             self.next = ipv4.ipv4(arr=self.arr[unreach.MIN_LEN:],prev=self)
         else:
-            self.next = self.arr[unreach.MIN_LEN:].tostring()
+            self.next = self.arr[unreach.MIN_LEN:]
 
-    def hdr(self):    
+    def hdr(self):
         return struct.pack('!HH', self.unused, self.next_mtu)
 
     def pack(self):
@@ -184,7 +179,7 @@ class unreach(packet_base):
             return buf
         elif isinstance(self.next, packet_base):
             return ''.join((buf, self.next.pack()))
-        else: 
+        else:
             return ''.join((buf, self.next))
 
 class icmp(packet_base):
@@ -195,15 +190,13 @@ class icmp(packet_base):
     def __init__(self, arr=None, prev=None):
 
         self.prev = prev
-        if type(arr) == type(''):
-            arr = array('B', arr)
 
         self.type = 0
         self.code = 0
         self.csum = 0
 
         if arr != None:
-            assert(type(arr) == array)
+            assert(type(arr) == bytes)
             self.arr = arr
             self.parse()
 
@@ -211,13 +204,13 @@ class icmp(packet_base):
         if self.parsed == False:
             return ""
 
-        s = ''.join(('{', 't:', str(self.type), ' c:', str(self.code), 
+        s = ''.join(('{', 't:', str(self.type), ' c:', str(self.code),
                          ' csum: ', str(hex(self.csum)), '}'))
 
         if self.next == None:
             return s
 
-        return ''.join((s, str(self.next))) 
+        return ''.join((s, str(self.next)))
 
     def parse(self):
         dlen = len(self.arr)
@@ -235,5 +228,5 @@ class icmp(packet_base):
         elif self.type == TYPE_DEST_UNREACH:
             self.next = unreach(arr=self.arr[self.MIN_LEN:],prev=self)
 
-    def hdr(self):        
+    def hdr(self):
         return struct.pack('!BBH', self.type, self.code, self.csum)

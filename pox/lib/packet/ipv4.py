@@ -1,25 +1,25 @@
 # Copyright 2008 (C) Nicira, Inc.
-# 
+#
 # This file is part of NOX.
-# 
+#
 # NOX is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # NOX is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with NOX.  If not, see <http://www.gnu.org/licenses/>.
 #======================================================================
 #
 #                          IPv4 Header Format
 #
-#    0                   1                   2                   3   
-#    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+#    0                   1                   2                   3
+#    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 #   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #   |Version|  IHL  |Type of Service|          Total Length         |
 #   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -40,12 +40,11 @@ import struct
 import time
 from packet_utils       import *
 from packet_exceptions  import *
-from array import *
 from tcp import *
 from udp import *
 from icmp import *
 
-from packet_base import packet_base 
+from packet_base import packet_base
 
 
 class ipv4(packet_base):
@@ -66,8 +65,6 @@ class ipv4(packet_base):
     def __init__(self, arr=None, prev=None):
 
         self.prev = prev
-        if type(arr) == type(''):
-            arr = array('B', arr)
 
         self.v     = 4
         self.hl    = ipv4.MIN_LEN / 4
@@ -85,7 +82,7 @@ class ipv4(packet_base):
         self.next  = ''
 
         if arr != None:
-            assert(type(arr) == array)
+            assert(type(arr) == bytes)
             self.arr = arr
             self.parse()
 
@@ -106,9 +103,9 @@ class ipv4(packet_base):
         dlen = len(self.arr)
         if dlen < ipv4.MIN_LEN:
             self.msg('warning IP packet data too short to parse header: data len %u' % dlen)
-            return 
+            return
 
-        (vhl, self.tos, self.iplen, self.id, self.frag, self.ttl, 
+        (vhl, self.tos, self.iplen, self.id, self.frag, self.ttl,
             self.protocol, self.csum, self.srcip, self.dstip) \
              = struct.unpack('!BBHHHBBHII', self.arr[:ipv4.MIN_LEN])
 
@@ -116,7 +113,7 @@ class ipv4(packet_base):
         self.hl = vhl & 0x0f
 
         self.flags = self.frag >> 13
-        self.frag  = self.frag & 0x1f 
+        self.frag  = self.frag & 0x1f
 
         if self.v != ipv4.IPv4:
             self.msg('ip parse) warning IP version %u not IPv4' % self.v)
@@ -136,9 +133,9 @@ class ipv4(packet_base):
         # At this point, we are reasonably certain that we have an IP
         # packet
         self.parsed = True
-        
+
         length = self.iplen
-        if length > dlen: 
+        if length > dlen:
             length = dlen # Clamp to what we've got
         if self.protocol == ipv4.UDP_PROTOCOL:
             self.next = udp(arr=self.arr[self.hl*4:length], prev=self)
@@ -149,12 +146,12 @@ class ipv4(packet_base):
         elif dlen < self.iplen:
             self.msg('(ip parse) warning IP packet data shorter than IP len: %u < %u' % (dlen, self.iplen))
         else:
-            self.next =  self.arr[self.hl*4:length].tostring()
+            self.next =  self.arr[self.hl*4:length]
 
         if isinstance(self.next, packet_base) and not self.next.parsed:
-            self.next =  self.arr[self.hl*4:length].tostring()
+            self.next =  self.arr[self.hl*4:length]
 
-    def checksum(self):    
+    def checksum(self):
         data = struct.pack('!BBHHHBBHII', (self.v << 4) + self.hl, self.tos, \
                                  self.iplen, self.id, \
                                  (self.flags << 13) | self.frag, self.ttl, \

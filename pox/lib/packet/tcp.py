@@ -1,25 +1,25 @@
 # Copyright 2008 (C) Nicira, Inc.
-# 
+#
 # This file is part of NOX.
-# 
+#
 # NOX is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # NOX is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with NOX.  If not, see <http://www.gnu.org/licenses/>.
 #======================================================================
 #
 #                           TCP Header Format
 #
-#   0                   1                   2                   3   
-#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #  |          Source Port          |       Destination Port        |
 #  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -45,9 +45,8 @@ from packet_utils       import *
 from packet_exceptions  import *
 from socket import htons
 from socket import htonl
-from array import *
 
-from packet_base import packet_base 
+from packet_base import packet_base
 
 import logging
 lg = logging.getLogger('packet')
@@ -63,32 +62,32 @@ class tcp_opt:
     TSOPT    = 8
 
     def __init__(self, type, val):
-        self.type = type 
+        self.type = type
         self.val  = val
 
-    def to_bytes(self):    
+    def to_bytes(self):
         if self.type == tcp_opt.EOL or self.type == tcp_opt.NOP:
-            return struct.pack('B',self.type) 
+            return struct.pack('B',self.type)
         elif self.type == tcp_opt.MSS:
-            return struct.pack('!BBH',self.type,4,self.val) 
+            return struct.pack('!BBH',self.type,4,self.val)
         elif self.type == tcp_opt.WSOPT:
-            return struct.pack('!BBB',self.type,3,self.val) 
+            return struct.pack('!BBB',self.type,3,self.val)
         elif self.type == tcp_opt.SACKPERM:
-            return struct.pack('!BB',self.type,2) 
+            return struct.pack('!BB',self.type,2)
         elif self.type == tcp_opt.SACK:
             return struct.pack("!" + "II" * len(self.val),
                                [x for p in self.val for x in p])
         elif self.type == tcp_opt.TSOPT:
-            return struct.pack('!BBII',self.type,10,self.val[0],self.val[1]) 
-        else:    
+            return struct.pack('!BBII',self.type,10,self.val[0],self.val[1])
+        else:
             lg.info('(tcp_opt to_bytes) warning, unknown option type ' +
                     str(self.type))
-            return '' 
+            return ''
 
 class tcp(packet_base):
     "TCP packet struct"
 
-    MIN_LEN = 20 
+    MIN_LEN = 20
 
     FIN  = 0x01
     SYN  = 0x02
@@ -102,8 +101,6 @@ class tcp(packet_base):
     def __init__(self, arr=None, prev=None):
 
         self.prev = prev
-        if type(arr) == type(''):
-            arr = array('B', arr)
 
         self.srcport  = 0 # 16 bit
         self.dstport  = 0 # 16 bit
@@ -115,12 +112,12 @@ class tcp(packet_base):
         self.win      = 0 # 16 bits
         self.csum     = 0 # 16 bits
         self.urg      = 0 # 16 bits
-        self.tcplen   = 20 # Options? 
-        self.options  = [] 
+        self.tcplen   = 20 # Options?
+        self.options  = []
         self.next     = ''
 
         if arr != None:
-            assert(type(arr) == array)
+            assert(type(arr) == bytes)
             self.arr = arr
             self.parse()
 
@@ -134,38 +131,38 @@ class tcp(packet_base):
                          hex(self.flags)))
         if self.next == None or type(self.next) == type(''):
             return s
-        return ''.join((s, str(self.next))) 
+        return ''.join((s, str(self.next)))
 
-    def parse_options(self):    
-        
+    def parse_options(self):
+
         self.options = []
         dlen = len(self.arr)
 
-        # option parsing    
-        i = tcp.MIN_LEN 
+        # option parsing
+        i = tcp.MIN_LEN
         arr = self.arr
 
         while i < self.hdr_len:
             if (arr[i] > 1) and (i + 2 > dlen or arr[i] + arr[i+1] > dlen or arr[i+1] < 2):
-                raise Exception() 
-            elif arr[i] == tcp_opt.EOL:    
-                break 
-            elif arr[i] == tcp_opt.NOP:    
+                raise Exception()
+            elif arr[i] == tcp_opt.EOL:
+                break
+            elif arr[i] == tcp_opt.NOP:
                 self.options.append(tcp_opt(tcp_opt.NOP,None))
                 i += 1
                 continue
-            elif arr[i] == tcp_opt.MSS:    
+            elif arr[i] == tcp_opt.MSS:
                 if arr[i+1] != 4:
-                    raise Exception() 
+                    raise Exception()
                 val = struct.unpack('!H',arr[i+2:i+4])[0]
                 self.options.append(tcp_opt(tcp_opt.MSS,val))
-            elif arr[i] == tcp_opt.WSOPT:    
+            elif arr[i] == tcp_opt.WSOPT:
                 if arr[i+1] != 3:
                     raise Exception()
                 self.options.append(tcp_opt(tcp_opt.WSOPT, arr[i+2]))
-            elif arr[i] == tcp_opt.SACKPERM:    
+            elif arr[i] == tcp_opt.SACKPERM:
                 if arr[i+1] != 2:
-                    raise Exception() 
+                    raise Exception()
                 self.options.append(tcp_opt(tcp_opt.SACKPERM, None))
             elif arr[i] == tcp_opt.SACK:
                 if arr[i+1] >= 2 and ((arr[i+1]-2) % 8) == 0:
@@ -175,18 +172,18 @@ class tcp(packet_base):
                     self.options.append(tcp_opt(tcp_opt.SACK, val))
                 else:
                     raise Exception()
-            elif arr[i] == tcp_opt.TSOPT:    
+            elif arr[i] == tcp_opt.TSOPT:
                 if arr[i+1] != 10:
-                    raise Exception() 
-                (val1,val2) = struct.unpack('!II',arr[i+2:i+10])    
+                    raise Exception()
+                (val1,val2) = struct.unpack('!II',arr[i+2:i+10])
                 self.options.append(tcp_opt(tcp_opt.TSOPT,(val1,val2)))
             else:
                 self.msg('(tcp parse_options) warning, unknown option %x '\
                 % arr[i])
                 self.options.append(tcp_opt(arr[i], arr[i+2:i+2+arr[i+1]]))
-            
+
             i += arr[i+1]
-        return i    
+        return i
 
     def parse(self):
         dlen = len(self.arr)
@@ -214,23 +211,23 @@ class tcp(packet_base):
 
         try:
             self.parse_options()
-        except Exception, e:    
-            self.msg(e) 
+        except Exception, e:
+            self.msg(e)
             return
 
-        self.next   = self.arr[self.hdr_len:].tostring()
+        self.next   = self.arr[self.hdr_len:]
         self.parsed = True
 
-    def hdr(self):    
+    def hdr(self):
         offres = self.off << 4 | self.res
         packet = struct.pack('!HHIIBBHHH',\
             self.srcport, self.dstport, self.seq, self.ack, offres, self.flags,\
-            self.win, self.csum, self.urg) 
+            self.win, self.csum, self.urg)
         for option in self.options:
             packet += option.to_bytes()
-        return packet    
+        return packet
 
-    def checksum(self):    
+    def checksum(self):
         assert(isinstance(self.next, packet_base) or type(self.next) == type(''))
         csum = 0
         if self.prev.__class__.__name__ != 'ipv4':
@@ -242,9 +239,9 @@ class tcp(packet_base):
                                          0,\
                                          self.prev.protocol, \
                                          len(self.arr))
-        tcphdr = self.hdr()                                
+        tcphdr = self.hdr()
         if isinstance(self.next, packet_base):
             return checksum(ippacket + tcphdr + self.next.pack(), 0, 14)
-        else:    
+        else:
             return checksum(ippacket + tcphdr + self.next, 0, 14)
 

@@ -1,17 +1,17 @@
 # Copyright 2008 (C) Nicira, Inc.
-# 
+#
 # This file is part of NOX.
-# 
+#
 # NOX is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # NOX is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with NOX.  If not, see <http://www.gnu.org/licenses/>.
 #======================================================================
@@ -54,9 +54,8 @@
 import struct
 from packet_utils       import *
 from packet_exceptions  import *
-from array import *
 
-from packet_base import packet_base 
+from packet_base import packet_base
 
 class dhcp(packet_base):
     "DHCP Packet struct"
@@ -102,7 +101,7 @@ class dhcp(packet_base):
     PAD_OPT = 0
     END_OPT = 255
 
-    MAGIC = array('B', '\x63\x82\x53\x63')
+    MAGIC = b'\x63\x82\x53\x63'
 
     def __init__(self, arr=None, prev=None):
         self.prev = prev
@@ -119,16 +118,14 @@ class dhcp(packet_base):
             self.yiaddr = 0
             self.siaddr = 0
             self.giaddr = 0
-            self.chaddr = array('B')
-            self.sname = array('B')
-            self.file = array('B')
-            self.magic = array('B')
-            self.options = array('B')
+            self.chaddr =b''
+            self.sname = b''
+            self.file = b''
+            self.magic = b''
+            self.options = b''
             self.parsedOptions = {}
         else:
-            if type(arr) == type(''):
-                arr = array('B', arr)
-            assert(type(arr) == array)
+            assert(type(arr) == bytes)
             self.arr = arr
             self.parse()
 
@@ -157,7 +154,7 @@ class dhcp(packet_base):
         (self.op, self.htype, self.hlen, self.hops, self.xid, self.secs, \
              self.flags, self.ciaddr, self.yiaddr, self.siaddr, self.giaddr) \
              = struct.unpack('!BBBBIHHIIII', self.arr[:28])
-         
+
         self.chaddr = self.arr[28:44]
         self.sname = self.arr[44:108]
         self.file = self.arr[102:236]
@@ -223,9 +220,9 @@ class dhcp(packet_base):
         return struct.pack(fmt, self.op, self.htype, self.hlen, \
                     self.hops, self.xid, self.secs, self.flags, \
                     self.ciaddr, self.yiaddr, self.siaddr, self.giaddr, \
-                    self.chaddr.tostring(), self.sname.tostring(), \
-                    self.file.tostring(), self.magic.tostring(), \
-                    self.options.tostring())
+                    self.chaddr, self.sname, \
+                    self.file, self.magic, \
+                    self.options)
 
     def hasParsedOption(self, opt, len):
         if self.parsedOptions.has_key(opt) == False:
