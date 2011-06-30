@@ -120,6 +120,7 @@ class DeferredSender (threading.Thread):
     self._lock = threading.RLock()
     self._waker = os.pipe()
     self.daemon = True
+    self.sending = False
 
     self.start()
 
@@ -134,6 +135,8 @@ class DeferredSender (threading.Thread):
 
   def send (self, con, data):
     with self._lock:
+      self.sending = True
+
       data = self._sliceup(data)
 
       if con not in self._dataForConnection:
@@ -193,6 +196,9 @@ class DeferredSender (threading.Thread):
             if len(alldata) == 0:
               try:
                 del self._dataForConnection[con]
+                if len(self._dataForConnection) == 0:
+                  self.sending = False
+                  break
               except:
                 pass
           except:
@@ -260,7 +266,9 @@ class Connection:
       pass
 
   def send (self, data):
-    # This needs some work, as currently it can reorder messages
+    if deferredSender.sending:
+      deferredSender.send(self, data)
+      return
     try:
       l = self.sock.send(data)
       if l != len(data):
