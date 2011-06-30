@@ -73,7 +73,7 @@ class ofp_header:
 class ofp_phy_port:
     def __init__ (self):
         self.port_no = 0
-        self.hw_addr= [0,0,0,0,0,0]
+        self.hw_addr = [0,0,0,0,0,0]
         self.name= ""
         self.config = 0
         self.state = 0
@@ -217,8 +217,8 @@ class ofp_packet_queue:
     def __init__ (self):
         self.queue_id = 0
         self.length = 0
-        self.pad= [0,0]
-        self.properties= []
+        self.pad = [0,0]
+        self.properties = []
 
     def __assert (self):
         if(not isinstance(self.pad, list)):
@@ -282,7 +282,7 @@ class ofp_queue_prop_header:
     def __init__ (self):
         self.property = 0
         self.length = 8
-        self.pad= [0,0,0,0]
+        self.pad = [0,0,0,0]
 
     def __assert (self):
         if(not isinstance(self.pad, list)):
@@ -329,7 +329,7 @@ class ofp_queue_prop_min_rate:
     def __init__ (self):
         self.prop_header = ofp_queue_prop_header()
         self.rate = 0
-        self.pad= [0,0,0,0,0,0]
+        self.pad = [0,0,0,0,0,0]
 
     def __assert (self):
         if(not isinstance(self.prop_header, ofp_queue_prop_header)):
@@ -731,7 +731,7 @@ class ofp_action_header:
     def __init__ (self):
         self.type = 0
         self.length = 8
-        self.pad= [0,0,0,0]
+        self.pad = [0,0,0,0]
 
     def __assert (self):
         if(not isinstance(self.pad, list)):
@@ -826,7 +826,7 @@ class ofp_action_enqueue:
         self.type = 0
         self.length = 16
         self.port = 0
-        self.pad= [0,0,0,0,0,0]
+        self.pad = [0,0,0,0,0,0]
         self.queue_id = 0
 
     def __assert (self):
@@ -881,7 +881,7 @@ class ofp_action_vlan_vid:
         self.type = OFPAT_SET_VLAN_VID
         self.length = 8
         self.vlan_vid = 0
-        self.pad= [0,0]
+        self.pad = [0,0]
 
     def __assert (self):
         if(not isinstance(self.pad, list)):
@@ -931,7 +931,7 @@ class ofp_action_vlan_pcp:
         self.type = OFPAT_SET_VLAN_PCP
         self.length = 8
         self.vlan_pcp = 0
-        self.pad= [0,0,0]
+        self.pad = [0,0,0]
 
     def __assert (self):
         if(not isinstance(self.pad, list)):
@@ -980,8 +980,8 @@ class ofp_action_dl_addr:
     def __init__ (self):
         self.type = 0
         self.length = 16
-        self.dl_addr= [0,0,0,0,0,0]
-        self.pad= [0,0,0,0,0,0]
+        self.dl_addr = [0,0,0,0,0,0]
+        self.pad = [0,0,0,0,0,0]
 
     def __assert (self):
         if(not isinstance(self.dl_addr, list)):
@@ -1079,7 +1079,7 @@ class ofp_action_nw_tos:
         self.type = 0
         self.length = 8
         self.nw_tos = 0
-        self.pad= [0,0,0]
+        self.pad = [0,0,0]
 
     def __assert (self):
         if(not isinstance(self.pad, list)):
@@ -1129,7 +1129,7 @@ class ofp_action_tp_port:
         self.type = 0
         self.length = 8
         self.tp_port = 0
-        self.pad= [0,0]
+        self.pad = [0,0]
 
     def __assert (self):
         if(not isinstance(self.pad, list)):
@@ -1227,10 +1227,10 @@ class ofp_features_reply:
         self.datapath_id = 0
         self.n_buffers = 0
         self.n_tables = 0
-        self.pad= [0,0,0]
+        self.pad = [0,0,0]
         self.capabilities = 0
         self.actions = 0
-        self.ports= []
+        self.ports = []
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
@@ -1395,7 +1395,7 @@ class ofp_flow_mod:
         self.buffer_id = 0
         self.out_port = 0
         self.flags = 0
-        self.actions= []
+        self.actions = []
 
         _initHelper(self, kw)
 
@@ -1501,11 +1501,11 @@ class ofp_port_mod:
         self.header = ofp_header()
         self.header.type = OFPT_PORT_MOD
         self.port_no = 0
-        self.hw_addr= [0,0,0,0,0,0]
+        self.hw_addr = [0,0,0,0,0,0]
         self.config = 0
         self.mask = 0
         self.advertise = 0
-        self.pad= [0,0,0,0]
+        self.pad = [0,0,0,0]
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
@@ -1575,7 +1575,7 @@ class ofp_queue_get_config_request:
     def __init__ (self):
         self.header = ofp_header()
         self.port = 0
-        self.pad= [0,0]
+        self.pad = [0,0]
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
@@ -1628,8 +1628,8 @@ class ofp_queue_get_config_reply:
     def __init__ (self):
         self.header = ofp_header()
         self.port = 0
-        self.pad= [0,0,0,0,0,0]
-        self.queues= []
+        self.pad = [0,0,0,0,0,0]
+        self.queues = []
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
@@ -1693,7 +1693,7 @@ class ofp_stats_request:
         self.header.type = OFPT_STATS_REQUEST
         self.type = 0
         self.flags = 0
-        self.body= []
+        self.body = []
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
@@ -1748,7 +1748,7 @@ class ofp_stats_reply:
         self.header.type = OFPT_STATS_REPLY
         self.type = 0
         self.flags = 0
-        self.body= []
+        self.body = []
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
@@ -1960,11 +1960,11 @@ class ofp_flow_stats:
         self.priority = OFP_DEFAULT_PRIORITY
         self.idle_timeout = 0
         self.hard_timeout = 0
-        self.pad2= [0,0,0,0,0,0]
+        self.pad2 = [0,0,0,0,0,0]
         self.cookie = 0
         self.packet_count = 0
         self.byte_count = 0
-        self.actions= []
+        self.actions = []
 
     def __assert (self):
         if(not isinstance(self.match, ofp_match)):
@@ -2099,7 +2099,7 @@ class ofp_aggregate_stats_reply:
         self.packet_count = 0
         self.byte_count = 0
         self.flow_count = 0
-        self.pad= [0,0,0,0]
+        self.pad = [0,0,0,0]
 
     def __assert (self):
         if(not isinstance(self.pad, list)):
@@ -2148,7 +2148,7 @@ class ofp_aggregate_stats_reply:
 class ofp_table_stats:
     def __init__ (self):
         self.table_id = 0
-        self.pad= [0,0,0]
+        self.pad = [0,0,0]
         self.name= ""
         self.wildcards = 0
         self.max_entries = 0
@@ -2219,7 +2219,7 @@ class ofp_table_stats:
 class ofp_port_stats_request:
     def __init__ (self):
         self.port_no = 0
-        self.pad= [0,0,0,0,0,0]
+        self.pad = [0,0,0,0,0,0]
 
     def __assert (self):
         if(not isinstance(self.pad, list)):
@@ -2264,7 +2264,7 @@ class ofp_port_stats_request:
 class ofp_port_stats:
     def __init__ (self):
         self.port_no = 0
-        self.pad= [0,0,0,0,0,0]
+        self.pad = [0,0,0,0,0,0]
         self.rx_packets = 0
         self.tx_packets = 0
         self.rx_bytes = 0
@@ -2347,7 +2347,7 @@ class ofp_port_stats:
 class ofp_queue_stats_request:
     def __init__ (self):
         self.port_no = 0
-        self.pad= [0,0]
+        self.pad = [0,0]
         self.queue_id = 0
 
     def __assert (self):
@@ -2397,7 +2397,7 @@ class ofp_queue_stats_request:
 class ofp_queue_stats:
     def __init__ (self):
         self.port_no = 0
-        self.pad= [0,0]
+        self.pad = [0,0]
         self.queue_id = 0
         self.tx_bytes = 0
         self.tx_packets = 0
@@ -2621,7 +2621,7 @@ class ofp_packet_in:
         self.in_port = 0
         self.reason = 0
         self.pad = 0
-        self.data= []
+        self.data = []
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
@@ -2694,11 +2694,11 @@ class ofp_flow_removed:
         self.cookie = 0
         self.priority = 0
         self.reason = 0
-        self.pad= [0]
+        self.pad = [0]
         self.duration_sec = 0
         self.duration_nsec = 0
         self.idle_timeout = 0
-        self.pad2= [0,0]
+        self.pad2 = [0,0]
         self.packet_count = 0
         self.byte_count = 0
 
@@ -2797,7 +2797,7 @@ class ofp_port_status:
         self.header = ofp_header()
         self.header.type = OFPT_PORT_STATUS
         self.reason = 0
-        self.pad= [0,0,0,0,0,0,0]
+        self.pad = [0,0,0,0,0,0,0]
         self.desc = ofp_phy_port()
 
     def __assert (self):
@@ -2871,7 +2871,7 @@ class ofp_error:
         self.header.type = OFPT_ERROR
         self.type = 0
         self.code = 0
-        self.data= []
+        self.data = []
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
@@ -3081,7 +3081,7 @@ class ofp_echo_request:
     def __init__ (self):
         self.header = ofp_header()
         self.header.type = OFPT_ECHO_REQUEST
-        self.body= []
+        self.body = []
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
@@ -3134,7 +3134,7 @@ class ofp_echo_reply:
     def __init__ (self):
         self.header = ofp_header()
         self.header.type = OFPT_ECHO_REPLY
-        self.body= []
+        self.body = []
 
     def __assert (self):
         if(not isinstance(self.header, ofp_header)):
