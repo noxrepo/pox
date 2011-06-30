@@ -9,14 +9,14 @@ from pox.lib.packet.icmp import icmp
 from pox.lib.packet.arp import arp
 
 def _initHelper (obj, kw):
-  for k,v in kw:
-  if not hasattr(obj, k):
-    if k == 'xid' and hasattr(obj, 'header'): # Special case
-    obj.header.xid = v
-    continue
-    raise TypeError(obj.__class__.__name__ + " constructor got "
-    + "unexpected keyword argument '" + k + "'")
-  setattr(obj, k, v)
+  for k,v in kw.iteritems():
+    if not hasattr(obj, k):
+      if k == 'xid' and hasattr(obj, 'header'): # Special case
+        obj.header.xid = v
+        continue
+      raise TypeError(obj.__class__.__name__ + " constructor got "
+      + "unexpected keyword argument '" + k + "'")
+    setattr(obj, k, v)
 
 # Structure definitions
 
@@ -381,11 +381,16 @@ class ofp_queue_prop_min_rate:
 ##2.3 Flow Match Structures
 class ofp_match:
   @classmethod
-  def from_packet (cls, packet):
+  def from_packet (cls, packet, in_port = None):
     #NOTE: this may not belong here and may be moved
 
     assert(isinstance(packet, ethernet))
+
     match = cls()
+
+    if in_port is not None:
+      match.in_port = in_port
+
     match.dl_src = p.src
     match.dl_dst = p.dst
     match.dl_type = p.type
@@ -412,9 +417,9 @@ class ofp_match:
         match.tp_dst = p.code
     elif isinstance(p, arp):
       if p.opcode <= 255:
-      match.nw_proto = p.opcode
-      match.tp_src = p.protosrc
-      match.tp_dst = p.protodst
+        match.nw_proto = p.opcode
+        match.tp_src = p.protosrc
+        match.tp_dst = p.protodst
 
     return match
 
@@ -425,10 +430,10 @@ class ofp_match:
 
     # This is basically _initHelper(), but tweaked slightly since this
     # class does some magic of its own.
-    for k,v in kw:
+    for k,v in kw.iteritems():
       if not hasattr(self, '_'+k):
-      raise TypeError(self.__class__.__name__ + " constructor got "
-        + "unexpected keyword argument '" + k + "'")
+        raise TypeError(self.__class__.__name__ + " constructor got "
+          + "unexpected keyword argument '" + k + "'")
       setattr(obj, k, v)
 
   def get_nw_dst (self):
@@ -446,10 +451,10 @@ class ofp_match:
   def set_nw_dst (self, *args, **kw):
     a = self._make_addr(*args, **kw)
     if a == None:
-    self._nw_src = ofp_match_data['nw_dst'][0]
-    self.wildcards &= ~OFPFW_NW_DST_MASK
-    self.wildcards |= ofp_match_data['nw_dst'][1]
-    return
+      self._nw_src = ofp_match_data['nw_dst'][0]
+      self.wildcards &= ~OFPFW_NW_DST_MASK
+      self.wildcards |= ofp_match_data['nw_dst'][1]
+      return
     self._nw_dst = a[0]
     self.wildcards &= ~OFPFW_NW_DST_MASK
     self.wildcards |= ((32-a[1]) << OFPFW_NW_DST_SHIFT)
@@ -457,10 +462,10 @@ class ofp_match:
   def set_nw_src (self, *args, **kw):
     a = self._make_addr(*args, **kw)
     if a == None:
-    self._nw_src = ofp_match_data['nw_src'][0]
-    self.wildcards &= ~OFPFW_NW_SRC_MASK
-    self.wildcards |= ofp_match_data['nw_src'][1]
-    return
+      self._nw_src = ofp_match_data['nw_src'][0]
+      self.wildcards &= ~OFPFW_NW_SRC_MASK
+      self.wildcards |= ofp_match_data['nw_src'][1]
+      return
     self._nw_src = a[0]
     self.wildcards &= ~OFPFW_NW_SRC_MASK
     self.wildcards |= ((32-a[1]) << OFPFW_NW_SRC_SHIFT)
@@ -469,20 +474,20 @@ class ofp_match:
     if ipOrIPAndBits == None: return None
     b = None
     if type(ipOrIPAndBits) is tuple:
-    ip = ipOrIPAndBits[0]
-    b = int(ipOrIPAndBits[1])
+      ip = ipOrIPAndBits[0]
+      b = int(ipOrIPAndBits[1])
 
     if (type(ipOrIPAndBits) is str) and (len(ipOrIPAndBits) != 4):
-    if ipOrIPAndBits.find('/') != -1:
-      s = ipOrIPAndBits.split('/')
-      ip = s[0]
-      b = int(s[1]) if b is None else b
+      if ipOrIPAndBits.find('/') != -1:
+        s = ipOrIPAndBits.split('/')
+        ip = s[0]
+        b = int(s[1]) if b is None else b
+      else:
+        ip = ipOrIPAndBits
+        b = 32 if b is None else b
     else:
       ip = ipOrIPAndBits
       b = 32 if b is None else b
-    else:
-    ip = ipOrIPAndBits
-    b = 32 if b is None else b
 
     #TODO: fix addr using IPAddress
     """
@@ -502,28 +507,28 @@ class ofp_match:
     if name not in ofp_match_data: return
 
     if name == 'nw_dst' or name == 'nw_src':
-    # Special handling
-    getattr(self, 'set_' + name)(value)
-    return value
+      # Special handling
+      getattr(self, 'set_' + name)(value)
+      return value
 
     if value is None:
-    setattr(self, '_' + name, ofp_match_data[name][0])
-    self.wildcards |= ofp_match_data[name][1]
+      setattr(self, '_' + name, ofp_match_data[name][0])
+      self.wildcards |= ofp_match_data[name][1]
     else:
-    setattr(self, '_' + name, value)
-    self.wildcards = self.wildcards & ~ofp_match_data[name][1]
+      setattr(self, '_' + name, value)
+      self.wildcards = self.wildcards & ~ofp_match_data[name][1]
 
     return value
 
   def __getattr__ (self, name):
     if name in ofp_match_data:
-    if (self.wildcards & ofp_match_data[name][1]) == ofp_match_data[name][1]:
-      # It's wildcarded -- always return None
-      return None
-    if name == 'nw_dst' or name == 'nw_src':
-      # Special handling
-      return getattr(self, 'get_' + name)()[0]
-    return self.__dict__['_' + name]
+      if (self.wildcards & ofp_match_data[name][1]) == ofp_match_data[name][1]:
+        # It's wildcarded -- always return None
+        return None
+      if name == 'nw_dst' or name == 'nw_src':
+        # Special handling
+        return getattr(self, 'get_' + name)()[0]
+      return self.__dict__['_' + name]
     raise AttributeError
 
   def __assert (self):
@@ -572,11 +577,11 @@ class ofp_match:
       We normalize them here just to be clean and so that comparisons act
       as you'd want them to. """
     if ((wildcards & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT) > 32:
-    wildcards &= ~OFPFW_NW_SRC_MASK
-    wildcards |= (32 << OFPFW_NW_SRC_SHIFT)
+      wildcards &= ~OFPFW_NW_SRC_MASK
+      wildcards |= (32 << OFPFW_NW_SRC_SHIFT)
     if ((wildcards & OFPFW_NW_DST_MASK) >> OFPFW_NW_DST_SHIFT) > 32:
-    wildcards &= ~OFPFW_NW_DST_MASK
-    wildcards |= (32 << OFPFW_NW_DST_SHIFT)
+      wildcards &= ~OFPFW_NW_DST_MASK
+      wildcards |= (32 << OFPFW_NW_DST_SHIFT)
     return wildcards
 
   def unpack (self, binaryString):
@@ -623,9 +628,9 @@ class ofp_match:
     def binstr (n):
       s = ''
       while True:
-      s = ('1' if n & 1 else '0') + s
-      n >>= 1
-      if n == 0: break
+        s = ('1' if n & 1 else '0') + s
+        n >>= 1
+        if n == 0: break
       return s
     outstr = ''
     outstr += prefix + 'wildcards: ' + binstr(self.wildcards) + ' (0x' + hex(self.wildcards) + ')\n'
@@ -775,7 +780,7 @@ class ofp_action_header:
     return outstr
 
 class ofp_action_output:
-  def __init__ (self):
+  def __init__ (self, **kw):
     self.type = OFPAT_OUTPUT
     self.length = 8
     self.port = 0
@@ -2461,7 +2466,7 @@ class ofp_packet_out:
     self.buffer_id = 4294967295
     self.in_port = 0
     self.actions = []
-    self.data = bytes()
+    self.data = None
 
     # Allow "action" as a synonym for "actions"
     if 'action' in kw and 'actions' not in kw:
@@ -2476,22 +2481,28 @@ class ofp_packet_out:
 
   def __assert (self):
     if(not isinstance(self.header, ofp_header)):
-      return (False, "self.header is not class ofp_header as expected.")
-    return (True, None)
+      return "self.header is not class ofp_header as expected."
+    if self.buffer_id != 4294967295 and self.data is not None:
+      return "can not have both buffer_id and data set"
+    return True
 
   def pack (self, assertstruct=True):
-    self.header.length = 16 + len(data)
+    self.header.length = 16 + (0 if self.data is None else len(self.data))
     if(assertstruct):
-      if(not self.__assert()[0]):
-        return None
+      if self.__assert() is not True:
+        raise RuntimeError(self.__assert())
     actions = b''.join((i.pack(assertstruct) for i in self.actions))
     actions_len = len(actions)
-    packed = self.header.pack()
-    packed += struct.pack("!LHH", self.buffer_id, self.in_port, actions_len)
-    packed += actions
-    packed += data
 
-    return packed
+    if self.data is None:
+      return b''.join((self.header.pack(),
+      struct.pack("!LHH", self.buffer_id, self.in_port, actions_len),
+      actions,
+      self.data))
+    else:
+      return b''.join((self.header.pack(),
+      struct.pack("!LHH", self.buffer_id, self.in_port, actions_len),
+      actions))
 
   def unpack (self, binaryString):
     if (len(binaryString) < 16):
