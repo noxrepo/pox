@@ -9,7 +9,6 @@ import select
 import traceback
 import os
 
-
 CYCLE_MAXIMUM = 2
 
 defaultScheduler = None
@@ -19,7 +18,6 @@ def generateTaskID ():
   global nextTaskID
   nextTaskID += 1
   return nextTaskID
-
 
 class BaseTask  (object):
   id = None
@@ -103,6 +101,9 @@ class Scheduler (object):
     self._thread = Thread(target = self.run)
     self._thread.daemon = daemon
     self._thread.start()
+
+  def synchronized (self):
+    return Synchronizer(self)
 
   def schedule (self, task, first = False):
     # The following line is not really guaranteed to catch multiple schedulings
@@ -400,6 +401,40 @@ class SelectHub (object):
     sleepingTask.rv = returnVal
     self._scheduler.schedule(sleepingTask)
 
+
+class SyncTask (BaseTask):
+  def __init__ (self, *args, **kw):
+    BaseTask.__init__(self)
+    self.inlock = threading.Lock()
+    self.outlock = threading.Lock()
+    self.inlock.acquire()
+    self.outlock.acquire()
+
+  def run (self):
+    self.inlock.release()
+    self.outlock.acquire()
+
+
+class Synchronizer (object):
+  def __init__ (self, scheduler = None):
+    if scheduler is None:
+      scheduler = defaultScheduler
+    self.scheduler = scheduler
+    self.syncer = None
+    self.enter = 0
+
+  def __enter__ (self):
+    self.enter += 1
+    if self.enter == 1:
+      self.syncer = SyncTask()
+      self.syncer.start(self.scheduler) #NOTE: maybe add it to head of list?
+      self.syncer.inlock.acquire()
+    return this.syncer
+
+  def __exit__ (self, type_, value, traceback):
+    self.enter -= 1
+    if self.enter == 0:
+      self.syncer.outlock.release()
 
 
 

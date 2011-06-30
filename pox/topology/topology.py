@@ -33,18 +33,17 @@ class Topology (EventMixin):
     #EventMixin.__init__(self)
     self.listenTo(core)
     self.switches = {}
-    
+
   def _handle_GoingUpEvent (self, event):
     self.listenTo(core.openflow, prefix="OF01")
-    
+
   def _handle_OF01_ConnectionUp (self, event):
     if event.dpid in self.switches:
       log.warn("Ignoring switch connection for %i because it's already connected" % (event.dpid,))
       return EventHalt
     self.switches[event.dpid] = event.connection
     log.info("Switch " + str(event.dpid) + " connected")
-    
+
   def _handle_OF01_ConnectionDown (self, event):
     log.info("Switch " + str(event.dpid) + " disconnected")
     del self.switches[event.dpid]
-    

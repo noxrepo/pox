@@ -19,9 +19,9 @@ def getLogger (name=None):
     s = inspect.stack()[2]
     name = s[1]
     if name.endswith('.py'):
-      name = name[0:-3]    
+      name = name[0:-3]
     if name.startswith(_path):
-      name = name[len(_path):]    
+      name = name[len(_path):]
     name = name.replace('/', '.').replace('\\', '.') #FIXME: use os.path or whatever
 
     # Remove double names ("topology.topology" -> "topology")
@@ -31,11 +31,11 @@ def getLogger (name=None):
         if n[-1] == n[-2]:
           del n[-1]
           name = '.'.join(n)
-      
+
   l = logging.getLogger(name)
   g=globals()
-  if not hasattr(l, "print"):  
-    def printmsg (*args, **kw):            
+  if not hasattr(l, "print"):
+    def printmsg (*args, **kw):
       #squelch = kw.get('squelch', True)
       msg = ' '.join((str(s) for s in args))
       s = inspect.stack()[1]
@@ -58,7 +58,7 @@ def getLogger (name=None):
         g['_squelchCount'] = 0
         g['_squelchTime'] = time.time() + SQUELCH_TIME
         l.debug(o)
-      
+
     setattr(l, "print", printmsg)
     setattr(l, "msg", printmsg)
   return l
@@ -84,17 +84,17 @@ import pox.lib.recoco.recoco as recoco
 
 class POXCore (EventMixin):
   _eventMixin_events = set([UpEvent, GoingUpEvent, GoingDownEvent])
-  
+
   def __init__ (self):
     self.running = True
     self.components = {}
-    
+
     print "POX v0.0"
     self.scheduler = recoco.Scheduler(daemon=True)
 
   def getLogger (self, *args, **kw):
     return getLogger(*args, **kw)
-    
+
   def quit (self):
     if self.running:
       print "Quitting..."
@@ -106,7 +106,7 @@ class POXCore (EventMixin):
     self.raiseEvent(GoingUpEvent())
     log.info("Up...")
     self.raiseEvent(UpEvent())
-    
+
   def register (self, name, component):
     #TODO: weak references?
     if name in self.components:
@@ -117,7 +117,7 @@ class POXCore (EventMixin):
     if name not in self.components:
       raise AttributeError("'%s' not registered" % (name,))
     return self.components[name]
-    
+
 core = POXCore()
 
 """
