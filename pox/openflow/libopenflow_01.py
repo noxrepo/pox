@@ -1,5 +1,6 @@
 import struct
 import operator
+import sys
 from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.vlan import vlan
 from pox.lib.packet.ipv4 import ipv4
@@ -1291,7 +1292,7 @@ class ofp_features_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'datapath_id: ' + str(self.datapath_id) + '\n'
     outstr += prefix + 'n_buffers: ' + str(self.n_buffers) + '\n'
     outstr += prefix + 'n_tables: ' + str(self.n_tables) + '\n'
@@ -1368,7 +1369,7 @@ class ofp_switch_config:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
@@ -1459,7 +1460,7 @@ class ofp_flow_mod:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'match: \n'
     self.match.show(prefix + '  ')
     outstr += prefix + 'cookie: ' + str(self.cookie) + '\n'
@@ -1567,7 +1568,7 @@ class ofp_port_mod:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
     outstr += prefix + 'hw_addr: ' + str(self.hw_addr) + '\n'
     outstr += prefix + 'config: ' + str(self.config) + '\n'
@@ -1625,7 +1626,7 @@ class ofp_queue_get_config_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'port: ' + str(self.port) + '\n'
     return outstr
 
@@ -1684,7 +1685,7 @@ class ofp_queue_get_config_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'port: ' + str(self.port) + '\n'
     outstr += prefix + 'queues: \n'
     for obj in self.queues:
@@ -1741,7 +1742,7 @@ class ofp_stats_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'type: ' + str(self.type) + '\n'
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'body: ' + str(self.body) + '\n'
@@ -1796,7 +1797,7 @@ class ofp_stats_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'type: ' + str(self.type) + '\n'
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'body: ' + str(self.body) + '\n'
@@ -2494,7 +2495,7 @@ class ofp_packet_out:
     actions = b''.join((i.pack(assertstruct) for i in self.actions))
     actions_len = len(actions)
 
-    if self.data is None:
+    if self.data is not None:
       return b''.join((self.header.pack(),
       struct.pack("!LHH", self.buffer_id, self.in_port, actions_len),
       actions,
@@ -2528,7 +2529,7 @@ class ofp_packet_out:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'buffer_id: ' + str(self.buffer_id) + '\n'
     outstr += prefix + 'in_port: ' + str(self.in_port) + '\n'
     outstr += prefix + 'actions_len: ' + str(len(self.actions)) + '\n'
@@ -2576,7 +2577,7 @@ class ofp_barrier_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     return outstr
 
 class ofp_barrier_request:
@@ -2619,7 +2620,7 @@ class ofp_barrier_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     return outstr
 
 #4 Asynchronous Messages
@@ -2681,7 +2682,7 @@ class ofp_packet_in:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'buffer_id: ' + str(self.buffer_id) + '\n'
     outstr += prefix + 'total_len: ' + str(self.total_len) + '\n'
     outstr += prefix + 'in_port: ' + str(self.in_port) + '\n'
@@ -2779,7 +2780,7 @@ class ofp_flow_removed:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'match: \n'
     self.match.show(prefix + '  ')
     outstr += prefix + 'cookie: ' + str(self.cookie) + '\n'
@@ -2859,7 +2860,7 @@ class ofp_port_status:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'reason: ' + str(self.reason) + '\n'
     outstr += prefix + 'desc: \n'
     self.desc.show(prefix + '  ')
@@ -2875,7 +2876,6 @@ ofp_port_reason_map = {
   2                 : 'OFPPR_MODIFY'
 }
 
-#WAS class ofp_error_msg: (why changed? it's still ofp_error_msg in 1.0/1.1 spec)
 class ofp_error:
   def __init__ (self):
     self.header = ofp_header()
@@ -2925,11 +2925,21 @@ class ofp_error:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
-    outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'code: ' + str(self.code) + '\n'
-    outstr += prefix + 'data: ' + str(self.data) + '\n'
-    return outstr
+    outstr += self.header.show(prefix + '  ')
+    t = self.type
+    c = self.code
+    if t < len(ofp_error_type):
+      n = ofp_error_type[t]
+      t = "%s (%i)" % (n, t)
+      n = 'ofp' + n.lower()[5:] + '_code_map'
+      if n in sys.modules[__name__].__dict__:
+        if c in sys.modules[__name__].__dict__[n]:
+          c = "%s (%i)" % (sys.modules[__name__].__dict__[n][c], c)
+    outstr += prefix + 'type: ' + str(t) + '\n'
+    outstr += prefix + 'code: ' + str(c) + '\n'
+    if len(self.data):
+      outstr += prefix + 'data: ' + str(self.data) + '\n'
+    return outstr.strip()
 
 ofp_error_type = ['OFPET_HELLO_FAILED', 'OFPET_BAD_REQUEST', \
           'OFPET_BAD_ACTION', 'OFPET_FLOW_MOD_FAILED', \
@@ -3085,7 +3095,7 @@ class ofp_hello:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     return outstr
 
 class ofp_echo_request:
@@ -3137,7 +3147,7 @@ class ofp_echo_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'body: ' + str(self.body) + '\n'
     return outstr
 
@@ -3190,7 +3200,7 @@ class ofp_echo_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'body: ' + str(self.body) + '\n'
     return outstr
 
@@ -3236,7 +3246,7 @@ class ofp_vendor_header:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
     return outstr
 
@@ -3289,7 +3299,7 @@ class ofp_vendor:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
     outstr += prefix + 'data: ' + data + '\n'
     return outstr
@@ -3333,7 +3343,7 @@ class ofp_features_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     return outstr
 
 class ofp_get_config_request:
@@ -3374,7 +3384,7 @@ class ofp_get_config_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     return outstr
 
 class ofp_get_config_reply:
@@ -3421,7 +3431,7 @@ class ofp_get_config_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
@@ -3470,7 +3480,7 @@ class ofp_set_config:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    self.header.show(prefix + '  ')
+    outstr += self.header.show(prefix + '  ')
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
@@ -3619,6 +3629,8 @@ OFP_SWITCH_CONFIG_BYTES = 12
 OFP_SWITCH_FEATURES_BYTES = 32
 OFP_TABLE_STATS_BYTES = 64
 OFP_VENDOR_HEADER_BYTES = 12
+
+NO_BUFFER = 4294967295
 
 ofp_match_data = {
 #  'wildcards' : (0, 0),
