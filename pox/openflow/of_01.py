@@ -1,5 +1,6 @@
 from pox.core import core
 import pox
+import pox.lib.util
 
 from pox.openflow.openflow import *
 
@@ -118,7 +119,7 @@ class DeferredSender (threading.Thread):
     threading.Thread.__init__(self)
     self._dataForConnection = {}
     self._lock = threading.RLock()
-    self._waker = os.pipe()
+    self._waker = pox.lib.util.makePipe()
     self.daemon = True
     self.sending = False
 
@@ -341,7 +342,7 @@ class OpenFlow_01_Task (Task):
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     listener.bind((self.address, self.port))
-    listener.listen(0)
+    listener.listen(1)
     sockets.append(listener)
     wsocks = []
 

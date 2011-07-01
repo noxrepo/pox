@@ -9,6 +9,7 @@ import select
 import traceback
 import os
 import socket
+import pox.lib.util
 
 CYCLE_MAXIMUM = 2
 
@@ -342,7 +343,7 @@ class SelectHub (object):
     self._incoming = Queue() # Threadsafe queue for new items
 
     self._scheduler = scheduler
-    self._pipe_r, self._pipe_w = os.pipe()
+    self._pipe_r, self._pipe_w = pox.lib.util.makePipe()
 
     self._ready = False
 

@@ -1,5 +1,6 @@
 import struct
 import sys
+import os
 
 def dpidToStr (dpid):
   """ In flux. """
@@ -20,3 +21,13 @@ def initHelper (obj, kw):
       raise TypeError(obj.__class__.__name__ + " constructor got "
       + "unexpected keyword argument '" + k + "'")
     setattr(obj, k, v)
+
+def makePipe ():
+  """
+  On Unix systems, this makes a real pipe pair.
+  But on Windows, select() doesn't work with anything but sockets,
+  so this SHOULD make a pair of localhost sockets instead.
+  """
+  if os.name is "posix":
+    return os.pipe()
+  raise RuntimeError("OS not supported")
