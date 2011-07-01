@@ -27,5 +27,4 @@
 
 import struct
 from packet_utils       import *
-from packet_exceptions  import *
 

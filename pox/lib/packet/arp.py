@@ -43,7 +43,6 @@ from ethernet import ETHER_ANY
 from ethernet import ETHER_BROADCAST
 
 from packet_utils       import *
-from packet_exceptions  import *
 
 class arp(packet_base):
     "ARP/RARP packet struct"

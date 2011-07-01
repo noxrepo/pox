@@ -60,7 +60,6 @@
 import struct
 import time
 from packet_utils       import *
-from packet_exceptions  import *
 from array  import *
 
 from packet_base import packet_base
