@@ -78,12 +78,6 @@ class EventMixin (object):
     # It might make sense to change this.
     handlers = self._eventMixin_handlers.get(eventType, [])
     for (priority, handler, once, eid) in handlers:
-      if type(handler) == weakref.ref:
-        handler = handler()
-        if handler == None:
-          self.removeListener(eid)
-          continue
-
       if classCall:
         rv = event._invoke(handler, *args, **kw)
       else:
@@ -102,6 +96,7 @@ class EventMixin (object):
     return event
 
   def removeListener (self, handlerOrEID, eventType=None):
+    #print "Remove listener", handlerOrEID
     self._eventMixin_init()
     handler = handlerOrEID
 
@@ -111,33 +106,33 @@ class EventMixin (object):
       if eventType == None: eventType = handler[0]
       handlers = self._eventMixin_handlers[eventType]
       l = len(handlers)
-      self._eventMixin_handlers[eventType] = (x for x in handlers if x(3) != handler[1])
+      self._eventMixin_handlers[eventType] = [x for x in handlers if x[3] != handler[1]]
       altered = altered or l != len(self._eventMixin_handlers[eventType])
     elif type(handler) == int:
       # It's an EID
       if eventType == None:
-        for event in self._eventmixin_handlers:
-          handlers = self._eventmixin_handlers[event]
+        for event in self._eventMixin_handlers:
+          handlers = self._eventMixin_handlers[event]
           l = len(handlers)
-          self._eventmixin_handlers[event] = (x for x in handlers if x(3) != handler)
-          altered = altered or l != len(self._eventmixin_handlers[event])
+          self._eventMixin_handlers[event] = [x for x in handlers if x[3] != handler]
+          altered = altered or l != len(self._eventMixin_handlers[event])
       else:
         l = len(handlers)
-        handlers = self._eventmixin_handlers[eventType]
-        self._eventmixin_handlers[eventtype] = (x for x in handlers if x(3) != handler)
-        altered = altered or l != len(self._eventmixin_handlers[event])
+        handlers = self._eventMixin_handlers[eventType]
+        self._eventMixin_handlers[eventtype] = [x for x in handlers if x[3] != handler]
+        altered = altered or l != len(self._eventMixin_handlers[event])
     else:
       if eventType == none:
-        for event in self._eventmixin_handlers:
-          handlers = self._eventmixin_handlers[event]
+        for event in self._eventMixin_handlers:
+          handlers = self._eventMixin_handlers[event]
           l = len(handlers)
-          self._eventmixin_handlers[event] = (x for x in handlers if x(1) != handler)
-          altered = altered or l != len(self._eventmixin_handlers[event])
+          self._eventMixin_handlers[event] = [x for x in handlers if x[1] != handler]
+          altered = altered or l != len(self._eventMixin_handlers[event])
       else:
-        handlers = self._eventmixin_handlers[eventType]
+        handlers = self._eventMixin_handlers[eventType]
         l = len(handlers)
-        self._eventmixin_handlers[eventtype] = (x for x in handlers if x(1) != handler)
-        altered = altered or l != len(self._eventmixin_handlers[eventType])
+        self._eventMixin_handlers[eventtype] = [x for x in handlers if x[1] != handler]
+        altered = altered or l != len(self._eventMixin_handlers[eventType])
 
     return altered
 
@@ -166,7 +161,7 @@ class EventMixin (object):
 
     eid = generateEventID()
 
-    if weak: handler = weakref.ref(handler, lambda o: self.removeListener((eventType, eid)))
+    if weak: handler = CallProxy(self, handler, (eventType, eid))
 
     entry = (priority, handler, once, eid)
     assert entry not in l
@@ -205,6 +200,31 @@ def autoBindEvents (sink, source, prefix='', weak=False):
           #print "autoBind: ",source,m,"to",sink
 
   return True
+
+
+class CallProxy (object):
+  def __init__ (self, source, handler, removeData):
+    self.source = weakref.ref(source, self.forgetMe)
+    self.obj = weakref.ref(handler.im_self, self.forgetMe)
+    self.method = handler.im_func
+    self.removeData = removeData
+    self.name = str(handler)
+  def forgetMe (self, o):
+    #print "Forgetting",self.removeData,self.method
+    source = self.source()
+    if source is not None:
+      source.removeListener(self.removeData)
+    self.obj = None
+  def __call__ (self, *args, **kw):
+    #print "weak call"
+    if self.obj is None: return
+    o = self.obj()
+    if o is not None:
+      return self.method(o, *args, **kw)
+    print "callProxy object is gone!"
+    raise RuntimeException("callProxy object is gone!")
+  def __str__ (self):
+    return "<CallProxy for " + self.name + ">"
 
 """
 TODO
