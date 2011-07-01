@@ -166,7 +166,9 @@ class EventMixin (object):
     if weak: handler = weakref.ref(handler, lambda o: self.removeListener((eventType, eid)))
 
     l.add((priority, handler, once, eid))
-    if l[0][0] != None:
+    if priority is not None:
+      assert hasattr(l, 'sort')
+    if hasattr(l, 'sort') and l[0][0] != None:
       l.sort(reverse = True, key = operator.itemgetter(0), cmp =
              lambda a,b: (0 if a is None else a) - (0 if b is None else b) )
 
