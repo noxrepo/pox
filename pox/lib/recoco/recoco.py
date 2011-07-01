@@ -349,7 +349,7 @@ class SelectHub (object):
     self._incoming = Queue() # Threadsafe queue for new items
 
     self._scheduler = scheduler
-    self._pipe_r, self._pipe_w = pox.lib.util.makePipe()
+    self._pinger = pox.lib.util.makePinger()
 
     self._ready = False
 
@@ -416,7 +416,7 @@ class SelectHub (object):
           self._return(t, ([],[],[]))
 
       if timeout is None: timeout = CYCLE_MAXIMUM
-      ro, wo, xo = select.select(rl.keys() + [self._pipe_r], wl.keys(), xl.keys(), timeout)
+      ro, wo, xo = select.select(rl.keys() + [self._pinger], wl.keys(), xl.keys(), timeout)
 
       if len(ro) == 0 and len(wo) == 0 and len(xo) == 0 and timeoutTask != None:
         # IO is idle - dispatch timers / release timeouts
@@ -424,8 +424,8 @@ class SelectHub (object):
         self._return(timeoutTask, ([],[],[]))
       else:
         # We have IO events
-        if self._pipe_r in ro:
-          os.read(self._pipe_r, 1024)
+        if self._pinger in ro:
+          self._pinger.pongAll()
           while not self._incoming.empty():
             stuff = self._incoming.get(True)
             task = stuff[0]
@@ -434,7 +434,7 @@ class SelectHub (object):
           if len(ro) == 1 and len(wo) == 0 and len(xo) == 0:
             # Just recycle
             continue
-          ro.remove(self._pipe_r)
+          ro.remove(self._pinger)
 
         # At least one thread is going to be resumed
         rets = {}
@@ -467,7 +467,7 @@ class SelectHub (object):
     """
     Cycle the wait thread so that new timers or FDs can be picked up
     """
-    os.write(self._pipe_w, ' ')
+    self._pinger.ping()
 
   def registerTimer (self, task, timeToWake, timeIsAbsolute = False):
     """

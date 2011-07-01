@@ -119,7 +119,7 @@ class DeferredSender (threading.Thread):
     threading.Thread.__init__(self)
     self._dataForConnection = {}
     self._lock = threading.RLock()
-    self._waker = pox.lib.util.makePipe()
+    self._waker = pox.lib.util.makePinger()
     self.daemon = True
     self.sending = False
 
@@ -145,7 +145,7 @@ class DeferredSender (threading.Thread):
       else:
         self._dataForConnection[con].extend(data)
 
-      os.write(self._waker[1], ' ')
+      self._waker.ping()
 
   def kill (self, con):
     with self._lock:
@@ -154,7 +154,7 @@ class DeferredSender (threading.Thread):
       except:
         pass
 
-      os.write(self._waker[1], ' ')
+      self._waker.ping()
 
   def run (self):
     while core.running:
@@ -162,12 +162,12 @@ class DeferredSender (threading.Thread):
       with self._lock:
         cons = self._dataForConnection.keys()
 
-      rlist, wlist, elist = select.select([self._waker[0]], cons, cons, 1)
+      rlist, wlist, elist = select.select([self._waker], cons, cons, 1)
       if not core.running: break
 
       with self._lock:
         if len(rlist) > 0:
-          os.read(self._waker[0], 1024)
+          self._waker.pongAll()
 
         for con in elist:
           try:
