@@ -84,7 +84,7 @@ class MessengerConnection (EventMixin):
   def _close (self):
     # Called internally
     if self._isConnected is False: return
-
+    self._source._forget(self)
     self._isConnected = False
     self.raiseEventNoErrors(ConnectionClosed, self)
     self.raiseEventNoErrors(MessageRecieved, self)
@@ -159,6 +159,9 @@ class TCPMessengerConnection (MessengerConnection, Task):
 
     self._socket = socket
 
+  def close (self):
+    self._close()
+
   def _close (self):
     super(TCPMessengerConnection, self)._close()
     self._socket.shutdown(socket.SHUT_RDWR)
@@ -204,11 +207,18 @@ class MessengerHub (EventMixin):
     EventMixin.__init__(self)
     self.connections = weakref.WeakSet()
 
-
+#TODO: make a superclass source
 class TCPMessengerSource (Task):
   def __init__ (self, address = "0.0.0.0", port = 7790):
     Task.__init__(self)
     self._addr = (address,port)
+    self._connections = set()
+
+  def _forget (self, connection):
+    """ Forget about a connection (because it has closed) """
+    if connection in self._connections:
+      #print "forget about",connection
+      self._connections.remove(connection)
 
   def run (self):
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -227,7 +237,7 @@ class TCPMessengerSource (Task):
           break
 
         rc = TCPMessengerConnection(self, listener.accept()[0])
-        #self.sessions.add(rc)
+        self._connections.add(rc)
         rc.start()
       except:
         traceback.print_exc()
@@ -238,6 +248,35 @@ class TCPMessengerSource (Task):
     except:
       pass
     log.debug("No longer listening for connections")
+
+
+class MessengerExample (object):
+  def __init__ (self, targetName):
+    core.messenger.addListener(MessageRecieved, self._handle_global_MessageRecieved, weak=True)
+    self._targetName = targetName
+
+  def _handle_global_MessageRecieved (self, event):
+    try:
+      n = event.con.read()['hello']
+      if n == self._targetName:
+        # It's for me!
+        event.claim()
+        event.con.addListener(MessageRecieved, self._handle_MessageRecieved, weak=True)
+        print self._targetName, "- started conversation with", event.con
+      else:
+        print self._targetName, "- ignoring", n
+    except:
+      pass
+
+  def _handle_MessageRecieved (self, event):
+    if event.con.isReadable():
+      r = event.con.read()
+      print self._targetName, "-",r
+      if type(r) is dict and r.get("bye",False):
+        print self._targetName, "- GOODBYE!"
+        event.con.close()
+    else:
+      print self._targetName, "- conversation finished"
 
 
 def start ():
