@@ -109,7 +109,7 @@ class MessengerConnection (EventMixin):
       return self._msgs.pop(0)
 
   def _recv_msg (self, msg):
-    print self,"recv:",msg
+    #print self,"recv:",msg
     self._msgs.append(msg)
     self.raiseEventNoErrors(MessageRecieved, self)
 
