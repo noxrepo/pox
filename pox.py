@@ -9,6 +9,7 @@ import pox.openflow.openflow
 import pox.topology.topology
 import pox.openflow.of_01
 import pox.dumb_l3_switch.dumb_l3_switch
+import pox.messenger.messenger
 
 # Turn on extra info for event exceptions
 import pox.lib.revent.revent as revent
@@ -21,7 +22,7 @@ def startup ():
   core.register("switch", pox.dumb_l3_switch.dumb_l3_switch.dumb_l3_switch())
 
   pox.openflow.of_01.start()
-
+  pox.messenger.messenger.start()
 
 if __name__ == '__main__':
   try:
