@@ -6,7 +6,7 @@ import time
 
 _path = inspect.stack()[0][1]
 #_path = _path[0:_path.rindex('/')] # Uncomment if you want "pox."
-_path = _path[0:_path.rindex('/')+1]
+_path = os.path.abspath(_path) + os.sep
 
 SQUELCH_TIME = 5
 
