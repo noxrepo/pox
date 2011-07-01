@@ -181,6 +181,7 @@ class Scheduler (object):
     except:
       print("Task", t, "caused exception and was de-scheduled")
       traceback.print_exc()
+      return True
 
     if isinstance(rv, BlockingOperation):
       try:
