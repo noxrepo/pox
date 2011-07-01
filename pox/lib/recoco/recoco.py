@@ -283,21 +283,22 @@ class Recv (BlockingOperation):
     self._timeout = timeout
     self._flags = flags
 
-  def _returnFunc (task):
+  def _recvReturnFunc (self, task):
     # Select() will have placed file descriptors in rv
-    sock = task.rv[0]
-    if len(task.rv[2]) != 0:
+    if len(task.rv[2]) != 0 or len(task.rv[0]) == 0:
       # Socket error
       task.rv = None
       return None
+    sock = task.rv[0][0]
     task.rv = None
     try:
-      return sock.recv(self._length, flags = self._flags)
+      return sock.recv(self._length, self._flags)
     except:
+      traceback.print_exc()
       return b''
 
   def execute (self, task, scheduler):
-    task.rf = self._returnFunc
+    task.rf = self._recvReturnFunc
     scheduler._selectHub.registerSelect(task, [self._fd], None, [self._fd], timeout=self._timeout)
 
 
@@ -308,7 +309,7 @@ class Send (BlockingOperation):
     self._sent = 0
     self._scheduler = None
 
-  def _returnFunc (task):
+  def _sendReturnFunc (self, task):
     # Select() will have placed file descriptors in rv
     sock = task.rv[1]
     if len(task.rv[2]) != 0:
@@ -334,7 +335,7 @@ class Send (BlockingOperation):
 
   def execute (self, task, scheduler):
     self._scheduler = scheduler
-    task.rf = self._returnFunc
+    task.rf = self._sendReturnFunc
     scheduler._selectHub.registerSelect(task, None, [self._fd], [self._fd])
 
 
