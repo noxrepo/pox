@@ -269,8 +269,14 @@ class Select (BlockingOperation):
     scheduler._selectHub.registerSelect(task, *self._args, **self._kw)
 
 
+defaultRecvFlags = 0
+try:
+  defaultRecvFlags = socket.MSG_DONTWAIT
+except:
+  pass
+
 class Recv (BlockingOperation):
-  def __init__ (self, fd, bufsize = 1024*8, flags = socket.MSG_DONTWAIT, timeout = None):
+  def __init__ (self, fd, bufsize = 1024*8, flags = defaultRecvFlags, timeout = None):
     self._fd = fd
     self._length = bufsize
     self._timeout = timeout
