@@ -48,12 +48,13 @@ class EventMixin (object):
     #TODO: this should really keep subsequent events executing and print the
     #      specific handler that failed...
     try:
-      self.raiseEvent(event, *args, **kw)
+      return self.raiseEvent(event, *args, **kw)
     except:
       print "Event handler raised exception"
       if showEventExceptions:
         import traceback
         traceback.print_exc()
+    return None
 
   def raiseEvent (self, event, *args, **kw):
     self._eventMixin_init()
@@ -97,6 +98,7 @@ class EventMixin (object):
           break
       if classCall and hasattr(event, "halt") and event.halt:
         break
+    return event
 
   def removeListener (self, handlerOrEID, eventType=None):
     self._eventMixin_init()
