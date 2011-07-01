@@ -42,7 +42,6 @@
 
 import struct
 from packet_utils       import *
-from packet_exceptions  import *
 from socket import htons
 from socket import htonl
 

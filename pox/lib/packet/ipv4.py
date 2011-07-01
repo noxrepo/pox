@@ -39,7 +39,6 @@
 import struct
 import time
 from packet_utils       import *
-from packet_exceptions  import *
 from tcp import *
 from udp import *
 from icmp import *

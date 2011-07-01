@@ -25,7 +25,6 @@ import struct
 
 from packet_base import packet_base
 
-from packet_utils import  *
 
 import pox.lib.util
 
