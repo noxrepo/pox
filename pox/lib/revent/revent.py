@@ -138,10 +138,23 @@ class EventMixin (object):
 
     return altered
 
-  def addListener (self, eventType, handler, once=False, weak=False, priority=None):
+  def addListenerByName (self, *args, **kw):
+    kw['byName'] = True
+    self.addListener(*args,**kw)
+
+  def addListener (self, eventType, handler, once=False, weak=False, priority=None, byName=False):
     self._eventMixin_init()
     if self._eventMixin_events != True and eventType not in self._eventMixin_events:
-      raise RuntimeError("Event " + str(eventType) + " not defined on this object")
+      fail = True
+      if byName:
+        for e in self._eventMixin_events:
+          if issubclass(e, Event):
+            if e.__name__ == eventType:
+              eventType = e
+              fail = False
+              break
+      if fail:
+        raise RuntimeError("Event " + str(eventType) + " not defined on this object")
     if eventType not in self._eventMixin_handlers:
       l = self._eventMixin_handlers[eventType] = set()
       self._eventMixin_handlers[eventType] = l
@@ -152,10 +165,10 @@ class EventMixin (object):
 
     if weak: handler = weakref.ref(handler, lambda o: self.removeListener((eventType, eid)))
 
-    doSort = priority != None
-    if priority == None: priority = 0
     l.add((priority, handler, once, eid))
-    if doSort: l.sort(reverse = True, key = operator.itemgetter(0))
+    if l[0][0] != None:
+      l.sort(reverse = True, key = operator.itemgetter(0), cmp =
+             lambda a,b: (0 if a is None else a) - (0 if b is None else b) )
 
     return (eventType,eid)
 
