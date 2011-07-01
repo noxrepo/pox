@@ -1,14 +1,14 @@
 #!/usr/bin/python
 
+# Set default log level
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 from pox.core import core
 import pox.openflow.openflow
 import pox.topology.topology
 import pox.openflow.of_01
 import pox.dumb_l3_switch.dumb_l3_switch
-
-# Set default log level
-import logging
-logging.basicConfig(level=logging.DEBUG)
 
 # Turn on extra info for event exceptions
 import pox.lib.revent.revent as revent
