@@ -15,9 +15,9 @@ _squelch = ''
 _squelchTime = 0
 _squelchCount = 0
 
-def getLogger (name=None):
+def getLogger (name=None, moreFrames=0):
   if name is None:
-    s = inspect.stack()[2]
+    s = inspect.stack()[1+moreFrames]
     name = s[1]
     if name.endswith('.py'):
       name = name[0:-3]
@@ -94,7 +94,7 @@ class POXCore (EventMixin):
     self.scheduler = recoco.Scheduler(daemon=True)
 
   def getLogger (self, *args, **kw):
-    return getLogger(*args, **kw)
+    return getLogger(moreFrames=1,*args, **kw)
 
   def quit (self):
     if self.running:
