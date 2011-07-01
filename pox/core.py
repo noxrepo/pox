@@ -107,6 +107,9 @@ class POXCore (EventMixin):
     log.info("Up...")
     self.raiseEvent(UpEvent())
 
+  def hasComponent (self, name):
+    return name in self.components
+
   def register (self, name, component):
     #TODO: weak references?
     if name in self.components:
