@@ -64,6 +64,7 @@ class EventMixin (object):
       eventType = event.__class__
       classCall = True
     elif issubclass(event, Event):
+      #TODO: Don't construct event if there are no handlers
       classCall = True
       eventType = event
       event = eventType(*args, **kw)
@@ -158,7 +159,7 @@ class EventMixin (object):
       if fail:
         raise RuntimeError("Event " + str(eventType) + " not defined on this object")
     if eventType not in self._eventMixin_handlers:
-      l = self._eventMixin_handlers[eventType] = set()
+      l = self._eventMixin_handlers[eventType] = []
       self._eventMixin_handlers[eventType] = l
     else:
       l = self._eventMixin_handlers[eventType]
@@ -167,10 +168,10 @@ class EventMixin (object):
 
     if weak: handler = weakref.ref(handler, lambda o: self.removeListener((eventType, eid)))
 
-    l.add((priority, handler, once, eid))
-    if priority is not None:
-      assert hasattr(l, 'sort')
-    if hasattr(l, 'sort') and l[0][0] != None:
+    entry = (priority, handler, once, eid)
+    assert entry not in l
+    l.append(entry)
+    if l[0][0] != None:
       l.sort(reverse = True, key = operator.itemgetter(0), cmp =
              lambda a,b: (0 if a is None else a) - (0 if b is None else b) )
 
