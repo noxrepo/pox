@@ -32,6 +32,11 @@ if __name__ == '__main__':
     import traceback
     traceback.print_exc()
 
+  import time
+  time.sleep(1)
   import code
+  import sys
+  sys.ps1 = "POX> "
+  sys.ps2 = " ... "
   code.interact('Ready.', local=locals())
   pox.core.core.quit()
