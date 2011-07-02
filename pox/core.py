@@ -81,10 +81,26 @@ class UpEvent (Event):
   """ Fired when system is up. """
   pass
 
+class ComponentRegistered (Event):
+  """
+  This is raised by core whenever a new component is registered.
+  By watching this, a component can monitor whether other components it depends
+  on are available.
+  """
+  def __init__ (self, name, component):
+    Event.__init__(self)
+    self.name = name
+    self.component = component
+
 import pox.lib.recoco.recoco as recoco
 
 class POXCore (EventMixin):
-  _eventMixin_events = set([UpEvent, GoingUpEvent, GoingDownEvent])
+  _eventMixin_events = set([
+    UpEvent,
+    GoingUpEvent,
+    GoingDownEvent,
+    ComponentRegistered
+  ])
 
   def __init__ (self):
     self.running = True
@@ -116,6 +132,7 @@ class POXCore (EventMixin):
     if name in self.components:
       log.warn("Warning: Registered '%s' multipled times" % (name,))
     self.components[name] = component
+    self.raiseEventNoErrors(ComponentRegistered, name, component)
 
   def __getattr__ (self, name):
     if name not in self.components:
