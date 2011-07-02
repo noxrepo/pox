@@ -145,72 +145,38 @@ class ofp_phy_port:
     outstr += prefix + 'peer: ' + str(self.peer) + '\n'
     return outstr
 
-ofp_port_config = ['OFPPC_PORT_DOWN', 'OFPPC_NO_STP', 'OFPPC_NO_RECV', \
-           'OFPPC_NO_RECV_STP', 'OFPPC_NO_FLOOD', 'OFPPC_NO_FWD', \
-           'OFPPC_NO_PACKET_IN']
-OFPPC_PORT_DOWN         = 1
-OFPPC_NO_STP            = 2
-OFPPC_NO_RECV           = 4
-OFPPC_NO_RECV_STP       = 8
-OFPPC_NO_FLOOD          = 16
-OFPPC_NO_FWD            = 32
-OFPPC_NO_PACKET_IN      = 64
-ofp_port_config_map = {
-  1                 : 'OFPPC_PORT_DOWN',
-  2                 : 'OFPPC_NO_STP',
-  4                 : 'OFPPC_NO_RECV',
-  8                 : 'OFPPC_NO_RECV_STP',
-  16                : 'OFPPC_NO_FLOOD',
-  32                : 'OFPPC_NO_FWD',
-  64                : 'OFPPC_NO_PACKET_IN'
+ofp_port_config_rev_map = {
+  'OFPPC_PORT_DOWN'    : 1,
+  'OFPPC_NO_STP'       : 2,
+  'OFPPC_NO_RECV'      : 4,
+  'OFPPC_NO_RECV_STP'  : 8,
+  'OFPPC_NO_FLOOD'     : 16,
+  'OFPPC_NO_FWD'       : 32,
+  'OFPPC_NO_PACKET_IN' : 64,
 }
 
-ofp_port_state = ['OFPPS_LINK_DOWN', 'OFPPS_STP_LISTEN', 'OFPPS_STP_LEARN', \
-          'OFPPS_STP_FORWARD', 'OFPPS_STP_BLOCK', 'OFPPS_STP_MASK']
-OFPPS_LINK_DOWN           = 1
-OFPPS_STP_LISTEN          = 0
-OFPPS_STP_LEARN           = 256
-OFPPS_STP_FORWARD         = 512
-OFPPS_STP_BLOCK           = 768
-OFPPS_STP_MASK            = 768
-ofp_port_state_map = {
-  1                 : 'OFPPS_LINK_DOWN',
-  0                 : 'OFPPS_STP_LISTEN',
-  256               : 'OFPPS_STP_LEARN',
-  512               : 'OFPPS_STP_FORWARD',
-  768               : 'OFPPS_STP_BLOCK',
-  768               : 'OFPPS_STP_MASK'
+ofp_port_state_rev_map = {
+  'OFPPS_STP_LISTEN'  : 0,
+  'OFPPS_LINK_DOWN'   : 1,
+  'OFPPS_STP_LEARN'   : 256,
+  'OFPPS_STP_FORWARD' : 512,
+  'OFPPS_STP_BLOCK'   : 768,
 }
+OFPPS_STP_MASK        = 768
 
-ofp_port_features = ['OFPPF_10MB_HD', 'OFPPF_10MB_FD', 'OFPPF_100MB_HD', \
-           'OFPPF_100MB_FD', 'OFPPF_1GB_HD', 'OFPPF_1GB_FD', \
-           'OFPPF_10GB_FD', 'OFPPF_COPPER', 'OFPPF_FIBER', \
-           'OFPPF_AUTONEG', 'OFPPF_PAUSE', 'OFPPF_PAUSE_ASYM']
-OFPPF_10MB_HD           = 1
-OFPPF_10MB_FD           = 2
-OFPPF_100MB_HD          = 4
-OFPPF_100MB_FD          = 8
-OFPPF_1GB_HD            = 16
-OFPPF_1GB_FD            = 32
-OFPPF_10GB_FD           = 64
-OFPPF_COPPER            = 128
-OFPPF_FIBER             = 256
-OFPPF_AUTONEG           = 512
-OFPPF_PAUSE             = 1024
-OFPPF_PAUSE_ASYM        = 2048
-ofp_port_features_map = {
-  1                 : 'OFPPF_10MB_HD',
-  2                 : 'OFPPF_10MB_FD',
-  4                 : 'OFPPF_100MB_HD',
-  8                 : 'OFPPF_100MB_FD',
-  16                : 'OFPPF_1GB_HD',
-  32                : 'OFPPF_1GB_FD',
-  64                : 'OFPPF_10GB_FD',
-  128               : 'OFPPF_COPPER',
-  256               : 'OFPPF_FIBER',
-  512               : 'OFPPF_AUTONEG',
-  1024              : 'OFPPF_PAUSE',
-  2048              : 'OFPPF_PAUSE_ASYM'
+ofp_port_features_rev_map = {
+  'OFPPF_10MB_HD'    : 1,
+  'OFPPF_10MB_FD'    : 2,
+  'OFPPF_100MB_HD'   : 4,
+  'OFPPF_100MB_FD'   : 8,
+  'OFPPF_1GB_HD'     : 16,
+  'OFPPF_1GB_FD'     : 32,
+  'OFPPF_10GB_FD'    : 64,
+  'OFPPF_COPPER'     : 128,
+  'OFPPF_FIBER'      : 256,
+  'OFPPF_AUTONEG'    : 512,
+  'OFPPF_PAUSE'      : 1024,
+  'OFPPF_PAUSE_ASYM' : 2048,
 }
 
 ##2.2 Queue Structures
@@ -271,13 +237,10 @@ class ofp_packet_queue:
       outstr += obj.show(prefix + '  ')
     return outstr
 
-ofp_queue_properties = ['OFPQT_NONE', 'OFPQT_MIN_RATE']
-OFPQT_NONE              = 0
-OFPQT_MIN_RATE          = 0
-ofp_queue_properties_map = {
-  0                 : 'OFPQT_NONE',
-  0                 : 'OFPQT_MIN_RATE'
+ofp_queue_properties_rev_map = {
+  'OFPQT_MIN_RATE' : 0,
 }
+OFPQT_NONE         = 0
 
 class ofp_queue_prop_header:
   def __init__ (self):
@@ -653,88 +616,43 @@ class ofp_match:
     outstr += prefix + 'tp_dst: ' + str(self.tp_dst) + '\n'
     return outstr
 
-ofp_flow_wildcards = ['OFPFW_IN_PORT', 'OFPFW_DL_VLAN', 'OFPFW_DL_SRC', \
-            'OFPFW_DL_DST', 'OFPFW_DL_TYPE', 'OFPFW_NW_PROTO', \
-            'OFPFW_TP_SRC', 'OFPFW_TP_DST', 'OFPFW_NW_SRC_SHIFT', \
-            'OFPFW_NW_SRC_BITS', 'OFPFW_NW_SRC_MASK', \
-            'OFPFW_NW_SRC_ALL', 'OFPFW_NW_DST_SHIFT', \
-            'OFPFW_NW_DST_BITS', 'OFPFW_NW_DST_MASK', \
-            'OFPFW_NW_DST_ALL', 'OFPFW_DL_VLAN_PCP', \
-            'OFPFW_NW_TOS', 'OFPFW_ALL']
-OFPFW_IN_PORT           = 1
-OFPFW_DL_VLAN           = 2
-OFPFW_DL_SRC            = 4
-OFPFW_DL_DST            = 8
-OFPFW_DL_TYPE           = 16
-OFPFW_NW_PROTO          = 32
-OFPFW_TP_SRC            = 64
-OFPFW_TP_DST            = 128
-OFPFW_NW_SRC_SHIFT      = 8
-OFPFW_NW_SRC_BITS       = 6
-OFPFW_NW_SRC_MASK       = 16128
-OFPFW_NW_SRC_ALL        = 8192
-OFPFW_NW_DST_SHIFT      = 14
-OFPFW_NW_DST_BITS       = 6
-OFPFW_NW_DST_MASK       = 1032192
-OFPFW_NW_DST_ALL        = 524288
-OFPFW_DL_VLAN_PCP       = 1048576
-OFPFW_NW_TOS            = 2097152
-OFPFW_ALL               = 4194303
-ofp_flow_wildcards_map = {
-  1                 : 'OFPFW_IN_PORT',
-  2                 : 'OFPFW_DL_VLAN',
-  4                 : 'OFPFW_DL_SRC',
-  8                 : 'OFPFW_DL_DST',
-  16                : 'OFPFW_DL_TYPE',
-  32                : 'OFPFW_NW_PROTO',
-  64                : 'OFPFW_TP_SRC',
-  128               : 'OFPFW_TP_DST',
-  8                 : 'OFPFW_NW_SRC_SHIFT',
-  6                 : 'OFPFW_NW_SRC_BITS',
-  16128               : 'OFPFW_NW_SRC_MASK',
-  8192              : 'OFPFW_NW_SRC_ALL',
-  14                : 'OFPFW_NW_DST_SHIFT',
-  6                 : 'OFPFW_NW_DST_BITS',
-  1032192             : 'OFPFW_NW_DST_MASK',
-  524288              : 'OFPFW_NW_DST_ALL',
-  1048576             : 'OFPFW_DL_VLAN_PCP',
-  2097152             : 'OFPFW_NW_TOS',
-  4194303             : 'OFPFW_ALL'
+ofp_flow_wildcards_rev_map = {
+  'OFPFW_IN_PORT'      : 1,
+  'OFPFW_DL_VLAN'      : 2,
+  'OFPFW_DL_SRC'       : 4,
+  'OFPFW_DL_DST'       : 8,
+  'OFPFW_DL_TYPE'      : 16,
+  'OFPFW_NW_PROTO'     : 32,
+  'OFPFW_TP_SRC'       : 64,
+  'OFPFW_TP_DST'       : 128,
+  'OFPFW_DL_VLAN_PCP'  : 1048576,
+  'OFPFW_NW_TOS'       : 2097152,
 }
+OFPFW_NW_DST_BITS      = 6
+OFPFW_NW_SRC_BITS      = 6
+OFPFW_NW_SRC_SHIFT     = 8
+OFPFW_NW_DST_SHIFT     = 14
+OFPFW_NW_SRC_ALL       = 8192
+OFPFW_NW_SRC_MASK      = 16128
+OFPFW_NW_DST_ALL       = 524288
+OFPFW_NW_DST_MASK      = 1032192
+OFPFW_ALL              = 4194303
 
 ##2.4 Flow Action Structures
-ofp_action_type = ['OFPAT_OUTPUT', 'OFPAT_SET_VLAN_VID', 'OFPAT_SET_VLAN_PCP', \
-           'OFPAT_STRIP_VLAN', 'OFPAT_SET_DL_SRC', 'OFPAT_SET_DL_DST', \
-           'OFPAT_SET_NW_SRC', 'OFPAT_SET_NW_DST', 'OFPAT_SET_NW_TOS', \
-           'OFPAT_SET_TP_SRC', 'OFPAT_SET_TP_DST', 'OFPAT_ENQUEUE', \
-           'OFPAT_VENDOR']
-OFPAT_OUTPUT              = 0
-OFPAT_SET_VLAN_VID        = 1
-OFPAT_SET_VLAN_PCP        = 2
-OFPAT_STRIP_VLAN          = 3
-OFPAT_SET_DL_SRC          = 4
-OFPAT_SET_DL_DST          = 5
-OFPAT_SET_NW_SRC          = 6
-OFPAT_SET_NW_DST          = 7
-OFPAT_SET_NW_TOS          = 8
-OFPAT_SET_TP_SRC          = 9
-OFPAT_SET_TP_DST          = 10
-OFPAT_ENQUEUE             = 11
-OFPAT_VENDOR              = 65535
-ofp_action_type_map = {
-  0                 : 'OFPAT_OUTPUT',
-  1                 : 'OFPAT_SET_VLAN_VID',
-  2                 : 'OFPAT_SET_VLAN_PCP',
-  3                 : 'OFPAT_STRIP_VLAN',
-  4                 : 'OFPAT_SET_DL_SRC',
-  5                 : 'OFPAT_SET_DL_DST',
-  6                 : 'OFPAT_SET_NW_SRC',
-  7                 : 'OFPAT_SET_NW_DST',
-  8                 : 'OFPAT_SET_NW_TOS',
-  9                 : 'OFPAT_SET_TP_SRC',
-  10                : 'OFPAT_SET_TP_DST',
-  11                : 'OFPAT_ENQUEUE',
-  65535               : 'OFPAT_VENDOR'
+ofp_action_type_rev_map = {
+  'OFPAT_OUTPUT'       : 0,
+  'OFPAT_SET_VLAN_VID' : 1,
+  'OFPAT_SET_VLAN_PCP' : 2,
+  'OFPAT_STRIP_VLAN'   : 3,
+  'OFPAT_SET_DL_SRC'   : 4,
+  'OFPAT_SET_DL_DST'   : 5,
+  'OFPAT_SET_NW_SRC'   : 6,
+  'OFPAT_SET_NW_DST'   : 7,
+  'OFPAT_SET_NW_TOS'   : 8,
+  'OFPAT_SET_TP_SRC'   : 9,
+  'OFPAT_SET_TP_DST'   : 10,
+  'OFPAT_ENQUEUE'      : 11,
+  'OFPAT_VENDOR'       : 65535,
 }
 
 class ofp_action_header:
@@ -1307,26 +1225,15 @@ class ofp_features_reply:
       outstr += obj.show(prefix + '  ')
     return outstr
 
-ofp_capabilities = ['OFPC_FLOW_STATS', 'OFPC_TABLE_STATS', 'OFPC_PORT_STATS', \
-          'OFPC_STP', 'OFPC_RESERVED', 'OFPC_IP_REASM', \
-          'OFPC_QUEUE_STATS', 'OFPC_ARP_MATCH_IP']
-OFPC_FLOW_STATS           = 1
-OFPC_TABLE_STATS          = 2
-OFPC_PORT_STATS           = 4
-OFPC_STP                  = 8
-OFPC_RESERVED             = 16
-OFPC_IP_REASM             = 32
-OFPC_QUEUE_STATS          = 64
-OFPC_ARP_MATCH_IP         = 128
-ofp_capabilities_map = {
-  1                 : 'OFPC_FLOW_STATS',
-  2                 : 'OFPC_TABLE_STATS',
-  4                 : 'OFPC_PORT_STATS',
-  8                 : 'OFPC_STP',
-  16                : 'OFPC_RESERVED',
-  32                : 'OFPC_IP_REASM',
-  64                : 'OFPC_QUEUE_STATS',
-  128               : 'OFPC_ARP_MATCH_IP'
+ofp_capabilities_rev_map = {
+  'OFPC_FLOW_STATS'   : 1,
+  'OFPC_TABLE_STATS'  : 2,
+  'OFPC_PORT_STATS'   : 4,
+  'OFPC_STP'          : 8,
+  'OFPC_RESERVED'     : 16,
+  'OFPC_IP_REASM'     : 32,
+  'OFPC_QUEUE_STATS'  : 64,
+  'OFPC_ARP_MATCH_IP' : 128,
 }
 
 ##3.2 Switch Configuration
@@ -1378,17 +1285,11 @@ class ofp_switch_config:
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
 
-ofp_config_flags = ['OFPC_FRAG_NORMAL', 'OFPC_FRAG_DROP', 'OFPC_FRAG_REASM', \
-          'OFPC_FRAG_MASK']
-OFPC_FRAG_NORMAL          = 0
-OFPC_FRAG_DROP            = 1
-OFPC_FRAG_REASM           = 2
-OFPC_FRAG_MASK            = 3
-ofp_config_flags_map = {
-  0                 : 'OFPC_FRAG_NORMAL',
-  1                 : 'OFPC_FRAG_DROP',
-  2                 : 'OFPC_FRAG_REASM',
-  3                 : 'OFPC_FRAG_MASK'
+ofp_config_flags_rev_map = {
+  'OFPC_FRAG_NORMAL' : 0,
+  'OFPC_FRAG_DROP'   : 1,
+  'OFPC_FRAG_REASM'  : 2,
+  'OFPC_FRAG_MASK'   : 3,
 }
 
 ##3.3 Modify State Messages
@@ -1491,30 +1392,18 @@ class ofp_flow_mod:
       outstr += obj.show(prefix + '  ')
     return outstr
 
-ofp_flow_mod_command = ['OFPFC_ADD', 'OFPFC_MODIFY', 'OFPFC_MODIFY_STRICT', \
-            'OFPFC_DELETE', 'OFPFC_DELETE_STRICT']
-OFPFC_ADD               = 0
-OFPFC_MODIFY            = 1
-OFPFC_MODIFY_STRICT     = 2
-OFPFC_DELETE            = 3
-OFPFC_DELETE_STRICT     = 4
-ofp_flow_mod_command_map = {
-  0                 : 'OFPFC_ADD',
-  1                 : 'OFPFC_MODIFY',
-  2                 : 'OFPFC_MODIFY_STRICT',
-  3                 : 'OFPFC_DELETE',
-  4                 : 'OFPFC_DELETE_STRICT'
+ofp_flow_mod_command_rev_map = {
+  'OFPFC_ADD'           : 0,
+  'OFPFC_MODIFY'        : 1,
+  'OFPFC_MODIFY_STRICT' : 2,
+  'OFPFC_DELETE'        : 3,
+  'OFPFC_DELETE_STRICT' : 4,
 }
 
-ofp_flow_mod_flags = ['OFPFF_SEND_FLOW_REM', 'OFPFF_CHECK_OVERLAP', \
-            'OFPFF_EMERG']
-OFPFF_SEND_FLOW_REM     = 1
-OFPFF_CHECK_OVERLAP     = 2
-OFPFF_EMERG             = 4
-ofp_flow_mod_flags_map = {
-  1                 : 'OFPFF_SEND_FLOW_REM',
-  2                 : 'OFPFF_CHECK_OVERLAP',
-  4                 : 'OFPFF_EMERG'
+ofp_flow_mod_flags_rev_map = {
+  'OFPFF_SEND_FLOW_REM' : 1,
+  'OFPFF_CHECK_OVERLAP' : 2,
+  'OFPFF_EMERG'         : 4,
 }
 
 class ofp_port_mod:
@@ -1818,29 +1707,18 @@ class ofp_stats_reply:
     outstr += prefix + 'body: ' + str(self.body) + '\n'
     return outstr
 
-ofp_stats_types = ['OFPST_DESC', 'OFPST_FLOW', 'OFPST_AGGREGATE', \
-           'OFPST_TABLE', 'OFPST_PORT', 'OFPST_QUEUE', 'OFPST_VENDOR']
-OFPST_DESC              = 0
-OFPST_FLOW              = 1
-OFPST_AGGREGATE         = 2
-OFPST_TABLE             = 3
-OFPST_PORT              = 4
-OFPST_QUEUE             = 5
-OFPST_VENDOR            = 65535
-ofp_stats_types_map = {
-  0                 : 'OFPST_DESC',
-  1                 : 'OFPST_FLOW',
-  2                 : 'OFPST_AGGREGATE',
-  3                 : 'OFPST_TABLE',
-  4                 : 'OFPST_PORT',
-  5                 : 'OFPST_QUEUE',
-  65535               : 'OFPST_VENDOR'
+ofp_stats_types_rev_map = {
+  'OFPST_DESC'      : 0,
+  'OFPST_FLOW'      : 1,
+  'OFPST_AGGREGATE' : 2,
+  'OFPST_TABLE'     : 3,
+  'OFPST_PORT'      : 4,
+  'OFPST_QUEUE'     : 5,
+  'OFPST_VENDOR'    : 65535,
 }
 
-ofp_stats_reply_flags = ['OFPSF_REPLY_MORE']
-OFPSF_REPLY_MORE          = 1
-ofp_stats_reply_flags_map = {
-  1                 : 'OFPSF_REPLY_MORE'
+ofp_stats_reply_flags_rev_map = {
+  'OFPSF_REPLY_MORE' : 1,
 }
 
 class ofp_desc_stats:
@@ -2711,12 +2589,9 @@ class ofp_packet_in:
     outstr += prefix + 'data: ' + str(self.data) + '\n'
     return outstr
 
-ofp_packet_in_reason = ['OFPR_NO_MATCH', 'OFPR_ACTION']
-OFPR_NO_MATCH           = 0
-OFPR_ACTION             = 1
-ofp_packet_in_reason_map = {
-  0                 : 'OFPR_NO_MATCH',
-  1                 : 'OFPR_ACTION'
+ofp_packet_in_reason_rev_map = {
+  'OFPR_NO_MATCH' : 0,
+  'OFPR_ACTION'   : 1,
 }
 
 class ofp_flow_removed:
@@ -2814,15 +2689,10 @@ class ofp_flow_removed:
     outstr += prefix + 'byte_count: ' + str(self.byte_count) + '\n'
     return outstr
 
-ofp_flow_removed_reason = ['OFPRR_IDLE_TIMEOUT', 'OFPRR_HARD_TIMEOUT', \
-               'OFPRR_DELETE']
-OFPRR_IDLE_TIMEOUT      = 0
-OFPRR_HARD_TIMEOUT      = 1
-OFPRR_DELETE            = 2
-ofp_flow_removed_reason_map = {
-  0                 : 'OFPRR_IDLE_TIMEOUT',
-  1                 : 'OFPRR_HARD_TIMEOUT',
-  2                 : 'OFPRR_DELETE'
+ofp_flow_removed_reason_rev_map = {
+  'OFPRR_IDLE_TIMEOUT' : 0,
+  'OFPRR_HARD_TIMEOUT' : 1,
+  'OFPRR_DELETE'       : 2,
 }
 
 class ofp_port_status:
@@ -2887,14 +2757,10 @@ class ofp_port_status:
     self.desc.show(prefix + '  ')
     return outstr
 
-ofp_port_reason = ['OFPPR_ADD', 'OFPPR_DELETE', 'OFPPR_MODIFY']
-OFPPR_ADD               = 0
-OFPPR_DELETE            = 1
-OFPPR_MODIFY            = 2
-ofp_port_reason_map = {
-  0                 : 'OFPPR_ADD',
-  1                 : 'OFPPR_DELETE',
-  2                 : 'OFPPR_MODIFY'
+ofp_port_reason_rev_map = {
+  'OFPPR_ADD'    : 0,
+  'OFPPR_DELETE' : 1,
+  'OFPPR_MODIFY' : 2,
 }
 
 class ofp_error:
@@ -2962,118 +2828,62 @@ class ofp_error:
       outstr += prefix + 'data: ' + str(self.data) + '\n'
     return outstr.strip()
 
-ofp_error_type = ['OFPET_HELLO_FAILED', 'OFPET_BAD_REQUEST', \
-          'OFPET_BAD_ACTION', 'OFPET_FLOW_MOD_FAILED', \
-          'OFPET_PORT_MOD_FAILED', 'OFPET_QUEUE_OP_FAILED']
-OFPET_HELLO_FAILED        = 0
-OFPET_BAD_REQUEST         = 1
-OFPET_BAD_ACTION          = 2
-OFPET_FLOW_MOD_FAILED     = 3
-OFPET_PORT_MOD_FAILED     = 4
-OFPET_QUEUE_OP_FAILED     = 5
-ofp_error_type_map = {
-  0                 : 'OFPET_HELLO_FAILED',
-  1                 : 'OFPET_BAD_REQUEST',
-  2                 : 'OFPET_BAD_ACTION',
-  3                 : 'OFPET_FLOW_MOD_FAILED',
-  4                 : 'OFPET_PORT_MOD_FAILED',
-  5                 : 'OFPET_QUEUE_OP_FAILED'
+ofp_error_type_rev_map = {
+  'OFPET_HELLO_FAILED'    : 0,
+  'OFPET_BAD_REQUEST'     : 1,
+  'OFPET_BAD_ACTION'      : 2,
+  'OFPET_FLOW_MOD_FAILED' : 3,
+  'OFPET_PORT_MOD_FAILED' : 4,
+  'OFPET_QUEUE_OP_FAILED' : 5,
 }
 
-ofp_hello_failed_code = ['OFPHFC_INCOMPATIBLE', 'OFPHFC_EPERM']
-OFPHFC_INCOMPATIBLE     = 0
-OFPHFC_EPERM            = 1
-ofp_hello_failed_code_map = {
-  0                 : 'OFPHFC_INCOMPATIBLE',
-  1                 : 'OFPHFC_EPERM'
+ofp_hello_failed_code_rev_map = {
+  'OFPHFC_INCOMPATIBLE' : 0,
+  'OFPHFC_EPERM'        : 1,
 }
 
-ofp_bad_request_code = ['OFPBRC_BAD_VERSION', 'OFPBRC_BAD_TYPE', \
-            'OFPBRC_BAD_STAT', 'OFPBRC_BAD_VENDOR', \
-            'OFPBRC_BAD_SUBTYPE', 'OFPBRC_EPERM', \
-            'OFPBRC_BAD_LEN', 'OFPBRC_BUFFER_EMPTY', \
-            'OFPBRC_BUFFER_UNKNOWN']
-OFPBRC_BAD_VERSION        = 0
-OFPBRC_BAD_TYPE           = 1
-OFPBRC_BAD_STAT           = 2
-OFPBRC_BAD_VENDOR         = 3
-OFPBRC_BAD_SUBTYPE        = 4
-OFPBRC_EPERM              = 5
-OFPBRC_BAD_LEN            = 6
-OFPBRC_BUFFER_EMPTY       = 7
-OFPBRC_BUFFER_UNKNOWN     = 8
-ofp_bad_request_code_map = {
-  0                 : 'OFPBRC_BAD_VERSION',
-  1                 : 'OFPBRC_BAD_TYPE',
-  2                 : 'OFPBRC_BAD_STAT',
-  3                 : 'OFPBRC_BAD_VENDOR',
-  4                 : 'OFPBRC_BAD_SUBTYPE',
-  5                 : 'OFPBRC_EPERM',
-  6                 : 'OFPBRC_BAD_LEN',
-  7                 : 'OFPBRC_BUFFER_EMPTY',
-  8                 : 'OFPBRC_BUFFER_UNKNOWN'
+ofp_bad_request_code_rev_map = {
+  'OFPBRC_BAD_VERSION'    : 0,
+  'OFPBRC_BAD_TYPE'       : 1,
+  'OFPBRC_BAD_STAT'       : 2,
+  'OFPBRC_BAD_VENDOR'     : 3,
+  'OFPBRC_BAD_SUBTYPE'    : 4,
+  'OFPBRC_EPERM'          : 5,
+  'OFPBRC_BAD_LEN'        : 6,
+  'OFPBRC_BUFFER_EMPTY'   : 7,
+  'OFPBRC_BUFFER_UNKNOWN' : 8,
 }
 
-ofp_bad_action_code = ['OFPBAC_BAD_TYPE', 'OFPBAC_BAD_LEN', \
-             'OFPBAC_BAD_VENDOR', 'OFPBAC_BAD_VENDOR_TYPE', \
-             'OFPBAC_BAD_OUT_PORT', 'OFPBAC_BAD_ARGUMENT', \
-             'OFPBAC_EPERM', 'OFPBAC_TOO_MANY', 'OFPBAC_BAD_QUEUE']
-OFPBAC_BAD_TYPE           = 0
-OFPBAC_BAD_LEN            = 1
-OFPBAC_BAD_VENDOR         = 2
-OFPBAC_BAD_VENDOR_TYPE    = 3
-OFPBAC_BAD_OUT_PORT       = 4
-OFPBAC_BAD_ARGUMENT       = 5
-OFPBAC_EPERM              = 6
-OFPBAC_TOO_MANY           = 7
-OFPBAC_BAD_QUEUE          = 8
-ofp_bad_action_code_map = {
-  0                 : 'OFPBAC_BAD_TYPE',
-  1                 : 'OFPBAC_BAD_LEN',
-  2                 : 'OFPBAC_BAD_VENDOR',
-  3                 : 'OFPBAC_BAD_VENDOR_TYPE',
-  4                 : 'OFPBAC_BAD_OUT_PORT',
-  5                 : 'OFPBAC_BAD_ARGUMENT',
-  6                 : 'OFPBAC_EPERM',
-  7                 : 'OFPBAC_TOO_MANY',
-  8                 : 'OFPBAC_BAD_QUEUE'
+ofp_bad_action_code_rev_map = {
+  'OFPBAC_BAD_TYPE'        : 0,
+  'OFPBAC_BAD_LEN'         : 1,
+  'OFPBAC_BAD_VENDOR'      : 2,
+  'OFPBAC_BAD_VENDOR_TYPE' : 3,
+  'OFPBAC_BAD_OUT_PORT'    : 4,
+  'OFPBAC_BAD_ARGUMENT'    : 5,
+  'OFPBAC_EPERM'           : 6,
+  'OFPBAC_TOO_MANY'        : 7,
+  'OFPBAC_BAD_QUEUE'       : 8,
 }
 
-ofp_flow_mod_failed_code = ['OFPFMFC_ALL_TABLES_FULL', 'OFPFMFC_OVERLAP', \
-              'OFPFMFC_EPERM', 'OFPFMFC_BAD_EMERG_TIMEOUT', \
-              'OFPFMFC_BAD_COMMAND', 'OFPFMFC_UNSUPPORTED']
-OFPFMFC_ALL_TABLES_FULL   = 0
-OFPFMFC_OVERLAP           = 1
-OFPFMFC_EPERM             = 2
-OFPFMFC_BAD_EMERG_TIMEOUT = 3
-OFPFMFC_BAD_COMMAND       = 4
-OFPFMFC_UNSUPPORTED       = 5
-ofp_flow_mod_failed_code_map = {
-  0                 : 'OFPFMFC_ALL_TABLES_FULL',
-  1                 : 'OFPFMFC_OVERLAP',
-  2                 : 'OFPFMFC_EPERM',
-  3                 : 'OFPFMFC_BAD_EMERG_TIMEOUT',
-  4                 : 'OFPFMFC_BAD_COMMAND',
-  5                 : 'OFPFMFC_UNSUPPORTED'
+ofp_flow_mod_failed_code_rev_map = {
+  'OFPFMFC_ALL_TABLES_FULL'   : 0,
+  'OFPFMFC_OVERLAP'           : 1,
+  'OFPFMFC_EPERM'             : 2,
+  'OFPFMFC_BAD_EMERG_TIMEOUT' : 3,
+  'OFPFMFC_BAD_COMMAND'       : 4,
+  'OFPFMFC_UNSUPPORTED'       : 5,
 }
 
-ofp_port_mod_failed_code = ['OFPPMFC_BAD_PORT', 'OFPPMFC_BAD_HW_ADDR']
-OFPPMFC_BAD_PORT          = 0
-OFPPMFC_BAD_HW_ADDR       = 1
-ofp_port_mod_failed_code_map = {
-  0                 : 'OFPPMFC_BAD_PORT',
-  1                 : 'OFPPMFC_BAD_HW_ADDR'
+ofp_port_mod_failed_code_rev_map = {
+  'OFPPMFC_BAD_PORT'    : 0,
+  'OFPPMFC_BAD_HW_ADDR' : 1,
 }
 
-ofp_queue_op_failed_code = ['OFPQOFC_BAD_PORT', 'OFPQOFC_BAD_QUEUE', \
-              'OFPQOFC_EPERM']
-OFPQOFC_BAD_PORT          = 0
-OFPQOFC_BAD_QUEUE         = 1
-OFPQOFC_EPERM             = 2
-ofp_queue_op_failed_code_map = {
-  0                 : 'OFPQOFC_BAD_PORT',
-  1                 : 'OFPQOFC_BAD_QUEUE',
-  2                 : 'OFPQOFC_EPERM'
+ofp_queue_op_failed_code_rev_map = {
+  'OFPQOFC_BAD_PORT'  : 0,
+  'OFPQOFC_BAD_QUEUE' : 1,
+  'OFPQOFC_EPERM'     : 2,
 }
 
 #5. Symmetric Messages
@@ -3506,87 +3316,94 @@ class ofp_set_config:
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
 
-
-
-
-ofp_port = ['OFPP_MAX', 'OFPP_IN_PORT', 'OFPP_TABLE', 'OFPP_NORMAL', \
-      'OFPP_FLOOD', 'OFPP_ALL', 'OFPP_CONTROLLER', 'OFPP_LOCAL', \
-      'OFPP_NONE']
-OFPP_MAX                = 65280
-OFPP_IN_PORT            = 65528
-OFPP_TABLE              = 65529
-OFPP_NORMAL             = 65530
-OFPP_FLOOD              = 65531
-OFPP_ALL                = 65532
-OFPP_CONTROLLER         = 65533
-OFPP_LOCAL              = 65534
-OFPP_NONE               = 65535
-ofp_port_map = {
-  65280               : 'OFPP_MAX',
-  65528               : 'OFPP_IN_PORT',
-  65529               : 'OFPP_TABLE',
-  65530               : 'OFPP_NORMAL',
-  65531               : 'OFPP_FLOOD',
-  65532               : 'OFPP_ALL',
-  65533               : 'OFPP_CONTROLLER',
-  65534               : 'OFPP_LOCAL',
-  65535               : 'OFPP_NONE'
+ofp_port_rev_map = {
+  'OFPP_MAX'        : 65280,
+  'OFPP_IN_PORT'    : 65528,
+  'OFPP_TABLE'      : 65529,
+  'OFPP_NORMAL'     : 65530,
+  'OFPP_FLOOD'      : 65531,
+  'OFPP_ALL'        : 65532,
+  'OFPP_CONTROLLER' : 65533,
+  'OFPP_LOCAL'      : 65534,
+  'OFPP_NONE'       : 65535,
 }
 
-ofp_type = ['OFPT_HELLO', 'OFPT_ERROR', 'OFPT_ECHO_REQUEST', \
-      'OFPT_ECHO_REPLY', 'OFPT_VENDOR', 'OFPT_FEATURES_REQUEST', \
-      'OFPT_FEATURES_REPLY', 'OFPT_GET_CONFIG_REQUEST', \
-      'OFPT_GET_CONFIG_REPLY', 'OFPT_SET_CONFIG', 'OFPT_PACKET_IN', \
-      'OFPT_FLOW_REMOVED', 'OFPT_PORT_STATUS', 'OFPT_PACKET_OUT', \
-      'OFPT_FLOW_MOD', 'OFPT_PORT_MOD', 'OFPT_STATS_REQUEST', \
-      'OFPT_STATS_REPLY', 'OFPT_BARRIER_REQUEST', 'OFPT_BARRIER_REPLY', \
-      'OFPT_QUEUE_GET_CONFIG_REQUEST', 'OFPT_QUEUE_GET_CONFIG_REPLY']
-OFPT_HELLO                      = 0
-OFPT_ERROR                      = 1
-OFPT_ECHO_REQUEST               = 2
-OFPT_ECHO_REPLY                 = 3
-OFPT_VENDOR                     = 4
-OFPT_FEATURES_REQUEST           = 5
-OFPT_FEATURES_REPLY             = 6
-OFPT_GET_CONFIG_REQUEST         = 7
-OFPT_GET_CONFIG_REPLY           = 8
-OFPT_SET_CONFIG                 = 9
-OFPT_PACKET_IN                  = 10
-OFPT_FLOW_REMOVED               = 11
-OFPT_PORT_STATUS                = 12
-OFPT_PACKET_OUT                 = 13
-OFPT_FLOW_MOD                   = 14
-OFPT_PORT_MOD                   = 15
-OFPT_STATS_REQUEST              = 16
-OFPT_STATS_REPLY                = 17
-OFPT_BARRIER_REQUEST            = 18
-OFPT_BARRIER_REPLY              = 19
-OFPT_QUEUE_GET_CONFIG_REQUEST   = 20
-OFPT_QUEUE_GET_CONFIG_REPLY     = 21
-ofp_type_map = {
-  0                 : 'OFPT_HELLO',
-  1                 : 'OFPT_ERROR',
-  2                 : 'OFPT_ECHO_REQUEST',
-  3                 : 'OFPT_ECHO_REPLY',
-  4                 : 'OFPT_VENDOR',
-  5                 : 'OFPT_FEATURES_REQUEST',
-  6                 : 'OFPT_FEATURES_REPLY',
-  7                 : 'OFPT_GET_CONFIG_REQUEST',
-  8                 : 'OFPT_GET_CONFIG_REPLY',
-  9                 : 'OFPT_SET_CONFIG',
-  10                : 'OFPT_PACKET_IN',
-  11                : 'OFPT_FLOW_REMOVED',
-  12                : 'OFPT_PORT_STATUS',
-  13                : 'OFPT_PACKET_OUT',
-  14                : 'OFPT_FLOW_MOD',
-  15                : 'OFPT_PORT_MOD',
-  16                : 'OFPT_STATS_REQUEST',
-  17                : 'OFPT_STATS_REPLY',
-  18                : 'OFPT_BARRIER_REQUEST',
-  19                : 'OFPT_BARRIER_REPLY',
-  20                : 'OFPT_QUEUE_GET_CONFIG_REQUEST',
-  21                : 'OFPT_QUEUE_GET_CONFIG_REPLY'
+ofp_type_rev_map = {
+  'OFPT_HELLO'                    : 0,
+  'OFPT_ERROR'                    : 1,
+  'OFPT_ECHO_REQUEST'             : 2,
+  'OFPT_ECHO_REPLY'               : 3,
+  'OFPT_VENDOR'                   : 4,
+  'OFPT_FEATURES_REQUEST'         : 5,
+  'OFPT_FEATURES_REPLY'           : 6,
+  'OFPT_GET_CONFIG_REQUEST'       : 7,
+  'OFPT_GET_CONFIG_REPLY'         : 8,
+  'OFPT_SET_CONFIG'               : 9,
+  'OFPT_PACKET_IN'                : 10,
+  'OFPT_FLOW_REMOVED'             : 11,
+  'OFPT_PORT_STATUS'              : 12,
+  'OFPT_PACKET_OUT'               : 13,
+  'OFPT_FLOW_MOD'                 : 14,
+  'OFPT_PORT_MOD'                 : 15,
+  'OFPT_STATS_REQUEST'            : 16,
+  'OFPT_STATS_REPLY'              : 17,
+  'OFPT_BARRIER_REQUEST'          : 18,
+  'OFPT_BARRIER_REPLY'            : 19,
+  'OFPT_QUEUE_GET_CONFIG_REQUEST' : 20,
+  'OFPT_QUEUE_GET_CONFIG_REPLY'   : 21,
 }
+
+def _init ():
+  def formatMap (name, m):
+    o = name + " = {\n"
+    vk = sorted([(v,k) for k,v in m.iteritems()])
+    maxlen = 2 + len(reduce(lambda a,b: a if len(a)>len(b) else b, (v for k,v in vk)))
+    fstr = "  %-" + str(maxlen) + "s : %s,\n"
+    for v,k in vk:
+      o += fstr % ("'" + k + "'",v)
+    o += "}"
+    return o
+  """
+  maps = []
+  for k,v in globals().iteritems():
+    if k.startswith("ofp_") and k.endswith("_map") and type(v) == dict:
+      maps.append((k,v))
+  for name,m in maps:
+    rev = {}
+    name = name[:-4]
+    names = globals()[name]
+    for n in names:
+      rev[n] = globals()[n]
+
+    globals()[name + '_rev_map'] = rev
+    print formatMap(name + "_rev_map", rev)
+  return
+  """
+  maps = []
+  for k,v in globals().iteritems():
+    if k.startswith("ofp_") and k.endswith("_rev_map") and type(v) == dict:
+      maps.append((k[:-8],v))
+  for name,m in maps:
+    # Try to generate forward maps
+    forward = dict(((v,k) for k,v in m.iteritems()))
+    if len(forward) == len(m):
+      globals()[name + "_map"] = forward
+    else:
+      print name + "_rev_map is not a map"
+
+    # Try to generate lists
+    v = m.values()
+    v.sort()
+    if v[-1] != len(v)-1:
+      # Allow ones where the last value is a special value (e.g., VENDOR)
+      del v[-1]
+    if len(v) > 0 and v[0] == 0 and v[-1] == len(v)-1:
+      globals()[name] = v
+
+    # Generate gobals
+    for k,v in m.iteritems():
+      globals()[k] = v
+_init()
 
 # Values from macro definitions
 OFP_FLOW_PERMANENT = 0
