@@ -30,8 +30,8 @@ class ofp_header:
     self.xid = 0
 
   def _assert (self):
-    if (not (self.type in ofp_type_map.keys())):
-      return (False, "type must have values from ofp_type_map.keys()")
+    if self.type not in ofp_type_map:
+      return (False, "type is not a known message type")
     return (True, None)
 
   def pack (self, assertstruct=True):
