@@ -251,7 +251,7 @@ class Sleep (BlockingOperation):
     if self._t is None:
       # Just unschedule
       return
-    if self._t is 0:
+    if self._t is 0 or self._t < time.time():
       # Just reschedule
       scheduler.schedule(task)
       return
@@ -518,6 +518,37 @@ class Synchronizer (object):
     if self.enter == 0:
       self.syncer.outlock.release()
 
+
+class Timer (Task):
+  def __init__ (self, timeToWake, callback, absoluteTime = False, recurring = False, args = (), kw = {}, scheduler = None, started = True):
+    if absoluteTime and recurring:
+      raise RuntimeError("Can't have a recurring timer for an absolute time!")
+    Task.__init__(self)
+    self._next = timeToWake
+    self._interval = timeToWake if recurring else 0
+    if not absoluteTime:
+      self._next += time.time()
+
+    self._cancelled = False
+
+    self._recurring = recurring
+    self._callback = callback
+    self._args = args
+    self._kw = kw
+
+    if started: self.start(scheduler)
+
+  def cancel (self):
+    self._cancelled = True
+
+  def run (self):
+    while True:
+      yield Sleep(timeToWake=self._next, absoluteTime=True)
+      if self._cancelled: break
+      self._next = time.time() + self._interval
+      self._callback(*self._args,**self._kw)
+      if not self._recurring: break
+    yield False # Quit
 
 
 # Sanity tests
