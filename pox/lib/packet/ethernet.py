@@ -27,13 +27,14 @@ from packet_base import packet_base
 
 
 import pox.lib.util
+from pox.lib.addresses import *
 
-ETHER_ANY            = b"\x00\x00\x00\x00\x00\x00"
-ETHER_BROADCAST      = b"\xff\xff\xff\xff\xff\xff"
-BRIDGE_GROUP_ADDRESS = b"\x01\x80\xC2\x00\x00\x00"
-LLDP_MULTICAST       = b"\x01\x80\xc2\x00\x00\x0e"
-PAE_MULTICAST        = b'\x01\x80\xc2\x00\x00\x03' # 802.1x Port Access Entity
-NDP_MULTICAST        = b'\x01\x23\x20\x00\x00\x01' # Nicira discovery
+ETHER_ANY            = EthAddr(b"\x00\x00\x00\x00\x00\x00")
+ETHER_BROADCAST      = EthAddr(b"\xff\xff\xff\xff\xff\xff")
+BRIDGE_GROUP_ADDRESS = EthAddr(b"\x01\x80\xC2\x00\x00\x00")
+LLDP_MULTICAST       = EthAddr(b"\x01\x80\xc2\x00\x00\x0e")
+PAE_MULTICAST        = EthAddr(b'\x01\x80\xc2\x00\x00\x03') # 802.1x Port Access Entity
+NDP_MULTICAST        = EthAddr(b'\x01\x23\x20\x00\x00\x01') # Nicira discovery
                                                    # multicast
 
 class ethernet(packet_base):
@@ -87,8 +88,8 @@ class ethernet(packet_base):
       self.msg('warning eth packet data too short to parse header: data len %u' % alen)
       return
 
-    self.dst = self.arr[:6]
-    self.src = self.arr[6:12]
+    self.dst = EthAddr(self.arr[:6])
+    self.src = EthAddr(self.arr[6:12])
     self.type = struct.unpack('!H', self.arr[12:ethernet.MIN_LEN])[0]
 
     self.hdr_len = ethernet.MIN_LEN
@@ -103,20 +104,19 @@ class ethernet(packet_base):
       self.next = self.arr[ethernet.MIN_LEN:]
 
   def __str__(self):
-    s = ''.join(('[',mac_to_str(self.src,ethernet.resolve_names),'>',mac_to_str(self.dst,ethernet.resolve_names),':',ethtype_to_str(self.type),']'))
+    s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self)),':',ethtype_to_str(self.type),']'))
     if self.next == None:
       return s
     elif type(self.next) == bytes:
-      return s
+      return s + '<' + str(len(self.next)) + ' bytes>'
     else:
       return ''.join((s, str(self.next)))
 
   def hdr(self):
     dst = self.dst
     src = self.src
-    if type(dst) != bytes:
-      dst = dst.tostring() #FIXME for Address
-    if type(src) != bytes:
-      src = src.tostring() #FIXME for Address
+    if type(dst) == EthAddr:
+      dst = dst.toRaw()
+    if type(src) == EthAddr:
+      src = src.toRaw()
     return struct.pack('!6s6sH', dst, src, self.type)
-
