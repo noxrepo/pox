@@ -50,6 +50,7 @@ def handle_FEATURES_REPLY (con, msg):
   con.features = msg
   con.dpid = msg.datapath_id
   con.msg("Connected to dpid " + str(msg.datapath_id))
+  #for p in msg.ports: print(p.show())
   openflowHub.raiseEvent(ConnectionUp(con))
 
 def handle_PORT_STATUS (con, msg): #A
@@ -63,12 +64,13 @@ def handle_PACKET_IN (con, msg): #A
 
 def handle_ERROR_MSG (con, msg): #A
   log.error(str(con) + " OpenFlow Error:\n" + msg.show(str(con) + " Error: ").strip())
+  openflowHub.raiseEventNoErrors(ErrorIn, con, msg)
 
-"""
 def handle_FLOW_REMOVED (con, msg): #A
+  openflowHub.raiseEventNoErrors(FlowRemoved, con, msg)
 
-def handle_VENDOR (con, msg): #S
-"""
+#TODO: def handle_VENDOR (con, msg): #S
+
 
 
 
@@ -306,7 +308,9 @@ class Connection:
         h = handlers[t]
         h(self, msg)
       except:
-        print msg.show(str(self) + " " + of.ofp_type[t] + " "),
+        print msg.show(str(self) + " " + str(of.ofp_type[t]) + " caused:")
+        import traceback
+        traceback.print_exc()
         continue
     return True
 

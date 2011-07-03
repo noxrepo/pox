@@ -72,6 +72,11 @@ class ErrorIn (Event):
 
     return s
 
+class FlowRemoved (Event):
+  def __init__ (self, connection, ofp):
+    self.connection = connection
+    self.ofp = ofp
+
 
 class OpenFlowHub (EventMixin):
   _eventMixin_events = set([
