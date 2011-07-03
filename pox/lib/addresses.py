@@ -10,7 +10,7 @@ class EthAddr (object):
 
     # Always stores as a 6 character string
 
-    if isinstance(addr, str):
+    if isinstance(addr, bytes):
       if len(addr) == 17 or len(addr) == 12:
         # hex
         if len(addr) == 17:
@@ -43,12 +43,8 @@ class EthAddr (object):
   def toTuple (self):
     return tuple((ord(x) for x in self._value))
 
-  def toStr (self, separator = ':'): #TODO: show OUI info from packet lib
-    def h (n):
-      if n <= 0xf:
-        return "0" + hex(n)[2:]
-      return hex(n)[2:]
-    return separator.join((h(ord(x)) for x in self._value))
+  def toStr (self, separator = ':', resolveNames  = False): #TODO: show OUI info from packet lib
+    return separator.join(('%02x' % (ord(x),) for x in self._value))
 
   def __str__ (self):
     return self.toStr()
@@ -57,7 +53,13 @@ class EthAddr (object):
     try:
       if not isinstance(other, EthAddr):
         other = EthAddr(other)
-      return self._value.__cmp__(other._value)
+      if self._value == other._value:
+        return 0
+      if self._value < other._value:
+        return -1
+      if self._value > other._value:
+        return -1
+      raise RuntimeError("Objects can not be compared?")
     except:
       return -other.__cmp__(self)
 
