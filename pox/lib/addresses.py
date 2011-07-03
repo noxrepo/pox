@@ -40,7 +40,7 @@ class EthAddr (object):
 
   def toTuple (self):
     return tuple((ord(x) for x in self._value))
-    
+
   def toStr (self, separator = ':'): #TODO: show OUI info from packet lib
     def h (n):
       if n <= 0xf:
@@ -49,7 +49,7 @@ class EthAddr (object):
     return separator.join((h(ord(x)) for x in self._value))
 
   def __str__ (self):
-    return toStr()
+    return self.toStr()
 
   def __cmp__ (self, other):
     try:
