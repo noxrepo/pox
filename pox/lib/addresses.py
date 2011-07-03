@@ -51,13 +51,17 @@ class EthAddr (object):
 
   def __cmp__ (self, other):
     try:
-      if not isinstance(other, EthAddr):
-        other = EthAddr(other)
-      if self._value == other._value:
+      if type(other) == EthAddr:
+        other = other._value
+      elif type(other) == bytes:
+        pass
+      else:
+        other = EthAddr(other)._value
+      if self._value == other:
         return 0
-      if self._value < other._value:
+      if self._value < other:
         return -1
-      if self._value > other._value:
+      if self._value > other:
         return -1
       raise RuntimeError("Objects can not be compared?")
     except:
