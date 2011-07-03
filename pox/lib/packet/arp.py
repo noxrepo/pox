@@ -111,12 +111,12 @@ class arp(packet_base):
         if type(self.hwsrc) == bytes:
             buf += self.hwsrc
         else:
-            buf += self.hwsrc.tostring() #TODO: fix for Address
+            buf += self.hwsrc.toRaw()
         buf += struct.pack('!I',self.protosrc)
         if type(self.hwdst) == bytes:
             buf += self.hwdst
         else:
-            buf += self.hwdst.tostring()  #TODO: fix for Address
+            buf += self.hwdst.toRaw()
         buf += struct.pack('!I',self.protodst)
         return buf
 
