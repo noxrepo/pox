@@ -50,6 +50,7 @@ def handle_FEATURES_REPLY (con, msg):
   con.features = msg
   con.dpid = msg.datapath_id
   con.msg("Connected to dpid " + str(msg.datapath_id))
+  openflowHub._connections[con.dpid] = con
   #for p in msg.ports: print(p.show())
   openflowHub.raiseEvent(ConnectionUp(con, msg))
 
@@ -243,7 +244,11 @@ class Connection:
     return self.sock.fileno()
 
   def disconnect (self):
-    print str(self) + " disconnected"
+    self.msg("disconnected")
+    try:
+      del openflowHub._connections[self.dpid]
+    except:
+      pass
     """
     try:
       if self.dpid != None:

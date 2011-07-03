@@ -88,5 +88,16 @@ class OpenFlowHub (EventMixin):
     FlowRemoved,
     PacketIn,
   ])
+  def __init__ (self):
+    self._connections = weakref.WeakValueDictionary() # DPID -> Connection
+
+  def getConnection (self, dpid):
+    return self._connections.get(dpid, None)
+
+  def sendToDPID (self, dpid, data):
+    if dpid in self._connections:
+      self._connections.send(data)
+    else:
+      print "Couldn't send to", dpid, "because we're not connected to it!"
 
 #openflowHub = OpenFlowHub()
