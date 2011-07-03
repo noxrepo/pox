@@ -159,6 +159,7 @@ class Discovery (EventMixin):
   def _handle_ComponentRegistered (self, event):
     if event.name == "openflow":
       self.listenTo(core.openflow)
+      return EventRemove # We don't need this listener anymore
 
   def _handle_ConnectionUp (self, event):
     """ On datapath join, create a new LLDP packet per port """
@@ -319,6 +320,7 @@ class Discovery (EventMixin):
       # Just update timestamp
       self.adjacency[link] = time.time()
 
+    return EventHalt # Probably nobody else needs this event
 
   def _deleteLinks (self, links):
     for link in links:
