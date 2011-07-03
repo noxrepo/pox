@@ -17,7 +17,7 @@ class EthAddr (object):
           if addr[2::3] != ':::::' and addr[2::3] != '-----':
             raise RuntimeError("Bad format for ethernet address")
           addr = ''.join((addr[x*3:x*3+2] for x in xrange(0,6)))
-        addr = ''.join((chr(int(addr[x*2:x*2+2], 16)) for x in range(0,6)))
+        addr = b''.join((chr(int(addr[x*2:x*2+2], 16)) for x in range(0,6)))
       elif len(addr) == 6:
         # raw
         pass
@@ -27,7 +27,9 @@ class EthAddr (object):
     elif isinstance(addr, EthAddr):
       self._value = addr.toRaw()
     elif type(addr) == list or (hasattr(addr, '__len__') and len(addr) == 6 and hasattr(addr, '__iter__')):
-      self._value = ''.join( (chr(x) for x in addr) )
+      self._value = b''.join( (chr(x) for x in addr) )
+    elif addr is None:
+      self._value = b'\x00' * 6
     else:
       raise RuntimeError("Expected ethernet address to be a string of 6 raw bytes or some hex")
     #elif isinstance(addr, int) or isinstance(addr, long):
@@ -64,6 +66,9 @@ class EthAddr (object):
 
   def __repr__ (self):
     return self.__class__.__name__ + "('" + self.toStr() + "')"
+
+  def __len__ (self):
+    return 6
 
 class IPAddr (object):
   def __init__ (self, addr, networkOrder = False):
@@ -130,6 +135,9 @@ class IPAddr (object):
 
   def __repr__ (self):
     return self.__class__.__name__ + "('" + self.toStr() + "')"
+
+  def __len__ (self):
+    return 4
 
 if __name__ == '__main__':
   # A couple sanity checks
