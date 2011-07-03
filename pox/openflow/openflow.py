@@ -35,6 +35,7 @@ class PacketIn (Event):
     self.port = ofp.in_port
     self.data = ofp.data
     self.parsed = None
+    self.dpid = connection.dpid
 
   def parse (self):
     if self.parsed is None:
@@ -89,15 +90,17 @@ class OpenFlowHub (EventMixin):
     PacketIn,
   ])
   def __init__ (self):
-    self._connections = weakref.WeakValueDictionary() # DPID -> Connection
+    self._connections = {}#weakref.WeakValueDictionary() # DPID -> Connection
 
   def getConnection (self, dpid):
     return self._connections.get(dpid, None)
 
   def sendToDPID (self, dpid, data):
     if dpid in self._connections:
-      self._connections.send(data)
+      self._connections[dpid].send(data)
+      return True
     else:
       print "Couldn't send to", dpid, "because we're not connected to it!"
+      return False
 
 #openflowHub = OpenFlowHub()
