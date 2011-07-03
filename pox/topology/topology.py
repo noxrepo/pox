@@ -4,14 +4,14 @@ from pox.core import core
 log = core.getLogger()
 
 class DatapathEvent (Event):
-  def __init__ (datapath):
+  def __init__ (self, datapath):
     self.datapath = datapath
 
 class SwitchJoin (DatapathEvent): pass
 class SwitchLeave (DatapathEvent): pass
 
 class HostEvent (Event):
-  def __init__ (host):
+  def __init__ (self, host):
     self.host = host
 
 class HostJoin (HostEvent): pass
@@ -31,11 +31,17 @@ class Topology (EventMixin):
 
   def __init__ (self):
     #EventMixin.__init__(self)
-    self.listenTo(core)
     self.switches = {}
 
-  def _handle_GoingUpEvent (self, event):
-    self.listenTo(core.openflow, prefix="OF01")
+    if core.hasComponent("openflow"):
+      self.listenTo(core.openflow)
+    else:
+      # We'll wait for openflow to come up
+      self.listenTo(core)
+
+  def _handle_ComponentRegistered (self, event):
+    if event.name is "openflow":
+      self.listenTo(event.component, prefix="OF01")
 
   def _handle_OF01_ConnectionUp (self, event):
     if event.dpid in self.switches:
