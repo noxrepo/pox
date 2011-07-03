@@ -542,7 +542,7 @@ class Timer (Task):
     self._cancelled = True
 
   def run (self):
-    while True:
+    while not self._cancelled:
       yield Sleep(timeToWake=self._next, absoluteTime=True)
       if self._cancelled: break
       self._next = time.time() + self._interval
