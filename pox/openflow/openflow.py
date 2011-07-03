@@ -3,9 +3,10 @@ import libopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
 
 class ConnectionUp (Event):
-  def __init__ (self, connection):
+  def __init__ (self, connection, ofp):
     self.connection = connection
     self.dpid = connection.dpid
+    self.ofp = ofp
 
 class ConnectionDown (Event):
   def __init__ (self, connection):
@@ -15,6 +16,7 @@ class ConnectionDown (Event):
 class PortStatus (Event):
   def __init__ (self, connection, ofp):
     self.connection = connection
+    self.dpid = connection.dpid
     self.ofp = ofp
     self.modified = ofp.reason == of.OFPPR_MODIFY
     self.added = ofp.reason == of.OFPPR_ADD

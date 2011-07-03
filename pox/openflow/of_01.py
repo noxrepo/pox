@@ -51,7 +51,7 @@ def handle_FEATURES_REPLY (con, msg):
   con.dpid = msg.datapath_id
   con.msg("Connected to dpid " + str(msg.datapath_id))
   #for p in msg.ports: print(p.show())
-  openflowHub.raiseEvent(ConnectionUp(con))
+  openflowHub.raiseEvent(ConnectionUp(con, msg))
 
 def handle_PORT_STATUS (con, msg): #A
   openflowHub.raiseEventNoErrors(PortStatus(con, msg))
