@@ -6,7 +6,7 @@ import os
 import logging
 log = logging.getLogger("util")
 
-def dpidToStr (dpid):
+def dpidToStr (dpid, alwaysLong = False):
   """ In flux. """
   if type(dpid) is long or type(dpid) is int:
     # Not sure if this is right
@@ -15,7 +15,8 @@ def dpidToStr (dpid):
   assert len(dpid) == 8
 
   r = '-'.join(['%02x' % (x,) for x in dpid[2:]])
-  r += '/' + str(struct.unpack('!H', dpid[0:2]))
+  if alwaysLong or dpid[0:2] == '\x00'*2:
+    r += '/' + str(struct.unpack('!H', dpid[0:2]))
 
   return r
 
