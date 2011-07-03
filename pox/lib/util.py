@@ -14,9 +14,10 @@ def dpidToStr (dpid, alwaysLong = False):
 
   assert len(dpid) == 8
 
-  r = '-'.join(['%02x' % (x,) for x in dpid[2:]])
-  if alwaysLong or dpid[0:2] == '\x00'*2:
-    r += '/' + str(struct.unpack('!H', dpid[0:2]))
+  r = '-'.join(['%02x' % (ord(x),) for x in dpid[2:]])
+
+  if alwaysLong or dpid[0:2] != (b'\x00'*2):
+    r += '|' + str(struct.unpack('!H', dpid[0:2])[0])
 
   return r
 
