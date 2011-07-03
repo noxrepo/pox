@@ -23,6 +23,17 @@ def _initHelper (obj, kw):
       + "unexpected keyword argument '" + k + "'")
     setattr(obj, k, v)
 
+MAX_XID = 0x7fFFffFF
+_nextXID = 1
+
+def generateXID ():
+  global _nextXID
+  r = _nextXID
+  _nextXID += 1
+  _nextXID = (_nextXID + 1) % (MAX_XID + 1)
+  return r
+
+
 # Structure definitions
 
 #1. Openflow Header
@@ -31,7 +42,7 @@ class ofp_header:
     self.version = OFP_VERSION
     self.type = 0
     self.length = 8
-    self.xid = 0
+    self.xid = None
 
   def _assert (self):
     if self.type not in ofp_type_map:
@@ -39,6 +50,8 @@ class ofp_header:
     return (True, None)
 
   def pack (self, assertstruct=True):
+    if self.xid is None:
+      self.xid = generateXID()
     if(assertstruct):
       if(not self._assert()[0]):
         return None
