@@ -103,7 +103,6 @@ class chassis_id:
             self.parse()
 
     def fill(self, _subtype, strval):
-        self.type    = 1
         self.strlen  = 1 + len(strval)
         self.subtype = _subtype
         self.id      = strval
@@ -169,7 +168,6 @@ class port_id:
             self.parse()
 
     def fill(self, _subtype, strval):
-        self.type    = 2
         self.strlen  = 1 + len(strval)
         self.subtype = _subtype
         self.id      = strval
@@ -214,7 +212,6 @@ class ttl:
             self.parse()
 
     def fill(self, _ttl):
-        self.type   = 3
         self.strlen = 2
         self.ttl    = _ttl
 
@@ -254,9 +251,9 @@ class end_tlv:
     def parse(self):
         (typelen,) = struct.unpack("!H",self.arr[0:2])
         self.type   = typelen >> 9
-        assert(self.type == 0)
+        assert(self.type == lldp.END_TLV)
         self.strlen = typelen & 0x01ff
-        if (self.strlen != 0):
+        if self.strlen != 0:
             lg.info('(tl end parse) length incorrect (should be 0) %u' % (self.strlen))
             return
 
@@ -280,6 +277,10 @@ class system_description:
         self.next   = b''
         if array != None:
             self.parse()
+
+    def fill(self, strval):
+        self.len  = len(strval)
+        self.next = strval
 
     # assume lldp has done the type/len checking
     def parse(self):
