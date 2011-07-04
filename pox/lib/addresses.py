@@ -104,7 +104,7 @@ class IPAddr (object):
 
   def toUnsignedN (self):
     """ A shortcut """
-    return self.toUnigned(networkOrder = True)
+    return self.toUnsigned(networkOrder = True)
 
   def toSigned (self, networkOrder = False):
     """ Return the address as a signed int """
@@ -145,6 +145,69 @@ class IPAddr (object):
   def __len__ (self):
     return 4
 
+def parseCIDR (addr, infer=True):
+  """
+  Takes a CIDR address or plain dotted-quad, and returns a tuple of address
+  and wildcard bits (suitable for a flow_mod).
+  Can infer the wildcard bits based on network classes if infer=True.
+  Can also take a string in the form 'address/netmask', as long as the
+  netmask is representable in CIDR.
+  """
+  addr = addr.split('/', 2)
+  if len(addr) == 1:
+    if infer is False:
+      return (IPAddr(addr[0]), 0)
+    addr = IPAddr(addr[0])
+    b = inferNetMask(addr)
+    m = (1<<b)-1
+    if (addr.toUnsignedN() & m) == 0:
+      # All bits in wildcarded part are 0, so we'll use the wildcard
+      return (addr, b)
+    else:
+      # Some bits in the wildcarded part were set, so we'll assume it was a host
+      return (addr, 0)
+  try:
+    wild = 32-int(addr[1])
+  except:
+    # Maybe they passed a netmask
+    m = IPAddr(addr[1]).toUnsignedN()
+    b = 0
+    while m & (1<<31):
+      b += 1
+      m <<= 1
+    if m & 0x7fffffff != 0:
+      raise RuntimeError("Netmask is not CIDR-compatible")
+    wild = 32-b
+    assert wild >= 0 and wild <= 32
+    return (IPAddr(addr[0]), wild)
+  assert wild >= 0 and wild <= 32
+  return (IPAddr(addr[0]), wild)
+
+def inferNetMask (addr):
+  """
+  Uses network classes to guess the number of wildcard bits, and returns
+  that number in flow_mod-friendly format.
+  """
+  addr = addr.toUnsignedN()
+  if addr == 0:
+    # Special case -- default network
+    return 32 # all bits wildcarded
+  if (addr & (1 << 31)) == 0:
+    # Class A
+    return 24
+  if (addr & (3 << 30)) == 2 << 30:
+    # Class B
+    return 16
+  if (addr & (7 << 29)) == 6 << 29:
+    # Class C
+    return 8
+  if (addr & (15 << 28)) == 14 << 28:
+    # Class D (Multicast)
+    return 0 # exact match
+  # Must be a Class E (Experimental)
+    return 0
+
+
 if __name__ == '__main__':
   # A couple sanity checks
   import code
@@ -159,5 +222,7 @@ if __name__ == '__main__':
     print hex(a.toUnsigned(networkOrder=True)),'ff000001'
     print a.toSigned(),16777471
     print a.toSigned(networkOrder=True),-16777215
+    print [parseCIDR(x)[1]==8 for x in
+           ["192.168.101.0","192.168.102.0/24","1.168.103/255.255.255.0"]]
+  code.interact(local=locals())
 
-  code.interact(local={'a' : a})
