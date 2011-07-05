@@ -95,6 +95,12 @@ class EventMixin (object):
         break
     return event
 
+  def removeListeners (self, listeners):
+    altered = False
+    for l in listeners:
+      altered = altered or self.removeListener(l)
+    return altered
+
   def removeListener (self, handlerOrEID, eventType=None):
     #print "Remove listener", handlerOrEID
     self._eventMixin_init()
@@ -138,7 +144,7 @@ class EventMixin (object):
 
   def addListenerByName (self, *args, **kw):
     kw['byName'] = True
-    self.addListener(*args,**kw)
+    return self.addListener(*args,**kw)
 
   def addListener (self, eventType, handler, once=False, weak=False, priority=None, byName=False):
     self._eventMixin_init()
@@ -181,7 +187,7 @@ class EventMixin (object):
 def autoBindEvents (sink, source, prefix='', weak=False):
   if len(prefix) > 0 and prefix[0] != '_': prefix = '_' + prefix
   if hasattr(source, '_eventMixin_events') == False:
-    return False
+    return []
 
   events = {}
   for e in source._eventMixin_events:
@@ -190,16 +196,17 @@ def autoBindEvents (sink, source, prefix='', weak=False):
     else:
       events[e.__name__] = e
 
+  listeners = []
   for m in dir(sink):
     a = getattr(sink, m)
     if callable(a):
       if m.startswith("_handle" + prefix):
         m = m[8+len(prefix):]
         if m in events:
-          source.addListener(events[m], a, weak)
+          listeners.append(source.addListener(events[m], a, weak))
           #print "autoBind: ",source,m,"to",sink
 
-  return True
+  return listeners
 
 
 class CallProxy (object):
