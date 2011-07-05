@@ -70,6 +70,9 @@ def handle_ERROR_MSG (con, msg): #A
 def handle_FLOW_REMOVED (con, msg): #A
   openflowHub.raiseEventNoErrors(FlowRemoved, con, msg)
 
+def handle_BARRIER (con, msg):
+  openflowHub.raiseEventNoErrors(BarrierIn, con, msg)
+
 #TODO: def handle_VENDOR (con, msg): #S
 
 
@@ -114,6 +117,7 @@ handlerMap = {
   of.OFPT_FEATURES_REPLY : handle_FEATURES_REPLY,
   of.OFPT_PORT_STATUS : handle_PORT_STATUS,
   of.OFPT_ERROR : handle_ERROR_MSG,
+  of.OFPT_BARRIER_REPLY : handle_BARRIER,
 }
 
 # Deferred sending should be unusual, so don't worry too much about efficiency

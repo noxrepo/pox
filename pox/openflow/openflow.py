@@ -54,6 +54,9 @@ class ErrorIn (Event):
       else:
         return "Unknown/" + str(v)
 
+    #TODO: The show() or something in ofp_error actually does some clever
+    #      stuff now to stringize error messages.  Refactor that and the
+    #      (less clever) code below.
     s = 'Type: ' + lookup(of.ofp_error_type_map, self.ofp.type)
     s += ' Code: '
 
@@ -79,6 +82,14 @@ class FlowRemoved (Event):
   def __init__ (self, connection, ofp):
     self.connection = connection
     self.ofp = ofp
+    self.dpid = connection.dpid
+
+class BarrierIn (Event):
+  def __init__ (self, connection, ofp):
+    self.connection = connection
+    self.ofp = ofp
+    self.dpid = connection.dpid
+    self.xid = ofp.header.xid
 
 
 class OpenFlowHub (EventMixin):
@@ -88,6 +99,7 @@ class OpenFlowHub (EventMixin):
     PortStatus,
     FlowRemoved,
     PacketIn,
+    BarrierIn,
   ])
   def __init__ (self):
     self._connections = {}#weakref.WeakValueDictionary() # DPID -> Connection
