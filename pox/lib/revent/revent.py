@@ -57,6 +57,13 @@ class EventMixin (object):
     return None
 
   def raiseEvent (self, event, *args, **kw):
+    """
+    Raises an event.
+    If "event" is an event type, it will be initialized with args and kw, but only
+    if there are actually listeners.
+    Returns the event object, unless it was never created (because there were no
+    listeners) in which case returns None.
+    """
     self._eventMixin_init()
 
     classCall = False
@@ -64,7 +71,12 @@ class EventMixin (object):
       eventType = event.__class__
       classCall = True
     elif issubclass(event, Event):
-      #TODO: Don't construct event if there are no handlers
+      # Check for early-out
+      if event not in self._eventMixin_handlers:
+        return None
+      if len(self._eventMixin_handlers[event]) == 0:
+        return None
+
       classCall = True
       eventType = event
       event = eventType(*args, **kw)
