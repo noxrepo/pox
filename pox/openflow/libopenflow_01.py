@@ -81,9 +81,9 @@ class ofp_header:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'version: ' + str(self.version) + '\n'
-    outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'length: ' + str(self.length) + '\n'
-    outstr += prefix + 'xid: ' + str(self.xid) + '\n'
+    outstr += prefix + 'type:    ' + str(self.type) + '\n'
+    outstr += prefix + 'length:  ' + str(self.length) + '\n'
+    outstr += prefix + 'xid:     ' + str(self.xid) + '\n'
     return outstr
 
 #2. Common Structures
