@@ -23,7 +23,7 @@ class OpenFlowTopology (EventMixin):
   know anything about OpenFlow.  This class knows something about both,
   and hooks the two of them together
   """
-  _wantComponents = set(['openflow','topology'])
+  _wantComponents = set(['openflow','topology','discovery'])
 
   def _resolveComponents (self):
     if self._wantComponents == None or len(self._wantComponents) == 0:
@@ -51,7 +51,21 @@ class OpenFlowTopology (EventMixin):
     super(EventMixin, self).__init__()
     if not self._resolveComponents():
       self.listenTo(core)
-    
+  
+  def _handle_discovery_LinkEvent (self, event):
+    if self.topology is None: return
+    link = event.link
+    sw1 = self.topology.getEntityByID(link.dpid1)
+    sw2 = self.topology.getEntityByID(link.dpid2)
+    if sw1 is None or sw2 is None: return
+    if link.port1 not in sw1.ports or link.port2 not in sw2.ports: return
+    if event.added:
+      sw1.ports[link.port1].addEntity(sw2, single=True)
+      sw2.ports[link.port2].addEntity(sw1, single=True)
+    elif event.removed:
+      sw1.ports[link.port1].entities.remove(sw2)
+      sw2.ports[link.port2].entities.remove(sw1)
+
   def _handle_ComponentRegistered (self, event):
     if self._resolveComponents():
       return EventRemove
@@ -104,6 +118,12 @@ class OpenFlowPort (Port):
   def __contains__ (self, item):
     """ True if this port connects to the specified entity """
     return item in self.entities
+
+  def addEntity (self, entity, single = False):
+    if single:
+      self.entities = set([entity])
+    else:
+      self.entities.add(entity)
 
 
 class OpenFlowSwitch (EventMixin, Switch):
@@ -187,7 +207,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     event.halt = False
 
   def findPortForEntity (self, entity):
-    for p in self.ports:
+    for p in self.ports.itervalues():
       if entity in p:
         return p
     return None
