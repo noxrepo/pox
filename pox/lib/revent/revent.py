@@ -38,6 +38,9 @@ class EventMixin (object):
       self._eventMixin_events = set()
     self._eventMixin_events.add(eventType)
 
+  def __init__ (self):
+    self._eventMixin_init()
+
   def _eventMixin_init (self):
     if not hasattr(self, "_eventMixin_events"):
       setattr(self, "_eventMixin_events", True)
