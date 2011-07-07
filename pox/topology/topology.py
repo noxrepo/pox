@@ -1,5 +1,6 @@
 from pox.lib.revent.revent import *
 from pox.core import core
+from pox.lib.addresses import *
 
 log = core.getLogger()
 
@@ -48,8 +49,11 @@ class Topology (EventMixin):
     EventMixin.__init__(self)
     self.entities = {}
 
-  def getEntityByID (self, ID):
-    return self.entities[ID]
+  def getEntityByID (self, ID, fail=False):
+    if fail:
+      return self.entities[ID]
+    else:
+      return self.entities.get(ID, None)
 
   def removeEntity (self, entity):
     del self.entities[entity.id]
