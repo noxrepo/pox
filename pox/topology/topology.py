@@ -51,6 +51,16 @@ class Topology (EventMixin):
   def getEntityByID (self, ID):
     return self.entities[ID]
 
+  def removeEntity (self, entity):
+    del self.entities[entity.id]
+    log.info(str(entity) + " left")
+    if isinstance(entity, Switch):
+      self.raiseEvent(SwitchLeave, entity)
+    elif isinstance(entity, Host):
+      self.raiseEvent(HostLeave, entity)
+    else:
+      self.raiseEvent(EntityLeave, entity)
+
   def addEntity (self, entity):
     assert entity.id not in self.entities
     self.entities[entity.id] = entity
