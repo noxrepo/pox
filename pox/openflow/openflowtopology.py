@@ -1,0 +1,196 @@
+from pox.lib.revent.revent import *
+import libopenflow_01 as of
+from openflow import *
+from pox.core import core
+from pox.topology.topology import *
+from pox.topology.discovery import *
+from pox.lib.util import dpidToStr
+from pox.lib.addresses import *
+
+EthAddr
+
+# After a switch disconnects, it has this many seconds to reconnect in
+# order to reactivate the same OpenFlowSwitch object.  After this, if
+# it reconnects, it will be a new switch object.
+RECONNECT_TIMEOUT = 30
+
+log = core.getLogger()
+
+
+class OpenFlowTopology (EventMixin):
+  """
+  OpenFlow doesn't know anything about Topology, and Topology doesn't
+  know anything about OpenFlow.  This class knows something about both,
+  and hooks the two of them together
+  """
+  _wantComponents = set(['openflow','topology'])
+
+  def _resolveComponents (self):
+    if self._wantComponents == None or len(self._wantComponents) == 0:
+      self._wantComponents = None
+      return True
+  
+    got = set()
+    for c in self._wantComponents:
+      if core.hasComponent(c):
+        setattr(self, c, getattr(core, c))
+        self.listenTo(getattr(core, c), prefix=c)
+        got.add(c)
+      else:
+        setattr(self, c, None)
+    for c in got:
+      self._wantComponents.remove(c)
+    if len(self._wantComponents) == 0:
+      self.wantComponents = None
+      log.debug(self.__class__.__name__ + " ready")
+      return True
+    #log.debug(self.__class__.__name__ + " still wants: " + (', '.join(self._wantComponents)))
+    return False
+
+  def __init__ (self):
+    super(EventMixin, self).__init__()
+    if not self._resolveComponents():
+      self.listenTo(core)
+    
+  def _handle_ComponentRegistered (self, event):
+    if self._resolveComponents():
+      return EventRemove
+
+  def _handle_openflow_ConnectionUp (self, event):
+    sw = self.topology.getEntityByID(event.dpid)
+    add = False
+    if sw is None:
+      sw = OpenFlowSwitch(event.dpid)
+      add = True
+    else:
+      if sw.connection is not None:
+        log.warn("Switch %s connected, but... it's already connected!" %
+                 (dpidToStr(event.dpid),))
+    sw._setConnection(event.connection, event.ofp)
+    log.info("Switch " + dpidToStr(event.dpid) + " connected")
+    if add:
+      self.topology.addEntity(sw)
+      sw.raiseEvent(SwitchJoin, sw)
+
+  def _handle_openflow_ConnectionDown (self, event):
+    sw = self.topology.getEntityByID(event.dpid)
+    if sw is None:
+      log.warn("Switch %s disconnected, but... it doesn't exist!" %
+               (dpidToStr(event.dpid),))
+    else:
+      if sw.connection is None:
+        log.warn("Switch %s disconnected, but... it's wasn't connected!" %
+                 (dpidToStr(event.dpid),))
+      sw.connection = None
+      log.info("Switch " + str(event.dpid) + " disconnected")
+
+
+class OpenFlowPort (Port):
+  def __init__ (self, ofp):
+    # Passed an ofp_phy_port
+    Port.__init__(self, ofp.port_no, ofp.hw_addr, ofp.name)
+    self.isController = self.number == of.OFPP_CONTROLLER
+    self._update(ofp)
+    self.exists = True
+    self.entities = set()
+
+  def _update (self, ofp):
+    assert self.name == ofp.name
+    assert self.number == ofp.port_no
+    self.hwAddr = EthAddr(ofp.hw_addr)
+    self._config = ofp.config
+    self._state = ofp.state
+
+  def __contains__ (self, item):
+    """ True if this port connects to the specified entity """
+    return item in self.entities
+
+
+class OpenFlowSwitch (EventMixin, Switch):
+  _eventMixin_events = set([
+    SwitchJoin,
+    SwitchLeave,
+
+    PortStatus,
+    FlowRemoved,
+    PacketIn,
+    BarrierIn,
+  ])
+  def __init__ (self, dpid):
+    super(Switch, self).__init__(dpid)
+    EventMixin.__init__(self)
+    self.dpid = dpid
+    self.ports = {}
+    self.capabilities = 0
+    self.connection = None
+    self._listeners = []
+    self._reconnectTimeout = None # Timer for reconnection
+
+  def _setConnection (self, connection, ofp=None):
+    self.removeListeners(self._listeners)
+    self._listeners = []
+    self.connection = connection
+    if self._reconnectTimeout is not None:
+      self._reconnectTimeout.cancel()
+      self._reconnectTimeout = None
+    if connection is None:
+      self._reconnectTimeout = Timer(RECONNECT_TIMEOUT, self._timer_ReconnectTimeout)
+    if ofp is not None:
+      self.capabilities = ofp.capabilities
+      untouched = self.ports.keys()
+      for p in ofp.ports:
+        if p.port_no in self.ports:
+          self.ports[p.port_no]._update(p)
+          self.untouched.add(p.port_no)
+        else:
+          self.ports[p.port_no] = OpenFlowPort(p)
+      for p in untouched:
+        self.ports[p].exists = False
+        del self.ports[p]
+    if connection is not None:
+      self._listeners = self.listenTo(connection, prefix="con")
+
+  def _timer_ReconnectTimeout (self):
+    """ Called if we've been disconnected for RECONNECT_TIMEOUT seconds """
+    self._reconnectTimeout = None
+    core.topology.removeEntity(self)
+    self.raiseEvent(SwitchLeave, self)
+
+  def _handle_con_PortStatus (self, event):
+    p = event.ofp.desc
+    if event.ofp.reason == of.OFPPR_DELETE:
+      if p.port_no in self.ports:
+        self.ports[p.port_no].exists = False
+        del self.ports[p.port_no]
+    elif event.ofp.reason == of.OFPPR_MODIFY:
+      self.ports[p.port_no]._update(p)
+    else:
+      assert event.ofp.reason == of.OFPPR_ADD
+      assert p.port_no not in self.ports
+      self.ports[p.port_no] = OpenFlowPort(p)
+    self.raiseEvent(event)
+    event.halt = False
+
+  def _handle_con_ConnectionDown (self, event):
+    self._setConnection(None)
+
+  def _handle_con_PacketIn (self, event):
+    self.raiseEvent(event)
+    event.halt = False
+
+  def _handle_con_BarrierIn (self, event):
+    self.raiseEvent(event)
+    event.halt = False
+
+  def _handle_con_FlowRemoved (self, event):
+    self.raiseEvent(event)
+    event.halt = False
+
+  def findPortForEntity (self, entity):
+    for p in self.ports:
+      if entity in p:
+        return p
+    return None
+
+  def __repr__ (self):
+    return "<%s %s>" % (self.__class__.__name__, dpidToStr(self.dpid))

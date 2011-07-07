@@ -6,6 +6,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 from pox.core import core
 import pox.openflow.openflow
+import pox.openflow.openflowtopology
 import pox.topology.topology
 import pox.topology.discovery
 import pox.openflow.of_01
@@ -18,6 +19,7 @@ revent.showEventExceptions = True
 
 
 def startup ():
+  core.register("openflowtopology", pox.openflow.openflowtopology.OpenFlowTopology())
   core.register("topology", pox.topology.topology.Topology())
   core.register("discovery", pox.topology.discovery.Discovery())
   core.register("openflow", pox.openflow.openflow.OpenFlowHub())
