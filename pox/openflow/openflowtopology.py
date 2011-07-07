@@ -125,6 +125,8 @@ class OpenFlowPort (Port):
     else:
       self.entities.add(entity)
 
+  def __repr__ (self):
+    return "<Port #" + str(self.number) + ">"
 
 class OpenFlowSwitch (EventMixin, Switch):
   _eventMixin_events = set([
