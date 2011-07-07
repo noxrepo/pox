@@ -1,6 +1,6 @@
 """
-Not sure if this should be in openflow or if it is a suitable base for
-generic discovery.
+It's possible that some of this should be abstracted out into a generic
+Discovery module, or a Discovery superclass.
 """
 
 from pox.lib.revent.revent        import *

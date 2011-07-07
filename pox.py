@@ -8,7 +8,7 @@ from pox.core import core
 import pox.openflow.openflow
 import pox.openflow.openflowtopology
 import pox.topology.topology
-import pox.topology.discovery
+import pox.openflow.discovery
 import pox.openflow.of_01
 import pox.dumb_l3_switch.dumb_l3_switch
 import pox.messenger.messenger
@@ -19,9 +19,9 @@ revent.showEventExceptions = True
 
 
 def startup ():
-  core.register("openflowtopology", pox.openflow.openflowtopology.OpenFlowTopology())
+  core.register("openflow_topology", pox.openflow.openflowtopology.OpenFlowTopology())
   core.register("topology", pox.topology.topology.Topology())
-  core.register("discovery", pox.topology.discovery.Discovery())
+  core.register("openflow_discovery", pox.openflow.discovery.Discovery())
   core.register("openflow", pox.openflow.openflow.OpenFlowHub())
   core.register("switch", pox.dumb_l3_switch.dumb_l3_switch.dumb_l3_switch())
 

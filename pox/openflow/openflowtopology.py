@@ -3,7 +3,7 @@ import libopenflow_01 as of
 from openflow import *
 from pox.core import core
 from pox.topology.topology import *
-from pox.topology.discovery import *
+from pox.openflow.discovery import *
 from pox.lib.util import dpidToStr
 from pox.lib.addresses import *
 
