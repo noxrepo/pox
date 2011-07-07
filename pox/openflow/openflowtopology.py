@@ -23,7 +23,7 @@ class OpenFlowTopology (EventMixin):
   know anything about OpenFlow.  This class knows something about both,
   and hooks the two of them together
   """
-  _wantComponents = set(['openflow','topology','discovery'])
+  _wantComponents = set(['openflow','topology','openflow_discovery'])
 
   def _resolveComponents (self):
     if self._wantComponents == None or len(self._wantComponents) == 0:
@@ -52,7 +52,7 @@ class OpenFlowTopology (EventMixin):
     if not self._resolveComponents():
       self.listenTo(core)
   
-  def _handle_discovery_LinkEvent (self, event):
+  def _handle_openflow_discovery_LinkEvent (self, event):
     if self.topology is None: return
     link = event.link
     sw1 = self.topology.getEntityByID(link.dpid1)
