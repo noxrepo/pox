@@ -42,9 +42,14 @@ from ethernet import ethernet
 from ethernet import ETHER_ANY
 from ethernet import ETHER_BROADCAST
 
+from ipv4 import IP_ANY
+from ipv4 import IP_BROADCAST
+
+from pox.lib.addresses import IPAddr, EthAddr
+
 from packet_utils       import *
 
-class arp(packet_base):
+class arp (packet_base):
     "ARP/RARP packet struct"
 
     MIN_LEN = 28
@@ -65,12 +70,12 @@ class arp(packet_base):
         self.prototype  = arp.PROTO_TYPE_IP
         self.hwsrc      = ETHER_ANY
         self.hwdst      = ETHER_ANY
-        self.hwlen      = 0
+        self.hwlen      = 6
         self.opcode     = 0
-        self.protolen   = 0
-        self.protosrc   = 0
-        self.protodst   = 0
-        self.next       = ''
+        self.protolen   = 4
+        self.protosrc   = IP_ANY 
+        self.protodst   = IP_ANY
+        self.next       = b''
 
         if arr != None:
             if (type(arr) != bytes):
@@ -92,15 +97,16 @@ class arp(packet_base):
             self.msg('(arp parse) hw type unknown %u' % self.hwtype)
         if self.hwlen != 6:
             self.msg('(arp parse) unknown hw len %u' % self.hwlen)
+        else:
+            self.hwsrc = EthAddr(self.arr[8:14])
+            self.hwdst = EthAddr(self.arr[18:24])
         if self.prototype != arp.PROTO_TYPE_IP:
             self.msg('(arp parse) proto type unknown %u' % self.prototype)
         if self.protolen != 4:
             self.msg('(arp parse) unknown proto len %u' % self.protolen)
-
-        self.hwsrc = self.arr[8:14]
-        self.protosrc = struct.unpack('!I',self.arr[14:18])[0]
-        self.hwdst = self.arr[18:24]
-        self.protodst = struct.unpack('!I',self.arr[24:28])[0]
+        else:
+            self.protosrc = IPAddr(struct.unpack('!I',self.arr[14:18])[0])
+            self.protodst = IPAddr(struct.unpack('!I',self.arr[24:28])[0])
 
         self.next = self.arr[28:]
         self.parsed = True
@@ -112,12 +118,18 @@ class arp(packet_base):
             buf += self.hwsrc
         else:
             buf += self.hwsrc.toRaw()
-        buf += struct.pack('!I',self.protosrc)
+        if type(self.protosrc) is IPAddr:
+          buf += struct.pack('!I',self.protosrc.toUnsigned())
+        else:
+          buf += struct.pack('!I',self.protosrc)
         if type(self.hwdst) == bytes:
             buf += self.hwdst
         else:
             buf += self.hwdst.toRaw()
-        buf += struct.pack('!I',self.protodst)
+        if type(self.protodst) is IPAddr:
+          buf += struct.pack('!I',self.protodst.toUnsigned())
+        else:
+          buf += struct.pack('!I',self.protodst)
         return buf
 
     def __str__(self):
@@ -146,8 +158,8 @@ class arp(packet_base):
                 op = "REV_REPLY"
 
         s = ''.join(('(',op,'[hw:'+str(self.hwtype),'p:'+str(self.prototype),\
-                         '[', mac_to_str(self.hwsrc),'>', \
-                              mac_to_str(self.hwdst),']:', \
-                              '[',ip_to_str(self.protosrc), '>',  \
-                                  ip_to_str(self.protodst),'])'))
+                         '[', str(EthAddr(self.hwsrc)),'>', \
+                              str(EthAddr(self.hwdst)),']:', \
+                              '[',str(IPAddr(self.protosrc)), '>',  \
+                                  str(IPAddr(self.protodst)),'])'))
         return s

@@ -32,12 +32,6 @@ FLOW_IDLE_TIMEOUT = 10
 ARP_TIMEOUT = 60 * 2
 
 
-# Format IP address as string
-def n2s (ip):
-  """ Format an IP address """
-  return "%s.%s.%s.%s" % (((ip >> 24) & 0xff), ((ip >> 16) & 0xff),
-   ((ip >> 8) & 0xff), ((ip >> 0) & 0xff))
-
 
 class Entry (object):
   """
@@ -91,14 +85,14 @@ class dumb_l3_switch (EventMixin):
       return
 
     if isinstance(packet.next, ipv4):
-      log.debug("%i %i IP %s => %s", dpid,inport,n2s(packet.next.srcip),n2s(packet.next.dstip))
+      log.debug("%i %i IP %s => %s", dpid,inport,str(packet.next.srcip),str(packet.next.dstip))
 
       # Learn or update port/MAC info
       if packet.next.srcip in self.arpTable[dpid]:
          if self.arpTable[dpid][packet.next.srcip] != (inport, packet.src):
-           log.info("%i %i RE-learned %s", dpid,inport,n2s(packet.next.srcip))
+           log.info("%i %i RE-learned %s", dpid,inport,str(packet.next.srcip))
       else:
-         log.debug("%i %i learned %s", dpid,inport,n2s(packet.next.srcip))
+         log.debug("%i %i learned %s", dpid,inport,str(packet.next.srcip))
       self.arpTable[dpid][packet.next.srcip] = Entry(inport, packet.src)
 
       # Try to forward
@@ -109,10 +103,10 @@ class dumb_l3_switch (EventMixin):
         prt = self.arpTable[dpid][dstaddr].port
         if prt == inport:
           log.warning("%i %i not sending packet for %s back out of the input port" % (
-           dpid, inport, n2s(dstaddr)))
+           dpid, inport, str(dstaddr)))
         else:
           log.debug("%i %i installing flow for %s => %s out port %i" % (dpid,
-           inport, n2s(packet.next.srcip), n2s(dstaddr), prt))
+           inport, str(packet.next.srcip), str(dstaddr), prt))
 
           msg = of.ofp_flow_mod(command=of.OFPFC_ADD,
                                 idle_timeout=FLOW_IDLE_TIMEOUT,
@@ -126,7 +120,7 @@ class dumb_l3_switch (EventMixin):
       a = packet.next
       log.debug("%i %i ARP %s %s => %s", dpid, inport,
        {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
-       'op:%i' % (a.opcode,)), n2s(a.protosrc), n2s(a.protodst))
+       'op:%i' % (a.opcode,)), str(a.protosrc), str(a.protodst))
 
       if a.prototype == arp.PROTO_TYPE_IP:
         if a.hwtype == arp.HW_TYPE_ETHERNET:
@@ -135,9 +129,9 @@ class dumb_l3_switch (EventMixin):
             # Learn or update port/MAC info
             if a.protosrc in self.arpTable[dpid]:
               if self.arpTable[dpid][a.protosrc] != (inport, packet.src):
-                log.info("%i %i RE-learned %s", dpid,inport,n2s(a.protosrc))
+                log.info("%i %i RE-learned %s", dpid,inport,str(a.protosrc))
             else:
-              log.debug("%i %i learned %s", dpid,inport,n2s(a.protosrc))
+              log.debug("%i %i learned %s", dpid,inport,str(a.protosrc))
             self.arpTable[dpid][a.protosrc] = Entry(inport, packet.src)
 
             if a.opcode == arp.REQUEST:
@@ -162,7 +156,7 @@ class dumb_l3_switch (EventMixin):
                   e = ethernet(type=packet.type, src=r.hwsrc, dst=a.hwsrc)
                   e.set_payload(r)
                   log.debug("%i %i answering ARP for %s" % (dpid, inport,
-                   n2s(r.protosrc)))
+                   str(r.protosrc)))
                   msg = of.ofp_packet_out(data = e.pack(),
                                           action = of.ofp_action_output(port = inport))
                   event.connection.send(msg.pack())
@@ -171,7 +165,7 @@ class dumb_l3_switch (EventMixin):
       # Didn't know how to answer or otherwise handle this ARP, so just flood it
       log.debug("%i %i flooding ARP %s %s => %s" % (dpid, inport,
        {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
-       'op:%i' % (a.opcode,)), n2s(a.protosrc), n2s(a.protodst)))
+       'op:%i' % (a.opcode,)), str(a.protosrc), str(a.protodst)))
 
       msg = of.ofp_packet_out(in_port = inport, action = of.ofp_action_output(port = of.OFPP_FLOOD))
       if event.ofp.buffer_id is of.NO_BUFFER:
