@@ -4,17 +4,20 @@ from pox.lib.packet.ethernet import ethernet
 
 class ConnectionUp (Event):
   def __init__ (self, connection, ofp):
+    Event.__init__(self)
     self.connection = connection
     self.dpid = connection.dpid
     self.ofp = ofp
 
 class ConnectionDown (Event):
   def __init__ (self, connection):
+    Event.__init__(self)
     self.connection = connection
     self.dpid = connection.dpid
 
 class PortStatus (Event):
   def __init__ (self, connection, ofp):
+    Event.__init__(self)
     self.connection = connection
     self.dpid = connection.dpid
     self.ofp = ofp
@@ -25,11 +28,13 @@ class PortStatus (Event):
 
 class FlowRemoved (Event):
   def __init__ (self, connection, ofp):
+    Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
 
 class PacketIn (Event):
   def __init__ (self, connection, ofp):
+    Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
     self.port = ofp.in_port
@@ -44,6 +49,7 @@ class PacketIn (Event):
 
 class ErrorIn (Event):
   def __init__ (self, connection, ofp):
+    Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
 
@@ -80,12 +86,14 @@ class ErrorIn (Event):
 
 class FlowRemoved (Event):
   def __init__ (self, connection, ofp):
+    Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
     self.dpid = connection.dpid
 
 class BarrierIn (Event):
   def __init__ (self, connection, ofp):
+    Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
     self.dpid = connection.dpid

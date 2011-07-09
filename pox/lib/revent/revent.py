@@ -21,6 +21,7 @@ EventHaltAndRemove = EventReturn(remove=True, halt=True)
 class Event (object):
   def __init__ (self):
     self.halt = False
+    self.source = None
 
   def _invoke (self, handler, *args, **kw):
     return handler(self, *args, **kw)
@@ -73,6 +74,7 @@ class EventMixin (object):
     if isinstance(event, Event):
       eventType = event.__class__
       classCall = True
+      if event.source is None: event.source = self
     elif issubclass(event, Event):
       # Check for early-out
       if event not in self._eventMixin_handlers:
@@ -85,6 +87,7 @@ class EventMixin (object):
       event = eventType(*args, **kw)
       args = ()
       kw = {}
+      if event.source is None: event.source = self
     #print "raise",event,eventType
     if self._eventMixin_events != True and eventType not in self._eventMixin_events:
       raise RuntimeError("Event " + str(eventType) + " not defined on this object")
@@ -106,7 +109,8 @@ class EventMixin (object):
           self.removeListener(eid)
         if rv[0]:
           break
-      if classCall and hasattr(event, "halt") and event.halt:
+      #if classCall and hasattr(event, "halt") and event.halt:
+      if classCall and event.halt:
         break
     return event
 
