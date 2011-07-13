@@ -45,6 +45,10 @@ from icmp import *
 
 from packet_base import packet_base
 
+from pox.lib.addresses import IPAddr
+
+IP_ANY = IPAddr("0.0.0.0")
+IP_BROADCAST = IPAddr("255.255.25.255")
 
 class ipv4(packet_base):
     "IP packet struct"
@@ -76,8 +80,8 @@ class ipv4(packet_base):
         self.ttl   = 64
         self.protocol = 0
         self.csum  = 0
-        self.srcip = 0
-        self.dstip = 0
+        self.srcip = IP_ANY
+        self.dstip = IP_ANY
         self.next  = ''
 
         if arr != None:
@@ -92,8 +96,8 @@ class ipv4(packet_base):
         s = ''.join(('(','[v:'+str(self.v),'hl:'+str(self.hl),\
                          'l:', str(self.iplen),'t:', \
                          str(self.ttl), ']', ipproto_to_str(self.protocol), \
-                         ' cs:', '%x' %self.csum, '[',ip_to_str(self.srcip), \
-                         '>', ip_to_str(self.dstip),'])'))
+                         ' cs:', '%x' %self.csum, '[',str(self.srcip), \
+                         '>', str(self.dstip),'])'))
         if self.next == None:
             return s
         return ''.join((s, str(self.next)))
@@ -129,6 +133,9 @@ class ipv4(packet_base):
                         % (self.hl, self.iplen))
             return
 
+        self.dstip = IPAddr(self.dstip)
+        self.srcip = IPAddr(self.srcip)
+
         # At this point, we are reasonably certain that we have an IP
         # packet
         self.parsed = True
@@ -154,8 +161,8 @@ class ipv4(packet_base):
         data = struct.pack('!BBHHHBBHII', (self.v << 4) + self.hl, self.tos, \
                                  self.iplen, self.id, \
                                  (self.flags << 13) | self.frag, self.ttl, \
-                                 self.protocol, 0, self.srcip, \
-                                 self.dstip)
+                                 self.protocol, 0, self.srcip.toUnsigned(), \
+                                 self.dstip.toUnsigned())
         return checksum(data, 0)
 
 
@@ -163,6 +170,6 @@ class ipv4(packet_base):
         self.csum = self.checksum()
         return struct.pack('!BBHHHBBHII', (self.v << 4) + self.hl, self.tos, \
                                  self.iplen, self.id, (self.flags << 13) | self.frag, self.ttl, \
-                                 self.protocol, self.csum, self.srcip, \
-                                 self.dstip)
+                                 self.protocol, self.csum, self.srcip.toUnsigned(), \
+                                 self.dstip.toUnsigned())
 

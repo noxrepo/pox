@@ -81,10 +81,11 @@ class IPAddr (object):
     """ Can be initialized with several formats.
         If addr is an int/long, then it is assumed to be in host byte order
         unless networkOrder = True
+        Stored in host byte order as a signed int
     """
 
     # Always stores as a signed network-order int
-    if isinstance(addr, str):
+    if isinstance(addr, str) or isinstance(addr, bytes):
       if len(addr) != 4:
         # dotted quad
         self._value = struct.unpack('!i', socket.inet_aton(addr))[0]
@@ -94,7 +95,7 @@ class IPAddr (object):
       self._value = addr._value
     elif isinstance(addr, int) or isinstance(addr, long):
       addr = addr & 0xffFFffFF # unsigned long
-      self._value = struct.unpack("!i", struct.pack(('!' if networkOrder else '') + "I", addr))[0]
+      self._value = struct.unpack("i", struct.pack(('!' if networkOrder else '') + "I", addr))[0]
     else:
       raise RuntimeError("Unexpected IP address format")
 
@@ -144,6 +145,7 @@ class IPAddr (object):
 
   def __len__ (self):
     return 4
+
 
 def parseCIDR (addr, infer=True):
   """

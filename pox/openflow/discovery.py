@@ -1,3 +1,8 @@
+"""
+It's possible that some of this should be abstracted out into a generic
+Discovery module, or a Discovery superclass.
+"""
+
 from pox.lib.revent.revent        import *
 from pox.lib.recoco.recoco        import Timer
 from pox.lib.packet.ethernet      import LLDP_MULTICAST, NDP_MULTICAST
@@ -70,7 +75,7 @@ class LLDPSender (object):
     if self._timer: self._timer.cancel()
     self._timer = None
     if len(self._packets) != 0:
-      self.timer = Timer(LLDP_SEND_CYCLE / len(self._packets), self._timerHandler, recurring=True)
+      self._timer = Timer(LLDP_SEND_CYCLE / len(self._packets), self._timerHandler, recurring=True)
 
   def _timerHandler (self):
     """
@@ -194,7 +199,7 @@ class Discovery (EventMixin):
       if event.added:
         self._sender.addPort(event.dpid, event.port, event.ofp.desc.hw_addr)
       elif event.deleted:
-        self._sender.addPort(event.dpid, event.port)
+        self._sender.delPort(event.dpid, event.port)
 
   def _expireLinks (self):
     '''

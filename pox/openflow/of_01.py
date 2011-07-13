@@ -1,6 +1,7 @@
 from pox.core import core
 import pox
 import pox.lib.util
+from pox.lib.revent.revent import EventMixin
 
 from pox.openflow.openflow import *
 
@@ -14,20 +15,6 @@ import threading
 import os
 import sys
 import exceptions
-
-"""
-from packet.tcp           import tcp
-from packet.udp           import udp
-from packet.vlan          import vlan
-from packet.ipv4         import ipv4
-from packet.icmp         import icmp
-from packet.ethernet     import ethernet
-from packet.packet_utils import mac_to_str, mac_to_int
-
-from time import time
-from socket import htons
-
-"""
 
 
 import traceback
@@ -52,13 +39,16 @@ def handle_FEATURES_REPLY (con, msg):
   con.msg("Connected to dpid " + str(msg.datapath_id))
   openflowHub._connections[con.dpid] = con
   #for p in msg.ports: print(p.show())
-  openflowHub.raiseEvent(ConnectionUp(con, msg))
+  openflowHub.raiseEvent(ConnectionUp, con, msg)
+  con.raiseEvent(ConnectionUp, con, msg)
 
 def handle_PORT_STATUS (con, msg): #A
-  openflowHub.raiseEventNoErrors(PortStatus(con, msg))
+  openflowHub.raiseEventNoErrors(PortStatus, con, msg)
+  con.raiseEventNoErrors(PortStatus, con, msg)
 
 def handle_PACKET_IN (con, msg): #A
   openflowHub.raiseEventNoErrors(PacketIn, con, msg)
+  con.raiseEventNoErrors(PacketIn, con, msg)
 #  if PacketIn in openflowHub._eventMixin_handlers:
 #    p = ethernet(msg.data)
 #    openflowHub.raiseEventNoErrors(PacketIn(con, msg, p))
@@ -66,19 +56,17 @@ def handle_PACKET_IN (con, msg): #A
 def handle_ERROR_MSG (con, msg): #A
   log.error(str(con) + " OpenFlow Error:\n" + msg.show(str(con) + " Error: ").strip())
   openflowHub.raiseEventNoErrors(ErrorIn, con, msg)
+  con.raiseEventNoErrors(ErrorIn, con, msg)
 
 def handle_FLOW_REMOVED (con, msg): #A
   openflowHub.raiseEventNoErrors(FlowRemoved, con, msg)
+  con.raiseEventNoErrors(FlowRemoved, con, msg)
 
 def handle_BARRIER (con, msg):
   openflowHub.raiseEventNoErrors(BarrierIn, con, msg)
+  con.raiseEventNoErrors(BarrierIn, con, msg)
 
 #TODO: def handle_VENDOR (con, msg): #S
-
-
-
-
-
 
 
 
@@ -102,7 +90,7 @@ def make_type_to_class_table ():
   return [classes[i] for i in range(0, max)]
 
 
-# A list, where the index is an OFPT, and the value is a pyopenflow class for that type
+# A list, where the index is an OFPT, and the value is a libopenflow class for that type
 classes = []
 
 # A list, where the index is an OFPT, and the value is a function to call for that type
@@ -217,7 +205,16 @@ class DeferredSender (threading.Thread):
 
 deferredSender = DeferredSender()
 
-class Connection:
+class Connection (EventMixin):
+  _eventMixin_events = set([
+    ConnectionUp,
+    ConnectionDown,
+    PortStatus,
+    FlowRemoved,
+    PacketIn,
+    BarrierIn,
+  ])
+
   ID = 0
 
   def msg (self, m):

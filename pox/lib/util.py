@@ -6,6 +6,19 @@ import os
 import logging
 log = logging.getLogger("util")
 
+def set_extend (l, index, item, emptyValue = None):
+  if index >= len(l):
+    l += ([emptyValue] * (index - len(self) + 1))
+  l[index] = item
+
+def strToDPID (s):
+  s = s.replace("-", "").split("|", 2)
+  a = int(s[0], 16)
+  b = 0
+  if len(s) == 2:
+    b = int(s[1])
+  return a | (b << 48)
+
 def dpidToStr (dpid, alwaysLong = False):
   """ In flux. """
   if type(dpid) is long or type(dpid) is int:
