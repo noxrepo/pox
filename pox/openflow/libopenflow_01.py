@@ -570,8 +570,7 @@ class ofp_match:
     return binaryString[40:]
 
   def __len__ (self):
-    l = 40
-    return l
+    return 40
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -1440,8 +1439,7 @@ class ofp_port_mod:
     return binaryString[32:]
 
   def __len__ (self):
-    l = 32
-    return l
+    return 32
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -1499,8 +1497,7 @@ class ofp_queue_get_config_request:
     return binaryString[12:]
 
   def __len__ (self):
-    l = 12
-    return l
+    return 12
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -1756,8 +1753,7 @@ class ofp_desc_stats:
     return binaryString[1056:]
 
   def __len__ (self):
-    l = 1056
-    return l
+    return 1056
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -1950,8 +1946,7 @@ class ofp_aggregate_stats_request:
     return binaryString[44:]
 
   def __len__ (self):
-    l = 44
-    return l
+    return 44
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -1999,8 +1994,7 @@ class ofp_aggregate_stats_reply:
     return binaryString[24:]
 
   def __len__ (self):
-    l = 24
-    return l
+    return 24
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2059,8 +2053,7 @@ class ofp_table_stats:
     return binaryString[64:]
 
   def __len__ (self):
-    l = 64
-    return l
+    return 64
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2113,8 +2106,7 @@ class ofp_port_stats_request:
     return binaryString[8:]
 
   def __len__ (self):
-    l = 8
-    return l
+    return 8
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2169,8 +2161,7 @@ class ofp_port_stats:
     return binaryString[104:]
 
   def __len__ (self):
-    l = 104
-    return l
+    return 104
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2238,8 +2229,7 @@ class ofp_queue_stats_request:
     return binaryString[8:]
 
   def __len__ (self):
-    l = 8
-    return l
+    return 8
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2288,8 +2278,7 @@ class ofp_queue_stats:
     return binaryString[32:]
 
   def __len__ (self):
-    l = 32
-    return l
+    return 32
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2423,8 +2412,7 @@ class ofp_barrier_reply:
     return binaryString[8:]
 
   def __len__ (self):
-    l = 8
-    return l
+    return 8
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2466,8 +2454,7 @@ class ofp_barrier_request:
     return binaryString[8:]
 
   def __len__ (self):
-    l = 8
-    return l
+    return 8
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2606,8 +2593,7 @@ class ofp_flow_removed:
     return binaryString[88:]
 
   def __len__ (self):
-    l = 88
-    return l
+    return 88
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2863,8 +2849,7 @@ class ofp_hello:
     return binaryString[8:]
 
   def __len__ (self):
-    l = 8
-    return l
+    return 8
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3013,8 +2998,7 @@ class ofp_vendor_header:
     return binaryString[12:]
 
   def __len__ (self):
-    l = 12
-    return l
+    return 12
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3111,8 +3095,7 @@ class ofp_features_request:
     return binaryString[8:]
 
   def __len__ (self):
-    l = 8
-    return l
+    return 8
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3152,8 +3135,7 @@ class ofp_get_config_request:
     return binaryString[8:]
 
   def __len__ (self):
-    l = 8
-    return l
+    return 8
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3197,8 +3179,7 @@ class ofp_get_config_reply:
     return binaryString[12:]
 
   def __len__ (self):
-    l = 12
-    return l
+    return 12
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3246,8 +3227,7 @@ class ofp_set_config:
     return binaryString[12:]
 
   def __len__ (self):
-    l = 12
-    return l
+    return 12
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
