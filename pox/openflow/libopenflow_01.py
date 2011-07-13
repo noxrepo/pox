@@ -16,9 +16,6 @@ EMPTY_ETH = EthAddr(None)
 def _initHelper (obj, kw):
   for k,v in kw.iteritems():
     if not hasattr(obj, k):
-      if k == 'xid' and hasattr(obj, 'header'): # Special case
-        obj.header.xid = v
-        continue
       raise TypeError(obj.__class__.__name__ + " constructor got "
       + "unexpected keyword argument '" + k + "'")
     setattr(obj, k, v)
@@ -53,7 +50,7 @@ class ofp_header:
     if self.xid is None:
       self.xid = generateXID()
     if(assertstruct):
-      if(not self._assert()[0]):
+      if(not ofp_header._assert(self)[0]):
         return None
     packed = ""
     packed += struct.pack("!BBHL", self.version, self.type, self.length, self.xid)
@@ -1131,10 +1128,10 @@ class ofp_action_vendor_header:
 
 ##3.1 Handshake
 # was ofp_switch_features
-class ofp_features_reply:
+class ofp_features_reply (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_FEATURES_REPLY
+    ofp_header.__init__(self)
+    self.type = OFPT_FEATURES_REPLY
     self.datapath_id = 0
     self.n_buffers = 0
     self.n_tables = 0
@@ -1144,8 +1141,6 @@ class ofp_features_reply:
     self.ports = []
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     if(len(self.pad) != 3):
       return (False, "pad is not of size 3")
     return (True, None)
@@ -1155,7 +1150,7 @@ class ofp_features_reply:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!QLB", self.datapath_id, self.n_buffers, self.n_tables)
     packed += self.pad
     packed += struct.pack("!LL", self.capabilities, self.actions)
@@ -1166,16 +1161,16 @@ class ofp_features_reply:
   def unpack (self, binaryString):
     if (len(binaryString) < 32):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.datapath_id, self.n_buffers, self.n_tables) = struct.unpack_from("!QLB", binaryString, 8)
     (self.capabilities, self.actions) = struct.unpack_from("!LL", binaryString, 24)
-    portCount = (self.header.length - 32) / OFP_PHY_PORT_BYTES
+    portCount = (self.length - 32) / OFP_PHY_PORT_BYTES
     self.ports = []
     for i in xrange(0, portCount):
       p = ofp_phy_port()
       p.unpack(binaryString[32+i*OFP_PHY_PORT_BYTES:])
       self.ports.append(p)
-    return binaryString[self.header.length:]
+    return binaryString[self.length:]
 
   def __len__ (self):
     l = 32
@@ -1185,7 +1180,7 @@ class ofp_features_reply:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.datapath_id !=  other.datapath_id: return False
     if self.n_buffers !=  other.n_buffers: return False
     if self.n_tables !=  other.n_tables: return False
@@ -1200,7 +1195,7 @@ class ofp_features_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'datapath_id: ' + str(self.datapath_id) + '\n'
     outstr += prefix + 'n_buffers: ' + str(self.n_buffers) + '\n'
     outstr += prefix + 'n_tables: ' + str(self.n_tables) + '\n'
@@ -1223,15 +1218,13 @@ ofp_capabilities_rev_map = {
 }
 
 ##3.2 Switch Configuration
-class ofp_switch_config:
+class ofp_switch_config (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
+    ofp_header.__init__(self)
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -1239,14 +1232,14 @@ class ofp_switch_config:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.flags, self.miss_send_len)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 12):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.flags, self.miss_send_len) = struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
@@ -1256,7 +1249,7 @@ class ofp_switch_config:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.flags !=  other.flags: return False
     if self.miss_send_len !=  other.miss_send_len: return False
     return True
@@ -1266,7 +1259,7 @@ class ofp_switch_config:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
@@ -1279,10 +1272,10 @@ ofp_config_flags_rev_map = {
 }
 
 ##3.3 Modify State Messages
-class ofp_flow_mod:
+class ofp_flow_mod (ofp_header):
   def __init__ (self, **kw):
-    self.header = ofp_header()
-    self.header.type = OFPT_FLOW_MOD
+    ofp_header.__init__(self)
+    self.type = OFPT_FLOW_MOD
     self.match = ofp_match()
     self.cookie = 0
     self.command = 0
@@ -1308,8 +1301,6 @@ class ofp_flow_mod:
       self.actions = [self.actions]
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     if(not isinstance(self.match, ofp_match)):
       return (False, "match is not class ofp_match")
     return (True, None)
@@ -1319,8 +1310,8 @@ class ofp_flow_mod:
       if(not self._assert()[0]):
         return None
     packed = ""
-    self.header.length = len(self)
-    packed += self.header.pack()
+    self.length = len(self)
+    packed += ofp_header.pack(self)
     packed += self.match.pack()
     packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags)
     for i in self.actions:
@@ -1331,7 +1322,7 @@ class ofp_flow_mod:
     #TODO: unpack actions
     if (len(binaryString) < 72):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     self.match.unpack(binaryString[8:])
     (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 48)
     return binaryString[72:]
@@ -1344,7 +1335,7 @@ class ofp_flow_mod:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.match !=  other.match: return False
     if self.cookie !=  other.cookie: return False
     if self.command !=  other.command: return False
@@ -1362,7 +1353,7 @@ class ofp_flow_mod:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'match: \n'
     self.match.show(prefix + '  ')
     outstr += prefix + 'cookie: ' + str(self.cookie) + '\n'
@@ -1392,10 +1383,10 @@ ofp_flow_mod_flags_rev_map = {
   'OFPFF_EMERG'         : 4,
 }
 
-class ofp_port_mod:
+class ofp_port_mod (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_PORT_MOD
+    ofp_header.__init__(self)
+    self.type = OFPT_PORT_MOD
     self.port_no = 0
     self.hw_addr = EMPTY_ETH
     self.config = 0
@@ -1404,8 +1395,6 @@ class ofp_port_mod:
     self.pad = b'\x00' * 4
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     if not isinstance(self.hw_addr, bytes) and not isinstance(self.hw_addr, EthAddr):
       return (False, "hw_addr is not bytes or EthAddr")
     if len(self.hw_addr) != 6:
@@ -1419,7 +1408,7 @@ class ofp_port_mod:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port_no)
     if isinstance(self.hw_addr, bytes):
       packed += self.hw_addr
@@ -1432,7 +1421,7 @@ class ofp_port_mod:
   def unpack (self, binaryString):
     if (len(binaryString) < 32):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.port_no,) = struct.unpack_from("!H", binaryString, 8)
     self.hw_addr = EthAddr(binaryString[10:16])
     (self.config, self.mask, self.advertise) = struct.unpack_from("!LLL", binaryString, 16)
@@ -1443,7 +1432,7 @@ class ofp_port_mod:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.port_no !=  other.port_no: return False
     if self.hw_addr !=  other.hw_addr: return False
     if self.config !=  other.config: return False
@@ -1457,7 +1446,7 @@ class ofp_port_mod:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
     outstr += prefix + 'hw_addr: ' + str(EthAddr(self.hw_addr)) + '\n'
     outstr += prefix + 'config: ' + str(self.config) + '\n'
@@ -1466,15 +1455,13 @@ class ofp_port_mod:
     return outstr
 
 ##3.4 Queue Configuration Messages
-class ofp_queue_get_config_request:
+class ofp_queue_get_config_request (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
+    ofp_header.__init__(self)
     self.port = 0
     self.pad = b'\x00' * 2
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     if(len(self.pad) != 2):
       return (False, "pad is not of size 2")
     return (True, None)
@@ -1484,7 +1471,7 @@ class ofp_queue_get_config_request:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port)
     packed += pad
     return packed
@@ -1492,7 +1479,7 @@ class ofp_queue_get_config_request:
   def unpack (self, binaryString):
     if (len(binaryString) < 12):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.port,) = struct.unpack_from("!H", binaryString, 8)
     return binaryString[12:]
 
@@ -1501,7 +1488,7 @@ class ofp_queue_get_config_request:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.port !=  other.port: return False
     if self.pad !=  other.pad: return False
     return True
@@ -1511,20 +1498,18 @@ class ofp_queue_get_config_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'port: ' + str(self.port) + '\n'
     return outstr
 
-class ofp_queue_get_config_reply:
+class ofp_queue_get_config_reply (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
+    ofp_header.__init__(self)
     self.port = 0
     self.pad = b'\x00' * 6
     self.queues = []
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     if(len(self.pad) != 6):
       return (False, "pad is not of size 6")
     return (True, None)
@@ -1534,7 +1519,7 @@ class ofp_queue_get_config_reply:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port)
     packed += self.pad
     for i in self.queues:
@@ -1544,7 +1529,7 @@ class ofp_queue_get_config_reply:
   def unpack (self, binaryString):
     if (len(binaryString) < 16):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.port,) = struct.unpack_from("!H", binaryString, 8)
     return binaryString[16:]
 
@@ -1556,7 +1541,7 @@ class ofp_queue_get_config_reply:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.port !=  other.port: return False
     if self.pad !=  other.pad: return False
     if self.queues !=  other.queues: return False
@@ -1567,7 +1552,7 @@ class ofp_queue_get_config_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'port: ' + str(self.port) + '\n'
     outstr += prefix + 'queues: \n'
     for obj in self.queues:
@@ -1575,17 +1560,15 @@ class ofp_queue_get_config_reply:
     return outstr
 
 ##3.5 Read State Messages
-class ofp_stats_request:
+class ofp_stats_request (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_STATS_REQUEST
+    ofp_header.__init__(self)
+    self.type = OFPT_STATS_REQUEST
     self.type = 0
     self.flags = 0
     self.body = []
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -1593,7 +1576,7 @@ class ofp_stats_request:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.flags)
     for i in self.body:
       packed += struct.pack("!B",i)
@@ -1602,7 +1585,7 @@ class ofp_stats_request:
   def unpack (self, binaryString):
     if (len(binaryString) < 12):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.type, self.flags) = struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
@@ -1613,7 +1596,7 @@ class ofp_stats_request:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.type !=  other.type: return False
     if self.flags !=  other.flags: return False
     if self.body !=  other.body: return False
@@ -1624,23 +1607,21 @@ class ofp_stats_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'type: ' + str(self.type) + '\n'
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'body: ' + str(self.body) + '\n'
     return outstr
 
-class ofp_stats_reply:
+class ofp_stats_reply (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_STATS_REPLY
+    ofp_header.__init__(self)
+    self.type = OFPT_STATS_REPLY
     self.type = 0
     self.flags = 0
     self.body = []
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -1648,7 +1629,7 @@ class ofp_stats_reply:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.flags)
     for i in self.body:
       packed += struct.pack("!B",i)
@@ -1657,7 +1638,7 @@ class ofp_stats_reply:
   def unpack (self, binaryString):
     if (len(binaryString) < 12):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.type, self.flags) = struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
@@ -1668,7 +1649,7 @@ class ofp_stats_reply:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.type !=  other.type: return False
     if self.flags !=  other.flags: return False
     if self.body !=  other.body: return False
@@ -1679,7 +1660,7 @@ class ofp_stats_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'type: ' + str(self.type) + '\n'
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'body: ' + str(self.body) + '\n'
@@ -2302,10 +2283,10 @@ class ofp_queue_stats:
     return outstr
 
 ##3.6 Send Packet Message
-class ofp_packet_out:
+class ofp_packet_out (ofp_header):
   def __init__ (self, **kw):
-    self.header = ofp_header()
-    self.header.type = OFPT_PACKET_OUT
+    ofp_header.__init__(self)
+    self.type = OFPT_PACKET_OUT
     self.buffer_id = 4294967295
     self.in_port = 0
     self.actions = []
@@ -2325,8 +2306,6 @@ class ofp_packet_out:
       self.actions = [self.actions]
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return "self.header is not class ofp_header"
     if self.buffer_id != 4294967295 and self.data is not None:
       return "can not have both buffer_id and data set"
     return True
@@ -2339,24 +2318,24 @@ class ofp_packet_out:
     actions = b''.join((i.pack(assertstruct) for i in self.actions))
     actions_len = len(actions)
 
-    self.header.length = 16 + actions_len
+    self.length = 16 + actions_len
     if self.data is not None:
-      self.header.length += len(self.data)
+      self.length += len(self.data)
 
     if self.data is not None:
-      return b''.join((self.header.pack(),
+      return b''.join((ofp_header.pack(self),
       struct.pack("!LHH", self.buffer_id, self.in_port, actions_len),
       actions,
       self.data))
     else:
-      return b''.join((self.header.pack(),
+      return b''.join((ofp_header.pack(self),
       struct.pack("!LHH", self.buffer_id, self.in_port, actions_len),
       actions))
 
   def unpack (self, binaryString):
     if (len(binaryString) < 16):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.buffer_id, self.in_port, actions_len) = struct.unpack_from("!LHH", binaryString, 8)
     self.actions = [None] * actions_len #TODO: unpack actions for real!
     return binaryString[16:]
@@ -2366,7 +2345,7 @@ class ofp_packet_out:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.buffer_id !=  other.buffer_id: return False
     if self.in_port !=  other.in_port: return False
     if self.actions !=  other.actions: return False
@@ -2377,7 +2356,7 @@ class ofp_packet_out:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'buffer_id: ' + str(self.buffer_id) + '\n'
     outstr += prefix + 'in_port: ' + str(self.in_port) + '\n'
     outstr += prefix + 'actions_len: ' + str(len(self.actions)) + '\n'
@@ -2387,14 +2366,12 @@ class ofp_packet_out:
     return outstr
 
 ##3.7 Barrier Message
-class ofp_barrier_reply:
+class ofp_barrier_reply (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_BARRIER_REPLY
+    ofp_header.__init__(self)
+    self.type = OFPT_BARRIER_REPLY
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -2402,13 +2379,13 @@ class ofp_barrier_reply:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     return binaryString[8:]
 
   def __len__ (self):
@@ -2416,7 +2393,7 @@ class ofp_barrier_reply:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2424,19 +2401,17 @@ class ofp_barrier_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
-class ofp_barrier_request:
+class ofp_barrier_request (ofp_header):
   def __init__ (self, **kw):
-    self.header = ofp_header()
-    self.header.type = OFPT_BARRIER_REQUEST
+    ofp_header.__init__(self)
+    self.type = OFPT_BARRIER_REQUEST
 
     _initHelper(self, kw)
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -2444,13 +2419,13 @@ class ofp_barrier_request:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     return binaryString[8:]
 
   def __len__ (self):
@@ -2458,7 +2433,7 @@ class ofp_barrier_request:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2466,14 +2441,14 @@ class ofp_barrier_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
 #4 Asynchronous Messages
-class ofp_packet_in:
+class ofp_packet_in (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_PACKET_IN
+    ofp_header.__init__(self)
+    self.type = OFPT_PACKET_IN
     self.buffer_id = 0
     self.total_len = 0
     self.in_port = 0
@@ -2482,8 +2457,6 @@ class ofp_packet_in:
     self.data = []
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -2491,7 +2464,7 @@ class ofp_packet_in:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!LHHBB", self.buffer_id, self.total_len, self.in_port, self.reason, self.pad)
     for i in self.data:
       packed += struct.pack("!B",i)
@@ -2500,12 +2473,12 @@ class ofp_packet_in:
   def unpack (self, binaryString):
     if (len(binaryString) < 18):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.buffer_id, self.total_len, self.in_port, self.reason, self.pad) = struct.unpack_from("!LHHBB", binaryString, 8)
-    if (len(binaryString) < self.header.length):
+    if (len(binaryString) < self.length):
       return binaryString
-    self.data = binaryString[18:self.header.length]
-    return binaryString[self.header.length:]
+    self.data = binaryString[18:self.length]
+    return binaryString[self.length:]
 
   def __len__ (self):
     l = 18
@@ -2514,7 +2487,7 @@ class ofp_packet_in:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.buffer_id !=  other.buffer_id: return False
     if self.total_len !=  other.total_len: return False
     if self.in_port !=  other.in_port: return False
@@ -2528,7 +2501,7 @@ class ofp_packet_in:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'buffer_id: ' + str(self.buffer_id) + '\n'
     outstr += prefix + 'total_len: ' + str(self.total_len) + '\n'
     outstr += prefix + 'in_port: ' + str(self.in_port) + '\n'
@@ -2541,10 +2514,10 @@ ofp_packet_in_reason_rev_map = {
   'OFPR_ACTION'   : 1,
 }
 
-class ofp_flow_removed:
+class ofp_flow_removed (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_FLOW_REMOVED
+    ofp_header.__init__(self)
+    self.type = OFPT_FLOW_REMOVED
     self.match = ofp_match()
     self.cookie = 0
     self.priority = 0
@@ -2558,8 +2531,6 @@ class ofp_flow_removed:
     self.byte_count = 0
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     if(not isinstance(self.match, ofp_match)):
       return (False, "match is not class ofp_match")
     if(len(self.pad) != 1):
@@ -2573,7 +2544,7 @@ class ofp_flow_removed:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += self.match.pack()
     packed += struct.pack("!QHB", self.cookie, self.priority, self.reason)
     packed += self.pad
@@ -2585,7 +2556,7 @@ class ofp_flow_removed:
   def unpack (self, binaryString):
     if (len(binaryString) < 88):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     self.match.unpack(binaryString[8:])
     (self.cookie, self.priority, self.reason) = struct.unpack_from("!QHB", binaryString, 48)
     (self.duration_sec, self.duration_nsec, self.idle_timeout) = struct.unpack_from("!LLH", binaryString, 60)
@@ -2597,7 +2568,7 @@ class ofp_flow_removed:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.match !=  other.match: return False
     if self.cookie !=  other.cookie: return False
     if self.priority !=  other.priority: return False
@@ -2616,7 +2587,7 @@ class ofp_flow_removed:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'match: \n'
     self.match.show(prefix + '  ')
     outstr += prefix + 'cookie: ' + str(self.cookie) + '\n'
@@ -2635,17 +2606,15 @@ ofp_flow_removed_reason_rev_map = {
   'OFPRR_DELETE'       : 2,
 }
 
-class ofp_port_status:
+class ofp_port_status (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_PORT_STATUS
+    ofp_header.__init__(self)
+    self.type = OFPT_PORT_STATUS
     self.reason = 0
     self.pad = b'\x00' * 7
     self.desc = ofp_phy_port()
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     if(len(self.pad) != 7):
       return (False, "pad is not of size 7")
     if(not isinstance(self.desc, ofp_phy_port)):
@@ -2657,7 +2626,7 @@ class ofp_port_status:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!B", self.reason)
     packed += self.pad
     packed += self.desc.pack()
@@ -2666,7 +2635,7 @@ class ofp_port_status:
   def unpack (self, binaryString):
     if (len(binaryString) < 64):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.reason,) = struct.unpack_from("!B", binaryString, 8)
     self.desc.unpack(binaryString[16:])
     return binaryString[64:]
@@ -2676,7 +2645,7 @@ class ofp_port_status:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.reason !=  other.reason: return False
     if self.pad !=  other.pad: return False
     if self.desc !=  other.desc: return False
@@ -2687,7 +2656,7 @@ class ofp_port_status:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'reason: ' + str(self.reason) + '\n'
     outstr += prefix + 'desc: \n'
     self.desc.show(prefix + '  ')
@@ -2699,17 +2668,15 @@ ofp_port_reason_rev_map = {
   'OFPPR_MODIFY' : 2,
 }
 
-class ofp_error:
+class ofp_error (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_ERROR
+    ofp_header.__init__(self)
+    self.type = OFPT_ERROR
     self.type = 0
     self.code = 0
     self.data = []
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -2717,7 +2684,7 @@ class ofp_error:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.code)
     for i in self.data:
       packed += struct.pack("!B",i)
@@ -2726,7 +2693,7 @@ class ofp_error:
   def unpack (self, binaryString):
     if (len(binaryString) < 12):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.type, self.code) = struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
@@ -2737,7 +2704,7 @@ class ofp_error:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.type !=  other.type: return False
     if self.code !=  other.code: return False
     if self.data !=  other.data: return False
@@ -2748,7 +2715,7 @@ class ofp_error:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     t = self.type
     c = self.code
     if t < len(ofp_error_type):
@@ -2823,15 +2790,13 @@ ofp_queue_op_failed_code_rev_map = {
 }
 
 #5. Symmetric Messages
-class ofp_hello:
+class ofp_hello (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_HELLO
-    self.header.length = len(self)
+    ofp_header.__init__(self)
+    self.type = OFPT_HELLO
+    self.length = len(self)
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -2839,13 +2804,13 @@ class ofp_hello:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     return binaryString[8:]
 
   def __len__ (self):
@@ -2853,7 +2818,7 @@ class ofp_hello:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2861,18 +2826,16 @@ class ofp_hello:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
-class ofp_echo_request:
+class ofp_echo_request (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_ECHO_REQUEST
+    ofp_header.__init__(self)
+    self.type = OFPT_ECHO_REQUEST
     self.body = []
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -2880,7 +2843,7 @@ class ofp_echo_request:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     for i in self.body:
       packed += struct.pack("!B",i)
     return packed
@@ -2888,11 +2851,11 @@ class ofp_echo_request:
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     # Note that we trust the header to be correct here
-    if len(binaryString) < self.header.length:
+    if len(binaryString) < self.length:
       return binaryString
-    l = self.header.length - 8
+    l = self.length - 8
     # Must be a better way to do this (array?)...
     self.body = list(struct.unpack_from(str(l) + "B", binaryString, 8))
     return binaryString[8 + l:]
@@ -2904,7 +2867,7 @@ class ofp_echo_request:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.body !=  other.body: return False
     return True
 
@@ -2913,19 +2876,17 @@ class ofp_echo_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'body: ' + str(self.body) + '\n'
     return outstr
 
-class ofp_echo_reply:
+class ofp_echo_reply (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_ECHO_REPLY
+    ofp_header.__init__(self)
+    self.type = OFPT_ECHO_REPLY
     self.body = []
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -2933,7 +2894,7 @@ class ofp_echo_reply:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     for i in self.body:
       packed += struct.pack("!B",i)
     return packed
@@ -2941,11 +2902,11 @@ class ofp_echo_reply:
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     # Note that we trust the header to be correct here
-    if len(binaryString) < self.header.length:
+    if len(binaryString) < self.length:
       return binaryString
-    l = self.header.length - 8
+    l = self.length - 8
     # Must be a better way to do this (array?)...
     self.body = list(struct.unpack_from(str(l) + "B", binaryString, 8))
     return binaryString[8 + l:]
@@ -2957,7 +2918,7 @@ class ofp_echo_reply:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.body !=  other.body: return False
     return True
 
@@ -2966,19 +2927,17 @@ class ofp_echo_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'body: ' + str(self.body) + '\n'
     return outstr
 
-class ofp_vendor_header:
+class ofp_vendor_header (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_VENDOR
+    ofp_header.__init__(self)
+    self.type = OFPT_VENDOR
     self.vendor = 0
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -2986,14 +2945,14 @@ class ofp_vendor_header:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!L", self.vendor)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 12):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.vendor,) = struct.unpack_from("!L", binaryString, 8)
     return binaryString[12:]
 
@@ -3002,7 +2961,7 @@ class ofp_vendor_header:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.vendor !=  other.vendor: return False
     return True
 
@@ -3011,20 +2970,18 @@ class ofp_vendor_header:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
     return outstr
 
-class ofp_vendor:
+class ofp_vendor (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_VENDOR
+    ofp_header.__init__(self)
+    self.type = OFPT_VENDOR
     self.vendor = 0
     self.data = ''
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -3032,7 +2989,7 @@ class ofp_vendor:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!L", self.vendor)
     packet += self.data
     return packed
@@ -3040,12 +2997,12 @@ class ofp_vendor:
   def unpack (self, binaryString):
     if (len(binaryString) < 12):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.vendor,) = struct.unpack_from("!L", binaryString, 8)
-    if len(binaryString < self.header.length):
+    if len(binaryString < self.length):
       return binaryString
-    self.data = binaryString[12:self.header.length]
-    return binaryString[self.header.length:]
+    self.data = binaryString[12:self.length]
+    return binaryString[self.length:]
 
   def __len__ (self):
     l = 12
@@ -3054,7 +3011,7 @@ class ofp_vendor:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.vendor !=  other.vendor: return False
     if self.data != other.data: return False
     return True
@@ -3064,20 +3021,18 @@ class ofp_vendor:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
     outstr += prefix + 'data: ' + data + '\n'
     return outstr
 
-class ofp_features_request:
+class ofp_features_request (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_FEATURES_REQUEST
-    self.header.length = 8
+    ofp_header.__init__(self)
+    self.type = OFPT_FEATURES_REQUEST
+    self.length = 8
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -3085,13 +3040,13 @@ class ofp_features_request:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     return binaryString[8:]
 
   def __len__ (self):
@@ -3099,7 +3054,7 @@ class ofp_features_request:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3107,17 +3062,15 @@ class ofp_features_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
-class ofp_get_config_request:
+class ofp_get_config_request (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_GET_CONFIG_REQUEST
+    ofp_header.__init__(self)
+    self.type = OFPT_GET_CONFIG_REQUEST
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -3125,13 +3078,13 @@ class ofp_get_config_request:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     return binaryString[8:]
 
   def __len__ (self):
@@ -3139,7 +3092,7 @@ class ofp_get_config_request:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3147,19 +3100,17 @@ class ofp_get_config_request:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
-class ofp_get_config_reply:
+class ofp_get_config_reply (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_GET_CONFIG_REPLY
+    ofp_header.__init__(self)
+    self.type = OFPT_GET_CONFIG_REPLY
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -3167,14 +3118,14 @@ class ofp_get_config_reply:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.flags, self.miss_send_len)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 12):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.flags, self.miss_send_len) = struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
@@ -3183,7 +3134,7 @@ class ofp_get_config_reply:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.flags !=  other.flags: return False
     if self.miss_send_len !=  other.miss_send_len: return False
     return True
@@ -3193,21 +3144,19 @@ class ofp_get_config_reply:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
 
-class ofp_set_config:
+class ofp_set_config (ofp_header):
   def __init__ (self):
-    self.header = ofp_header()
-    self.header.type = OFPT_SET_CONFIG
+    ofp_header.__init__(self)
+    self.type = OFPT_SET_CONFIG
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
   def _assert (self):
-    if(not isinstance(self.header, ofp_header)):
-      return (False, "header is not class ofp_header")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -3215,14 +3164,14 @@ class ofp_set_config:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += self.header.pack()
+    packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.flags, self.miss_send_len)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 12):
       return binaryString
-    self.header.unpack(binaryString[0:])
+    ofp_header.unpack(self, binaryString[0:])
     (self.flags, self.miss_send_len) = struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
@@ -3231,7 +3180,7 @@ class ofp_set_config:
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.header !=  other.header: return False
+    if not ofp_header.__eq__(self, other): return False
     if self.flags !=  other.flags: return False
     if self.miss_send_len !=  other.miss_send_len: return False
     return True
@@ -3241,7 +3190,7 @@ class ofp_set_config:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'header: \n'
-    outstr += self.header.show(prefix + '  ')
+    outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
