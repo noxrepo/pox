@@ -149,7 +149,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     self._reconnectTimeout = None # Timer for reconnection
 
   def _setConnection (self, connection, ofp=None):
-    self.removeListeners(self._listeners)
+    if self.connection: self.connection.removeListeners(self._listeners)
     self._listeners = []
     self.connection = connection
     if self._reconnectTimeout is not None:
@@ -159,11 +159,11 @@ class OpenFlowSwitch (EventMixin, Switch):
       self._reconnectTimeout = Timer(RECONNECT_TIMEOUT, self._timer_ReconnectTimeout)
     if ofp is not None:
       self.capabilities = ofp.capabilities
-      untouched = self.ports.keys()
+      untouched = set(self.ports.keys())
       for p in ofp.ports:
         if p.port_no in self.ports:
           self.ports[p.port_no]._update(p)
-          self.untouched.add(p.port_no)
+          untouched.remove(p.port_no)
         else:
           self.ports[p.port_no] = OpenFlowPort(p)
       for p in untouched:
