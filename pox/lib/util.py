@@ -52,8 +52,10 @@ def makePinger ():
     def __init__ (self, pair):
       self._w = pair[1]
       self._r = pair[0]
+      assert os is not None
 
     def ping (self):
+      if os is None: return
       os.write(self._w, ' ')
 
     def fileno (self):
