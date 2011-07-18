@@ -1,0 +1,7 @@
+add pan screenView (dragmode 2)
+add zoom to selected subview (dragmode 3)
+(switch between dragmode by holding ctrl?)
+fix port numbering
+fix link BoundingRectangle issue
+fix host toggling issue
+

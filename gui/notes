@@ -1,0 +1,5 @@
+expose public drawing API (ie DrawManager class) that allows different entities
+(i.e. Monitoring, TE) to color the topology. Entities do that by overwriting the
+QItem's draw() functions, and the DrawManager decides which one accesses the graph.
+Like kmz overlays, the topology is there but allows other objects to overlay 
+it with different color overlays
