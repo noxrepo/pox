@@ -55,7 +55,7 @@ def makePinger ():
       assert os is not None
 
     def ping (self):
-      if os is None: return
+      if os is None: return #TODO: Is there a better fix for this?
       os.write(self._w, ' ')
 
     def fileno (self):

@@ -130,10 +130,6 @@ class DeferredSender (threading.Thread):
     return out
 
   def send (self, con, data):
-    if type(data) is not bytes:
-  	  if hasattr(data, 'pack'):
-  	    data = data.pack()
-
     with self._lock:
       self.sending = True
 
@@ -280,6 +276,10 @@ class Connection (EventMixin):
       pass
 
   def send (self, data):
+    if type(data) is not bytes:
+      if hasattr(data, 'pack'):
+        data = data.pack()
+
     if deferredSender.sending:
       deferredSender.send(self, data)
       return
