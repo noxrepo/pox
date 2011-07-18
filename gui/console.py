@@ -21,9 +21,9 @@ class ConsoleWidget(QtGui.QWidget):
         ###self.curs = self.parent.logWidget.curs
         
         # Configure Widget
-        self.label = QtGui.QLabel('Send JSON command to NOX component')     
+        self.label = QtGui.QLabel('Send command to NOX')     
         self.consoleEdit = QtGui.QLineEdit()
-        self.consoleEdit.setText("{\"type\":\"lavi\",\"command\":\"request\",\"node_type\":\"all\"}")
+        self.consoleEdit.setText("Consider using this as python console?")
         
         '''
         p = QtGui.QPalette()
@@ -47,6 +47,7 @@ class ConsoleWidget(QtGui.QWidget):
         self.consoleInterface = ConsoleInterface(self)
         
     def send_cmd(self):
+        """
         self.curs.execute("select distinct component from messages")
         comps = []
         for c in self.curs:
@@ -64,8 +65,9 @@ class ConsoleWidget(QtGui.QWidget):
                 self.logDisplay.setText("invalid json command")
                 valid = False
             if valid_json:
-                self.consoleInterface.send_cmd(cmd)
-                #self.parent.logWidget.logDisplay.parent.freezeLog = False
+        """
+        cmd = str(self.consoleEdit.text())
+        self.consoleInterface.send_cmd(cmd)
                             
     def keyPressEvent(self, event):
         key = event.key()

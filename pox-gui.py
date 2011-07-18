@@ -192,8 +192,7 @@ class MainWindow(QtGui.QMainWindow):
         toolbar.addAction(switch_to_topo)
         toolbar.addAction(switch_to_split)
         toolbar.addAction(exit)
-        
-        
+                
     def center(self):
         screen = QtGui.QDesktopWidget().screenGeometry()
         size =  self.geometry()

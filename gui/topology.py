@@ -724,17 +724,17 @@ class TopologyView(QtGui.QGraphicsView):
         
     def subscribe_to_topo_changes(self):
         '''
-        Subscribe to LAVI for topology changes
+        Subscribe to topology backend for topology changes
         '''
         msg = {}
-        msg["type"] = "lavi"
+        msg["type"] = "topology"
         msg["command"] = "subscribe"
         msg["node_type"] = "all"
         #msg = json.dumps(msg)
         self.topologyInterface.send(msg)
         
         msg = {}
-        msg["type"] = "lavi"
+        msg["type"] = "topology"
         msg["command"] = "subscribe"
         msg["link_type"] = "all"
         #msg = json.dumps(msg)
@@ -742,10 +742,10 @@ class TopologyView(QtGui.QGraphicsView):
         
     def get_nodes(self):
         '''
-        Ask lavi for an updated nodes set
+        Ask topology for an updated nodes set
         '''
         msg = {}
-        msg["type"] = "lavi"
+        msg["type"] = "topology"
         msg["command"] = "request"
         msg["node_type"] = "all"
         #msg = json.dumps(msg)
@@ -753,10 +753,10 @@ class TopologyView(QtGui.QGraphicsView):
 
     def get_links(self):
         '''
-        Ask lavi for an updated links set
+        Ask topology for an updated links set
         '''
         msg = {}
-        msg["type"] = "lavi"
+        msg["type"] = "topology"
         msg["command"] = "request"
         msg["link_type"] = "all"
         #msg = json.dumps(msg)
@@ -764,7 +764,7 @@ class TopologyView(QtGui.QGraphicsView):
         
     def get_topology(self):
         '''
-        Ask lavi for updated nodes and links sets
+        Ask topology for updated nodes and links sets
         '''
         self.get_nodes()
         self.get_links()

@@ -79,8 +79,8 @@ class LoggerInterface(QtCore.QThread, SocketServer.ThreadingTCPServer):
 class TopologyInterface(QtCore.QThread, QtGui.QWidget):
 
     ''' 
-    Communicates with lavi through jsonmessenger in order to receive topology-view
-    information. Used to communicate with jsonmessenger for other, component-
+    Communicates with topology backend in order to receive topology-view
+    information. Used to communicate with GuiMessenger for other, component-
     specific event notification too. (eg new tunneltable etc)
     '''
     # Define signals that are emitted when messages are received
@@ -194,7 +194,7 @@ class Listener(QtCore.QThread):
             if end:
                 # Dispatch message
                 jsonmsg = json.loads(msg)
-                if jsonmsg["type"] == "lavi":
+                if jsonmsg["type"] == "topology":
                     self.p.topology_received_signal.emit(msg)
                 elif jsonmsg["type"] == "monitoring":
                     self.p.monitoring_received_signal.emit(msg)
