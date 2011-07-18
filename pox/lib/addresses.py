@@ -35,6 +35,9 @@ class EthAddr (object):
     #elif isinstance(addr, int) or isinstance(addr, long):
     #  addr = long(addr)
 
+  def isMulticast (self):
+  	return True if (ord(self._value[0]) & 1) else False
+
   def toRaw (self):
     return self._value
 
