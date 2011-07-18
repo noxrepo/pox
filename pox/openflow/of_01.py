@@ -130,6 +130,10 @@ class DeferredSender (threading.Thread):
     return out
 
   def send (self, con, data):
+    if type(data) is not bytes:
+  	  if hasattr(data, 'pack'):
+  	    data = data.pack()
+
     with self._lock:
       self.sending = True
 
