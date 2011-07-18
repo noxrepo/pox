@@ -17,6 +17,7 @@ import pox.messenger.messenger
 import pox.lib.revent.revent as revent
 revent.showEventExceptions = True
 
+from pox.messenger.guimessenger import GuiMessenger
 
 def startup ():
   core.register("openflow_topology", pox.openflow.openflowtopology.OpenFlowTopology())
@@ -27,6 +28,8 @@ def startup ():
 
   pox.openflow.of_01.start()
   pox.messenger.messenger.start()
+  
+  GuiMessenger()
 
 if __name__ == '__main__':
   try:
