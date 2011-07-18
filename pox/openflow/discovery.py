@@ -125,6 +125,7 @@ class LLDPSender (object):
 
 class LinkEvent (Event):
   def __init__ (self, add, link):
+    Event.__init__(self)
     self.link = link
     self.added = add
     self.removed = not add
