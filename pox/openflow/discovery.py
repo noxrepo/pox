@@ -217,7 +217,8 @@ class Discovery (EventMixin):
                  (dpidToStr(link.dpid1), link.port1,
                   dpidToStr(link.dpid2), link.port2))
 
-    self._deleteLinks(deleteme)
+    if deleteme:
+      self._deleteLinks(deleteme)
 
   def _handle_PacketIn (self, event):
     """ Handle incoming lldp packets.  Use to maintain link state """
