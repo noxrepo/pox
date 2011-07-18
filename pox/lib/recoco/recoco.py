@@ -162,6 +162,7 @@ class Scheduler (object):
     #if len(self._ready) == 0: return False
 
     # Patented hilarious priority system
+    t = None
     try:
       while True:
         t = self._ready.popleft()
