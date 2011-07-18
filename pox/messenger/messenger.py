@@ -184,14 +184,14 @@ class TCPMessengerConnection (MessengerConnection, Task):
     self._close()
 
   def run (self):
-    log.debug("%s started", self)
+    log.debug("%Started")
     while self.isConnected():
       d = yield Recv(self._socket)
       if d is None or len(d) == 0:
         break
       self._recv_raw(d)
     self._close()
-    log.debug("%s stopped", self)
+    log.debug("%Stopped")
 
   #TODO: __str__ with port numbers, etc
 
