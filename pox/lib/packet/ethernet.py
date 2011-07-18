@@ -24,7 +24,7 @@
 import struct
 
 from packet_base import packet_base
-from packet_utils import mac_to_str, ethtype_to_str
+from packet_utils import ethtype_to_str
 
 import pox.lib.util
 from pox.lib.addresses import *
@@ -103,8 +103,14 @@ class ethernet(packet_base):
     else:
       self.next = self.arr[ethernet.MIN_LEN:]
 
+  @staticmethod
+  def getNameForType (ethertype):
+    """ Returns a string name for a numeric ethertype """
+    return ethtype_to_str(ethertype)
+
   def __str__(self):
-    s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self)),':',ethtype_to_str(self.type),']'))
+    s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self)),':',
+                ethernet.getNameForType(self.type),']'))
     if self.next == None:
       return s
     elif type(self.next) == bytes:
