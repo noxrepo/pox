@@ -24,7 +24,7 @@
 import struct
 
 from packet_base import packet_base
-
+from packet_utils import mac_to_str, ethtype_to_str
 
 import pox.lib.util
 from pox.lib.addresses import *
