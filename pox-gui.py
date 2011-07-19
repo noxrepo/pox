@@ -48,22 +48,22 @@ class MainWindow(QtGui.QMainWindow):
             sys.exit(2)
             
         #Get options
-        self.poxport = 7790 #messenger port
+        self.backend_port = 7790 #GuiMessenger port
         for opt,arg in opts:
             if (opt in ("-h","--help")):
                 self.usage()
                 sys.exit(0)
             elif (opt in ("-p","--port")):
-                self.poxport = int(arg)
+                self.backend_port = int(arg)
             else:
                 print "Unhandled option :"+opt
                 sys.exit(2)
 
         # Messenger socket:
         if len(args) >= 1:
-            self.noxip = args[0]
+            self.backend_ip = args[0]
         else:
-            self.noxip = "127.0.0.1"
+            self.backend_ip = "127.0.0.1"
             
         # Global Settings
         self.settings = settings.Settings(self)
@@ -106,7 +106,7 @@ class MainWindow(QtGui.QMainWindow):
         # Actions
         start = QtGui.QAction(QtGui.QIcon('gui/icons/logo.png'), 'Start', self)
         start.setShortcut('Ctrl+S')
-        start.setStatusTip('Start NOX')
+        start.setStatusTip('Start POX')
         self.connect(start, QtCore.SIGNAL('triggered()'), self.start_nox)        
         
         switch_to_log = QtGui.QAction(QtGui.QIcon('gui/icons/log.png'),'Log View',self)

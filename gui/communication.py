@@ -57,7 +57,7 @@ class LoggerInterface(QtCore.QThread, SocketServer.ThreadingTCPServer):
         QtCore.QThread.__init__(self)
         self.logWidget = parent
         SocketServer.ThreadingTCPServer.__init__(self,
-                                ('localhost', 2222), LogRecordStreamHandler)
+                                ('', 22222), LogRecordStreamHandler)
         self.serving = 1
         self.pause = 1
     
@@ -118,15 +118,15 @@ class TopologyInterface(QtCore.QThread, QtGui.QWidget):
         self.topoView = topoView    
         self.xid_counter = 1
         
-        self.noxip = self.topoView.parent.parent.noxip
-        self.poxport = self.topoView.parent.parent.poxport
+        self.backend_ip = self.topoView.parent.parent.backend_ip
+        self.backend_port = self.topoView.parent.parent.backend_port
         
         # Connect socket
         self.connected = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #self.sock.setblocking(0)
         try:
-            self.sock.connect((self.noxip,self.poxport))
+            self.sock.connect((self.backend_ip,self.backend_port))
             self.connected = True
         except:
             self.retry_connection()
@@ -142,7 +142,7 @@ class TopologyInterface(QtCore.QThread, QtGui.QWidget):
         print "Retrying connection to NOX...(is 'monitoring' component running?)"
         sleep(2)
         try:
-            self.sock.connect((self.noxip,self.poxport))
+            self.sock.connect((self.backend_ip,self.backend_port))
             self.connected = True
         except:
             self.retry_connection()
