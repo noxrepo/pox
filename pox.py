@@ -40,12 +40,18 @@ def doLaunch ():
     launch = name[1] if len(name) == 2 else "launch"
     name = name[0]
 
-    if name not in sys.modules:
+    if "pox." + name in sys.modules:
+      name = "pox." + name
+    elif name not in sys.modules:
       try:
-        __import__(name, globals(), locals())
+        __import__("pox." + name, globals(), locals())
+        name = "pox." + name
       except:
-        print "No such module:",name
-        return False
+        try:
+          __import__(name, globals(), locals())
+        except:
+          print "No such module:",name
+          return False
 
     if launch in sys.modules[name].__dict__:
       sys.modules[name].__dict__[launch](**params)
