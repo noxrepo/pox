@@ -36,6 +36,10 @@ def doLaunch ():
       curargs[arg[0]] = arg[1]
 
   for name,params in components.iteritems():
+    name = name.split(":", 1)
+    launch = name[1] if len(name) == 2 else "launch"
+    name = name[0]
+
     if name not in sys.modules:
       try:
         __import__(name, globals(), locals())
@@ -43,10 +47,10 @@ def doLaunch ():
         print "No such module:",name
         return False
 
-    if 'launch' in sys.modules[name].__dict__:
-      sys.modules[name].__dict__['launch'](**params)
-    elif len(params):
-      print "Module",name,"has no launch() but was passed arguments"
+    if launch in sys.modules[name].__dict__:
+      sys.modules[name].__dict__[launch](**params)
+    elif len(params) > 0 or launch is not "launch":
+      print "Module %s has no %s(), but it was specified or passed arguments" % (name, launch)
       return False
 
   return True
