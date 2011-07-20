@@ -134,6 +134,10 @@ class POXCore (EventMixin):
   def hasComponent (self, name):
     return name in self.components
 
+  def registerNew (self, componentClass, *args, **kw):
+    obj = componentClass(*args, **kw)
+    self.register(componentClass.__name__, obj)
+
   def register (self, name, component):
     #TODO: weak references?
     if name in self.components:
