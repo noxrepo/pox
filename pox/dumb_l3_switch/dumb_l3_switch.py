@@ -67,6 +67,7 @@ class dumb_l3_switch (EventMixin):
 
   def _handle_GoingUpEvent (self, event):
     self.listenTo(core.openflow)
+    log.debug("Up...")
 
   def _handle_PacketIn (self, event):
     dpid = event.connection.dpid

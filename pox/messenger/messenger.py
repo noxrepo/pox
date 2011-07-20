@@ -218,6 +218,7 @@ class MessengerHub (EventMixin):
 #TODO: make a superclass source
 class TCPMessengerSource (Task):
   def __init__ (self, address = "0.0.0.0", port = 7790):
+    port = int(port)
     Task.__init__(self)
     self._addr = (address,port)
     self._connections = set()
@@ -258,7 +259,8 @@ class TCPMessengerSource (Task):
     log.debug("No longer listening for connections")
 
 
-def start ():
+def launch (tcp_address = "0.0.0.0", tcp_port = 7790):
+  print "launch messenger"
   core.register("messenger", MessengerHub())
-  t = TCPMessengerSource()
+  t = TCPMessengerSource(tcp_address, tcp_port)
   core.addListener(pox.core.GoingUpEvent, lambda event: t.start())
