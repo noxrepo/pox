@@ -197,8 +197,11 @@ class Scheduler (object):
     except StopIteration:
       return True
     except:
-      print("Task", t, "caused exception and was de-scheduled")
-      traceback.print_exc()
+      try:
+        print("Task", t, "caused exception and was de-scheduled")
+        traceback.print_exc()
+      except:
+        pass
       return True
 
     if isinstance(rv, BlockingOperation):
