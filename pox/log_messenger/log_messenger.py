@@ -121,11 +121,11 @@ class LogMessengerListener (object):
       pass
 
 
-def start ():
+def launch ():
   def realStart (event=None):
     if not core.hasComponent("messenger"):
       if event is None:
-        # Onyl do this the first time
+        # Only do this the first time
         log.warning("Deferring firing up LogMessenger because Messenger isn't up yet")
       core.addListenerByName("ComponentRegistered", realStart, once=True)
       return
