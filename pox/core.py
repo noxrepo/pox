@@ -6,7 +6,7 @@ import time
 import os
 
 from logging.handlers import SocketHandler
-tcpHandler = SocketHandler('localhost', 22222)
+logging.getLogger().addHandler(SocketHandler('localhost', 22222))
 
 _path = inspect.stack()[0][1]
 #_path = _path[0:_path.rindex('/')] # Uncomment if you want "pox."
@@ -66,9 +66,6 @@ def getLogger (name=None, moreFrames=0):
     setattr(l, "print", printmsg)
     setattr(l, "msg", printmsg)
 
-    # add ulog handler for gui
-    l.addHandler(tcpHandler)    
-    
   return l
 
 
