@@ -100,6 +100,9 @@ class Scheduler (object):
     self._thread = None
     self._event = threading.Event()
 
+    self._lock = threading.Lock()
+    self._callLaterTask = None
+
     global defaultScheduler
     if isDefaultScheduler or (isDefaultScheduler is None and defaultScheduler is None):
       defaultScheduler = self
@@ -110,6 +113,20 @@ class Scheduler (object):
   def __del__ (self):
     self._hasQuit = True
     super(Scheduler, self).__del__()
+
+  def callLater (self, func, *args, **kw):
+    """
+    Calls func with the given arguments at some later point, within this
+    scheduler.  This is a good way for another thread to call something in
+    a co-op-thread-safe manner.
+    """
+
+    with self._lock:
+      if self._callLaterTask is None:
+        self._callLaterTask = CallLaterTask()
+        self._callLaterTask.start()
+
+    self._callLaterTask.callLater(func, *args, **kw)
 
   def runThreaded (self, daemon = False):
     self._thread = Thread(target = self.run)
@@ -550,6 +567,33 @@ class Timer (Task):
       self._callback(*self._args,**self._kw)
       if not self._recurring: break
     yield False # Quit
+
+
+class CallLaterTask (BaseTask):
+  def __init__ (self):
+    BaseTask.__init__(self)
+    self._pinger = pox.lib.util.makePinger()
+    from collections import deque
+    self._calls = deque()
+
+  def callLater (self, func, *args, **kw):
+    self._calls.append((func,args,kw))
+    self._pinger.ping()
+
+  def run (self):
+    while True:
+      yield Select([self._pinger], None, None)
+      self._pinger.pongAll()
+      try:
+        while True:
+          e = self._calls.popleft()
+          try:
+            e[0](*e[1], **e[2])
+          except:
+            import logging
+            logging.getLogger("recoco").exception("Exception calling %s", e[0])
+      except:
+        pass
 
 
 # Sanity tests
