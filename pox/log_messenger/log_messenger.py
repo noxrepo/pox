@@ -37,13 +37,15 @@ class LogMessenger (logging.Handler):
     if "format" not in params:
       params["format"] = None # Force update
     self._processParameters(params)
-
+    if "opaque" in params:
+      self._opaque = params["opaque"]
+    else:
+      self._opaque = None
     logging.getLogger().addHandler(self)
     autoBindEvents(self, connection) #GC?  Weak?
 
   def _processParameters (self, params):
     if "level" in params:
-      print "set level"
       self.setLevel(params["level"])
     if "json" in params:
       self._json = params['json']
@@ -76,6 +78,8 @@ class LogMessenger (logging.Handler):
 
   def emit (self, record):
     o = {'message' : self.format(record)}
+    if self._opaque is not None:
+      o.update(self._opaque)
     #o['message'] = record.getMessage()
     if self._json:
       for attr in _attributes:
