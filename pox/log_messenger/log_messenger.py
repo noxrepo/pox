@@ -30,7 +30,7 @@ class LogMessenger (logging.Handler):
   def __init__ (self, connection, params):
     logging.Handler.__init__(self)
     self.connection = connection
-    connection._newlines = True #HACK
+    connection._newlines = params.get("newlines", True) == True #HACK
     self._json = False
     self._format = False # Not valid, should never be set
     self._dateFormat = None
