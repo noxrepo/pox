@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # Set default log level
 import logging
@@ -12,6 +12,7 @@ import pox.openflow.discovery
 import pox.openflow.of_01
 import pox.dumb_l3_switch.dumb_l3_switch
 import pox.messenger.messenger
+import pox.log_messenger.log_messenger
 from pox.gui_backend.guimessenger import GuiMessenger
 
 # Turn on extra info for event exceptions
@@ -28,6 +29,7 @@ def startup ():
 
   pox.openflow.of_01.start()
   pox.messenger.messenger.start()
+  pox.log_messenger.log_messenger.start()
   
   GuiMessenger()
 
