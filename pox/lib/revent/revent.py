@@ -90,7 +90,7 @@ class EventMixin (object):
       if event.source is None: event.source = self
     #print "raise",event,eventType
     if self._eventMixin_events != True and eventType not in self._eventMixin_events:
-      raise RuntimeError("Event " + str(eventType) + " not defined on this object")
+      raise RuntimeError("Event " + str(eventType) + " not defined on object of type " + str(type(self)))
 
     # Create a copy so that it can be modified freely during event processing.
     # It might make sense to change this.
@@ -177,7 +177,7 @@ class EventMixin (object):
               fail = False
               break
       if fail:
-        raise RuntimeError("Event " + str(eventType) + " not defined on this object")
+        raise RuntimeError("Event " + str(eventType) + " not defined on object of type " + str(type(self)))
     if eventType not in self._eventMixin_handlers:
       l = self._eventMixin_handlers[eventType] = []
       self._eventMixin_handlers[eventType] = l
