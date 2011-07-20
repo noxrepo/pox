@@ -159,6 +159,8 @@ class TCPMessengerConnection (MessengerConnection, Task):
 
     self._socket = socket
 
+    self._newlines = False
+
   def close (self):
     self._close()
 
@@ -173,6 +175,12 @@ class TCPMessengerConnection (MessengerConnection, Task):
     if event._claimed:
       # Someone claimed this connection -- stop forwarding it globally
       return EventRemove
+
+  def send (self, whatever, **kw):
+    """ Overridden because we may insert newlines """
+    s = json.dumps(whatever, **kw)
+    if self._newlines: s += "\n"
+    self.sendRaw(s)
 
   def sendRaw (self, data):
     try:
