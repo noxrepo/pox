@@ -166,7 +166,10 @@ class TCPMessengerConnection (MessengerConnection, Task):
 
   def _close (self):
     super(TCPMessengerConnection, self)._close()
-    self._socket.shutdown(socket.SHUT_RDWR)
+    try:
+      self._socket.shutdown(socket.SHUT_RDWR)
+    except:
+      pass
 
   def _defaultMessageRecieved (self, event):
     #TODO: move to base class?
@@ -260,7 +263,6 @@ class TCPMessengerSource (Task):
 
 
 def launch (tcp_address = "0.0.0.0", tcp_port = 7790):
-  print "launch messenger"
   core.register("messenger", MessengerHub())
   t = TCPMessengerSource(tcp_address, tcp_port)
   core.addListener(pox.core.GoingUpEvent, lambda event: t.start())
