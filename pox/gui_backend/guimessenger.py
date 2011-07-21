@@ -24,7 +24,7 @@ class GuiMessengerService (EventMixin):
     connection._newlines = params.get("newlines", True) == True #HACK
 
     # Make LogMessenger always send back "source":"logger"
-    params['opaque'] = {'source':'logger'}
+    params['opaque'] = {'type':'log'}
     self._logService = LogMessenger(connection, params) # Aggregate
     # Unhook its message received listener (we will pass it those events
     # manually ourselves...)
@@ -36,26 +36,28 @@ class GuiMessengerService (EventMixin):
     if event.con.isReadable():
       r = event.con.read()
       if type(r) is dict:
-        self._processParameters(r)
         if "bye" in r:
           event.con.close()
         else:
-          # Dispatch message
-          if r["type"] == "lavi":
-            log.info("got lavi")
-          elif r["type"] == "monitoring":
-            log.info("got monitoring")
-          elif r["type"] == "spanning_tree":
-            log.info("got spanning_tree")
-          elif r["type"] == "sample_routing":
-            log.info("got sample_routing")
-          elif r["type"] == "flowtracer":
-            log.info("got flowtracer")
-          elif r["type"] == "logging":
-            self._logService._processParameters(r)
+          if "type" in r:
+            # Dispatch message
+            if r["type"] == "topology":
+              pass
+            elif r["type"] == "monitoring":
+              pass
+            elif r["type"] == "spanning_tree":
+              pass
+            elif r["type"] == "sample_routing":
+              pass
+            elif r["type"] == "flowtracer":
+              pass
+            elif r["type"] == "log":
+              self._logService._processParameters(r)
+            else:
+              log.warn("Unknown type for message: %s", r)
           else:
-            self.warn("Unknown type for message: %s", r)
-
+            log.warn("Missing type for message: %s", r)
+ 
 
 class GuiMessengerServiceListener (object):
   def __init__ (self):
