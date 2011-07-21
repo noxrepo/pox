@@ -23,6 +23,7 @@ import gui.topology as topology
 import gui.console as console
 import gui.Popup as Popup
 import gui.settings as settings
+from gui.communication import Communication
 import signal
 
 class MainWindow(QtGui.QMainWindow):
@@ -74,10 +75,18 @@ class MainWindow(QtGui.QMainWindow):
         self.statusBar().showMessage('Ready')
         self.center()
 
+        self.communication = Communication(self)
+        self.communication.start()
+        
         self.logWidget = log.LogWidget(self)
         self.infoWidget = info.InfoWidget(self)
         self.topoWidget = topology.TopoWidget(self)
         self.consoleWidget = console.ConsoleWidget(self)
+        
+                
+        # Initialize communication with backend messengers
+        #self.topoWidget.topologyView.helloMessenger()
+        self.logWidget.helloMessenger()
 
         self.leftvbox = QtGui.QVBoxLayout()
         self.vSplitter = QtGui.QSplitter(QtCore.Qt.Vertical)
