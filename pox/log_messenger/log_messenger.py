@@ -10,7 +10,7 @@ log = core.getLogger()
 _attributes = [
   'created','filename','funcName','levelname','levelno','lineno',
   'module','msecs','name','pathname','process','processName',
-  'relativeCreated','thread','threadName',
+  'relativeCreated','thread','threadName','args',
 ]
 
 class LogMessenger (logging.Handler):
@@ -84,14 +84,13 @@ class LogMessenger (logging.Handler):
     if self._json:
       for attr in _attributes:
         o[attr] = getattr(record, attr)
-      o['args'] = [str(x) for x in record.args]
       o['asctime'] = self.formatter.formatTime(record, self._dateFormat)
       if record.exc_info:
         o['exc_info'] = [str(record.exc_info[0]),
                          str(record.exc_info[1]),
                          traceback.format_tb(record.exc_info[2],1)]
         o['exc'] = traceback.format_exception(*record.exc_info)
-    self.connection.send(o)
+    self.connection.send(o, default=str)
 
 
 class LogMessengerListener (object):
