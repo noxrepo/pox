@@ -77,7 +77,7 @@ class LogMessenger (logging.Handler):
     logging.getLogger().removeHandler(self)
 
   def emit (self, record):
-    o = {'message' : self.format(record)}
+    o = {'message' : record.msg}
     if self._opaque is not None:
       o.update(self._opaque)
     #o['message'] = record.getMessage()
