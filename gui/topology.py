@@ -7,9 +7,8 @@ The topology panel of the GUI
 from PyQt4 import QtGui, QtCore
 import math
 from random import randint
-from communication import TopologyInterface
+from communication import Communication
 from views.default import Default_View
-#import simplejson as json
 import json
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -662,7 +661,6 @@ class ChangeViewWidget(QtGui.QWidget):
         #msg.active_view = str(self.sender().text())
         #self.parent.topologyView.topologyInterface.send(msg)
         
-        
 class TopologyView(QtGui.QGraphicsView):
 
     updateAllSignal = QtCore.pyqtSignal() 
@@ -671,9 +669,10 @@ class TopologyView(QtGui.QGraphicsView):
         QtGui.QGraphicsView.__init__(self, parent)
         self.parent = parent
         # topologyInterface exchanges json messages with monitoring server
-        self.topologyInterface = TopologyInterface(self)
-        self.topologyInterface.start()
-        #asyncore.loop()
+        
+        #self.topologyInterface = TopologyInterface(self)
+        self.topologyInterface = self.parent.parent.communication
+        #self.topologyInterface.start()
     
         self.setStyleSheet("background: black")
     
@@ -703,10 +702,11 @@ class TopologyView(QtGui.QGraphicsView):
         # Dictionaries holding node and link QGraphicsItems
         self.nodes = {}
         self.links = {}
-        
-        # Initialize communication with backend messenger
-        self.helloMessenger()
+                
+        self.helloMessenger()        
+                
         self.get_nodes()
+        
         # Get an initial current snapshot of the topology
         #self.get_topology()
                 
@@ -1042,12 +1042,6 @@ class TopologyView(QtGui.QGraphicsView):
                 node.showNode = not node.showNode
                 node.update()
 
-    def wheelEvent(self, event):
-        '''
-        Zoom
-        '''
-        self.scaleView(math.pow(2.0, event.delta() / 300.0))
-        
     def drawBackground(self, painter, rect):
         '''
         Draw background. For now just some text
@@ -1066,7 +1060,12 @@ class TopologyView(QtGui.QGraphicsView):
         painter.setPen(QtCore.Qt.white)
         painter.setPen(QtGui.QColor(QtCore.Qt.gray).light(130))
         painter.drawText(textRect.translated(20, 5), message)
-        
+                
+    def wheelEvent(self, event):
+        '''
+        Zoom
+        '''
+        self.scaleView(math.pow(2.0, event.delta() / 300.0))
         
     def scaleView(self, scaleFactor):
         factor = self.matrix().scale(scaleFactor, scaleFactor).mapRect(QtCore.QRectF(0, 0, 1, 1)).width()
