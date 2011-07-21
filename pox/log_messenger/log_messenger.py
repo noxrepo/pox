@@ -42,7 +42,7 @@ class LogMessenger (logging.Handler):
     else:
       self._opaque = None
     logging.getLogger().addHandler(self)
-    autoBindEvents(self, connection) #GC?  Weak?
+    self._listeners = autoBindEvents(self, connection) #GC?  Weak?
 
   def _processParameters (self, params):
     if "level" in params:
