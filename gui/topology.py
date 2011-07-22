@@ -572,15 +572,15 @@ class TopoWidget(QtGui.QWidget):
         """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
         ### Add custom topology views here
         """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-        #self.monitoring_view = Monitoring_View(self)
-        #self.stp_view = STP_View(self)
-        #self.routing_view = Sample_Routing_View(self)
-        #self.flowtracer_view = Flow_Tracer_View(self)
+        self.monitoring_view = Monitoring_View(self)
+        self.stp_view = STP_View(self)
+        self.routing_view = Sample_Routing_View(self)
+        self.flowtracer_view = Flow_Tracer_View(self)
         
-        #self.views[self.monitoring_view.name] = self.monitoring_view
-        #self.views[self.stp_view.name] = self.stp_view
-        #self.views[self.routing_view.name] = self.routing_view
-        #self.views[self.flowtracer_view.name] = self.flowtracer_view
+        self.views[self.monitoring_view.name] = self.monitoring_view
+        self.views[self.stp_view.name] = self.stp_view
+        self.views[self.routing_view.name] = self.routing_view
+        self.views[self.flowtracer_view.name] = self.flowtracer_view
         """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
         ### This is the only addition required in this file when adding views
         """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
