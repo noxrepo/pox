@@ -7,47 +7,6 @@ Collection of popup widgets
 from PyQt4 import QtGui, QtCore
 import os
 
-class FilterComboBox(QtGui.QDialog):
-        '''
-        Base for CompComboBox and VerbComboBox
-        '''
-        def __init__(self, parent=None):
-            self.parent = parent
-            QtGui.QWidget.__init__(self)
-            self.combo = QtGui.QGroupBox(self) 
-            
-            cancel = QtGui.QPushButton ("Cancel")
-            ok = QtGui.QPushButton ("Ok")
-            self.hbox = QtGui.QHBoxLayout()
-            self.hbox.addStretch(1)
-            self.hbox.addWidget(cancel)
-            self.hbox.addWidget(ok)
-
-            self.vbox = QtGui.QVBoxLayout()
-            self.checkboxes = [] 
-            self.addCheckboxes()
-            self.combo.setLayout(self.vbox)
-            self.vbox.addLayout(self.hbox)
-            self.vbox.addStretch(1)
-            
-            self.connect(ok, QtCore.SIGNAL('clicked()'), self.setCompFilter)
-            self.connect(cancel, QtCore.SIGNAL('clicked()'), self.cancel)
-            
-            #print self.sizeHint()
-            self.adjustSize()
-                            
-        def setCompFilter(self):
-            self.selection = ''
-            for cb in self.checkboxes:
-                if cb.isChecked():
-                    self.selection = self.selection +' '+ cb.text()
-            self.textbox.setText(self.selection[1:])
-            self.parent._filter()
-            self.accept()
-                
-        def cancel(self):
-            self.reject()
-      
 class TsComboBox(QtGui.QDialog):
         '''
         Popup a ComboBox for timestamp selection
@@ -75,7 +34,6 @@ class TsComboBox(QtGui.QDialog):
             self.grid.addWidget(cancel,          2, 0)
             self.grid.addWidget(ok,              2, 1)
             self.setLayout(self.grid)
-            self.adjustSize()
             
         def start(self):
             self.textbox.setText(self.fromEdit.text()+"-"+self.toEdit.text())
@@ -87,31 +45,53 @@ class TsComboBox(QtGui.QDialog):
                     
         def addCheckboxes(self):
             pass            
-                                
-class CompComboBox(FilterComboBox):
+       
+                      
+class FilterComboBox(QtGui.QDialog):
         '''
-        Popup a ComboBox with running components
+        Base for CompComboBox and VerbComboBox
         '''
         def __init__(self, parent=None):
             self.parent = parent
-            FilterComboBox.__init__(self,self.parent)
-            self.textbox = self.parent.compEdit            
-            self.setWindowTitle('Filter by components')
-            self.resize(250, 600)
-                    
-        def addCheckboxes(self):            
-            self.vbox.addWidget(QtGui.QLabel("Show the following components:"))
+            QtGui.QWidget.__init__(self)
             
-            select = "select distinct component from messages"
+            self.checkboxes = []
+            checkboxes = self.createCheckboxList()            
+            buttons = self.createButtons()
+            
+            self.grid = QtGui.QVBoxLayout()            
+            self.grid.addWidget(checkboxes)
+            self.grid.addWidget(buttons)
+            
+            self.setLayout(self.grid) 
+                            
+        def createButtons(self):
+            cancel = QtGui.QPushButton ("Cancel")
+            ok = QtGui.QPushButton ("Ok")
+            hbox = QtGui.QHBoxLayout()
+            hbox.insertStretch(0)
+            hbox.addWidget(cancel)
+            hbox.addWidget(ok)          
+            
+            self.connect(ok, QtCore.SIGNAL('clicked()'), self.setCompFilter)
+            self.connect(cancel, QtCore.SIGNAL('clicked()'), self.cancel)
+            
+            buttons = QtGui.QGroupBox()
+            buttons.setLayout(hbox)
+            return buttons
+        
+        def setCompFilter(self):
+            self.selection = ''
+            for cb in self.checkboxes:
+                if cb.isChecked():
+                    self.selection = self.selection +' '+ cb.text()
+            self.textbox.setText(self.selection[1:])
+            self.parent._filter()
+            self.accept()
                 
-            q = self.parent.parent.dbWrapper.q       
-            q.exec_("select distinct component from messages")  
-            fieldNo = q.record().indexOf("component")
-            while q.next():
-                b = QtGui.QCheckBox(q.value(fieldNo).toString())
-                self.vbox.addWidget(b)
-                self.checkboxes.append(b)
-                                  
+        def cancel(self):
+            self.reject()
+            
 class VerbComboBox(FilterComboBox):
         '''
         Popup a ComboBox with verbosity levels
@@ -121,14 +101,43 @@ class VerbComboBox(FilterComboBox):
             FilterComboBox.__init__(self,self.parent)
             self.textbox = self.parent.verbEdit                
             self.setWindowTitle('Select verbosity')
-            self.resize(250, 250)
                     
-        def addCheckboxes(self):
+        def createCheckboxList(self):
+            vbox = QtGui.QVBoxLayout()
             levels = ['EMER','ERR', 'WARN','INFO', 'DEBUG']
             for lvl in levels:
                 b = QtGui.QCheckBox(lvl)
-                self.vbox.addWidget(b)
+                vbox.addWidget(b)
                 self.checkboxes.append(b)
+            levels = QtGui.QGroupBox("Verbosity levels")
+            levels.setLayout(vbox)
+            return levels        
+
+class CompComboBox(FilterComboBox):
+        '''
+        Popup a ComboBox with running components
+        '''
+        def __init__(self, parent=None):
+            self.parent = parent
+            FilterComboBox.__init__(self, self.parent)
+            self.textbox = self.parent.compEdit
+            self.setWindowTitle('Filter')                                    
+            
+        def createCheckboxList(self):
+            vbox = QtGui.QVBoxLayout()
+            select = "select distinct component from messages"                
+            q = self.parent.parent.dbWrapper.q       
+            q.exec_("select distinct component from messages")  
+            fieldNo = q.record().indexOf("component")
+            while q.next():
+                b = QtGui.QCheckBox(q.value(fieldNo).toString())
+                vbox.addWidget(b)
+                self.checkboxes.append(b)
+            if not self.checkboxes:
+                vbox.addWidget(QtGui.QLabel("No components found yet"))
+            components = QtGui.QGroupBox("Running Components")
+            components.setLayout(vbox)
+            return components                
             
 class StartComboBox(QtGui.QDialog):
         '''
@@ -137,18 +146,22 @@ class StartComboBox(QtGui.QDialog):
         def __init__(self, parent=None):
             self.parent = parent
             QtGui.QWidget.__init__(self)
-            self.resize(600, 330)   
-            self.setWindowTitle('Start NOX')            
+            self.setWindowTitle('Start POX')            
             
+            interface = self.createInterfaceBox()
+            options = self.createOptionsBox()
+            command = self.createCommandBox()
+            buttons = self.createButtonsBox()
+                        
+            finalGrid = QtGui.QGridLayout()
+            finalGrid.addWidget(interface, 1, 0)
+            finalGrid.addWidget(options,   1, 1)
+            finalGrid.addWidget(command,   2, 0)
+            finalGrid.addWidget(buttons,   2, 1)
+            self.setLayout(finalGrid)
             
-            vsep = QtGui.QFrame()
-            vsep.setFrameStyle(QtGui.QFrame.VLine)
-            hsep = QtGui.QFrame()
-            hsep.setFrameStyle(QtGui.QFrame.HLine)
-            
-            label1 = QtGui.QLabel('Select options:', self) 
-            
-            # Select Interface
+        def createInterfaceBox(self):
+            # Interface Options
             int_ptcp = QtGui.QRadioButton("ptcp")
             int_ptcp.setChecked(True)
             int_nl = QtGui.QRadioButton("netlink")
@@ -156,56 +169,92 @@ class StartComboBox(QtGui.QDialog):
             int_pcap = QtGui.QRadioButton("pcap")
             int_pgen = QtGui.QRadioButton("pgen")
             int_port = QtGui.QLineEdit('6633')
-            int_dpid =QtGui.QLineEdit()
+            int_dpid = QtGui.QLineEdit()
             int_grid = QtGui.QGridLayout()
-            int_grid.addWidget(QtGui.QLabel('Interface:'),   1, 0)
-            int_grid.addWidget(int_ptcp,    2, 0)
-            int_grid.addWidget(QtGui.QLabel('Port:'),   2, 1)
-            int_grid.addWidget(int_port,    2, 2)
-            int_grid.addWidget(int_nl,      3, 0)
-            int_grid.addWidget(QtGui.QLabel('Datapath ID:'),   3, 1)
-            int_grid.addWidget(int_dpid,    3, 2)
-            int_grid.addWidget(int_pssl,    4, 0)
-            int_grid.addWidget(int_pcap,    5, 0)
-            int_grid.addWidget(int_pgen,    6, 0)
-            interface = QtGui.QGroupBox() 
+            int_grid.addWidget(int_ptcp,    1, 0)
+            int_grid.addWidget(QtGui.QLabel('Port:'),   1, 1)
+            int_grid.addWidget(int_port,    1, 2)
+            int_grid.addWidget(int_nl,      2, 0)
+            int_grid.addWidget(QtGui.QLabel('Datapath ID:'),   2, 1)
+            int_grid.addWidget(int_dpid,    2, 2)
+            int_grid.addWidget(int_pssl,    3, 0)
+            int_grid.addWidget(int_pcap,    4, 0)
+            int_grid.addWidget(int_pgen,    5, 0)
+            interface = QtGui.QGroupBox("Interface") 
             interface.setLayout(int_grid)
-                    
+            return interface
+    
+        def createOptionsBox(self):      
             # Other Options
             opt_verb = QtGui.QCheckBox("Verbosity")
             opt_verb.setChecked(True)
+            opt_verblevel = QtGui.QComboBox()
+            opt_verblevel.addItem("DEBUG")
+            opt_verblevel.addItem("INFO")
+            opt_verblevel.addItem("WARN")
+            opt_verblevel.addItem("ERROR")
+            opt_verblevel.addItem("EMER")
             opt_libdir = QtGui.QCheckBox("Look for app libs:")
-            opt_conf = QtGui.QCheckBox("Configuration file:")
-            opt_info = QtGui.QCheckBox("Info file:")
+            self.opt_libdir_path = QtGui.QLineEdit()
+            self.opt_libdir_path.setMaximumWidth(60)
+            opt_libdir_browse = QtGui.QPushButton ("...")
+            self.opt_conf = QtGui.QCheckBox("Configuration file:")
+            self.opt_conf_path = QtGui.QLineEdit()
+            self.opt_conf_path.setMaximumWidth(60)
+            opt_conf_browse = QtGui.QPushButton ("...")
+            opt_conf_browse.setMaximumWidth(30)
+            self.opt_info = QtGui.QCheckBox("Info file:")
+            self.opt_info_path = QtGui.QLineEdit()
+            self.opt_info_path.setMaximumWidth(60)
+            opt_info_browse = QtGui.QPushButton ("...")
+            opt_info_browse.setMaximumWidth(30)
             opt_daem = QtGui.QCheckBox("Run as daemon")
             opt_grid = QtGui.QGridLayout()
-            opt_grid.addWidget(QtGui.QLabel('Other options:'),   1, 0)
-            opt_grid.addWidget(opt_verb,    2, 0)
-            opt_grid.addWidget(QtGui.QLabel('Level:'),   2, 1)
-            #opt_grid.addWidget(int_port,    2, 3)
-            opt_grid.addWidget(opt_libdir,  3, 0)
-            opt_grid.addWidget(opt_conf,    4, 0)
-            opt_grid.addWidget(opt_info,    5, 0)
-            opt_grid.addWidget(opt_daem,    6, 0)
-            options = QtGui.QGroupBox() 
-            #options.setLayout(opt_vbox) 
-            options.setLayout(opt_grid)        
+            opt_grid.addWidget(opt_verb,    1, 0)
+            opt_grid.addWidget(opt_verblevel,   1, 1)
+            opt_grid.addWidget(opt_libdir,  2, 0)
+            opt_grid.addWidget(self.opt_conf,    3, 0)
+            opt_grid.addWidget(self.opt_conf_path,    3, 1)
+            opt_grid.addWidget(opt_conf_browse,    3, 2)
+            opt_grid.addWidget(self.opt_info,    4, 0)
+            opt_grid.addWidget(self.opt_info_path,    4, 1)
+            opt_grid.addWidget(opt_info_browse,    4, 2)
+            opt_grid.addWidget(opt_daem,    5, 0)
+            options = QtGui.QGroupBox("Other options") 
+            options.setLayout(opt_grid)            
             
-            hbox1 = QtGui.QHBoxLayout()
-            hbox1.addWidget(interface)
-            #hbox1.addWidget(vsep)
-            hbox1.addWidget(options)
-            int_opt = QtGui.QGroupBox(self)
-            int_opt.setLayout(hbox1)
+            self.connect(opt_conf_browse, QtCore.SIGNAL('clicked()'), self.selectConf)
+            self.connect(opt_info_browse, QtCore.SIGNAL('clicked()'), self.selectInfo)
             
-            hbox2 = QtGui.QHBoxLayout()
+            return options
+        
+        def selectConf(self):
+            title = "Choose configuration file"
+            filename = QtGui.QFileDialog.getOpenFileName(self,title,"")
+            f = QtCore.QFile(filename)
+            self.opt_conf_path.setText(f.fileName())
+            self.confFile = f
+            self.opt_conf.setChecked(True)
+            
+        def selectInfo(self):
+            title = "Choose information file"
+            filename = QtGui.QFileDialog.getOpenFileName(self,title,"")
+            f = QtCore.QFile(filename)
+            self.opt_info_path.setText(f.fileName())
+            selfinfoFile = f
+            self.opt_info.setChecked(True)
+        
+        def createCommandBox(self):
+            hbox = QtGui.QHBoxLayout()
             self.command = QtGui.QLineEdit()
             self.command.setText("./nox_core -v -i ptcp:6633")
-            hbox2.addWidget(QtGui.QLabel('Or type command:'))
-            hbox2.addWidget(self.command) 
+            hbox.addWidget(QtGui.QLabel('Or type command:'))
+            hbox.addWidget(self.command) 
             command = QtGui.QGroupBox(self)
-            command.setLayout(hbox2)
-            
+            command.setLayout(hbox)
+            return command
+        
+        def createButtonsBox(self):
             # Buttons
             cancel = QtGui.QPushButton ("Cancel")
             ok = QtGui.QPushButton ("Ok")
@@ -214,19 +263,14 @@ class StartComboBox(QtGui.QDialog):
             self.connect(cancel, QtCore.SIGNAL('clicked()'), self.cancel)
             
             # cancel/ok hbox
-            hbox3 = QtGui.QHBoxLayout()
-            hbox3.addStretch(1)
-            hbox3.addWidget(cancel)
-            hbox3.addWidget(ok)
+            hbox = QtGui.QHBoxLayout()
+            hbox.addStretch(1)
+            hbox.addWidget(cancel)
+            hbox.addWidget(ok)
             buttons = QtGui.QGroupBox(self) 
-            buttons.setLayout(hbox3)   
+            buttons.setLayout(hbox)
+            return buttons
             
-            # Lay out objects (x, y)
-            label1.move(20,10)
-            command.move(0,230)
-            buttons.move(380,260)
-            
-                            
         def start(self):
             # Fork and execute ./nox_core command
             '''
