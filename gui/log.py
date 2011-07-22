@@ -151,26 +151,23 @@ class LogDisplay(QtGui.QTableView):
         # Font
         #self.setFont(QtGui.QFont("Arial", 10))
         
+        self.setModel(self.parent.dbWrapper.model)
         self.setSortingEnabled(True)
+        
         self.verticalHeader().setVisible(False)
         
-        self.setModel(self.parent.dbWrapper.model)
-        #self.resizeColumnToContents(3)
         self.horizontalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
         self.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft)
-        #self.hideColumn(2)
-        #self.setSelectionBehavior(self.selectRows)
+        self.setSelectionBehavior(self.SelectRows)
         #self.setAlternatingRowColors(True)
         self.setWordWrap(True)
-        #self.setStretchLastColumn(True)
-        #self.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
-        #self.setUpdatesEnabled(False)
+        self.setShowGrid(False)
         
+        #Disable cell editing
+        self.setEditTriggers(self.NoEditTriggers)
+                
 class dbWrapper(QtCore.QThread):
-    
-    insertRecordSignal = QtCore.pyqtSignal(object)
-    #logRecordRcvdSignal = QtCore.pyqtSignal(object)
-    
+        
     def __init__(self, parent=None):
         QtCore.QThread.__init__(self)
         self.parent = parent
@@ -226,7 +223,6 @@ class dbWrapper(QtCore.QThread):
     def insert_record(self, r):
         self.model.insertRecord(-1,r)
         self.model.submitAll()
-        #self.model.select()
         if self.parent.filterWidget.autoScroll:
             self.parent.logDisplay.scrollToBottom()
     
@@ -295,11 +291,8 @@ class LogWidget(QtGui.QWidget):
         '''
         msg = {}
         msg['hello'] = 'logger'
-        msg['type'] =  'log'
-        #msg['opaque'] = {"type":"log"}
-        msg['format'] = '%(asctime)s | %(name)-15s | %(levelname)-8s | %(message)s'
-        #msg['format'] = "%(levelname)-8s | %(name)-15s | %(message)s"
-        msg['json']   = True
+        msg['type']  = 'log'
+        msg['json']  = True
         msg['newlines'] = False
         self.parent.topoWidget.topologyView.topologyInterface.send(msg)
         
