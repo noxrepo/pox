@@ -37,12 +37,12 @@ def generateXID ():
 class ofp_header:
   def __init__ (self):
     self.version = OFP_VERSION
-    self.type = 0
+    self.header_type = 0
     self.length = 8
     self.xid = None
 
   def _assert (self):
-    if self.type not in ofp_type_map:
+    if self.header_type not in ofp_type_map:
       return (False, "type is not a known message type")
     return (True, None)
 
@@ -53,13 +53,13 @@ class ofp_header:
       if(not ofp_header._assert(self)[0]):
         return None
     packed = ""
-    packed += struct.pack("!BBHL", self.version, self.type, self.length, self.xid)
+    packed += struct.pack("!BBHL", self.version, self.header_type, self.length, self.xid)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.version, self.type, self.length, self.xid) = struct.unpack_from("!BBHL", binaryString, 0)
+    (self.version, self.header_type, self.length, self.xid) = struct.unpack_from("!BBHL", binaryString, 0)
     return binaryString[8:]
 
   def __len__ (self):
@@ -68,7 +68,7 @@ class ofp_header:
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.version !=  other.version: return False
-    if self.type !=  other.type: return False
+    if self.header_type !=  other.header_type: return False
     if self.length !=  other.length: return False
     if self.xid !=  other.xid: return False
     return True
@@ -78,7 +78,7 @@ class ofp_header:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'version: ' + str(self.version) + '\n'
-    outstr += prefix + 'type:    ' + str(self.type) + '\n'
+    outstr += prefix + 'type:    ' + str(self.header_type) + '\n'
     outstr += prefix + 'length:  ' + str(self.length) + '\n'
     outstr += prefix + 'xid:     ' + str(self.xid) + '\n'
     return outstr
@@ -1131,7 +1131,7 @@ class ofp_action_vendor_header:
 class ofp_features_reply (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_FEATURES_REPLY
+    self.header_type = OFPT_FEATURES_REPLY
     self.datapath_id = 0
     self.n_buffers = 0
     self.n_tables = 0
@@ -1275,7 +1275,7 @@ ofp_config_flags_rev_map = {
 class ofp_flow_mod (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.type = OFPT_FLOW_MOD
+    self.header_type = OFPT_FLOW_MOD
     self.match = ofp_match()
     self.cookie = 0
     self.command = 0
@@ -1386,7 +1386,7 @@ ofp_flow_mod_flags_rev_map = {
 class ofp_port_mod (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_PORT_MOD
+    self.header_type = OFPT_PORT_MOD
     self.port_no = 0
     self.hw_addr = EMPTY_ETH
     self.config = 0
@@ -1563,7 +1563,7 @@ class ofp_queue_get_config_reply (ofp_header):
 class ofp_stats_request (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_STATS_REQUEST
+    self.header_type = OFPT_STATS_REQUEST
     self.type = 0
     self.flags = 0
     self.body = []
@@ -1616,7 +1616,7 @@ class ofp_stats_request (ofp_header):
 class ofp_stats_reply (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_STATS_REPLY
+    self.header_type = OFPT_STATS_REPLY
     self.type = 0
     self.flags = 0
     self.body = []
@@ -2286,7 +2286,7 @@ class ofp_queue_stats:
 class ofp_packet_out (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.type = OFPT_PACKET_OUT
+    self.header_type = OFPT_PACKET_OUT
     self.buffer_id = 4294967295
     self.in_port = 0
     self.actions = []
@@ -2369,7 +2369,7 @@ class ofp_packet_out (ofp_header):
 class ofp_barrier_reply (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_BARRIER_REPLY
+    self.header_type = OFPT_BARRIER_REPLY
 
   def _assert (self):
     return (True, None)
@@ -2407,7 +2407,7 @@ class ofp_barrier_reply (ofp_header):
 class ofp_barrier_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.type = OFPT_BARRIER_REQUEST
+    self.header_type = OFPT_BARRIER_REQUEST
 
     _initHelper(self, kw)
 
@@ -2448,7 +2448,7 @@ class ofp_barrier_request (ofp_header):
 class ofp_packet_in (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_PACKET_IN
+    self.header_type = OFPT_PACKET_IN
     self.buffer_id = 0
     self.total_len = 0
     self.in_port = 0
@@ -2517,7 +2517,7 @@ ofp_packet_in_reason_rev_map = {
 class ofp_flow_removed (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_FLOW_REMOVED
+    self.header_type = OFPT_FLOW_REMOVED
     self.match = ofp_match()
     self.cookie = 0
     self.priority = 0
@@ -2609,7 +2609,7 @@ ofp_flow_removed_reason_rev_map = {
 class ofp_port_status (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_PORT_STATUS
+    self.header_type = OFPT_PORT_STATUS
     self.reason = 0
     self.pad = b'\x00' * 7
     self.desc = ofp_phy_port()
@@ -2671,7 +2671,7 @@ ofp_port_reason_rev_map = {
 class ofp_error (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_ERROR
+    self.header_type = OFPT_ERROR
     self.type = 0
     self.code = 0
     self.data = []
@@ -2793,7 +2793,7 @@ ofp_queue_op_failed_code_rev_map = {
 class ofp_hello (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_HELLO
+    self.header_type = OFPT_HELLO
     self.length = len(self)
 
   def _assert (self):
@@ -2832,7 +2832,7 @@ class ofp_hello (ofp_header):
 class ofp_echo_request (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_ECHO_REQUEST
+    self.header_type = OFPT_ECHO_REQUEST
     self.body = []
 
   def _assert (self):
@@ -2883,7 +2883,7 @@ class ofp_echo_request (ofp_header):
 class ofp_echo_reply (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_ECHO_REPLY
+    self.header_type = OFPT_ECHO_REPLY
     self.body = []
 
   def _assert (self):
@@ -2934,7 +2934,7 @@ class ofp_echo_reply (ofp_header):
 class ofp_vendor_header (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_VENDOR
+    self.header_type = OFPT_VENDOR
     self.vendor = 0
 
   def _assert (self):
@@ -2977,7 +2977,7 @@ class ofp_vendor_header (ofp_header):
 class ofp_vendor (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_VENDOR
+    self.header_type = OFPT_VENDOR
     self.vendor = 0
     self.data = ''
 
@@ -3029,7 +3029,7 @@ class ofp_vendor (ofp_header):
 class ofp_features_request (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_FEATURES_REQUEST
+    self.header_type = OFPT_FEATURES_REQUEST
     self.length = 8
 
   def _assert (self):
@@ -3068,7 +3068,7 @@ class ofp_features_request (ofp_header):
 class ofp_get_config_request (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_GET_CONFIG_REQUEST
+    self.header_type = OFPT_GET_CONFIG_REQUEST
 
   def _assert (self):
     return (True, None)
@@ -3106,7 +3106,7 @@ class ofp_get_config_request (ofp_header):
 class ofp_get_config_reply (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_GET_CONFIG_REPLY
+    self.header_type = OFPT_GET_CONFIG_REPLY
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
@@ -3152,7 +3152,7 @@ class ofp_get_config_reply (ofp_header):
 class ofp_set_config (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
-    self.type = OFPT_SET_CONFIG
+    self.header_type = OFPT_SET_CONFIG
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
