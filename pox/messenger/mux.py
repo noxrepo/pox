@@ -40,7 +40,7 @@ class MuxSource (EventMixin):
     else:
       log.warn("Tried to forget a channel I didn't know")
 
-  def _handle_MessageRecieved (self, event):
+  def _handle_MessageRecieved (self, event, msg):
     if event.con.isReadable():
       r = event.con.read()
       if type(r) is dict:
@@ -53,6 +53,7 @@ class MuxSource (EventMixin):
             self.channels[channelName] = channel
           else:
             channel = self.channels[channelName]
+          channel._recv_msg(r)
         elif r.get("_mux_bye",False):
           event.con.close()
         else:
@@ -77,12 +78,12 @@ class MuxHub (object):
   def __init__ (self):
     core.messenger.addListener(MessageRecieved, self._handle_global_MessageRecieved)#, weak=True)
 
-  def _handle_global_MessageRecieved (self, event):
+  def _handle_global_MessageRecieved (self, event, msg):
     try:
-      n = event.con.read()
-      if n['hello'] == 'mux':
+      if msg['hello'] == 'mux':
         # It's for me!
         event.claim()
+        event.con.read()
         m = MuxSource(event.con)
 
         print self.__class__.__name__, "- started conversation with", event.con

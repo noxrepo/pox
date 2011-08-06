@@ -14,7 +14,8 @@ class MessengerExample (object):
   True, it closes the connection
 
   To try it out, do the following in the POX interpreter:
-  POX> pox.messenger.messenger.MessengerExample("foo")
+  POX> import pox.messenger.messenger_example
+  POX> pox.messenger.messenger_example.MessengerExample("foo")
   And then do the following from the commandline:
   bash$ echo '{"hello":"foo"}[1,2,3] "neat"' | nc localhost 7790
   """
@@ -22,11 +23,12 @@ class MessengerExample (object):
     core.messenger.addListener(MessageRecieved, self._handle_global_MessageRecieved, weak=True)
     self._targetName = targetName
 
-  def _handle_global_MessageRecieved (self, event):
+  def _handle_global_MessageRecieved (self, event, msg):
     try:
-      n = event.con.read()['hello']
+      n = msg['hello']
       if n == self._targetName:
         # It's for me!
+        event.con.read() # Consume the message
         event.claim()
         event.con.addListener(MessageRecieved, self._handle_MessageRecieved, weak=True)
         print self._targetName, "- started conversation with", event.con
@@ -35,13 +37,15 @@ class MessengerExample (object):
     except:
       pass
 
-  def _handle_MessageRecieved (self, event):
+  def _handle_MessageRecieved (self, event, msg):
     if event.con.isReadable():
       r = event.con.read()
       print self._targetName, "-",r
       if type(r) is dict and r.get("bye",False):
         print self._targetName, "- GOODBYE!"
         event.con.close()
+      if type(r) is dict and "echo" in r:
+        event.con.send({"echo":r["echo"]})
     else:
       print self._targetName, "- conversation finished"
 

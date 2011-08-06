@@ -40,10 +40,11 @@ class ConnectionStarted (Event):
 
 
 class MessageRecieved (Event):
-  def __init__ (self, connection):
+  def __init__ (self, connection, msg):
     Event.__init__(self)
     self.con = connection
     self._claimed = False
+    self.msg = msg
 
   def claim (self):
     assert self._claimed == False
@@ -56,7 +57,7 @@ class MessageRecieved (Event):
     # we look to see if they read the message.  If so, we stop processing
     # this event now.
     l = len(self.con._msgs) # Sleazy
-    r = handler(self, *args, **kw)
+    r = handler(self, self.msg, *args, **kw)
     if r is not None:
       return r
     if len(self.con._msgs) < l:
@@ -79,6 +80,7 @@ class MessengerConnection (EventMixin):
     self._msgs = []
     self._source = source
     self._newlines = False
+    self.buffered = False
     if ID is not None:
       self.ID = ID
 
@@ -97,7 +99,7 @@ class MessengerConnection (EventMixin):
     self._source._forget(self)
     self._isConnected = False
     self.raiseEventNoErrors(ConnectionClosed, self)
-    self.raiseEventNoErrors(MessageRecieved, self)
+    self.raiseEventNoErrors(MessageRecieved, self, None)
 
   def send (self, whatever, **kw):
     s = json.dumps(whatever, **kw)
@@ -113,6 +115,9 @@ class MessengerConnection (EventMixin):
   def isReadable (self):
     return len(self._msgs) > 0
 
+  def peek (self, default = None):
+    return read(default = default, peek=True)
+
   def read (self, default = None, peek = False):
     if len(self._msgs) == 0: return default
     if peek:
@@ -123,7 +128,9 @@ class MessengerConnection (EventMixin):
   def _recv_msg (self, msg):
     #print self,"recv:",msg
     self._msgs.append(msg)
-    self.raiseEventNoErrors(MessageRecieved, self)
+    self.raiseEventNoErrors(MessageRecieved, self, msg)
+    if not self.buffered:
+      del self._msgs[:]
 
   def _recv_raw (self, data):
     if len(data) == 0: return
@@ -152,8 +159,8 @@ class MessengerConnection (EventMixin):
     # Subclasses probably want to change this
     return "<" + self.__class__.__name__ + "/" + self.ID + ">"
 
-  def _defaultMessageRecieved (self, event):
-    #TODO: move to base class?
+  def _defaultMessageRecieved (self, event, msg):
+    #print self,"default recv:",msg
     #TODO: make sure this actually works. I have never tried re-raising an event.
     core.messenger.raiseEventNoErrors(event)
     if event._claimed:

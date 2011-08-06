@@ -32,7 +32,7 @@ class GuiMessengerService (EventMixin):
 
     self.listenTo(connection)
 
-  def _handle_MessageRecieved (self, event):
+  def _handle_MessageRecieved (self, event, msg):
     if event.con.isReadable():
       r = event.con.read()
       if type(r) is dict:
@@ -63,14 +63,14 @@ class GuiMessengerServiceListener (object):
   def __init__ (self):
     core.messenger.addListener(MessageRecieved, self._handle_global_MessageRecieved)
 
-  def _handle_global_MessageRecieved (self, event):
+  def _handle_global_MessageRecieved (self, event, msg):
     try:
-      n = event.con.read()
-      if n['hello'] == 'gui':
+      if msg['hello'] == 'gui':
         # It's for me!
         try:
-          GuiMessengerService(event.con, n)
+          GuiMessengerService(event.con, msg)
           event.claim()
+          return True
         except:
           traceback.print_exc()
     except:

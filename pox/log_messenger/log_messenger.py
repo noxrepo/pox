@@ -65,7 +65,7 @@ class LogMessenger (logging.Handler):
     if doFormat:
       self.setFormatter(logging.Formatter(self._format, self._dateFormat))
 
-  def _handle_MessageRecieved (self, event):
+  def _handle_MessageRecieved (self, event, msg):
     if event.con.isReadable():
       r = event.con.read()
       if type(r) is dict:
@@ -105,15 +105,15 @@ class LogMessengerListener (object):
   def __init__ (self):
     core.messenger.addListener(MessageRecieved, self._handle_global_MessageRecieved)
 
-  def _handle_global_MessageRecieved (self, event):
+  def _handle_global_MessageRecieved (self, event, msg):
     try:
-      n = event.con.read()
       json = False
-      if n['hello'] == 'logger':
+      if msg['hello'] == 'logger':
         # It's for me!
         try:
-          LogMessenger(event.con, n)
+          LogMessenger(event.con, msg)
           event.claim()
+          return True # Stop processing this message
         except:
           traceback.print_exc()
     except:
