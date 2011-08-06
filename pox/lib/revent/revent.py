@@ -101,13 +101,17 @@ class EventMixin (object):
       else:
         rv = handler(event, *args, **kw)
       if once: self.removeListener(eid)
-      if rv == None: continue
-      if rv == False:
+      if rv is None: continue
+      if rv is False:
         self.removeListener(eid)
+      if rv is True:
+        break
       if type(rv) == tuple:
-        if rv[1] == True:
+        if len(rv) >= 2 and rv[1] == True:
           self.removeListener(eid)
-        if rv[0]:
+        if len(rv) >= 1 and rv[0]:
+          break
+        if len(rv) == 0:
           break
       #if classCall and hasattr(event, "halt") and event.halt:
       if classCall and event.halt:
