@@ -82,6 +82,15 @@ class MessengerConnection (EventMixin):
     if ID is not None:
       self.ID = ID
 
+    claimed = False
+    e = core.messenger.raiseEventNoErrors(ConnectionStarted, self)
+    if e is not None:
+      claimed = e._claimed
+
+    if not claimed:
+      # Unclaimed events get forwarded to here too
+      self.addListener(MessageRecieved, self._defaultMessageRecieved, priority=-1) # Low priority
+
   def _close (self):
     # Called internally
     if self._isConnected is False: return
@@ -143,35 +152,6 @@ class MessengerConnection (EventMixin):
     # Subclasses probably want to change this
     return "<" + self.__class__.__name__ + "/" + self.ID + ">"
 
-
-class TCPMessengerConnection (MessengerConnection, Task):
-  def __init__ (self, source, socket):
-    MessengerConnection.__init__(self, source, ID=str(id(self))) #TODO: better ID
-    Task.__init__(self)
-
-    claimed = False
-    e = core.messenger.raiseEventNoErrors(ConnectionStarted, self)
-    if e is not None:
-      claimed = e._claimed
-
-    if not claimed:
-      # Unclaimed events get forwarded to here too
-      self.addListener(MessageRecieved, self._defaultMessageRecieved, priority=-1) # Low priority
-
-    #self.start()
-
-    self._socket = socket
-
-  def close (self):
-    self._close()
-
-  def _close (self):
-    super(TCPMessengerConnection, self)._close()
-    try:
-      self._socket.shutdown(socket.SHUT_RDWR)
-    except:
-      pass
-
   def _defaultMessageRecieved (self, event):
     #TODO: move to base class?
     #TODO: make sure this actually works. I have never tried re-raising an event.
@@ -179,6 +159,25 @@ class TCPMessengerConnection (MessengerConnection, Task):
     if event._claimed:
       # Someone claimed this connection -- stop forwarding it globally
       return EventRemove
+
+  def close (self):
+    self._close()
+
+
+class TCPMessengerConnection (MessengerConnection, Task):
+  def __init__ (self, source, socket):
+    self._socket = socket
+    MessengerConnection.__init__(self, source, ID=str(id(self))) #TODO: better ID
+    Task.__init__(self)
+
+    #self.start()
+
+  def _close (self):
+    super(TCPMessengerConnection, self)._close()
+    try:
+      self._socket.shutdown(socket.SHUT_RDWR)
+    except:
+      pass
 
   def sendRaw (self, data):
     try:
