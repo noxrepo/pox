@@ -2719,7 +2719,7 @@ class ofp_error (ofp_header):
     t = self.type
     c = self.code
     if t < len(ofp_error_type):
-      n = ofp_error_type[t]
+      n = ofp_error_type_map[t]
       t = "%s (%i)" % (n, t)
       n = 'ofp' + n.lower()[5:] + '_code_map'
       if n in sys.modules[__name__].__dict__:
