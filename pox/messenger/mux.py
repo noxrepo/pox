@@ -29,7 +29,7 @@ class MuxConnection (MessengerConnection):
     self.con.sendRaw(data)
 
 
-class MuxSource (object):
+class MuxSource (EventMixin):
   def __init__ (self, con):
     self.listenTo(con)
     self.channels = {}
@@ -45,8 +45,8 @@ class MuxSource (object):
       r = event.con.read()
       if type(r) is dict:
         channelName = r.get("_mux", None)
-        del r['_mux']
         if channelName is not None:
+          del r['_mux']
           if channelName not in self.channels:
             # New channel
             channel = MuxConnection(self, channelName, event.con)
@@ -79,7 +79,7 @@ class MuxHub (object):
 
   def _handle_global_MessageRecieved (self, event):
     try:
-      n = event.con.read()['hello']
+      n = event.con.read()
       if n['hello'] == 'mux':
         # It's for me!
         event.claim()
