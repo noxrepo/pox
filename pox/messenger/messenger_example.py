@@ -49,3 +49,6 @@ class MessengerExample (object):
     else:
       print self._targetName, "- conversation finished"
 
+examples = {}
+def launch (name = "example"):
+  examples[name] = MessengerExample(name)
