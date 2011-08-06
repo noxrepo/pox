@@ -104,7 +104,7 @@ class EventMixin (object):
       if rv == None: continue
       if rv == False:
         self.removeListener(eid)
-      if type(rv) == type(tuple):
+      if type(rv) == tuple:
         if rv[1] == True:
           self.removeListener(eid)
         if rv[0]:
