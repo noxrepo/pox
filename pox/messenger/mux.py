@@ -1,3 +1,32 @@
+"""
+Sometimes you'd like to be able to communicate with multiple messenger
+services over the same connection.  You can use the mux messenger service
+to do this.
+
+If you send a "hello":"mux" message, the muxer will claim that connection.
+Subsequent messages should include "_mux":<Key> pairs.  For each unique
+Key, the muxer will create a new virtual connection -- subsequent messages
+with the same "_mux":<Key> will be sent down that virtual connection, and
+messages from that service will have the key tagged on.  Note this means
+that messages to and from services you'd like muxed must be JSON objects
+(dictionaries).  If this is a problem, let me know, because the muxer could
+be extended.
+
+An example:
+(Assume we have created a MessengerExample("foo"))
+-> {"hello":"mux"}
+-> {"_mux":"logger1", "hello":"log"}
+-> {"_mux":"logger2", "hello":"log"}
+-> {"_mux":"logger1", "level":"ERROR"}
+-> {"_mux":"bar", "hello":"foo"}
+-> {"_mux":"bar", "echo":"hello world"}
+<- {"_mux":"bar", "echo":"hello world"}
+
+In this case, we have created two loggers, configured one of them
+independent of the other, sent an echo request to a MessengerExample
+object, and recieved the result.
+"""
+
 from pox.core import core
 from pox.messenger.messenger import *
 
