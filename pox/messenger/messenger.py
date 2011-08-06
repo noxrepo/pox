@@ -78,6 +78,7 @@ class MessengerConnection (EventMixin):
     self._buf = bytes()
     self._msgs = []
     self._source = source
+    self._newlines = False
     if ID is not None:
       self.ID = ID
 
@@ -90,7 +91,9 @@ class MessengerConnection (EventMixin):
     self.raiseEventNoErrors(MessageRecieved, self)
 
   def send (self, whatever, **kw):
-    self.sendRaw(json.dumps(whatever, **kw))
+    s = json.dumps(whatever, **kw)
+    if self._newlines: s += "\n"
+    self.sendRaw(s)
 
   def sendRaw (self, data):
     raise RuntimeError("Not implemented")
@@ -159,8 +162,6 @@ class TCPMessengerConnection (MessengerConnection, Task):
 
     self._socket = socket
 
-    self._newlines = False
-
   def close (self):
     self._close()
 
@@ -178,12 +179,6 @@ class TCPMessengerConnection (MessengerConnection, Task):
     if event._claimed:
       # Someone claimed this connection -- stop forwarding it globally
       return EventRemove
-
-  def send (self, whatever, **kw):
-    """ Overridden because we may insert newlines """
-    s = json.dumps(whatever, **kw)
-    if self._newlines: s += "\n"
-    self.sendRaw(s)
 
   def sendRaw (self, data):
     try:
