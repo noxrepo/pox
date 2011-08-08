@@ -26,11 +26,37 @@ class PortStatus (Event):
     self.deleted = ofp.reason == of.OFPPR_DELETE
     self.port = ofp.desc.port_no
 
-class StatsReply (Event):
+class RawStatsReply (Event):
   def __init__ (self, connection, ofp):
     Event.__init__(self)
     self.connection = connection
-    self.ofp = ofp
+    self.ofp = ofp     # Raw ofp message(s)
+
+class StatsReply (Event):
+  """ Abstract superclass for all stats replies """
+  def __init__ (self, connection, ofp, stats):
+    Event.__init__(self)
+    self.connection = connection
+    self.ofp = ofp     # Raw ofp message(s)
+    self.stats = stats # Processed
+
+class SwitchDescReceived (StatsReply):
+  pass
+
+class FlowStatsReceived (StatsReply):
+  pass
+
+class AggregateFlowStatsReceived (StatsReply):
+  pass
+
+class TableStatsReceived (StatsReply):
+  pass
+
+class PortStatsReceived (StatsReply):
+  pass
+
+class QueueStatsReceived (StatsReply):
+  pass
 
 class FlowRemoved (Event):
   def __init__ (self, connection, ofp):
@@ -114,7 +140,13 @@ class OpenFlowHub (EventMixin):
     FlowRemoved,
     PacketIn,
     BarrierIn,
-    StatsReply,
+    RawStatsReply,
+    SwitchDescReceived,
+    FlowStatsReceived,
+    AggregateFlowStatsReceived,
+    TableStatsReceived,
+    PortStatsReceived,
+    QueueStatsReceived,
   ])
   def __init__ (self):
     self._connections = {}#weakref.WeakValueDictionary() # DPID -> Connection

@@ -43,8 +43,9 @@ def handle_FEATURES_REPLY (con, msg):
   con.raiseEvent(ConnectionUp, con, msg)
 
 def handle_STATS_REPLY (con, msg):
-  openflowHub.raiseEventNoErrors(StatsReply, con, msg)
-  con.raiseEventNoErrors(StatsReply, con, msg)
+  openflowHub.raiseEventNoErrors(RawStatsReply, con, msg)
+  con.raiseEventNoErrors(RawStatsReply, con, msg)
+  con._incoming_stats_reply(msg)
 
 def handle_PORT_STATUS (con, msg): #A
   openflowHub.raiseEventNoErrors(PortStatus, con, msg)
@@ -73,6 +74,56 @@ def handle_BARRIER (con, msg):
 #TODO: def handle_VENDOR (con, msg): #S
 
 
+def _processStatsBody (body, obj):
+  l = len(obj)
+  t = obj.__class__
+  r = []
+  for i in range(len(body) // l):
+    if i != 0: obj = t()
+    obj.unpack(body[i * l: i * l + l])
+    r.append(obj)
+  return r
+
+# handlers for stats replies
+def handle_OFPST_DESC (con, parts):
+  msg = of.ofp_desc_stats()
+  msg.unpack(parts[0].body)
+  openflowHub.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
+  con.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
+
+def handle_OFPST_FLOW (con, parts):
+  msg = []
+  for part in parts:
+    msg += _processStatsBody(part.body, of.ofp_flow_stats())
+  openflowHub.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
+  con.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
+
+def handle_OFPST_AGGREGATE (con, parts):
+  msg = of.ofp_aggregate_stats_reply()
+  msg.unpack(parts[0].body)
+  openflowHub.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
+  con.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
+
+def handle_OFPST_TABLE (con, parts):
+  msg = []
+  for part in parts:
+    msg += _processStatsBody(part.body, of.ofp_table_stats())
+  openflowHub.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
+  con.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
+
+def handle_OFPST_PORT (con, parts):
+  msg = []
+  for part in parts:
+    msg += _processStatsBody(part.body, of.ofp_port_stats())
+  openflowHub.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
+  con.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
+
+def handle_OFPST_QUEUE (con, parts):
+  msg = []
+  for part in parts:
+    msg += _processStatsBody(part.body, of.ofp_queue_stats())
+  openflowHub.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
+  con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
 
 
 # See "classes"
@@ -111,6 +162,15 @@ handlerMap = {
   of.OFPT_ERROR : handle_ERROR_MSG,
   of.OFPT_BARRIER_REPLY : handle_BARRIER,
   of.OFPT_STATS_REPLY : handle_STATS_REPLY,
+}
+
+statsHandlerMap = {
+  of.OFPST_DESC : handle_OFPST_DESC,
+  of.OFPST_FLOW : handle_OFPST_FLOW,
+  of.OFPST_AGGREGATE : handle_OFPST_AGGREGATE,
+  of.OFPST_TABLE : handle_OFPST_TABLE,
+  of.OFPST_PORT : handle_OFPST_PORT,
+  of.OFPST_QUEUE : handle_OFPST_QUEUE,
 }
 
 # Deferred sending should be unusual, so don't worry too much about efficiency
@@ -218,7 +278,13 @@ class Connection (EventMixin):
     FlowRemoved,
     PacketIn,
     BarrierIn,
-    StatsReply,
+    RawStatsReply,
+    SwitchDescReceived,
+    FlowStatsReceived,
+    AggregateFlowStatsReceived,
+    TableStatsReceived,
+    PortStatsReceived,
+    QueueStatsReceived,
   ])
 
   ID = 0
@@ -235,6 +301,8 @@ class Connection (EventMixin):
     log.info(str(self) + " " + str(m))
 
   def __init__ (self, sock):
+    self._previous_stats = []
+
     self.sock = sock
     self.buf = ''
     Connection.ID += 1;
@@ -329,6 +397,41 @@ class Connection (EventMixin):
         traceback.print_exc()
         continue
     return True
+
+  def _incoming_stats_reply (self, ofp):
+    # This assumes that you don't recieve multiple stats replies
+    # to different requests out of order/interspersed.
+    more = (ofp.flags & 1) != 0
+    if more:
+      if ofp.type not in [of.OFPST_FLOW, of.OFPST_TABLE,
+                                of.OFPST_PORT, of.OFPST_QUEUE]:
+        log.error("Don't know how to aggregate stats message of type " +
+                  str(ofp.type))
+        self._previous_stats = []
+        return
+
+    if len(self._previous_stats) != 0:
+      if ((ofp.xid == self._previous_stats[0].xid) and
+          (ofp.type == self._previous_stats[0].type)):
+        self._previous_stats.append(ofp)
+      else:
+        log.error("Was expecting continued stats of type %i with xid %i, " +
+                  "but got type %i with xid %i" %
+                  (self._previous_stats_reply.xid,
+                    self._previous_stats_reply.type,
+                    ofp.xid, ofp.type))
+        self._previous_stats = [ofp]
+    else:
+      self._previous_stats = [ofp]
+
+    if not more:
+      handler = statsHandlerMap.get(self._previous_stats[0].type, None)
+      if handler is None:
+        log.warn("No handler for stats of type " +
+                 str(self._previous_stats[0].type))
+      s = self._previous_stats
+      self._previous_stats = []
+      handler(self, s)
 
   def __str__ (self):
     return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
