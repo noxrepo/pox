@@ -6,9 +6,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 from pox.core import core
 import pox.openflow.openflow
-import pox.openflow.openflowtopology
-import pox.topology.topology
-import pox.openflow.discovery
 import pox.openflow.of_01
 
 # Turn on extra info for event exceptions
