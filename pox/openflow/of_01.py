@@ -443,7 +443,7 @@ from pox.lib.recoco.recoco import *
 class OpenFlow_01_Task (Task):
   def __init__ (self, port = 6633, address = '0.0.0.0'):
     Task.__init__(self)
-    self.port = port
+    self.port = int(port)
     self.address = address
     self.daemon = True
 
