@@ -15,6 +15,7 @@ import pox.openflow.of_01
 import pox.lib.revent.revent as revent
 revent.showEventExceptions = True
 
+options = None
 
 def doLaunch ():
   import sys, os
@@ -23,7 +24,11 @@ def doLaunch ():
 
   import collections
   components = collections.OrderedDict()
-  curargs = None
+  #curargs = None
+
+  curargs = collections.OrderedDict()
+  global options
+  options = curargs
 
   for arg in sys.argv[1:]:
     if not arg.startswith("--"):
@@ -61,6 +66,20 @@ def doLaunch ():
 
   return True
 
+cli = True
+
+def process_options ():
+  for k,v in options.iteritems():
+    #print k,"=",v
+    if k == "no-cli":
+      if str(v).lower() == "true":
+        global cli
+        cli = False
+    else:
+      print "Unknown option: ", k
+      import sys
+      sys.exit(1)
+
 def pre_startup ():
   pox.openflow.openflow.launch() # Always launch OpenFlow
 
@@ -78,6 +97,7 @@ if __name__ == '__main__':
     pre_startup()
     launchOK = doLaunch()
     if launchOK:
+      process_options()
       post_startup()
       core.goUp()
   except:
@@ -89,11 +109,21 @@ if __name__ == '__main__':
     import sys
     sys.exit(1)
 
-  import time
-  time.sleep(1)
-  import code
-  import sys
-  sys.ps1 = "POX> "
-  sys.ps2 = " ... "
-  code.interact('Ready.', local=locals())
+  if cli:
+    import time
+    time.sleep(1)
+    import code
+    import sys
+    sys.ps1 = "POX> "
+    sys.ps2 = " ... "
+    code.interact('Ready.', local=locals())
+  else:
+    try:
+      import time
+      while True:
+        time.sleep(5)
+    except:
+      pass
+    #core.scheduler._thread.join() # Sleazy
+
   pox.core.core.quit()
