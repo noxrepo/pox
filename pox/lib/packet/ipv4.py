@@ -63,7 +63,7 @@ class ipv4(packet_base):
     DF_FLAG = 0x02
     MF_FLAG = 0x01
 
-    ip_id = 0
+    ip_id = int(time.time())
 
     def __init__(self, arr=None, prev=None):
 
@@ -73,8 +73,8 @@ class ipv4(packet_base):
         self.hl    = ipv4.MIN_LEN / 4
         self.tos   = 0
         self.iplen = ipv4.MIN_LEN
-        self.id    = int(time.time())
-        ipv4.ip_id += 1
+        ipv4.ip_id = (ipv4.ip_id + 1) & 0xffff
+        self.id    = ipv4.ip_id
         self.flags = 0
         self.frag  = 0
         self.ttl   = 64
