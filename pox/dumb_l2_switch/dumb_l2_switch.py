@@ -47,6 +47,3 @@ class dumb_l2_switch (EventMixin):
     log.debug("Connection %s" % (event.connection,))
     LearningSwitch(event.connection)
 
-def launch ():
-  core.register("switch", dumb_l2_switch())
-
