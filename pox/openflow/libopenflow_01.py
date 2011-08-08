@@ -83,6 +83,9 @@ class ofp_header:
     outstr += prefix + 'xid:     ' + str(self.xid) + '\n'
     return outstr
 
+  def __str__ (self):
+    return show()
+
 #2. Common Structures
 ##2.1 Port Structures
 class ofp_phy_port:
@@ -557,8 +560,8 @@ class ofp_match:
     if (len(binaryString) < 40):
       return binaryString
     (wildcards, self._in_port) = struct.unpack_from("!LH", binaryString, 0)
-    (self._dl_src[0], self._dl_src[1], self._dl_src[2], self._dl_src[3], self._dl_src[4], self._dl_src[5]) = struct.unpack_from("!BBBBBB", binaryString, 6)
-    (self._dl_dst[0], self._dl_dst[1], self._dl_dst[2], self._dl_dst[3], self._dl_dst[4], self._dl_dst[5]) = struct.unpack_from("!BBBBBB", binaryString, 12)
+    self._dl_src = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 6))
+    self._dl_dst = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 12))
     (self._dl_vlan, self._dl_vlan_pcp) = struct.unpack_from("!HB", binaryString, 18)
     (self._dl_type, self._nw_tos, self._nw_proto) = struct.unpack_from("!HBB", binaryString, 22)
     (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = struct.unpack_from("!LLHH", binaryString, 28)
@@ -1566,32 +1569,33 @@ class ofp_stats_request (ofp_header):
     self.header_type = OFPT_STATS_REQUEST
     self.type = 0
     self.flags = 0
-    self.body = []
+    self.body = b''
 
   def _assert (self):
     return (True, None)
 
   def pack (self, assertstruct=True):
+    self.length = len(self)
     if(assertstruct):
       if(not self._assert()[0]):
         return None
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.flags)
-    for i in self.body:
-      packed += struct.pack("!B",i)
+    packed += self.body
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 12):
+    if (len(binaryString) < 8):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.type, self.flags) = struct.unpack_from("!HH", binaryString, 8)
-    return binaryString[12:]
+    self.body = binaryString[12:self.length]
+    return binaryString[self.length:]
 
   def __len__ (self):
     l = 12
-    l += len(self.body)*1
+    l += len(self.body)
     return l
 
   def __eq__ (self, other):
@@ -1619,20 +1623,20 @@ class ofp_stats_reply (ofp_header):
     self.header_type = OFPT_STATS_REPLY
     self.type = 0
     self.flags = 0
-    self.body = []
+    self.body = b''
 
   def _assert (self):
     return (True, None)
 
   def pack (self, assertstruct=True):
+    self.length = len(self)
     if(assertstruct):
       if(not self._assert()[0]):
         return None
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.flags)
-    for i in self.body:
-      packed += struct.pack("!B",i)
+    packed += self.body
     return packed
 
   def unpack (self, binaryString):
@@ -1640,11 +1644,12 @@ class ofp_stats_reply (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.type, self.flags) = struct.unpack_from("!HH", binaryString, 8)
-    return binaryString[12:]
+    self.body = binaryString[12:self.length]
+    return binaryString[self.length:]
 
   def __len__ (self):
     l = 12
-    l += len(self.body)*1
+    l += len(self.body)
     return l
 
   def __eq__ (self, other):
