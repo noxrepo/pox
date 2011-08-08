@@ -544,8 +544,11 @@ for h in handlerMap:
   #print handlerMap[h]
 
 
-def start (*args, **kw):
+def launch (*args, **kw):
+  if core.hasComponent('of_01'):
+    return None
   l = OpenFlow_01_Task(*args, **kw)
   #l = OpenFlow_01_Loop(*args, **kw)
+  core.register("of_01", l)
   return l
 

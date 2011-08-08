@@ -1,6 +1,7 @@
 from pox.lib.revent.revent import *
 import libopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
+from pox.core import core
 
 class ConnectionUp (Event):
   def __init__ (self, connection, ofp):
@@ -162,4 +163,7 @@ class OpenFlowHub (EventMixin):
       print "Couldn't send to", dpid, "because we're not connected to it!"
       return False
 
-#openflowHub = OpenFlowHub()
+def launch ():
+  if core.hasComponent("openflow"):
+    return
+  core.register("openflow", OpenFlowHub())

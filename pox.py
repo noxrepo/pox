@@ -61,23 +61,24 @@ def doLaunch ():
 
   return True
 
-def startup ():
-  core.register("openflow_topology", pox.openflow.openflowtopology.OpenFlowTopology())
-  core.register("topology", pox.topology.topology.Topology())
-  core.register("openflow_discovery", pox.openflow.discovery.Discovery())
-  core.register("openflow", pox.openflow.openflow.OpenFlowHub())
+def pre_startup ():
+  pox.openflow.openflow.launch() # Always launch OpenFlow
+
+def post_startup ():
+  #core.register("openflow_topology", pox.openflow.openflowtopology.OpenFlowTopology())
+  #core.register("topology", pox.topology.topology.Topology())
+  #core.register("openflow_discovery", pox.openflow.discovery.Discovery())
   #core.register("switch", pox.dumb_l3_switch.dumb_l3_switch.dumb_l3_switch())
 
-  pox.openflow.of_01.start()
-
-  #GuiMessenger()
+  pox.openflow.of_01.launch() # Always launch of_01
 
 if __name__ == '__main__':
   launchOK = False
   try:
-    startup()
+    pre_startup()
     launchOK = doLaunch()
     if launchOK:
+      post_startup()
       core.goUp()
   except:
     import traceback
