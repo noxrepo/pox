@@ -26,6 +26,12 @@ class PortStatus (Event):
     self.deleted = ofp.reason == of.OFPPR_DELETE
     self.port = ofp.desc.port_no
 
+class StatsReply (Event):
+  def __init__ (self, connection, ofp):
+    Event.__init__(self)
+    self.connection = connection
+    self.ofp = ofp
+
 class FlowRemoved (Event):
   def __init__ (self, connection, ofp):
     Event.__init__(self)

@@ -42,6 +42,10 @@ def handle_FEATURES_REPLY (con, msg):
   openflowHub.raiseEvent(ConnectionUp, con, msg)
   con.raiseEvent(ConnectionUp, con, msg)
 
+def handle_STATS_REPLY (con, msg):
+  openflowHub.raiseEventNoErrors(StatsReply, con, msg)
+  con.raiseEventNoErrors(StatsReply, con, msg)
+
 def handle_PORT_STATUS (con, msg): #A
   openflowHub.raiseEventNoErrors(PortStatus, con, msg)
   con.raiseEventNoErrors(PortStatus, con, msg)
@@ -106,6 +110,7 @@ handlerMap = {
   of.OFPT_PORT_STATUS : handle_PORT_STATUS,
   of.OFPT_ERROR : handle_ERROR_MSG,
   of.OFPT_BARRIER_REPLY : handle_BARRIER,
+  of.OFPT_STATS_REPLY : handle_STATS_REPLY,
 }
 
 # Deferred sending should be unusual, so don't worry too much about efficiency
