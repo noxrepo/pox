@@ -13,6 +13,7 @@ from pox.lib.addresses import *
 
 EMPTY_ETH = EthAddr(None)
 
+#TODO: replace this with generic one from util?
 def _initHelper (obj, kw):
   for k,v in kw.iteritems():
     if not hasattr(obj, k):
@@ -84,7 +85,7 @@ class ofp_header:
     return outstr
 
   def __str__ (self):
-    return show()
+    return show().strip()
 
 #2. Common Structures
 ##2.1 Port Structures
