@@ -218,6 +218,7 @@ class Connection (EventMixin):
     FlowRemoved,
     PacketIn,
     BarrierIn,
+    StatsReply,
   ])
 
   ID = 0

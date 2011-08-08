@@ -114,6 +114,7 @@ class OpenFlowHub (EventMixin):
     FlowRemoved,
     PacketIn,
     BarrierIn,
+    StatsReply,
   ])
   def __init__ (self):
     self._connections = {}#weakref.WeakValueDictionary() # DPID -> Connection
