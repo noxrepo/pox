@@ -426,11 +426,12 @@ class Connection (EventMixin):
 
     if not more:
       handler = statsHandlerMap.get(self._previous_stats[0].type, None)
+      s = self._previous_stats
+      self._previous_stats = []
       if handler is None:
         log.warn("No handler for stats of type " +
                  str(self._previous_stats[0].type))
-      s = self._previous_stats
-      self._previous_stats = []
+        return
       handler(self, s)
 
   def __str__ (self):
