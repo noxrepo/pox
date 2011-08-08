@@ -148,6 +148,8 @@ class Discovery (EventMixin):
     LinkEvent,
   ])
 
+  _core_name = "openflow_discovery" # we want to be core.openflow_discovery
+
   Link = namedtuple("Link",("dpid1","port1","dpid2","port2"))
 
   def __init__ (self):
@@ -344,3 +346,7 @@ class Discovery (EventMixin):
       if link.dpid2 == dpid and link.port2 == port:
         return True
     return False
+
+
+def launch ():
+  core.registerNew(Discovery)

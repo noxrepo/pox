@@ -7,7 +7,6 @@ from pox.openflow.discovery import *
 from pox.lib.util import dpidToStr
 from pox.lib.addresses import *
 
-EthAddr
 
 # After a switch disconnects, it has this many seconds to reconnect in
 # order to reactivate the same OpenFlowSwitch object.  After this, if
@@ -216,3 +215,7 @@ class OpenFlowSwitch (EventMixin, Switch):
 
   def __repr__ (self):
     return "<%s %s>" % (self.__class__.__name__, dpidToStr(self.dpid))
+
+def launch ():
+  if not core.hasComponent("openflow_topology"):
+    core.register("openflow_topology", OpenFlowTopology())

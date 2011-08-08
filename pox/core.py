@@ -134,9 +134,13 @@ class POXCore (EventMixin):
   def hasComponent (self, name):
     return name in self.components
 
-  def registerNew (self, componentClass, *args, **kw):
-    obj = componentClass(*args, **kw)
-    self.register(componentClass.__name__, obj)
+  def registerNew (self, __componentClass, *args, **kw):
+    name = __componentClass.__name__
+    obj = __componentClass(*args, **kw)
+    if hasattr(obj, '_core_name'):
+      # Default overridden
+      name = obj._core_name
+    self.register(name, obj)
 
   def register (self, name, component):
     #TODO: weak references?

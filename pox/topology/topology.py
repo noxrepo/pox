@@ -45,6 +45,8 @@ class Topology (EventMixin):
     EntityLeave,
   ]
 
+  _core_name = "topology" # We want to be core.topology
+
   def __init__ (self):
     EventMixin.__init__(self)
     self.entities = {}
