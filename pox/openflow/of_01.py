@@ -33,6 +33,10 @@ def handle_ECHO_REQUEST (con, msg): #S
   reply.header_type = of.OFPT_ECHO_REPLY
   con.send(reply.pack())
 
+def handle_FLOW_REMOVED (con, msg):
+  openflowHub.raiseEventNoErrors(FlowRemoved, con, msg)
+  con.raiseEventNoErrors(FlowRemoved, con, msg)
+
 def handle_FEATURES_REPLY (con, msg):
   con.features = msg
   con.dpid = msg.datapath_id
@@ -162,6 +166,7 @@ handlerMap = {
   of.OFPT_ERROR : handle_ERROR_MSG,
   of.OFPT_BARRIER_REPLY : handle_BARRIER,
   of.OFPT_STATS_REPLY : handle_STATS_REPLY,
+  of.OFPT_FLOW_REMOVED : handle_FLOW_REMOVED,
 }
 
 statsHandlerMap = {
@@ -285,6 +290,7 @@ class Connection (EventMixin):
     TableStatsReceived,
     PortStatsReceived,
     QueueStatsReceived,
+    FlowRemoved,
   ])
 
   ID = 0

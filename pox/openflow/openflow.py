@@ -27,6 +27,25 @@ class PortStatus (Event):
     self.deleted = ofp.reason == of.OFPPR_DELETE
     self.port = ofp.desc.port_no
 
+class FlowRemoved (Event):
+  def __init__ (self, connection, ofp):
+    Event.__init__(self)
+    self.connection = connection
+    self.dpid = connection.dpid
+    self.ofp = ofp
+    self.idleTimeout = False
+    self.hardTimeout = False
+    self.deleted = False
+    self.timeout = False
+    if ofp.reason == OFPRR_IDLE_TIMEOUT:
+      self.timeout = True
+      self.idleTimeout = True
+    elif ofp.reason == OFPRR_HARD_TIMEOUT:
+      self.timeout = True
+      self.hardTimeout = True
+    elif ofp.reason == OFPRR_DELETE:
+      self.deleted = True
+
 class RawStatsReply (Event):
   def __init__ (self, connection, ofp):
     Event.__init__(self)
@@ -148,6 +167,7 @@ class OpenFlowHub (EventMixin):
     TableStatsReceived,
     PortStatsReceived,
     QueueStatsReceived,
+    FlowRemoved,
   ])
   def __init__ (self):
     self._connections = {}#weakref.WeakValueDictionary() # DPID -> Connection
