@@ -118,7 +118,7 @@ class chassis_id:
         (self.subtype,) = struct.unpack("!B",self.arr[2:3])
         self.id = self.arr[3:]
 
-    def hdr(self):
+    def hdr(self, payload_length):
         typelen = 0
         typelen = self.type << 9
         typelen = typelen | (self.strlen & 0x01ff)
@@ -126,7 +126,7 @@ class chassis_id:
         return struct.pack(pack_str, typelen, self.subtype, self.id)
 
     def pack(self):
-        packet = self.hdr()
+        packet = self.hdr(0)
         return packet
 
     def __str__(self):
@@ -457,7 +457,7 @@ class lldp (packet_base):
             lstr += str(tlv)
         return lstr
 
-    def hdr(self):
+    def hdr(self, payload_length):
         packet = b''
         for tlv in self.tlvs:
             packet += tlv.pack()

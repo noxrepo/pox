@@ -55,6 +55,7 @@ import struct
 from packet_utils       import *
 
 from packet_base import packet_base
+import pox.lib.util as util
 
 class dhcp(packet_base):
     "DHCP Packet struct"
@@ -122,7 +123,7 @@ class dhcp(packet_base):
             self.file = b''
             self.magic = b''
             self.options = b''
-            self.parsedOptions = {}
+            self.parsedOptions = util.DirtyDict()
         else:
             assert(type(arr) == bytes)
             self.arr = arr
@@ -178,9 +179,9 @@ class dhcp(packet_base):
         self.parsed = True
 
     def parseOptions(self):
-        self.parsedOptions = {}
+        self.parsedOptions = util.DirtyDict()
         self.parseOptionSegment(self.options)
-        if self.parsedOptions.has_key(dhcp.OVERLOAD_OPT):
+        if dhcp.OVERLOAD_OPT in self.parsedOptions:
             opt_val = self.parsedOptions[dhcp.OVERLOAD_OPT]
             if opt_val[0] != 1:
                 self.warn('DHCP overload option has bad len %u' % opt_val[0])
@@ -208,13 +209,41 @@ class dhcp(packet_base):
             if ofs + opt_len > l:
                 return False
             if opt in self.parsedOptions:
-                self.info('(parseOptionSegment) ignoring duplicate DHCP option: %d' % opt)
+                # Append option, per RFC 3396
+                self.parsedOptions[opt] += barr[ofs:ofs+opt_len]
             else:
                 self.parsedOptions[opt] = barr[ofs:ofs+opt_len]
             ofs += opt_len
         self.warn('DHCP end of option segment before END option')
 
-    def hdr(self):
+    def packOptions (self):
+        o = b''
+        def addPart (k, v):
+            o += chr(k)
+            o += chr(len(v))
+            o += bytes(v)
+            if len(o) & 1: # Length is not even
+                o += chr(dhcp.PAD_OPT)
+
+        for k,v in self.parsedOptions.iteritems():
+          if k == dhcp.END_OPT: continue
+          if k == dhcp.PAD_OPT: continue
+          if isinstance(v, bytes) and (len(v) > 255):
+              # Long option, per RFC 3396
+              v = [v[i:i+255] for i in range(0, len(v), 255)]
+          if isinstance(v, list): # Better way to tell?
+              for part in v:
+                addPart(k, part)
+          else:
+              addPart(k, v)
+        o += chr(dhcp.END_OPT)
+        self.options = o
+        self.parsedOptions.dirty = False
+
+    def hdr(self, payload_length):
+        if self.parsedOptions.dirty:
+          self.packOptions()
+
         fmt = '!BBBBIHHIIII16s64s128s4s%us' % (len(self.options),)
         return struct.pack(fmt, self.op, self.htype, self.hlen, \
                     self.hops, self.xid, self.secs, self.flags, \

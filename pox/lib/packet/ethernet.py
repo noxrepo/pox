@@ -118,7 +118,7 @@ class ethernet(packet_base):
     else:
       return ''.join((s, str(self.next)))
 
-  def hdr(self):
+  def hdr(self, payload_length):
     dst = self.dst
     src = self.src
     if type(dst) == EthAddr:

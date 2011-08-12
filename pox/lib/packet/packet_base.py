@@ -42,7 +42,7 @@
 #         # parse packet here and set member variables
 #         self.parsed = True # signal that packet was succesfully parsed
 #
-#     def hdr(self):
+#     def hdr(self, payload_length):
 #         # return fields as a string
 #         return struct.pack('!I',self.bar)
 #
@@ -103,18 +103,19 @@ class packet_base (object):
         '''Override me with packet parsing code'''
         self.err('** error ** no parse method defined')
 
-    def hdr(self):
+    def hdr(self, payload_length):
         '''Override me to return packet headers'''
         self.err('** error ** no hdr method defined')
         return ''
 
     def pack(self):
         '''Convert header and payload to str'''
-        buf = self.hdr()
 
         if self.next == None:
-            return buf
+            return self.hdr(0)
         elif isinstance(self.next, packet_base):
-            return ''.join((buf, self.next.pack()))
+            rest = self.next.pack()
         else:
-            return ''.join((buf, self.next))
+            rest = self.next
+
+        return self.hdr(len(rest)) + rest

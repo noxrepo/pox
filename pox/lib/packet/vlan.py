@@ -90,7 +90,7 @@ class vlan(packet_base):
         if self.eth_type in ethernet.type_parsers:
             self.next = ethernet.type_parsers[self.eth_type](arr=self.arr[vlan.MIN_LEN:],prev=self)
 
-    def hdr(self):
+    def hdr(self, payload_len):
         pcpid  = self.pcp << 13
         pcpid |= self.c   << 12
         pcpid |= self.id

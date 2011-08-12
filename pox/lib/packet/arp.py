@@ -111,7 +111,7 @@ class arp (packet_base):
         self.next = self.arr[28:]
         self.parsed = True
 
-    def hdr(self):
+    def hdr(self, payload_length):
         buf = struct.pack('!HHBBH', self.hwtype, self.prototype,\
         self.hwlen, self.protolen,self.opcode)
         if type(self.hwsrc) == bytes:

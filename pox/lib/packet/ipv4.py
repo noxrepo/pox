@@ -166,7 +166,8 @@ class ipv4(packet_base):
         return checksum(data, 0)
 
 
-    def hdr(self):
+    def hdr(self, payload_length):
+        self.iplen = self.hl * 32 + payload_length
         self.csum = self.checksum()
         return struct.pack('!BBHHHBBHII', (self.v << 4) + self.hl, self.tos, \
                                  self.iplen, self.id, (self.flags << 13) | self.frag, self.ttl, \

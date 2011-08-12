@@ -97,18 +97,9 @@ class echo(packet_base):
         self.parsed = True
         self.next = self.arr[echo.MIN_LEN:]
 
-    def hdr(self):
+    def hdr(self, payload_length):
         return struct.pack('!HH', self.id, self.seq)
 
-    def pack(self):
-        buf = self.hdr()
-
-        if self.next == None:
-            return buf
-        elif isinstance(self.next, packet_base):
-            return ''.join((buf, self.next.pack()))
-        else:
-            return ''.join((buf, self.next))
 
 #----------------------------------------------------------------------
 #
@@ -168,18 +159,9 @@ class unreach(packet_base):
         else:
             self.next = self.arr[unreach.MIN_LEN:]
 
-    def hdr(self):
+    def hdr(self, payload_length):
         return struct.pack('!HH', self.unused, self.next_mtu)
 
-    def pack(self):
-        buf = self.hdr()
-
-        if self.next == None:
-            return buf
-        elif isinstance(self.next, packet_base):
-            return ''.join((buf, self.next.pack()))
-        else:
-            return ''.join((buf, self.next))
 
 class icmp(packet_base):
     "ICMP packet struct"
@@ -227,5 +209,5 @@ class icmp(packet_base):
         elif self.type == TYPE_DEST_UNREACH:
             self.next = unreach(arr=self.arr[self.MIN_LEN:],prev=self)
 
-    def hdr(self):
+    def hdr(self, payload_length):
         return struct.pack('!BBH', self.type, self.code, self.csum)
