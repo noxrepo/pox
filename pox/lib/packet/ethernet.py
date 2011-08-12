@@ -109,7 +109,7 @@ class ethernet(packet_base):
     return ethtype_to_str(ethertype)
 
   def __str__(self):
-    s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self)),':',
+    s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self.dst)),':',
                 ethernet.getNameForType(self.type),']'))
     if self.next == None:
       return s
