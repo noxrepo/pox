@@ -141,8 +141,8 @@ class dhcp(packet_base):
                             'siaddr:'+ip_to_str(self.siaddr), \
                             'giaddr:'+ip_to_str(self.giaddr), \
                             'chaddr:'+mac_to_str(self.chaddr[:self.hlen]), \
-                            'magic:'+str(self.magic), \
-                            'options:'+str(self.options),']'))
+                            'magic:'+str([ord(x) for x in self.magic]), \
+                            'options:'+str([ord(x) for x in self.options]),']'))
 
     def parse(self):
         dlen = len(self.arr)
@@ -192,22 +192,22 @@ class dhcp(packet_base):
 
     def parseOptionSegment(self, barr):
         ofs = 0;
-        len = barr.buffer_info()[1]
-        while ofs < len:
-            opt = barr[ofs]
+        l = len(barr)
+        while ofs < l:
+            opt = ord(barr[ofs])
             if opt == dhcp.END_OPT:
                 return
             ofs += 1
             if opt == dhcp.PAD_OPT:
                 continue
-            if ofs >= len:
+            if ofs >= l:
                 self.warn('DHCP option ofs extends past segment')
                 return
-            opt_len = barr[ofs]
+            opt_len = ord(barr[ofs])
             ofs += 1         # Account for the length octet
-            if ofs + opt_len > len:
+            if ofs + opt_len > l:
                 return False
-            if self.parsedOptions.has_key(opt):
+            if opt in self.parsedOptions:
                 self.info('(parseOptionSegment) ignoring duplicate DHCP option: %d' % opt)
             else:
                 self.parsedOptions[opt] = barr[ofs:ofs+opt_len]
@@ -215,7 +215,7 @@ class dhcp(packet_base):
         self.warn('DHCP end of option segment before END option')
 
     def hdr(self):
-        fmt = '!BBBBIHHIIII16s64s128s4s%us' % self.options.buffer_info()[1]
+        fmt = '!BBBBIHHIIII16s64s128s4s%us' % (len(self.options),)
         return struct.pack(fmt, self.op, self.htype, self.hlen, \
                     self.hops, self.xid, self.secs, self.flags, \
                     self.ciaddr, self.yiaddr, self.siaddr, self.giaddr, \
