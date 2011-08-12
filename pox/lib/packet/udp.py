@@ -101,6 +101,7 @@ class udp(packet_base):
 
     def hdr(self, payload_length):
         self.len = payload_length + udp.MIN_LEN
+        self.csum = checksum()
         return struct.pack('!HHHH', self.srcport, self.dstport, self.len, self.csum)
 
     def checksum(self):
@@ -108,17 +109,24 @@ class udp(packet_base):
 
         csum = 0
         if self.prev.__class__.__name__ != 'ipv4':
-            self.msg('(tcp checksum) tcp packet not in ipv4, cannot calculate checksum over psuedo-header' )
+            self.msg('(udp checksum) udp packet not in ipv4, cannot calculate checksum over psuedo-header' )
             return 0
+
+        if isinstance(self.next, packet_base):
+            payload = self.next.pack()
+        elif self.next is None:
+            payload = b''
+        else:
+            payload = self.next
 
         ippacket = struct.pack('!IIBBH', self.prev.srcip, \
                                          self.prev.dstip, \
                                          0,\
                                          self.prev.protocol, \
-                                         len(self.arr))
-        udphdr = self.hdr(0)
-        if isinstance(self.next, packet_base):
-            return checksum(ippacket + udphdr + self.next.pack(), 0, 9)
-        else:
-            return checksum(ippacket + udphdr + self.next, 0, 9)
+                                         len(payload))
+
+        udphdr = struct.pack('!HHHH', self.srcport, self.dstport, len(payload) + udp.MIN_LEN, 0)
+
+        return checksum(ippacket + udphdr + payload, 0, 9)
+
 
