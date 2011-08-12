@@ -219,11 +219,13 @@ class dhcp(packet_base):
     def packOptions (self):
         o = b''
         def addPart (k, v):
+            o = b''
             o += chr(k)
             o += chr(len(v))
             o += bytes(v)
             if len(o) & 1: # Length is not even
                 o += chr(dhcp.PAD_OPT)
+            return o
 
         for k,v in self.parsedOptions.iteritems():
           if k == dhcp.END_OPT: continue
@@ -233,9 +235,9 @@ class dhcp(packet_base):
               v = [v[i:i+255] for i in range(0, len(v), 255)]
           if isinstance(v, list): # Better way to tell?
               for part in v:
-                addPart(k, part)
+                o += addPart(k, part)
           else:
-              addPart(k, v)
+              o += addPart(k, v)
         o += chr(dhcp.END_OPT)
         self.options = o
         self.parsedOptions.dirty = False
