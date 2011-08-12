@@ -101,7 +101,7 @@ class udp(packet_base):
 
     def hdr(self, payload_length):
         self.len = payload_length + udp.MIN_LEN
-        self.csum = checksum()
+        self.csum = self.checksum()
         return struct.pack('!HHHH', self.srcport, self.dstport, self.len, self.csum)
 
     def checksum(self):
@@ -119,11 +119,11 @@ class udp(packet_base):
         else:
             payload = self.next
 
-        ippacket = struct.pack('!IIBBH', self.prev.srcip, \
-                                         self.prev.dstip, \
-                                         0,\
-                                         self.prev.protocol, \
-                                         len(payload))
+        ippacket = struct.pack('!IIBBH', self.prev.srcip.toUnsigned(),
+                                         self.prev.dstip.toUnsigned(),
+                                         0,
+                                         self.prev.protocol,
+                                         len(payload) + udp.MIN_LEN)
 
         udphdr = struct.pack('!HHHH', self.srcport, self.dstport, len(payload) + udp.MIN_LEN, 0)
 
