@@ -270,12 +270,12 @@ class dns(packet_base):
         l = self.arr
 
         while 1:
-            chunk_size = l[index]
+            chunk_size = ord(l[index])
 
             # check whether we have in internal pointer
             if (chunk_size & 0xc0) == 0xc0:
                 # pull out offset from last 14 bits
-                offset = ((l[index] & 0x3) << 8 ) | l[index+1]
+                offset = ((ord(l[index]) & 0x3) << 8 ) | ord(l[index+1])
                 self._read_dns_name_from_index(offset, retlist)
                 index += 1
                 break
