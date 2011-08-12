@@ -85,7 +85,7 @@ class ofp_header:
     return outstr
 
   def __str__ (self):
-    return show().strip()
+    return self.show().strip()
 
 #2. Common Structures
 ##2.1 Port Structures
