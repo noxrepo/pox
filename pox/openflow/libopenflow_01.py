@@ -2298,7 +2298,7 @@ class ofp_packet_out (ofp_header):
     ofp_header.__init__(self)
     self.header_type = OFPT_PACKET_OUT
     self.buffer_id = -1
-    self.in_port = 0
+    self.in_port = OFPP_CONTROLLER
     self.actions = []
     self.data = None
 
