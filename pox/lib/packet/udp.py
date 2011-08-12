@@ -50,7 +50,7 @@ class udp(packet_base):
         self.dstport = 0
         self.len = 8
         self.csum = 0
-        self.payload = ''
+        self.payload = b''
 
         if arr != None:
             assert(type(arr) == bytes)
