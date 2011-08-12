@@ -706,7 +706,7 @@ class ofp_action_output:
     self.type = OFPAT_OUTPUT
     self.length = 8
     self.port = 0
-    self.max_len = 0
+    self.max_len = 0xffFF
 
     _initHelper(self, kw)
 
@@ -714,6 +714,8 @@ class ofp_action_output:
     return (True, None)
 
   def pack (self, assertstruct=True):
+    if self.port != OFPP_CONTROLLER:
+      self.max_len = 0
     if(assertstruct):
       if(not self._assert()[0]):
         return None
@@ -1286,7 +1288,7 @@ class ofp_flow_mod (ofp_header):
     self.idle_timeout = 0
     self.hard_timeout = 0
     self.priority = OFP_DEFAULT_PRIORITY
-    self.buffer_id = 0
+    self.buffer_id = -1
     self.out_port = 0
     self.flags = 0
     self.actions = []
@@ -1317,7 +1319,7 @@ class ofp_flow_mod (ofp_header):
     self.length = len(self)
     packed += ofp_header.pack(self)
     packed += self.match.pack()
-    packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags)
+    packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id & 0xffffffff, self.out_port, self.flags)
     for i in self.actions:
       packed += i.pack(assertstruct)
     return packed
@@ -1329,6 +1331,8 @@ class ofp_flow_mod (ofp_header):
     ofp_header.unpack(self, binaryString[0:])
     self.match.unpack(binaryString[8:])
     (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 48)
+    if self.buffer_id == 0xffffffff:
+      self.buffer_id = -1
     return binaryString[72:]
 
   def __len__ (self):
@@ -2293,7 +2297,7 @@ class ofp_packet_out (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.header_type = OFPT_PACKET_OUT
-    self.buffer_id = 4294967295
+    self.buffer_id = -1
     self.in_port = 0
     self.actions = []
     self.data = None
@@ -2312,7 +2316,7 @@ class ofp_packet_out (ofp_header):
       self.actions = [self.actions]
 
   def _assert (self):
-    if self.buffer_id != 4294967295 and self.data is not None:
+    if self.buffer_id != -1 and self.data is not None:
       return "can not have both buffer_id and data set"
     return True
 
@@ -2330,12 +2334,12 @@ class ofp_packet_out (ofp_header):
 
     if self.data is not None:
       return b''.join((ofp_header.pack(self),
-      struct.pack("!LHH", self.buffer_id, self.in_port, actions_len),
+      struct.pack("!LHH", self.buffer_id & 0xffFFffFF, self.in_port, actions_len),
       actions,
       self.data))
     else:
       return b''.join((ofp_header.pack(self),
-      struct.pack("!LHH", self.buffer_id, self.in_port, actions_len),
+      struct.pack("!LHH", self.buffer_id & 0xffFFffFF, self.in_port, actions_len),
       actions))
 
   def unpack (self, binaryString):
@@ -2343,6 +2347,8 @@ class ofp_packet_out (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.buffer_id, self.in_port, actions_len) = struct.unpack_from("!LHH", binaryString, 8)
+    if self.buffer_id == 0xffFFffFF:
+      self.buffer_id = -1
     self.actions = [None] * actions_len #TODO: unpack actions for real!
     return binaryString[16:]
 
@@ -2471,7 +2477,7 @@ class ofp_packet_in (ofp_header):
         return None
     packed = ""
     packed += ofp_header.pack(self)
-    packed += struct.pack("!LHHBB", self.buffer_id, self.total_len, self.in_port, self.reason, self.pad)
+    packed += struct.pack("!LHHBB", self.buffer_id & 0xffFFffFF, self.total_len, self.in_port, self.reason, self.pad)
     for i in self.data:
       packed += struct.pack("!B",i)
     return packed
@@ -2481,6 +2487,8 @@ class ofp_packet_in (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.buffer_id, self.total_len, self.in_port, self.reason, self.pad) = struct.unpack_from("!LHHBB", binaryString, 8)
+    if self.buffer_id == 0xFFffFFff:
+      self.buffer_id = -1
     if (len(binaryString) < self.length):
       return binaryString
     self.data = binaryString[18:self.length]
