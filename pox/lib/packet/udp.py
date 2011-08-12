@@ -104,29 +104,41 @@ class udp(packet_base):
         self.csum = self.checksum()
         return struct.pack('!HHHH', self.srcport, self.dstport, self.len, self.csum)
 
-    def checksum(self):
-        assert(isinstance(self.next, packet_base) or type(self.next) == type(''))
+    def checksum(self, unparsed=False):
+        """
+        Calculates the checksum.
+        If unparsed, calculates it on the raw, unparsed data.  This is
+        useful for validating that it is correct on an incoming packet.
+        """
 
         csum = 0
         if self.prev.__class__.__name__ != 'ipv4':
-            self.msg('(udp checksum) udp packet not in ipv4, cannot calculate checksum over psuedo-header' )
+            self.msg('packet not in ipv4, cannot calculate checksum ' +
+                     'over psuedo-header' )
             return 0
 
-        if isinstance(self.next, packet_base):
-            payload = self.next.pack()
-        elif self.next is None:
-            payload = b''
+        if unparsed:
+            payload_len = len(self.arr)
+            payload = self.arr
         else:
-            payload = self.next
+            if isinstance(self.next, packet_base):
+                payload = self.next.pack()
+            elif self.next is None:
+                payload = bytes()
+            else:
+                payload = self.next
+            payload_len = udp.MIN_LEN + len(payload)
 
         ippacket = struct.pack('!IIBBH', self.prev.srcip.toUnsigned(),
                                          self.prev.dstip.toUnsigned(),
                                          0,
                                          self.prev.protocol,
-                                         len(payload) + udp.MIN_LEN)
+                                         payload_len)
 
-        udphdr = struct.pack('!HHHH', self.srcport, self.dstport, len(payload) + udp.MIN_LEN, 0)
+        if not unparsed:
+          myhdr = struct.pack('!HHHH', self.srcport, self.dstport,
+                              payload_len, 0)
+          payload = myhdr + payload
 
-        return checksum(ippacket + udphdr + payload, 0, 9)
-
+        return checksum(ippacket + payload, 0, 9)
 
