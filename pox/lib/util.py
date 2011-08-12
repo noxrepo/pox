@@ -6,6 +6,21 @@ import os
 import logging
 log = logging.getLogger("util")
 
+class DirtyDict (dict):
+  """ A dict that tracks whether values have been changed shallowly. """
+  def __init__ (self, *args, **kw):
+    dict.__init__(self, *args, **kw)
+    self.dirty = False
+  def __setitem__ (self, k, v):
+    if k not in self:
+      self.dirty = True
+    elif self[k] != v:
+      self.dirty = True
+    dict.__setitem__(self, k, v)
+  def __delitem__ (self, k):
+    self.dirty = True
+    dict.__delitem__(self, k)
+
 def set_extend (l, index, item, emptyValue = None):
   if index >= len(l):
     l += ([emptyValue] * (index - len(self) + 1))
