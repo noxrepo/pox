@@ -10,7 +10,7 @@ class EthAddr (object):
 
     # Always stores as a 6 character string
 
-    if isinstance(addr, bytes):
+    if isinstance(addr, bytes) or isinstance(addr, unicode):
       if len(addr) == 17 or len(addr) == 12:
         # hex
         if len(addr) == 17:
