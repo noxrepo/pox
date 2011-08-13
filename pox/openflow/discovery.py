@@ -238,16 +238,16 @@ class Discovery (EventMixin):
 
     lldph = packet.next
     if  len(lldph.tlvs) < 3 or \
-      (lldph.tlvs[0].type != lldp.CHASSIS_ID_TLV) or\
-      (lldph.tlvs[1].type != lldp.PORT_ID_TLV) or\
-      (lldph.tlvs[2].type != lldp.TTL_TLV):
+      (lldph.tlvs[0].tlv_type != lldp.CHASSIS_ID_TLV) or\
+      (lldph.tlvs[1].tlv_type != lldp.PORT_ID_TLV) or\
+      (lldph.tlvs[2].tlv_type != lldp.TTL_TLV):
       log.error("lldp_input_handler invalid lldp packet")
       return
 
     def lookInSysDesc():
       r = None
       for t in lldph.tlvs[3:]:
-        if t.type == lldp.SYSTEM_DESC_TLV:
+        if t.tlv_type == lldp.SYSTEM_DESC_TLV:
           # This is our favored way...
           for line in t.next.split('\n'):
             if line.startswith('dpid:'):

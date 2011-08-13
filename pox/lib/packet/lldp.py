@@ -68,260 +68,6 @@ import logging
 lg = logging.getLogger('packet')
 
 #======================================================================
-#                          TLV definitions
-#======================================================================
-
-class chassis_id:
-
-    SUB_CHASSIS  = 1 # IETF RFC 2737
-    SUB_IF_ALIAS = 2 # IETF RFC 2863
-    SUB_PORT     = 3 # IETF RFC 2737
-    SUB_MAC      = 4 # IEEE Std 802-2001
-    SUB_NETWORK  = 5 #
-    SUB_IF_NAME  = 6 # IETF RFC 2863
-    SUB_LOCAL    = 7
-
-    subtype_to_str = {}
-    subtype_to_str[SUB_CHASSIS]  = "chassis"
-    subtype_to_str[SUB_IF_ALIAS] = "interface alias"
-    subtype_to_str[SUB_PORT]     = "port"
-    subtype_to_str[SUB_MAC]      = "mac"
-    subtype_to_str[SUB_NETWORK]  = "network"
-    subtype_to_str[SUB_IF_NAME]  = "interface name"
-    subtype_to_str[SUB_LOCAL]    = "local"
-
-    # Construct from packet data
-    def __init__(self, array = None):
-        self.parsed = False
-        self.type    = lldp.CHASSIS_ID_TLV
-        self.strlen  = 0
-        self.subtype = 0
-        self.id      = None
-        self.arr     = None
-        if array != None:
-            self.arr = array
-            self.parse()
-
-    def fill(self, _subtype, strval):
-        self.strlen  = 1 + len(strval)
-        self.subtype = _subtype
-        self.id      = strval
-
-    # assume lldp has done the type/len checking
-    def parse(self):
-        (typelen,) = struct.unpack("!H",self.arr[0:2])
-
-        self.type   = typelen >> 9
-        assert(self.type == 1)
-        self.strlen = typelen & 0x01ff
-        assert(self.strlen >= 2)
-        (self.subtype,) = struct.unpack("!B",self.arr[2:3])
-        self.id = self.arr[3:]
-
-    def hdr(self, payload_length):
-        typelen = 0
-        typelen = self.type << 9
-        typelen = typelen | (self.strlen & 0x01ff)
-        pack_str = '!HB'+str(self.strlen-1)+'s'
-        return struct.pack(pack_str, typelen, self.subtype, self.id)
-
-    def pack(self):
-        packet = self.hdr(0)
-        return packet
-
-    def __str__(self):
-        id_str = array_to_octstr(self.id)
-
-        if self.subtype == chassis_id.SUB_MAC:
-            assert (len(self.id) == 6)
-            id_str = mac_to_str(self.id, False)
-
-        return ''.join(['<chassis ID:',id_str,'>'])
-
-class port_id:
-
-    SUB_IF_ALIAS = 1 # IETF RFC 2863
-    SUB_PORT     = 2 # IETF RFC 2737
-    SUB_MAC      = 3 # IEEE Std 802-2001
-    SUB_NETWORK  = 4 #
-    SUB_IF_NAME  = 5 # IETF RFC 2863
-    SUB_CIRC_ID  = 6 # IETF RFC 3046
-    SUB_LOCAL    = 7
-
-    subtype_to_str = {}
-    subtype_to_str[SUB_IF_ALIAS] = "interface alias"
-    subtype_to_str[SUB_PORT]     = "port"
-    subtype_to_str[SUB_MAC]      = "mac"
-    subtype_to_str[SUB_NETWORK]  = "network"
-    subtype_to_str[SUB_IF_NAME]  = "interface name"
-    subtype_to_str[SUB_CIRC_ID]  = "agent circuit ID"
-    subtype_to_str[SUB_LOCAL]    = "local"
-
-    def __init__(self, array = None):
-        self.parsed = False
-        self.type    = lldp.PORT_ID_TLV
-        self.strlen  = 0
-        self.subtype = 0
-        self.id      = None
-        self.arr     = array
-        if array != None:
-            self.parse()
-
-    def fill(self, _subtype, strval):
-        self.strlen  = 1 + len(strval)
-        self.subtype = _subtype
-        self.id      = strval
-
-    # assume lldp has done the type/len checking
-    def parse(self):
-        (typelen,) = struct.unpack("!H",self.arr[0:2])
-
-        self.type   = typelen >> 9
-        assert(self.type == 2)
-        self.strlen = typelen & 0x01ff
-        assert(self.strlen >= 2)
-        (self.subtype,) = struct.unpack("!B",self.arr[2:3])
-        self.id = self.arr[3:]
-
-    def __str__(self):
-        id_str = array_to_octstr(self.id)
-
-        if self.subtype == chassis_id.SUB_MAC:
-            assert (len(self.id) == 6)
-            id_str = mac_to_str(self.id, True)
-
-        return ''.join(['<port ID:',id_str,'>'])
-
-    def pack(self):
-        typelen = 0
-        typelen = self.type << 9
-        typelen = typelen | (self.strlen & 0x01ff)
-        pack_str = '!HB'+str(self.strlen-1)+'s'
-        return struct.pack(pack_str, typelen, self.subtype, self.id)
-
-class ttl:
-
-    def __init__(self, array = None):
-        self.parsed = False
-        self.type    = lldp.TTL_TLV
-        self.strlen  = 0
-        self.ttl     = 0
-        self.arr     = array
-
-        if array != None:
-            self.parse()
-
-    def fill(self, _ttl):
-        self.strlen = 2
-        self.ttl    = _ttl
-
-    # assume lldp has done the type/len checking
-    def parse(self):
-        (typelen,) = struct.unpack("!H",self.arr[0:2])
-
-        self.type   = typelen >> 9
-        assert(self.type == 3)
-        self.strlen = typelen & 0x01ff
-        if (self.strlen != 2):
-            lg.info('(ttl tlv parse) length incorrect (should be 2) %u' % (self.strlen))
-            return
-        (self.ttl,) = struct.unpack("!H",self.arr[2:4])
-
-    def __str__(self):
-        return ''.join(['<ttl:',str(self.ttl),'>'])
-
-    def pack(self):
-        typelen = 0
-        typelen = self.type << 9
-        typelen = typelen | (self.strlen & 0x01ff)
-        pack_str = '!HB'+str(self.strlen-1)+'s'
-        return struct.pack('!HH', typelen, self.ttl)
-
-class end_tlv:
-
-    def __init__(self, array = None):
-        self.parsed = False
-        self.type    = lldp.END_TLV
-        self.strlen  = 0
-        self.arr     = array
-        if array != None:
-            self.parse()
-
-    # assume lldp has done the type/len checking
-    def parse(self):
-        (typelen,) = struct.unpack("!H",self.arr[0:2])
-        self.type   = typelen >> 9
-        assert(self.type == lldp.END_TLV)
-        self.strlen = typelen & 0x01ff
-        if self.strlen != 0:
-            lg.info('(tl end parse) length incorrect (should be 0) %u' % (self.strlen))
-            return
-
-    def __str__(self):
-        return ''.join(['<tlv end>'])
-
-    def pack(self):
-        typelen = 0
-        typelen = self.type << 9
-        typelen = typelen | (self.strlen & 0x01ff)
-        return struct.pack('!H', typelen)
-
-
-class system_description:
-
-    def __init__(self, array = None):
-        self.parsed = False
-        self.type   = lldp.SYSTEM_DESC_TLV
-        self.len    = 0
-        self.arr    = array
-        self.next   = b''
-        if array != None:
-            self.parse()
-
-    def fill(self, strval):
-        self.len  = len(strval)
-        self.next = strval
-
-    # assume lldp has done the type/len checking
-    def parse(self):
-        (typelen,) = struct.unpack("!H",self.arr[0:2])
-        self.type   = typelen >> 9
-        self.len  = typelen & 0x01ff
-        self.next = self.arr[2:]
-
-    def pack(self):
-        typelen = 0
-        typelen = self.type << 9
-        typelen = typelen | (self.len & 0x01ff)
-        return struct.pack('!H', typelen) + self.next
-
-
-# tlv type we don't know how to handle
-class unknown_tlv:
-
-    def __init__(self, array = None):
-        self.parsed = False
-        self.type   = 127
-        self.len    = 0
-        self.arr    = array
-        self.next   = b''
-        if array != None:
-            self.parse()
-
-    # assume lldp has done the type/len checking
-    def parse(self):
-        (typelen,) = struct.unpack("!H",self.arr[0:2])
-        self.type   = typelen >> 9
-        self.len  = typelen & 0x01ff
-        self.next = self.arr[2:]
-
-    def pack(self):
-        typelen = 0
-        typelen = self.type << 9
-        typelen = typelen | (self.len & 0x01ff)
-        return struct.pack('!H', typelen) + self.next
-
-#======================================================================
 #                        LLDP PDU
 #======================================================================
 
@@ -334,6 +80,7 @@ class lldp (packet_base):
     # End        min = 2
     MIN_LEN = (4 + 4 + 4 + 2 )
 
+    #TODO: Remove these from here (they should be at module scope)?
     END_TLV         = 0
     CHASSIS_ID_TLV  = 1
     PORT_ID_TLV     = 2
@@ -342,14 +89,10 @@ class lldp (packet_base):
     SYSTEM_NAME_TLV = 5
     SYSTEM_DESC_TLV = 6
     SYSTEM_CAP_TLV  = 7
-    MANAGEMENT_ADDR = 8
+    MANAGEMENT_ADDR_TLV = 8
+    ORGANIZATIONALLY_SPECIFIC_TLV = 127
 
     tlv_parsers = {}
-    tlv_parsers[CHASSIS_ID_TLV]  = chassis_id
-    tlv_parsers[PORT_ID_TLV]     = port_id
-    tlv_parsers[TTL_TLV]         = ttl
-    tlv_parsers[SYSTEM_DESC_TLV] = system_description
-    tlv_parsers[END_TLV]         = end_tlv
 
     def __init__(self, arr=None, prev=None):
         self.prev = prev
@@ -409,7 +152,7 @@ class lldp (packet_base):
             self.msg( '(lldp parse) error parsing chassis ID tlv' )
             return
         pduhead += ret
-        if self.tlvs[len(self.tlvs)-1].type != lldp.CHASSIS_ID_TLV:
+        if self.tlvs[len(self.tlvs)-1].tlv_type != lldp.CHASSIS_ID_TLV:
             self.msg( '(lldp parse) error CHASSIS ID TLV missing' )
             return
 
@@ -419,7 +162,7 @@ class lldp (packet_base):
             self.msg( '(lldp parse) error parsing port ID TLV' )
             return
         pduhead += ret
-        if self.tlvs[len(self.tlvs)-1].type != lldp.PORT_ID_TLV:
+        if self.tlvs[len(self.tlvs)-1].tlv_type != lldp.PORT_ID_TLV:
             self.msg( '(lldp parse) error port ID TLV missing' )
             return
 
@@ -429,17 +172,18 @@ class lldp (packet_base):
             self.msg( '(lldp parse) error parsing TTL TLV' )
             return
         pduhead += ret
-        if self.tlvs[len(self.tlvs)-1].type != lldp.TTL_TLV:
+        if self.tlvs[len(self.tlvs)-1].tlv_type != lldp.TTL_TLV:
             self.msg( '(lldp parse) error port TTL TLV missing' )
             return
 
         # Loop over all other TLVs
         arr_len = len(self.arr)
-        while 1:
+        while True:
             ret = self.next_tlv(self.arr[pduhead:])
             if ret == None:
-                break
-            if self.tlvs[len(self.tlvs)-1].type == lldp.END_TLV:
+                self.msg( '(lldp parse) error parsing TLV' )
+                return
+            if self.tlvs[len(self.tlvs)-1].tlv_type == lldp.END_TLV:
                 break
             if (pduhead + ret) >= arr_len:
                 self.msg( '(lldp parse) error end of TLV list without END TLV' )
@@ -462,3 +206,313 @@ class lldp (packet_base):
         for tlv in self.tlvs:
             packet += tlv.pack()
         return packet
+
+
+#======================================================================
+#                          TLV definitions
+#======================================================================
+
+class chassis_id:
+    tlv_type = lldp.CHASSIS_ID_TLV
+
+    SUB_CHASSIS  = 1 # IETF RFC 2737
+    SUB_IF_ALIAS = 2 # IETF RFC 2863
+    SUB_PORT     = 3 # IETF RFC 2737
+    SUB_MAC      = 4 # IEEE Std 802-2001
+    SUB_NETWORK  = 5 #
+    SUB_IF_NAME  = 6 # IETF RFC 2863
+    SUB_LOCAL    = 7
+
+    subtype_to_str = {}
+    subtype_to_str[SUB_CHASSIS]  = "chassis"
+    subtype_to_str[SUB_IF_ALIAS] = "interface alias"
+    subtype_to_str[SUB_PORT]     = "port"
+    subtype_to_str[SUB_MAC]      = "mac"
+    subtype_to_str[SUB_NETWORK]  = "network"
+    subtype_to_str[SUB_IF_NAME]  = "interface name"
+    subtype_to_str[SUB_LOCAL]    = "local"
+
+    # Construct from packet data
+    def __init__(self, array = None):
+        self.parsed   = False
+        self.strlen   = 0
+        self.subtype  = 0
+        self.id       = None
+        self.arr      = None
+        if array != None:
+            self.arr = array
+            self.parse()
+
+    def fill(self, _subtype, strval):
+        self.strlen  = 1 + len(strval)
+        self.subtype = _subtype
+        self.id      = strval
+
+    # assume lldp has done the type/len checking
+    def parse(self):
+        (typelen,) = struct.unpack("!H",self.arr[0:2])
+
+        self.tlv_type = typelen >> 9
+        assert(self.tlv_type == 1)
+        self.strlen = typelen & 0x01ff
+        assert(self.strlen >= 2)
+        (self.subtype,) = struct.unpack("!B",self.arr[2:3])
+        self.id = self.arr[3:]
+
+    def hdr(self, payload_length):
+        typelen = 0
+        typelen = self.tlv_type << 9
+        typelen = typelen | (self.strlen & 0x01ff)
+        pack_str = '!HB'+str(self.strlen-1)+'s'
+        return struct.pack(pack_str, typelen, self.subtype, self.id)
+
+    def pack(self):
+        packet = self.hdr(0)
+        return packet
+
+    def __str__(self):
+        id_str = array_to_octstr(self.id)
+
+        if self.subtype == chassis_id.SUB_MAC:
+            assert (len(self.id) == 6)
+            id_str = mac_to_str(self.id, False)
+
+        return ''.join(['<chassis ID:',id_str,'>'])
+
+class port_id:
+    tlv_type = lldp.PORT_ID_TLV
+
+    SUB_IF_ALIAS = 1 # IETF RFC 2863
+    SUB_PORT     = 2 # IETF RFC 2737
+    SUB_MAC      = 3 # IEEE Std 802-2001
+    SUB_NETWORK  = 4 #
+    SUB_IF_NAME  = 5 # IETF RFC 2863
+    SUB_CIRC_ID  = 6 # IETF RFC 3046
+    SUB_LOCAL    = 7
+
+    subtype_to_str = {}
+    subtype_to_str[SUB_IF_ALIAS] = "interface alias"
+    subtype_to_str[SUB_PORT]     = "port"
+    subtype_to_str[SUB_MAC]      = "mac"
+    subtype_to_str[SUB_NETWORK]  = "network"
+    subtype_to_str[SUB_IF_NAME]  = "interface name"
+    subtype_to_str[SUB_CIRC_ID]  = "agent circuit ID"
+    subtype_to_str[SUB_LOCAL]    = "local"
+
+    def __init__(self, array = None):
+        self.parsed = False
+        self.strlen  = 0
+        self.subtype = 0
+        self.id      = None
+        self.arr     = array
+        if array != None:
+            self.parse()
+
+    def fill(self, _subtype, strval):
+        self.strlen  = 1 + len(strval)
+        self.subtype = _subtype
+        self.id      = strval
+
+    # assume lldp has done the type/len checking
+    def parse(self):
+        (typelen,) = struct.unpack("!H",self.arr[0:2])
+
+        self.tlv_type = typelen >> 9
+        assert(self.tlv_type == 2)
+        self.strlen = typelen & 0x01ff
+        assert(self.strlen >= 2)
+        (self.subtype,) = struct.unpack("!B",self.arr[2:3])
+        self.id = self.arr[3:]
+
+    def __str__(self):
+        id_str = array_to_octstr(self.id)
+
+        if self.subtype == chassis_id.SUB_MAC:
+            assert (len(self.id) == 6)
+            id_str = mac_to_str(self.id, True)
+
+        return ''.join(['<port ID:',id_str,'>'])
+
+    def pack(self):
+        typelen = 0
+        typelen = self.tlv_type << 9
+        typelen = typelen | (self.strlen & 0x01ff)
+        pack_str = '!HB'+str(self.strlen-1)+'s'
+        return struct.pack(pack_str, typelen, self.subtype, self.id)
+
+class ttl:
+    tlv_type = lldp.TTL_TLV
+
+    def __init__(self, array = None):
+        self.parsed = False
+        self.strlen  = 0
+        self.ttl     = 0
+        self.arr     = array
+
+        if array != None:
+            self.parse()
+
+    def fill(self, _ttl):
+        self.strlen = 2
+        self.ttl    = _ttl
+
+    # assume lldp has done the type/len checking
+    def parse(self):
+        (typelen,) = struct.unpack("!H",self.arr[0:2])
+
+        self.tlv_type = typelen >> 9
+        assert(self.tlv_type == 3)
+        self.strlen = typelen & 0x01ff
+        if (self.strlen != 2):
+            lg.info('(ttl tlv parse) length incorrect (should be 2) %u' % (self.strlen))
+            return
+        (self.ttl,) = struct.unpack("!H",self.arr[2:4])
+
+    def __str__(self):
+        return ''.join(['<ttl:',str(self.ttl),'>'])
+
+    def pack(self):
+        typelen = 0
+        typelen = self.tlv_type << 9
+        typelen = typelen | (self.strlen & 0x01ff)
+        pack_str = '!HB'+str(self.strlen-1)+'s'
+        return struct.pack('!HH', typelen, self.ttl)
+
+class end_tlv:
+    tlv_type = lldp.END_TLV
+
+    def __init__(self, array = None):
+        self.parsed = False
+        self.strlen  = 0
+        self.arr     = array
+        if array != None:
+            self.parse()
+
+    # assume lldp has done the type/len checking
+    def parse(self):
+        (typelen,) = struct.unpack("!H",self.arr[0:2])
+        self.tlv_type = typelen >> 9
+        assert(self.tlv_type == lldp.END_TLV)
+        self.strlen = typelen & 0x01ff
+        if self.strlen != 0:
+            lg.info('(tl end parse) length incorrect (should be 0) %u' % (self.strlen))
+            return
+
+    def __str__(self):
+        return ''.join(['<tlv end>'])
+
+    def pack(self):
+        typelen = 0
+        typelen = self.tlv_type << 9
+        typelen = typelen | (self.strlen & 0x01ff)
+        return struct.pack('!H', typelen)
+
+class basic_tlv (object):
+    #tlv_type = <type>
+    def __init__(self, array = None):
+        self.parsed = False
+        self.len    = 0
+        self.arr    = array
+        self.next   = b''
+        if array != None:
+            self.parse()
+
+    def fill(self, strval):
+        self.len  = len(strval)
+        self.next = strval
+
+    # assume lldp has done the type/len checking
+    def parse(self):
+        (typelen,) = struct.unpack("!H",self.arr[0:2])
+        self.tlv_type = typelen >> 9
+        self.len  = typelen & 0x01ff
+        self.next = self.arr[2:]
+
+    def pack(self):
+        typelen = 0
+        typelen = self.tlv_type << 9
+        typelen = typelen | (self.len & 0x01ff)
+        return struct.pack('!H', typelen) + self.next
+
+class system_description (basic_tlv):
+    tlv_type = lldp.SYSTEM_DESC_TLV
+
+class management_address (basic_tlv):
+    tlv_type = lldp.MANAGEMENT_ADDR_TLV
+    #TODO: complete this
+
+class system_name (basic_tlv):
+    tlv_type = lldp.SYSTEM_NAME_TLV
+
+class organizationally_specific (basic_tlv):
+    tlv_type = lldp.ORGANIZATIONALLY_SPECIFIC_TLV
+    def __init__ (self, array = None):
+        self.oui = '\x00\x00\x00'
+        self.subtype = 0
+        self.next = bytes()
+        basic_tlv.__init__(self, array)
+      
+    def parse (self):
+        basic_tlv.parse(self)
+        (self.oui,self.subtype) = struct.parse("3sB", self.next[0:4])
+        self.next = self.next[4:]
+
+    def pack(self):
+        typelen = 0
+        typelen = self.tlv_type << 9
+        typelen = typelen | (self.len & 0x01ff)
+        return struct.pack('!H3sB', typelen, self.oui, self.subtype) + self.next
+
+class port_description (basic_tlv):
+    tlv_type = lldp.PORT_DESC_TLV
+
+class system_capabilities (basic_tlv):
+    tlv_type = lldp.SYSTEM_CAP_TLV
+
+    cap_names = ["Other", "Repeater", "Bridge", "WLAN Access Point",
+                 "Router", "Telephone", "DOCSIS cable device",
+                 "Station Only"]
+
+    def __init__ (self, array = None):
+        self.caps = [False] * 16
+        self.enabled_caps = [False] * 16
+        basic_tlv.__init__(self, array)
+      
+    def parse (self):
+        basic_tlv.parse(self)
+        (cap,en) = struct.parse("!HH", self.next)
+        del self.caps[:]
+        del self.enabled_caps[:]
+        for i in range(0, 16):
+            self.caps.append(True if (cap and (1 << i)) else False)
+            self.enabled_caps.append(True if (en and (1 << i)) else False)
+
+    def pack(self):
+        typelen = 0
+        typelen = self.tlv_type << 9
+        typelen = typelen | (self.len & 0x01ff)
+        cap = 0
+        en = 0
+        for i in range(0, 16):
+            if self.caps[i]: cap |= (1 << i)
+            if self.enabled_caps[i]: en |= (1 << i)
+        return struct.pack('!HHH', typelen, cap, en)
+
+    def __str__ (self):
+        r = []
+        for i in range(0, 16):
+            if self.caps[i]:
+                if i < len(self.cap_names):
+                    s = self.cap_names[i]
+                else:
+                    s = "Capability " + str(i)
+                s += ":" + ("On" if self.enabled_caps[i] else "Off")
+                r.append(s)
+        return "<Capabilities: " + ', '.join(r) + ">"
+
+
+# Add parsers to main lldp class
+for t in [chassis_id, port_id, ttl, system_name, system_description,
+          end_tlv, organizationally_specific, port_description,
+          system_capabilities, management_address]:
+    lldp.tlv_parsers[t.tlv_type] = t
