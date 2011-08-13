@@ -437,9 +437,49 @@ class basic_tlv (object):
 class system_description (basic_tlv):
     tlv_type = lldp.SYSTEM_DESC_TLV
 
-class management_address (basic_tlv):
+class management_address (object):
     tlv_type = lldp.MANAGEMENT_ADDR_TLV
-    #TODO: complete this
+
+    def __init__ (self, data = None):
+        self.address_subtype = 0
+        self.address = b''
+        self.interface_numbering_subtype = 0
+        self.interface_number = 0
+        self.object_identifier = b''
+
+        if data != None:
+            self.parse(data)
+
+    def parse (self, data):
+        typelen = struct.unpack("!H",data[0:2])[0]
+        self.tlv_type = typelen >> 9
+        length  = typelen & 0x01ff
+
+        asl = ord(data[2]) - 1
+        self.address_subtype = ord(data[3])
+        self.address = data[4:4+asl]
+
+        self.interface_numbering_subtype = ord(data[4+asl])
+        self.interface_number = struct.unpack("!L",
+                                              data[4+asl+1:4+asl+1+4])[0]
+        osl = ord(data[9+asl])
+        self.object_identifier = data[9+asl+1:9+asl+1+osl]
+
+    def __len__ (self):
+        return 2+1+1+len(self.address)+1+4+1+len(self.object_identifier)
+
+    def pack(self):
+        typelen = 0
+        typelen = self.tlv_type << 9
+        typelen = typelen | ((len(self)-2) & 0x01ff)
+        r = struct.pack('!H', typelen)
+        r += struct.pack('!BB', len(self.address)+1, self.address_subtype)
+        r += self.address
+        r += struct.pack("!BLB", self.interface_numbering_subtype,
+                         self.interface_number,
+                         len(self.object_identifier))
+        r += self.object_identifier
+        return r
 
 class system_name (basic_tlv):
     tlv_type = lldp.SYSTEM_NAME_TLV
