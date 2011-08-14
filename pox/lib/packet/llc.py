@@ -23,7 +23,7 @@
 
 import struct
 from packet_utils       import *
-
+from socket import htons
 from packet_base import packet_base
 
 class llc(packet_base):
@@ -39,12 +39,12 @@ class llc(packet_base):
     def __init__(self, prev=None):
         self.prev = prev
 
-    if self.prev == None:
-        self.dsap = 0
-        self.ssap = 0
-        self.ctrl = 0
-    else:
-        self.parse()
+        if self.prev == None:
+            self.dsap = 0
+            self.ssap = 0
+            self.ctrl = 0
+        else:
+            self.parse()
 
     def parse(self):
         plen = self.prev.get_payload_len()
