@@ -51,8 +51,13 @@ def doLaunch ():
       except:
         try:
           __import__(name, globals(), locals())
-        except:
+        except ImportError:
           print "No such module:",name
+          return False
+        except:
+          import traceback
+          traceback.print_exc()
+          print "Could not import module:",name
           return False
 
     if launch in sys.modules[name].__dict__:
