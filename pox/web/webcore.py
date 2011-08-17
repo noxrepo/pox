@@ -43,8 +43,9 @@ except ImportError:
 log = core.getLogger()
 
 def _setAttribs (parent, child):
-  attrs = ['command', 'request_version', 'close_connection', 'raw_requestline',
-      'requestline', 'path', 'headers', 'wfile', 'rfile', 'server', 'client_address']
+  attrs = ['command', 'request_version', 'close_connection',
+           'raw_requestline', 'requestline', 'path', 'headers', 'wfile',
+           'rfile', 'server', 'client_address']
   for a in attrs:
     setattr(child, a, getattr(parent, a))
 
@@ -110,7 +111,8 @@ class CoreHandler (SplitRequestHandler):
       r += "<li>%s - %s</li>\n" % (cgi.escape(str(k)), cgi.escape(str(v)))
     r += "</ul>\n\n<h2>Web Prefixes</h2>"
     r += "<ul>"
-    m = [map(cgi.escape, map(str, [x[0],x[1],x[3]])) for x in self.args.matches]
+    m = [map(cgi.escape, map(str, [x[0],x[1],x[3]]))
+         for x in self.args.matches]
     m.sort()
     for v in m:
       r += "<li>%s - %s %s</li>\n" % tuple(v)
@@ -184,9 +186,9 @@ class StaticContentHandler (SplitRequestHandler):
                 return self.list_directory(path)
         ctype = self.guess_type(path)
         try:
-            # Always read in binary mode. Opening files in text mode may cause
-            # newline translations, making the actual size of the content
-            # transmitted *less* than the content-length!
+            # Always read in binary mode. Opening files in text mode may
+            # cause newline translations, making the actual size of the
+            # content transmitted *less* than the content-length!
             f = open(path, 'rb')
         except IOError:
             self.send_error(404, "File not found")
@@ -195,7 +197,7 @@ class StaticContentHandler (SplitRequestHandler):
         self.send_header("Content-type", ctype)
         fs = os.fstat(f.fileno())
         self.send_header("Content-Length", str(fs[6]))
-        self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
+        self.send_header("Last-Modified",self.date_time_string(fs.st_mtime))
         self.end_headers()
         return f
 
@@ -216,7 +218,8 @@ class StaticContentHandler (SplitRequestHandler):
         f = StringIO()
         displaypath = cgi.escape(urllib.unquote(self.path))
         f.write('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
-        f.write("<html>\n<title>Directory listing for %s</title>\n" % displaypath)
+        f.write("<html>\n<title>Directory listing for %s</title>\n" %
+                displaypath)
         f.write("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
         f.write("<hr>\n<ul>\n")
         f.write('<li><a href=".."><i>Parent Directory</i></a>\n')
@@ -229,7 +232,7 @@ class StaticContentHandler (SplitRequestHandler):
                 linkname = name + "/"
             if os.path.islink(fullname):
                 displayname = name + "@"
-                # Note: a link to a directory displays with @ and links with /
+                # a link to a directory displays with @ and links with /
             f.write('<li><a href="%s">%s</a>\n'
                     % (urllib.quote(linkname), cgi.escape(displayname)))
         f.write("</ul>\n<hr>\n</body>\n</html>\n")
@@ -425,7 +428,7 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
   def __init__ (self, *args, **kw):
     #self.rec = Recording(args[0])
     #self.args = args
-    #self.matches = self.matches.sort(key=lambda e:len(e[0]),reverse=True)   
+    #self.matches = self.matches.sort(key=lambda e:len(e[0]),reverse=True)
     #BaseHTTPRequestHandler.__init__(self, self.rec, *args[1:], **kw)
     BaseHTTPRequestHandler.__init__(self, *args, **kw)
 
@@ -490,7 +493,7 @@ class SplitThreadedServer(ThreadingMixIn, HTTPServer):
 
 #  def __init__ (self, *args, **kw):
 #    BaseHTTPRequestHandler.__init__(self, *args, **kw)
-#    self.matches = self.matches.sort(key=lambda e:len(e[0]),reverse=True)   
+#    self.matches = self.matches.sort(key=lambda e:len(e[0]),reverse=True)
 
   def set_handler (self, prefix, handler, args = None, trim_prefix = True):
     # Not very efficient
