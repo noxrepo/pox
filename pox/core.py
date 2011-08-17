@@ -141,6 +141,7 @@ class POXCore (EventMixin):
       # Default overridden
       name = obj._core_name
     self.register(name, obj)
+    return obj
 
   def register (self, name, component):
     #TODO: weak references?
