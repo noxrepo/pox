@@ -73,6 +73,15 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
     self.args = args
     self.prefix = prefix
 
+    self._init()
+
+  def _init (self):
+    """
+    This is called by __init__ during initialization.  You can
+    override it to, for example, parse .args.
+    """
+    pass
+
   def handle_one_request (self):
     raise RuntimeError("Not supported")
 
@@ -505,7 +514,7 @@ class SplitThreadedServer(ThreadingMixIn, HTTPServer):
 
 
 
-def launch (address='', port=8000, debug=False):
+def launch (address='', port=8000, debug=False, static=False):
   if debug:
     log.setLevel("DEBUG")
     log.debug("Debugging enabled")
@@ -515,6 +524,13 @@ def launch (address='', port=8000, debug=False):
   httpd.set_handler("/", CoreHandler, httpd, True)
   #httpd.set_handler("/foo", StaticContentHandler, {'root':'.'}, True)
   #httpd.set_handler("/f", StaticContentHandler, {'root':'pox'}, True)
+  if static:
+    import os
+    path = os.path.dirname(os.path.abspath( __file__ ))
+    path = os.path.join(path, 'www_root')
+    print "static on ",path
+    httpd.set_handler("/static", StaticContentHandler, {'root':path}, True)
+
 
   def run ():
     try:
