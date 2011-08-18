@@ -1,3 +1,7 @@
+"""
+Various utility functions
+"""
+
 import struct
 import sys
 import os
@@ -22,11 +26,19 @@ class DirtyDict (dict):
     dict.__delitem__(self, k)
 
 def set_extend (l, index, item, emptyValue = None):
+  """
+  Adds item to the list l at position index.  If index is beyond the end
+  of the list, it will pad the list out until it's large enough, using
+  emptyValue for the new entries.
+  """
   if index >= len(l):
     l += ([emptyValue] * (index - len(self) + 1))
   l[index] = item
 
 def strToDPID (s):
+  """
+  Convert a DPID in the canonical string form into a long int.
+  """
   s = s.replace("-", "").split("|", 2)
   a = int(s[0], 16)
   b = 0
@@ -35,6 +47,9 @@ def strToDPID (s):
   return a | (b << 48)
 
 def dpidToStr (dpid, alwaysLong = False):
+  """
+  Convert a DPID from a long into into the canonical string form.
+  """
   """ In flux. """
   if type(dpid) is long or type(dpid) is int:
     # Not sure if this is right
@@ -50,6 +65,10 @@ def dpidToStr (dpid, alwaysLong = False):
   return r
 
 def initHelper (obj, kw):
+  """
+  Inside a class's __init__, this will copy keyword arguments to fields
+  of the same name.  See libopenflow for an example.
+  """
   for k,v in kw.iteritems():
     if not hasattr(obj, k):
       raise TypeError(obj.__class__.__name__ + " constructor got "
