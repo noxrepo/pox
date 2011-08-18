@@ -19,25 +19,27 @@ def doLaunch ():
   # Add pox directory to path
   sys.path.append(os.path.abspath('pox'))
 
-  import collections
-  components = collections.OrderedDict()
+  component_order = []
+  components = {}
   #curargs = None
 
-  curargs = collections.OrderedDict()
+  curargs = {}
   global options
   options = curargs
 
   for arg in sys.argv[1:]:
     if not arg.startswith("--"):
       assert arg not in components
-      curargs = collections.OrderedDict()
+      curargs = {}
       components[arg] = curargs
+      component_order.append(arg)
     else:
       arg = arg[2:].split("=", 1)
       if len(arg) == 1: arg.append(True)
       curargs[arg[0]] = arg[1]
 
-  for name,params in components.iteritems():
+  for name in component_order:
+    params = components[name]
     name = name.split(":", 1)
     launch = name[1] if len(name) == 2 else "launch"
     name = name[0]
