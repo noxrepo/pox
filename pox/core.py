@@ -1,4 +1,10 @@
+"""
+Some of POX's core API and functionality is here, largely in the POXCore
+class (an instance of which is available as pox.core.core).
 
+This includes things like component rendezvous, logging, system status
+(up and down events), etc.
+"""
 
 import inspect
 import logging
@@ -16,6 +22,10 @@ _squelchTime = 0
 _squelchCount = 0
 
 def getLogger (name=None, moreFrames=0):
+  """
+  In general, you don't need to call this directly, and will use
+  core.getLogger() instead.
+  """
   if name is None:
     s = inspect.stack()[1+moreFrames]
     name = s[1]
@@ -85,8 +95,8 @@ class UpEvent (Event):
 class ComponentRegistered (Event):
   """
   This is raised by core whenever a new component is registered.
-  By watching this, a component can monitor whether other components it depends
-  on are available.
+  By watching this, a component can monitor whether other components it
+  depends on are available.
   """
   def __init__ (self, name, component):
     Event.__init__(self)
@@ -96,6 +106,25 @@ class ComponentRegistered (Event):
 import pox.lib.recoco.recoco as recoco
 
 class POXCore (EventMixin):
+  """
+  A nexus of of the POX API.
+
+  pox.core.core is a reference to an instance of this class.  This class
+  serves a number of functions.
+
+  An important one is that it can serve as a rendezvous point for
+  components.  A component can register objects on core, and they can
+  then be accessed on the core object (e.g., if you register foo, then
+  there will then be a pox.core.core.foo).  In many cases, this means you
+  won't need to import a module.
+
+  Another purpose to the central registration is that it decouples
+  functionality from a specific module.  If myL2Switch and yourL2Switch
+  both register as "switch" and both provide the same API, then it doesn't
+  matter.  Doing this with imports is a pain.
+
+  Additionally, a number of commmon API functions are vailable here.
+  """
   _eventMixin_events = set([
     UpEvent,
     GoingUpEvent,
@@ -111,15 +140,43 @@ class POXCore (EventMixin):
     self.scheduler = recoco.Scheduler(daemon=True)
 
   def callLater (_self, _func, *args, **kw):
+    """
+    Call the given function with the given arguments within the context
+    of the co-operative threading environment.
+    It actually calls it sooner rather than later. ;)
+    Much of POX is written without locks because it's all thread-safe
+    with respect to itself, as it's written using the recoco co-operative
+    threading library.  If you have a real thread outside of the
+    co-operative thread context, you need to be careful about calling
+    things within it.  This function provides a rather simple way that
+    works for most situations: you give it a callable (like a method)
+    and some arguments, and it will call that callable with those
+    arguments from within the co-operative threader, taking care of
+    synchronization for you.
+    """
     _self.scheduler.callLater(_func, *args, **kw)
 
-  def raiseLater (self, obj, *args, **kw):
-    self.scheduler.callLater(obj.raiseEvent, *args, **kw)
+  def raiseLater (_self, _obj, *args, **kw):
+    """
+    This is similar to callLater(), but provides an easy way to raise a
+    revent event from outide the co-operative context.
+    Rather than foo.raiseEvent(BarEvent, baz, spam), you just do
+    core.raiseLater(foo, BarEvent, baz, spam).
+    """
+    _self.scheduler.callLater(_obj.raiseEvent, *args, **kw)
 
   def getLogger (self, *args, **kw):
+    """
+    Returns a logger.  Pass it the name you want if you'd like to specify
+    one (e.g., core.getLogger("foo")).  If you don't specify a name, it
+    will make one up based on the module name it is called from.
+    """
     return getLogger(moreFrames=1,*args, **kw)
 
   def quit (self):
+    """
+    Shut down POX.
+    """
     if self.running:
       print "Quitting..."
       self.raiseEvent(GoingDownEvent())
@@ -132,9 +189,20 @@ class POXCore (EventMixin):
     self.raiseEvent(UpEvent())
 
   def hasComponent (self, name):
+    """
+    Returns True if a component with the given name has been registered.
+    """
     return name in self.components
 
   def registerNew (self, __componentClass, *args, **kw):
+    """
+    Give it a class (and optional __init__ arguments), and it will
+    create an instance and register it using the class name.  If the
+    instance has a _core_name property, it will use that instead.
+    It returns the new instance.
+    core.registerNew(FooClass, arg) is roughly equivalent to
+    core.register("FooClass", FooClass(arg)).
+    """
     name = __componentClass.__name__
     obj = __componentClass(*args, **kw)
     if hasattr(obj, '_core_name'):
@@ -144,6 +212,9 @@ class POXCore (EventMixin):
     return obj
 
   def register (self, name, component):
+    """
+    Makes the object "component" available as pox.core.core.name.
+    """
     #TODO: weak references?
     if name in self.components:
       log.warn("Warning: Registered '%s' multipled times" % (name,))
@@ -156,13 +227,3 @@ class POXCore (EventMixin):
     return self.components[name]
 
 core = POXCore()
-
-"""
-import pox_hub
-
-
-if __name__ == '__main__':
-  hub = pox_hub.ComponentHub()
-
-  hub.launch_component("pox_hub.TimerComponent")
-"""
