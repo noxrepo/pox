@@ -110,8 +110,8 @@ class POXCore (EventMixin):
     print "POX v0.0"
     self.scheduler = recoco.Scheduler(daemon=True)
 
-  def callLater (self, func, *args, **kw):
-    self.scheduler.callLater(func, *args, **kw)
+  def callLater (_self, _func, *args, **kw):
+    _self.scheduler.callLater(_func, *args, **kw)
 
   def raiseLater (self, obj, *args, **kw):
     self.scheduler.callLater(obj.raiseEvent, *args, **kw)
