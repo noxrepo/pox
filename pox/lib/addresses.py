@@ -1,3 +1,7 @@
+"""
+Classes for addresses of various types.
+"""
+
 import struct
 import socket
 
@@ -6,8 +10,14 @@ if not hasattr(globals()['__builtins__'], 'long'):
   long = int
 
 class EthAddr (object):
+  """
+  An Ethernet (MAC) address type.
+  """
   def __init__ (self, addr):
-
+    """
+    Understands Ethernet address is various forms.  Hex strings, raw byte
+    strings, long integers, etc.
+    """
     # Always stores as a 6 character string
 
     if isinstance(addr, bytes) or isinstance(addr, unicode):
@@ -36,17 +46,33 @@ class EthAddr (object):
     #  addr = long(addr)
 
   def isMulticast (self):
+    """
+    Returns True if this is a multicast address.
+    """
   	return True if (ord(self._value[0]) & 1) else False
 
   def toRaw (self):
+    """
+    Returns the address as a 6-long bytes object.
+    """
     return self._value
 
   #def toInt (self):
 
   def toTuple (self):
+    """
+    Returns a 6-entry long tuple where each entry is the numeric value
+    of the corresponding byte of the address.
+    """
     return tuple((ord(x) for x in self._value))
 
   def toStr (self, separator = ':', resolveNames  = False): #TODO: show OUI info from packet lib
+    """
+    Returns the address as string consisting of 12 hex chars separated
+    by separator.
+    If resolveNames is True, it may return company names based on
+    the OUI. (Currently unimplemented)
+    """
     return separator.join(('%02x' % (ord(x),) for x in self._value))
 
   def __str__ (self):
@@ -79,7 +105,11 @@ class EthAddr (object):
   def __len__ (self):
     return 6
 
+
 class IPAddr (object):
+  """
+  Represents an IPv4 address.
+  """
   def __init__ (self, addr, networkOrder = False):
     """ Can be initialized with several formats.
         If addr is an int/long, then it is assumed to be in host byte order
@@ -118,9 +148,16 @@ class IPAddr (object):
     return self._value
 
   def toRaw (self):
+    """
+    Returns the address as a four-character byte string.
+    """
     return struct.pack("!i", self._value)
 
   def toUnsigned (self, networkOrder = False):
+    """
+    Returns the address as an integer in either network or host (the
+    default) byte order.
+    """
     if not networkOrder:
       return socket.htonl(self._value & 0xffFFffFF)
     return self._value & 0xffFFffFF
