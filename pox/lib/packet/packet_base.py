@@ -14,58 +14,63 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with NOX.  If not, see <http://www.gnu.org/licenses/>.
-# NOX packet model (Python)
-#
-# Classes that perform packet manipulation (parsing and contruction)
-# should derive from class packet_base below. The general layout of
-# a pasers is as follows:
-#
-# class foo (packet_base):
-#
-#     def __init__(arr=None, prev=None):
-#       # arr: is either an array or a string of
-#       # the data for the packet
-#       # prev: is a pointer to the previous header
-#       # which is expected to be of type packet_base
-#       self.prev = prev
-#       if type(arr) == type(''):
-#           arr = array('B', arr)
-#
-#       # define field variables here
-#       self.bar = 0
-#       if arr != None:
-#           assert(type(arr) == array)
-#           self.arr = arr
-#           self.parse()
-#
-#     def parse(self):
-#         # parse packet here and set member variables
-#         self.parsed = True # signal that packet was succesfully parsed
-#
-#     def hdr(self, payload_length):
-#         # return fields as a string
-#         return struct.pack('!I',self.bar)
-#
-#     def __str__(self):
-#         # optionally convert to human readable string
-#
-#
 
 import logging
 lg = logging.getLogger('packet')
 
 class packet_base (object):
+    """
+    Base class for packets.
+
+    Classes that perform packet manipulation (parsing and contruction)
+    should derive from this class.
+    
+    The general layout of such a subclass is as follows:
+
+    class foo (packet_base):
+
+        def __init__(data=None, prev=None):
+          # data: is the data for the packet as a "bytes" object.
+          # prev: is a pointer to the previous header
+          # which is expected to be of type packet_base
+          self.parsed = False
+          self.prev = prev
+
+          # define field variables here
+          self.bar = 0
+
+          if arr != None:
+              self.data = data # Phasing out?
+              self.parse(data)
+
+        def parse(self, data):
+            # parse packet here and set member variables
+            self.parsed = True # signal that packet was succesfully parsed
+
+        def hdr(self, payload_length):
+            # return fields as a string
+            return struct.pack('!I',self.bar)
+
+        def __str__(self):
+            # optionally convert to human readable string
+    """
     next = None
     prev = None
     parsed = False
 
     def msg(self, *args):
+        """ Shortcut for logging """
+        #TODO: Remove?
         lg.info(*args)
 
     def err(self, *args):
+        """ Shortcut for logging """
+        #TODO: Remove?
         lg.error(*args)
 
     def warn(self, *args):
+        """ Shortcut for logging """
+        #TODO: Remove?
         lg.warning(*args)
 
     def __nonzero__(self):
@@ -78,7 +83,11 @@ class packet_base (object):
         return "%s: Undefined representation" % self.__class__.__name__
 
     def find(self, proto):
-        '''Find the specified protocol layer based on the class name'''
+        """
+        Find the specified protocol layer based on its class type or name.
+        """
+        if not isinstance(proto, str):
+            proto = proto.__name__
         if self.__class__.__name__ == proto and self.parsed:
             return self
         else:
@@ -87,29 +96,43 @@ class packet_base (object):
             else:
                 return None
 
+    @property
+    def payload (self):
+        """
+        The packet payload property.
+        Reading this property is generally the same as the "next" field.
+        Settign this generally sets this packet's "next" field, as well as
+        setting the new payload's "prev" field to point back to its new
+        container (the same as the set_payload() method).
+        """
+        return self.next
+
+    @payload.setter
+    def payload (self, new_payload):
+      self.set_payload(new_payload)
+
     def set_payload(self, payload):
-        '''Set the packet payload.  Expects a string, array to packet of type packet_base'''
+        '''
+        Set the packet payload.  Expects bytes or a packet_base subclass.
+        '''
         if isinstance(payload, packet_base):
             self.next    = payload
             payload.prev = self
         elif type(payload) == bytes:
             self.next = payload
-#        elif type(payload) == array.array:
-#            self.next = payload.tostring()
         else:
-            self.msg('warning, payload must be string, array or type packet_base')
+            raise RuntimeError("payload must be string or packet subclass")
 
     def parse(self):
         '''Override me with packet parsing code'''
-        self.err('** error ** no parse method defined')
+        raise NotImplementedError("parse() not implemented")
 
     def hdr(self, payload_length):
         '''Override me to return packet headers'''
-        self.err('** error ** no hdr method defined')
-        return ''
+        raise NotImplementedError("hdr() not implemented")
 
     def pack(self):
-        '''Convert header and payload to str'''
+        '''Convert header and payload to bytes'''
 
         if self.next == None:
             return self.hdr(0)
