@@ -50,7 +50,7 @@ def doLaunch ():
       try:
         __import__("pox." + name, globals(), locals())
         name = "pox." + name
-      except:
+      except ImportError:
         try:
           __import__(name, globals(), locals())
         except ImportError:
@@ -61,6 +61,11 @@ def doLaunch ():
           traceback.print_exc()
           print "Could not import module:",name
           return False
+      except:
+        import traceback
+        traceback.print_exc()
+        print "Could not import module:",name
+        return False
 
     if launch in sys.modules[name].__dict__:
       sys.modules[name].__dict__[launch](**params)
