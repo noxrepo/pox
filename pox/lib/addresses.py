@@ -49,7 +49,7 @@ class EthAddr (object):
     """
     Returns True if this is a multicast address.
     """
-  	return True if (ord(self._value[0]) & 1) else False
+    return True if (ord(self._value[0]) & 1) else False
 
   def toRaw (self):
     """
