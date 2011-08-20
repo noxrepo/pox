@@ -25,7 +25,7 @@ import random
 import hashlib
 import base64
 
-from pox.messenger.messenger import MessengerConnection
+#from pox.messenger.messenger import MessengerConnection
 
 from pox.core import core
 
@@ -512,27 +512,28 @@ class SplitThreadedServer(ThreadingMixIn, HTTPServer):
     self.matches.append((prefix, handler, trim_prefix, args))
     self.matches.sort(key=lambda e:len(e[0]),reverse=True)
 
-  def add_static_dir (self, www_path, local_path = None, sibling = None):
+  def add_static_dir (self, www_path, local_path=None, relative=False):
     """
     Serves a directory of static content.
     www_path is the prefix of the URL that maps to this directory.
     local_path is the directory to serve content from.  If it's not
     specified, it is assume to be a directory with the same name as
     www_path.
-    sibling, if specified, is a file that is a sibling to the local_path.
-    This really only exists for one reason.  You can specify __file__ for
-    this, and then local_path can be a directory in the same file as the
-    executing Python code.
+    relative, if True, means that the local path is to be a sibling
+    of the calling module.
     For an example, see the launch() function in this module.
     """
     if not www_path.startswith('/'): www_path = '/' + www_path
 
     if local_path is None:
       local_path = www_path[1:]
-      if sibling is not None:
+      if relative:
         local_path = os.path.basename(local_path)
-    if sibling is not None:
-      path = os.path.dirname(sibling)
+    if relative:
+      import inspect
+      path = inspect.stack()[1][1]
+      path = os.path.dirname(path)
+      print path
       local_path = os.path.join(path, local_path)
 
     local_path = os.path.abspath(local_path)
@@ -554,7 +555,7 @@ def launch (address='', port=8000, debug=False, static=False):
   #httpd.set_handler("/foo", StaticContentHandler, {'root':'.'}, True)
   #httpd.set_handler("/f", StaticContentHandler, {'root':'pox'}, True)
   if static:
-    httpd.add_static_dir('static', 'www_root', sibling=__file__)
+    httpd.add_static_dir('static', 'www_root', relative=True)
 
   def run ():
     try:
