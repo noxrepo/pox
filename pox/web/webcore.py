@@ -533,7 +533,6 @@ class SplitThreadedServer(ThreadingMixIn, HTTPServer):
       import inspect
       path = inspect.stack()[1][1]
       path = os.path.dirname(path)
-      print path
       local_path = os.path.join(path, local_path)
 
     local_path = os.path.abspath(local_path)
@@ -548,6 +547,8 @@ def launch (address='', port=8000, debug=False, static=False):
   if debug:
     log.setLevel("DEBUG")
     log.debug("Debugging enabled")
+  elif log.isEnabledFor("DEBUG"):
+    log.setLevel("INFO")
 
   httpd = SplitThreadedServer((address, int(port)), SplitterRequestHandler)
   core.register("WebServer", httpd)
