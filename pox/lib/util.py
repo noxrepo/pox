@@ -198,3 +198,24 @@ def makePinger ():
       return SocketPinger(result)
 
   raise RuntimeError("Could not allocate a local socket pair")
+
+
+def str_to_bool (s):
+  """
+  Given a string, parses out whether it is meant to be True or not
+  """
+  s = str(s).lower() # Make sure
+  if s in ['true', 't', 'yes', 'y', 'on', 'enable', 'enabled', 'ok', 'okay',
+           '1']:
+    return True
+  try:
+    r = 10
+    if s.startswith("0x"):
+      s = s[2:]
+      r = 16
+    i = int(s, r)
+    if i != 0:
+      return True
+  except:
+    pass
+  return False
