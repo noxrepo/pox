@@ -1,10 +1,55 @@
-"""
-Messenger works like this:
+"""  
+The POX Messenger system.
 
-Somehow a connection to a client is started.  pox.messenger raises a
-MessengerConnectEvent event.  If a listener wants the connection, it can call .claim()
-on the event, which returns a Connection.
+
+The Messenger is a way to build services in POX that can be consumed by
+external clients.
+
+Sometimes a controller might need to interact with the outside world.
+Sometimes you need to integrate with an existing piece of software and
+maybe you don't get to choose how you communicate with it.  Other times,
+you have the opportunity and burden of rolling your own.  The Messenger
+is meant to help you with the latter case.
+
+In short, the POX Messenger is a system for communicating between NOX and
+external programs by exchanging messages encoded in JSON.  It is intended
+to be quite general, and supports multiple communication models (for
+example, you can use it for pub/sub, virtual circuits, broadcasts...).
+It is also transport-independent (as of this writing, it supports a
+straightforward TCP socket transport and an HTTP transport).
+
+*Connections* are somehow established when a client connects via some
+*Transport*, and this causes a ConnectionStarted event on MessengerHub.
+Messages sent by the client at this point raise a MessageReceived event
+on MessengerHub, and a disconnection will raise ConnectionClosed.  A
+listener of ConnectionStarted or MessageReceived messages may use the
+Connection's send() method to send a message back to the client, or may
+store the Connection to send() a reply later (e.g., to implement a pubsub
+communication model).
+
+Incoming messages are often intended to be received only be specific
+services.  To make this happen, a service can create a Target object
+specifying name for the target, and then listen to events on this
+specific Target object (e.g., MessageReceived, ConnectionClosed).
+Then clients can include a TARGET key in their messages with the
+value set to be the target name (or a list of target names, or null to
+broadcast through MessengerHub).  Messages which have specified an
+available TARGET will only appear as messages on the corresponding Target
+object -- not on MessengerHub itself.  Messages with a TARGET that is
+not available will continue to show up on MessengerHub.
+
+There are also times when a service would like to do a lot communication
+with a client over a specific connection.  In this case, the service can
+"claim" a connection (via the .claim() method of the event) and listen
+to it directly.  After being claimed, the connection will no longer
+raise events on the MessengerHub.  This allows for connection-oriented
+communication patterns.
+
+Generally, listeners will listen to MessageReceived events and respond
+to those.  However, it is also possible to set a connection to buffer
+the messages it receives, and it can be polled later.
 """
+
 
 
 from pox.lib.revent.revent import *
@@ -39,7 +84,7 @@ class ConnectionStarted (Event):
     return self.con
 
 
-class MessageRecieved (Event):
+class MessageReceived (Event):
   def __init__ (self, connection, msg):
     Event.__init__(self)
     self.con = connection
@@ -65,9 +110,14 @@ class MessageRecieved (Event):
       return EventHalt
 
 
+class Target (object):
+  pass
+  #TODO
+
+
 class MessengerConnection (EventMixin):
   _eventMixin_events = set([
-    MessageRecieved,
+    MessageReceived,
     ConnectionClosed,
   ])
 
@@ -91,7 +141,7 @@ class MessengerConnection (EventMixin):
 
     if not claimed:
       # Unclaimed events get forwarded to here too
-      self.addListener(MessageRecieved, self._defaultMessageRecieved, priority=-1) # Low priority
+      self.addListener(MessageReceived, self._defaultMessageReceived, priority=-1) # Low priority
 
   def _close (self):
     # Called internally
@@ -99,12 +149,15 @@ class MessengerConnection (EventMixin):
     self._source._forget(self)
     self._isConnected = False
     self.raiseEventNoErrors(ConnectionClosed, self)
-    self.raiseEventNoErrors(MessageRecieved, self, None)
+    self.raiseEventNoErrors(MessageReceived, self, None)
+    core.messenger.raiseEventNoErrors(ConnectionClosed, self)
 
   def send (self, whatever, **kw):
+    if self._isConnected is False: return False
     s = json.dumps(whatever, **kw)
     if self._newlines: s += "\n"
     self.sendRaw(s)
+    return True
 
   def sendRaw (self, data):
     raise RuntimeError("Not implemented")
@@ -128,7 +181,7 @@ class MessengerConnection (EventMixin):
   def _recv_msg (self, msg):
     #print self,"recv:",msg
     self._msgs.append(msg)
-    self.raiseEventNoErrors(MessageRecieved, self, msg)
+    self.raiseEventNoErrors(MessageReceived, self, msg)
     if not self.buffered:
       del self._msgs[:]
 
@@ -159,7 +212,7 @@ class MessengerConnection (EventMixin):
     # Subclasses probably want to change this
     return "<" + self.__class__.__name__ + "/" + self.ID + ">"
 
-  def _defaultMessageRecieved (self, event, msg):
+  def _defaultMessageReceived (self, event, msg):
     #print self,"default recv:",msg
     #TODO: make sure this actually works. I have never tried re-raising an event.
     core.messenger.raiseEventNoErrors(event)
@@ -213,11 +266,13 @@ class TCPMessengerConnection (MessengerConnection, Task):
 class MessengerHub (EventMixin):
   _eventMixin_events = set([
     ConnectionStarted,  # Immediately when a connection goes up
-    MessageRecieved,    # For unclaimed messages
+    ConnectionClosed,   # When a connection goes down
+    MessageReceived,    # For unclaimed messages
   ])
   def __init__ (self):
     EventMixin.__init__(self)
     self.connections = weakref.WeakSet()
+
 
 #TODO: make a superclass source
 class TCPMessengerSource (Task):
