@@ -101,7 +101,7 @@ class packet_base (object):
         """
         The packet payload property.
         Reading this property is generally the same as the "next" field.
-        Settign this generally sets this packet's "next" field, as well as
+        Setting this generally sets this packet's "next" field, as well as
         setting the new payload's "prev" field to point back to its new
         container (the same as the set_payload() method).
         """
