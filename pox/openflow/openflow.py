@@ -1,9 +1,32 @@
+"""
+This is the main OpenFlow module.
+
+Along with libopenflow, this is the major part of the OpenFlow API in POX.
+There are a number of Events, which are generally raised on core.openflow
+as well as on individual switch Connections.  Many of these events have at
+least some of the following properties:
+ .connection - a reference to the switch connection that caused the event
+ .dpid - the DPID of the switch that caused the event
+ .ofp - the OpenFlow message that caused the event (from libopenflow)
+
+One of the more complicated aspects of OpenFlow is dealing with stats
+replies, which may come in multiple parts (it shouldn't be that that
+difficult, really, but that hasn't stopped it from beind handled wrong
+wrong more than once).  In POX, the raw events are available, but you will
+generally just want to listen to the aggregate stats events which take
+care of this for you and are only fired when all data is available.
+"""
+
 from pox.lib.revent.revent import *
 import libopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
 from pox.core import core
 
 class ConnectionUp (Event):
+  """
+  Connection raised when the connection to an OpenFlow switch has been
+  established.
+  """
   def __init__ (self, connection, ofp):
     Event.__init__(self)
     self.connection = connection
@@ -11,12 +34,23 @@ class ConnectionUp (Event):
     self.ofp = ofp
 
 class ConnectionDown (Event):
+  """
+  Connection raised when the connection to an OpenFlow switch has been
+  lost.
+  """
   def __init__ (self, connection):
     Event.__init__(self)
     self.connection = connection
     self.dpid = connection.dpid
 
 class PortStatus (Event):
+  """
+  Fired in response to port status changes.
+  added (bool) - True if fired because a port was added
+  deleted (bool) - True if fired because a port was deleted
+  modified (bool) - True if fired because a port was modified
+  port (int) - number of port in question
+  """
   def __init__ (self, connection, ofp):
     Event.__init__(self)
     self.connection = connection
@@ -28,6 +62,16 @@ class PortStatus (Event):
     self.port = ofp.desc.port_no
 
 class FlowRemoved (Event):
+  """
+  Raised when a flow entry has been removed from a flow table.
+  This may either be because of a timeout or because it was removed
+  explicitly.
+  Properties:
+  idleTimeout (bool) - True if expired because of idleness
+  hardTimeout (bool) - True if expired because of hard timeout
+  timeout (bool) - True if either of the above is true
+  deleted (bool) - True if deleted explictly
+  """
   def __init__ (self, connection, ofp):
     Event.__init__(self)
     self.connection = connection
@@ -78,26 +122,33 @@ class PortStatsReceived (StatsReply):
 class QueueStatsReceived (StatsReply):
   pass
 
-class FlowRemoved (Event):
-  def __init__ (self, connection, ofp):
-    Event.__init__(self)
-    self.connection = connection
-    self.ofp = ofp
-
 class PacketIn (Event):
+  """
+  Fired in response to PacketIn events
+  port (int) - number of port the packet came in on
+  data (bytes) - raw packet data
+  parsed (packet subclasses) - pox.lib.packet's parsed version
+  """
   def __init__ (self, connection, ofp):
     Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
     self.port = ofp.in_port
     self.data = ofp.data
-    self.parsed = None
+    self._parsed = None
     self.dpid = connection.dpid
 
   def parse (self):
-    if self.parsed is None:
-      self.parsed = ethernet(self.data)
-    return self.parsed
+    if self._parsed is None:
+      self._parsed = ethernet(self.data)
+    return self._parsed
+
+  @property
+  def parsed (self):
+    """
+    The packet as parsed by pox.lib.packet
+    """
+    return self.parse()
 
 class ErrorIn (Event):
   def __init__ (self, connection, ofp):
@@ -136,14 +187,11 @@ class ErrorIn (Event):
 
     return s
 
-class FlowRemoved (Event):
-  def __init__ (self, connection, ofp):
-    Event.__init__(self)
-    self.connection = connection
-    self.ofp = ofp
-    self.dpid = connection.dpid
-
 class BarrierIn (Event):
+  """
+  Fired in response to a barrier reply
+  xid (int) - XID of barrier request
+  """
   def __init__ (self, connection, ofp):
     Event.__init__(self)
     self.connection = connection
@@ -153,6 +201,13 @@ class BarrierIn (Event):
 
 
 class OpenFlowHub (EventMixin):
+  """
+  Main point of OpenFlow interaction.
+
+  There is usually just one instance of this class, registered as
+  core.openflow.  Most OpenFlow events fire here in addition to on their
+  specific connections.
+  """
   _eventMixin_events = set([
     ConnectionUp,
     ConnectionDown,
@@ -173,9 +228,15 @@ class OpenFlowHub (EventMixin):
     self._connections = {}#weakref.WeakValueDictionary() # DPID -> Connection
 
   def getConnection (self, dpid):
+    """
+    Get the Connection object associated with a DPID.
+    """
     return self._connections.get(dpid, None)
 
   def sendToDPID (self, dpid, data):
+    """
+    Send data to a specific DPID.
+    """
     if dpid in self._connections:
       self._connections[dpid].send(data)
       return True
