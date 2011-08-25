@@ -45,7 +45,7 @@ class MuxConnection (MessengerConnection):
 
     if not claimed:
       # Unclaimed events get forwarded to here too
-      self.addListener(MessageRecieved, self._defaultMessageRecieved, priority=-1) # Low priority
+      self.addListener(MessageReceived, self._defaultMessageReceived, priority=-1) # Low priority
 
     self._newlines = False
 
@@ -69,7 +69,7 @@ class MuxSource (EventMixin):
     else:
       log.warn("Tried to forget a channel I didn't know")
 
-  def _handle_MessageRecieved (self, event, msg):
+  def _handle_MessageReceived (self, event, msg):
     if event.con.isReadable():
       r = event.con.read()
       if type(r) is dict:
@@ -105,9 +105,9 @@ class MuxHub (object):
   """
   """
   def __init__ (self):
-    core.messenger.addListener(MessageRecieved, self._handle_global_MessageRecieved)#, weak=True)
+    core.messenger.addListener(MessageReceived, self._handle_global_MessageReceived)#, weak=True)
 
-  def _handle_global_MessageRecieved (self, event, msg):
+  def _handle_global_MessageReceived (self, event, msg):
     try:
       if msg['hello'] == 'mux':
         # It's for me!

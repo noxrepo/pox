@@ -290,7 +290,7 @@ class Discovery (EventMixin):
 
     # if chassid is from a switch we're not connected to, ignore
     if originatorDPID not in self._dps:
-      log.info('Recieved LLDP packet from unconnected switch')
+      log.info('Received LLDP packet from unconnected switch')
       return
 
     # grab port ID from port tlv

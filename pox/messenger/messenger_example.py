@@ -6,10 +6,10 @@ class MessengerExample (object):
   A demo of messenger.
 
   The idea is pretty simple. When you create a MessengerExample, you tell it a
-  name you're interested in. It listens to core.messenger!MessageRecieved. If
+  name you're interested in. It listens to core.messenger!MessageReceived. If
   it sees a message with a "hello" key where the value is the name you're
   interested in, it claims the connection that message came in on, and then
-  listens to <thatConnection>!MessageRecieved. It prints out messages on that
+  listens to <thatConnection>!MessageReceived. It prints out messages on that
   connection from then on. If a message has a key named "bye" with the value
   True, it closes the connection
 
@@ -20,24 +20,24 @@ class MessengerExample (object):
   bash$ echo '{"hello":"foo"}[1,2,3] "neat"' | nc localhost 7790
   """
   def __init__ (self, targetName):
-    core.messenger.addListener(MessageRecieved, self._handle_global_MessageRecieved, weak=True)
+    core.messenger.addListener(MessageReceived, self._handle_global_MessageReceived, weak=True)
     self._targetName = targetName
 
-  def _handle_global_MessageRecieved (self, event, msg):
+  def _handle_global_MessageReceived (self, event, msg):
     try:
       n = msg['hello']
       if n == self._targetName:
         # It's for me!
         event.con.read() # Consume the message
         event.claim()
-        event.con.addListener(MessageRecieved, self._handle_MessageRecieved, weak=True)
+        event.con.addListener(MessageReceived, self._handle_MessageReceived, weak=True)
         print self._targetName, "- started conversation with", event.con
       else:
         print self._targetName, "- ignoring", n
     except:
       pass
 
-  def _handle_MessageRecieved (self, event, msg):
+  def _handle_MessageReceived (self, event, msg):
     if event.con.isReadable():
       r = event.con.read()
       print self._targetName, "-",r

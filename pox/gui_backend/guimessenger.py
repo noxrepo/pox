@@ -2,7 +2,7 @@
 #from pox.lib.revent.revent import *
 #from pox.lib.recoco.recoco import *
 from pox.core import core as core
-from pox.messenger.messenger import MessageRecieved
+from pox.messenger.messenger import MessageReceived
 #import weakref
 import json
 
@@ -28,11 +28,11 @@ class GuiMessengerService (EventMixin):
     self._logService = LogMessenger(connection, params) # Aggregate
     # Unhook its message received listener (we will pass it those events
     # manually ourselves...)
-    connection.removeListener(dict(self._logService._listeners)[MessageRecieved])
+    connection.removeListener(dict(self._logService._listeners)[MessageReceived])
 
     self.listenTo(connection)
 
-  def _handle_MessageRecieved (self, event, msg):
+  def _handle_MessageReceived (self, event, msg):
     if event.con.isReadable():
       r = event.con.read()
       if type(r) is dict:
@@ -61,9 +61,9 @@ class GuiMessengerService (EventMixin):
 
 class GuiMessengerServiceListener (object):
   def __init__ (self):
-    core.messenger.addListener(MessageRecieved, self._handle_global_MessageRecieved)
+    core.messenger.addListener(MessageReceived, self._handle_global_MessageReceived)
 
-  def _handle_global_MessageRecieved (self, event, msg):
+  def _handle_global_MessageReceived (self, event, msg):
     try:
       if msg['hello'] == 'gui':
         # It's for me!
