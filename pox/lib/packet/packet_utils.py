@@ -66,33 +66,25 @@ def checksum(data, start, skip_word = 0):
         start += struct.unpack('H', data[-1]+'\0')[0]
 
     start  = (start >> 16) + (start & 0xffff)
-    start += (start >> 16);
+    start += (start >> 16)
 
     return ntohs(~start & 0xffff)
 
 
 def ip_to_str(a):
-    return "%d.%d.%d.%d" % ((a >> 24) & 0xff, (a >> 16) & 0xff, \
+    return "%d.%d.%d.%d" % ((a >> 24) & 0xff, (a >> 16) & 0xff,
                             (a >> 8) & 0xff, a & 0xff)
 
 
 def ipstr_to_int(a):
     octets = a.split('.')
-    return int(octets[0]) << 24 |\
-           int(octets[1]) << 16 |\
-           int(octets[2]) <<  8 |\
-           int(octets[3]);
+    return (int(octets[0]) << 24 |
+            int(octets[1]) << 16 |
+            int(octets[2]) <<  8 |
+            int(octets[3]))
 
 def array_to_ipstr(a):
     return "%d.%d.%d.%d" % (a[0], a[1], a[2], a[3])
-
-"""
-def octstr_to_array(ocstr):
-    a = array.array('B')
-    for item in ocstr.split(':'):
-        a.append(int(item, 16))
-    return a
-"""
 
 def array_to_octstr(arr):
     bstr = ''
