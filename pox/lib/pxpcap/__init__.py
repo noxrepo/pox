@@ -1,6 +1,7 @@
 import pxpcap as pcap
 from pox.lib.addresses import IPAddr, EthAddr
 from threading import Thread
+import pox.lib.packet as pkt
 
 class PCap (object):
   @staticmethod
@@ -167,8 +168,8 @@ class Filter (object):
 
 
 
-if __name__ == '__main__':
-  import pox.lib.packet as pkt
+def launch ():
+  """ Test function """
   global drop,total,bytes_got,bytes_real,bytes_diff
   drop = 0
   total = 0
