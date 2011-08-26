@@ -13,8 +13,12 @@ releases and reacquires the GIL for callbacks.
 #include <netinet/in.h>
 
 #ifdef __APPLE__
-#define LINK_SOCKETS 1
+#define AF_LINK_SOCKETS 1
 #include <net/if_dl.h>
+#elif defined (linux)
+#define AF_PACKET_SOCKETS 1
+//#include <netpacket/packet.h>
+#include <linux/if_arp.h>
 #endif
 
 struct num_name_pair
@@ -94,15 +98,19 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
           a->broadaddr ? (PyObject*)((sockaddr_in*)a->broadaddr)->sin_addr.s_addr : Py_None,
           a->dstaddr ? (PyObject*)((sockaddr_in*)a->dstaddr)->sin_addr.s_addr : Py_None);
         PyList_Append(addrs, addr_entry);
+        Py_DECREF(addr_entry);
       }
       else if (a->addr->sa_family == AF_INET6)
       {
         //TODO
       }
-#ifdef LINK_SOCKETS
+#ifdef AF_LINK_SOCKETS
       else if (a->addr->sa_family == AF_LINK)
       {
         #define GET_ADDR(__f) a->__f ? (((sockaddr_dl*)a->__f)->sdl_data + ((sockaddr_dl*)a->__f)->sdl_nlen) : "", a->__f ? ((sockaddr_dl*)a->__f)->sdl_alen : 0
+        PyObject * epo = Py_BuildValue("ss#", "ethernet", GET_ADDR(addr));
+        PyList_Append(addrs, epo);
+        Py_DECREF(epo);
         PyObject * addr_entry = Py_BuildValue("ss#s#s#s#",
           "AF_LINK",
           GET_ADDR(addr),
@@ -112,6 +120,19 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
         #undef GET_ADDR
 
         PyList_Append(addrs, addr_entry);
+        Py_DECREF(addr_entry);
+      }
+#endif
+#ifdef AF_PACKET_SOCKETS
+      else if (a->addr->sa_family == AF_PACKET)
+      {
+        struct sockaddr_ll * dll = (struct sockaddr_ll *)a->addr;
+        if (dll->sll_hatype == ARPHRD_ETHER && dll->sll_halen == 6)
+        {
+          PyObject * epo = Py_BuildValue("ss#", "ethernet", dll->sll_addr, 6);
+          PyList_Append(addrs, epo);
+          Py_DECREF(epo);
+        }
       }
 #endif
       else
@@ -122,6 +143,7 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
 
     PyObject * entry = Py_BuildValue("ssO", d->name, d->description, addrs);
     PyList_Append(pdevs, entry);
+    Py_DECREF(entry);
   }
 
   pcap_freealldevs(devs);
@@ -183,6 +205,7 @@ static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h,
   args = Py_BuildValue("Os#lli", 
       ts->user, data, h->caplen, (long)h->ts.tv_sec, (long)h->ts.tv_usec, h->len);
   rv = PyEval_CallObject(ts->pycallback, args);
+  Py_DECREF(args);
   if (rv)
   {
     Py_DECREF(rv);

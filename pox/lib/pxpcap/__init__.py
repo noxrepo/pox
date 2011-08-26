@@ -34,6 +34,10 @@ class PCap (object):
           na['netmask'] = link(a[2])
           na['broadaddr'] = link(a[3])
           na['dstaddr'] = link(a[4])
+        elif a[0] == 'AF_PACKET':
+          addrs[a[0]] = {'addr':link(a[1])}
+        elif a[0] == 'ethernet':
+          addrs[a[0]] = {'addr':link(a[1])}
     return out
 
   @staticmethod
@@ -203,20 +207,20 @@ def launch ():
       filter = "icmp")#[icmptype] != icmp-echoreply")
       #filter = "ip host 74.125.224.148")
 
-  def ping ():
+  def ping (eth='00:18:02:6e:ce:55', ip='192.168.0.1'):
     e = pkt.ethernet.ethernet()
-    e.src = p.addresses['AF_LINK']['addr']
-    e.dst = EthAddr('00:18:02:6e:ce:55')
+    e.src = p.addresses['ethernet']['addr']
+    e.dst = EthAddr(eth)
     e.type = e.IP_TYPE
-    ip = pkt.ipv4.ipv4()
-    ip.protocol = ip.ICMP_PROTOCOL
-    ip.srcip = p.addresses['AF_INET']['addr']
-    ip.dstip = IPAddr("192.168.0.1")
+    ipp = pkt.ipv4.ipv4()
+    ipp.protocol = ipp.ICMP_PROTOCOL
+    ipp.srcip = p.addresses['AF_INET']['addr']
+    ipp.dstip = IPAddr(ip)
     icmp = pkt.icmp.icmp()
     icmp.type = pkt.icmp.TYPE_ECHO_REQUEST
     icmp.payload = "PingPing" * 6
-    ip.payload = icmp
-    e.payload = ip
+    ipp.payload = icmp
+    e.payload = ipp
 
     p.inject(e)
 
