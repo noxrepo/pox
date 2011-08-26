@@ -5,8 +5,9 @@ Classes for addresses of various types.
 import struct
 import socket
 
-# Untested attempt at Python 3 friendliness
-if not hasattr(globals()['__builtins__'], 'long'):
+# Slightly tested attempt at Python 3 friendliness
+import sys
+if 'long' not in sys.modules['__builtin__'].__dict__:
   long = int
 
 class EthAddr (object):
@@ -121,14 +122,14 @@ class IPAddr (object):
     if isinstance(addr, str) or isinstance(addr, bytes):
       if len(addr) != 4:
         # dotted quad
-        self._value = struct.unpack('!i', socket.inet_aton(addr))[0]
+        self._value = struct.unpack('i', socket.inet_aton(addr))[0]
       else:
         self._value = struct.unpack('!i', addr)[0]
     elif isinstance(addr, IPAddr):
       self._value = addr._value
     elif isinstance(addr, int) or isinstance(addr, long):
       addr = addr & 0xffFFffFF # unsigned long
-      self._value = struct.unpack("i", struct.pack(('!' if networkOrder else '') + "I", addr))[0]
+      self._value = struct.unpack("!i", struct.pack(('!' if networkOrder else '') + "I", addr))[0]
     else:
       raise RuntimeError("Unexpected IP address format")
 
@@ -142,16 +143,16 @@ class IPAddr (object):
 
   def toSigned (self, networkOrder = False):
     """ Return the address as a signed int """
-    if not networkOrder:
-      v = socket.htonl(self._value & 0xffFFffFF)
-      return struct.unpack("!i", struct.pack("!I", v))[0]
-    return self._value
+    if networkOrder:
+      return self._value
+    v = socket.htonl(self._value & 0xffFFffFF)
+    return struct.unpack("i", struct.pack("I", v))[0]
 
   def toRaw (self):
     """
     Returns the address as a four-character byte string.
     """
-    return struct.pack("!i", self._value)
+    return struct.pack("i", self._value)
 
   def toUnsigned (self, networkOrder = False):
     """
