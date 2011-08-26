@@ -140,5 +140,6 @@ class udp(packet_base):
                               payload_len, 0)
           payload = myhdr + payload
 
-        return checksum(ippacket + payload, 0, 9)
+        r = checksum(ippacket + payload, 0, 9)
+        return 0xffff if r == 0 else r
 
