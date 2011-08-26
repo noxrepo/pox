@@ -22,12 +22,16 @@ class EthAddr (object):
     # Always stores as a 6 character string
 
     if isinstance(addr, bytes) or isinstance(addr, unicode):
-      if len(addr) == 17 or len(addr) == 12:
+      if len(addr) == 17 or len(addr) == 12 or addr.count(':') == 5:
         # hex
         if len(addr) == 17:
           if addr[2::3] != ':::::' and addr[2::3] != '-----':
             raise RuntimeError("Bad format for ethernet address")
           addr = ''.join((addr[x*3:x*3+2] for x in xrange(0,6)))
+        elif len(addr) == 12:
+          pass
+        else:
+          addr = ''.join(["%02x" % (int(x,16),) for x in addr.split(":")])
         addr = b''.join((chr(int(addr[x*2:x*2+2], 16)) for x in range(0,6)))
       elif len(addr) == 6:
         # raw
