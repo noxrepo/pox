@@ -158,19 +158,20 @@ class ipv4(packet_base):
             self.next =  self.arr[self.hl*4:length]
 
     def checksum(self):
-        data = struct.pack('!BBHHHBBHII', (self.v << 4) + self.hl, self.tos, \
-                                 self.iplen, self.id, \
-                                 (self.flags << 13) | self.frag, self.ttl, \
-                                 self.protocol, 0, self.srcip.toUnsigned(), \
+        data = struct.pack('!BBHHHBBHII', (self.v << 4) + self.hl, self.tos,
+                                 self.iplen, self.id,
+                                 (self.flags << 13) | self.frag, self.ttl,
+                                 self.protocol, 0, self.srcip.toUnsigned(),
                                  self.dstip.toUnsigned())
         return checksum(data, 0)
 
 
-    def hdr(self, payload_length):
-        self.iplen = self.hl * 4 + payload_length
+    def hdr(self, payload):
+        self.iplen = self.hl * 4 + len(payload)
         self.csum = self.checksum()
-        return struct.pack('!BBHHHBBHII', (self.v << 4) + self.hl, self.tos, \
-                                 self.iplen, self.id, (self.flags << 13) | self.frag, self.ttl, \
-                                 self.protocol, self.csum, self.srcip.toUnsigned(), \
-                                 self.dstip.toUnsigned())
+        return struct.pack('!BBHHHBBHII', (self.v << 4) + self.hl, self.tos,
+                           self.iplen, self.id,
+                           (self.flags << 13) | self.frag, self.ttl,
+                           self.protocol, self.csum, self.srcip.toUnsigned(),
+                           self.dstip.toUnsigned())
 

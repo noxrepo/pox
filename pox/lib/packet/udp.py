@@ -99,8 +99,8 @@ class udp(packet_base):
 
         self.payload = self.arr[udp.MIN_LEN:]
 
-    def hdr(self, payload_length):
-        self.len = payload_length + udp.MIN_LEN
+    def hdr(self, payload):
+        self.len = len(payload) + udp.MIN_LEN
         self.csum = self.checksum()
         return struct.pack('!HHHH', self.srcport, self.dstport, self.len, self.csum)
 

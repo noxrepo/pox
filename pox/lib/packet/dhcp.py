@@ -242,16 +242,16 @@ class dhcp(packet_base):
         self.options = o
         self.parsedOptions.dirty = False
 
-    def hdr(self, payload_length):
+    def hdr(self, payload):
         if self.parsedOptions.dirty:
           self.packOptions()
 
         fmt = '!BBBBIHHIIII16s64s128s4s%us' % (len(self.options),)
-        return struct.pack(fmt, self.op, self.htype, self.hlen, \
-                    self.hops, self.xid, self.secs, self.flags, \
-                    self.ciaddr, self.yiaddr, self.siaddr, self.giaddr, \
-                    self.chaddr, self.sname, \
-                    self.file, self.magic, \
+        return struct.pack(fmt, self.op, self.htype, self.hlen,
+                    self.hops, self.xid, self.secs, self.flags,
+                    self.ciaddr, self.yiaddr, self.siaddr, self.giaddr,
+                    self.chaddr, self.sname,
+                    self.file, self.magic,
                     self.options)
 
     def hasParsedOption(self, opt, len):

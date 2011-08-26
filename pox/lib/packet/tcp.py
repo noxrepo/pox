@@ -217,7 +217,7 @@ class tcp(packet_base):
         self.next   = self.arr[self.hdr_len:]
         self.parsed = True
 
-    def hdr(self, payload_length, calc_checksum = True):
+    def hdr(self, payload, calc_checksum = True):
         if calc_checksum:
             self.csum = self.checksum()
             csum = self.csum

@@ -46,14 +46,14 @@ _ipproto_to_str[17] = 'UDP'
 _ipproto_to_str[47] = 'GRE'
 _ipproto_to_str[89] = 'OSPF'
 
-def checksum(data, start, skip_word = 0):
+def checksum(data, start = 0, skip_word = None):
 
     if len(data) % 2 != 0:
         arr = array.array('H', data[:-1])
     else:
         arr = array.array('H', data)
 
-    if skip_word:
+    if skip_word is not None:
         for i in range(0, len(arr)):
             if i == skip_word:
                 continue

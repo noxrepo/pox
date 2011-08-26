@@ -49,6 +49,15 @@ CODE_UNREACH_PORT    = 3
 CODE_UNREACH_FRAG    = 4
 CODE_UNREACH_SRC_RTE = 5
 
+_type_to_name = {
+    0   : "ECHO_REPLY",
+    3   : "DEST_UNREACH",
+    4   : "SRC_QUENCH",
+    5   : "REDIRECT",
+    8   : "ECHO_REQUEST",
+    11  : "TIME_EXCEED",
+}
+
 #----------------------------------------------------------------------
 #
 #  Echo Request/Reply
@@ -82,7 +91,7 @@ class echo(packet_base):
         if self.parsed == False:
             return ""
 
-        return ''.join(('{', 'id:', str(self.id), 'seq:', str(self.seq), '}'))
+        return "{id:%i seq:%i}" % (self.id, self.seq)
 
     def parse(self):
         dlen = len(self.arr)
@@ -97,7 +106,7 @@ class echo(packet_base):
         self.parsed = True
         self.next = self.arr[echo.MIN_LEN:]
 
-    def hdr(self, payload_length):
+    def hdr(self, payload):
         return struct.pack('!HH', self.id, self.seq)
 
 
@@ -159,7 +168,7 @@ class unreach(packet_base):
         else:
             self.next = self.arr[unreach.MIN_LEN:]
 
-    def hdr(self, payload_length):
+    def hdr(self, payload):
         return struct.pack('!HH', self.unused, self.next_mtu)
 
 
@@ -185,8 +194,8 @@ class icmp(packet_base):
         if self.parsed == False:
             return ""
 
-        s = ''.join(('{', 't:', str(self.type), ' c:', str(self.code),
-                         ' csum: ', str(hex(self.csum)), '}'))
+        t = _type_to_name.get(self.type, str(self.type))
+        s = '{t:%s c:%i chk:%x}' % (t, self.code, self.csum)
 
         if self.next == None:
             return s
@@ -208,6 +217,10 @@ class icmp(packet_base):
             self.next = echo(arr=self.arr[self.MIN_LEN:],prev=self)
         elif self.type == TYPE_DEST_UNREACH:
             self.next = unreach(arr=self.arr[self.MIN_LEN:],prev=self)
+        else:
+            self.next = self.arr[self.MIN_LEN:]
 
-    def hdr(self, payload_length):
+    def hdr(self, payload):
+        self.csum = checksum(struct.pack('!BBH', self.type, self.code, 0) +
+                             payload)
         return struct.pack('!BBH', self.type, self.code, self.csum)

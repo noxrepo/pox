@@ -47,7 +47,7 @@ class packet_base (object):
             # parse packet here and set member variables
             self.parsed = True # signal that packet was succesfully parsed
 
-        def hdr(self, payload_length):
+        def hdr(self, payload):
             # return fields as a string
             return struct.pack('!I',self.bar)
 
@@ -127,18 +127,24 @@ class packet_base (object):
         '''Override me with packet parsing code'''
         raise NotImplementedError("parse() not implemented")
 
-    def hdr(self, payload_length):
+    def pre_hdr(self):
+        '''Override to prepare before payload is packed'''
+        pass
+
+    def hdr(self, payload):
         '''Override me to return packet headers'''
         raise NotImplementedError("hdr() not implemented")
 
     def pack(self):
         '''Convert header and payload to bytes'''
 
+        self.pre_hdr()
+
         if self.next == None:
-            return self.hdr(0)
+            return self.hdr(b'')
         elif isinstance(self.next, packet_base):
             rest = self.next.pack()
         else:
             rest = self.next
 
-        return self.hdr(len(rest)) + rest
+        return self.hdr(rest) + rest

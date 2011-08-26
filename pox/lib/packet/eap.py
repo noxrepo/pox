@@ -180,5 +180,5 @@ class eap(packet_base):
     def set_payload(self, payload):
         self.next = payload
 
-    def hdr(self, payload_length):
+    def hdr(self, payload):
         return struct.pack('!BBH', self.code, self.id, self.length)

@@ -99,5 +99,5 @@ class eapol(packet_base):
         self.next = payload
 
 
-    def hdr(self, payload_length):
+    def hdr(self, payload):
         return struct.pack('!BBH', self.version, self.type, self.bodylen)

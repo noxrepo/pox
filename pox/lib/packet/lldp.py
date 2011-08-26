@@ -201,7 +201,7 @@ class lldp (packet_base):
             lstr += str(tlv)
         return lstr
 
-    def hdr(self, payload_length):
+    def hdr(self, payload):
         packet = b''
         for tlv in self.tlvs:
             packet += tlv.pack()
@@ -259,7 +259,7 @@ class chassis_id:
         (self.subtype,) = struct.unpack("!B",self.arr[2:3])
         self.id = self.arr[3:]
 
-    def hdr(self, payload_length):
+    def hdr(self, payload):
         typelen = 0
         typelen = self.tlv_type << 9
         typelen = typelen | (self.strlen & 0x01ff)
