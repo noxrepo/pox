@@ -69,11 +69,44 @@ ENTRY(DLT_LINUX_IRDA),
 
 // Assumption that a pointer fits into long int.
 
+#ifdef WIN32
+#include <ntddndis.h>
+
+#include "Packet32.h"
+bool macForName (char * name, char * mac)
+{
+  LPADAPTER lpAdapter = PacketOpenAdapter(name);
+
+  if (!lpAdapter || (lpAdapter->hFile == INVALID_HANDLE_VALUE))
+    return false;
+
+  PPACKET_OID_DATA OidData = (PPACKET_OID_DATA)malloc(6
+   + sizeof(PACKET_OID_DATA));
+  if (OidData == NULL)
+  {
+    PacketCloseAdapter(lpAdapter);
+    return false;
+  }
+
+  OidData->Oid = OID_802_3_CURRENT_ADDRESS;
+  OidData->Length = 6;
+  ZeroMemory(OidData->Data, 6);
+  if (PacketRequest(lpAdapter, FALSE, OidData))
+  {
+    memcpy(mac, OidData->Data, 6);
+  }
+  free(OidData);
+  PacketCloseAdapter(lpAdapter);
+  return true;
+}
+#endif
+
+
 static PyObject * p_findalldevs (PyObject *self, PyObject *args)
 {
   char errbuf[PCAP_ERRBUF_SIZE];
   pcap_if_t * devs;
-  
+
   int r = pcap_findalldevs(&devs, errbuf);
   if (r)
   {
@@ -146,9 +179,21 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
 #endif
       else
       {
-        //printf("address family: %i %i\n", a->addr->sa_family, AF_LINK);
+        //printf("address family: %i %i\n", a->addr->sa_family);
       }
     }
+
+#ifdef WIN32
+    {
+      char mac[6];
+      if (macForName(d->name, mac))
+      {
+        PyObject * epo = Py_BuildValue("ss#", "ethernet", mac, 6);
+        PyList_Append(addrs, epo);
+        Py_DECREF(epo);
+      }
+    }
+#endif
 
     PyObject * entry = Py_BuildValue("ssO", d->name, d->description, addrs);
     PyList_Append(pdevs, entry);
@@ -211,7 +256,7 @@ static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h,
   PyEval_RestoreThread(ts->ts);
   PyObject * args;
   PyObject * rv;
-  args = Py_BuildValue("Os#lli", 
+  args = Py_BuildValue("Os#lli",
       ts->user, data, h->caplen, (long)h->ts.tv_sec, (long)h->ts.tv_usec, h->len);
   rv = PyEval_CallObject(ts->pycallback, args);
   Py_DECREF(args);
@@ -275,7 +320,7 @@ static PyObject * p_next_ex (PyObject *self, PyObject *args)
   Py_END_ALLOW_THREADS;
   if (rv != 1) data = NULL;
 
-  return Py_BuildValue("s#llii", 
+  return Py_BuildValue("s#llii",
       data, h->caplen, (long)h->ts.tv_sec, (long)h->ts.tv_usec, h->len, rv);
 }
 
@@ -368,7 +413,7 @@ static PyObject * p_inject (PyObject *self, PyObject *args)
 #ifdef WIN32
   int rv = pcap_sendpacket(ppcap, data, len);
   rv = rv ? 0 : len;
-#else  
+#else
   int rv = pcap_inject(ppcap, data, len);
 #endif
   return Py_BuildValue("i", rv);

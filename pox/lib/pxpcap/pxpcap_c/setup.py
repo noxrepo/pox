@@ -6,7 +6,7 @@ if os.name == "nt":
   kw["include_dirs"] = ["WpdPack\\Include"]
   kw["library_dirs"] = ["WpdPack\\Lib"]
   kw["define_macros"] = [("WIN32", None)]
-  kw["libraries"] = ["wpcap"]#, "Packet"]
+  kw["libraries"] = ["wpcap", "Packet"]
 else:
   kw["libraries"] = ["pcap"]
   
