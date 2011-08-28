@@ -172,7 +172,7 @@ class Filter (object):
 
 
 
-def launch ():
+def launch (interface = "en1"):
   """ Test function """
   global drop,total,bytes_got,bytes_real,bytes_diff
   drop = 0
@@ -201,9 +201,14 @@ def launch ():
     if ip:
       print ip.srcip,"\t",ip.dstip, p
 
-  print PCap.get_devices()['en1']['addrs']
+  print "\n".join(["%i. %s" % x for x in enumerate(PCap.get_device_names())])
 
-  p = PCap("en1", callback = cb,
+  if interface.startswith("#"):
+  interface = int(interface[1:])
+  interface = PCap.get_device_names()[interface]
+  print "Interface:",interface
+
+  p = PCap(interface, callback = cb,
       filter = "icmp")#[icmptype] != icmp-echoreply")
       #filter = "ip host 74.125.224.148")
 
