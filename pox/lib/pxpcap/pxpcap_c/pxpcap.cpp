@@ -9,9 +9,15 @@ releases and reacquires the GIL for callbacks.
 */
 
 #include <Python.h>
+#ifdef WIN32
+
+#include "pcap.h"
+#include <time.h>
+
+#else
+
 #include <pcap.h>
 #include <netinet/in.h>
-
 #ifdef __APPLE__
 #define AF_LINK_SOCKETS 1
 #include <net/if_dl.h>
@@ -19,6 +25,9 @@ releases and reacquires the GIL for callbacks.
 #define AF_PACKET_SOCKETS 1
 //#include <netpacket/packet.h>
 #include <linux/if_arp.h>
+#endif
+
+
 #endif
 
 struct num_name_pair
@@ -356,7 +365,12 @@ static PyObject * p_inject (PyObject *self, PyObject *args)
   u_char * data;
   int len;
   if (!PyArg_ParseTuple(args, "ls#", (long*)&ppcap, &data, &len)) return NULL;
+#ifdef WIN32
+  int rv = pcap_sendpacket(ppcap, data, len);
+  rv = rv ? 0 : len;
+#else  
   int rv = pcap_inject(ppcap, data, len);
+#endif
   return Py_BuildValue("i", rv);
 }
 
