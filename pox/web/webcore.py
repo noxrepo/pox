@@ -2,17 +2,27 @@
 Webcore is a basic web server framework based on the SocketServer-based
 BaseHTTPServer that comes with Python.  The big difference is that this
 one can carve up URL-space by prefix, such that "/foo/*" gets handled by
-a different request handler than "/bar/*".
+a different request handler than "/bar/*".  I refer to this as "splitting".
 
-To support this, at the moment, your request handlers must inherit from
-SplitRequestHandler instead of BaseHTTPRequestHandler or whatever.  Work
-to support real BaseHTTPRequestHandlers might be almost complete (see
-below), but is basically a gross hack.  The interface for 
-SplitRequestHandler is basically the same.
+You should also be able to make a request handler written without splitting
+run under Webcore.  This may not work for all request handlers, but it
+definitely works for some. :)  The easiest way to do this is with the
+wrapRequestHandler() function, like so:
+  from CGIHTTPServer import CGIHTTPRequestHandler as CHRH
+  core.WebServer.set_handler("/foo", wrapRequestHandler(CHRH))
+
+.. now URLs under the /foo/ directory will let you browse through the
+filesystem next to pox.py.  If you create a cgi-bin directory next to
+pox.py, you'll be able to run executables in it.
+
+For this specific purpose, there's actually a SplitCGIRequestHandler
+which demonstrates wrapping a normal request handler while also
+customizing it a bit -- SplitCGIRequestHandler shoehorns in functionality
+to use arbitrary base paths.
 
 BaseHTTPServer is not very fast and needs to run on its own thread.
 It'd actually be great to have a version of this written against, say,
-CherryPy, but I did want to include a simple one with no dependencies.
+CherryPy, but I did want to include a simple, dependency-free web solution.
 """
 
 from SocketServer import ThreadingMixIn
@@ -87,6 +97,15 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
 
   def handle(self):
     raise RuntimeError("Not supported")
+
+  def _split_dispatch (self, command, handler = None):
+    if handler is None: handler = self
+    mname = 'do_' + self.command
+    if not hasattr(handler, mname):
+        self.send_error(501, "Unsupported method (%r)" % self.command)
+        return
+    method = getattr(handler, mname)
+    return method()
 
   def log_request (self, code = '-', size = '-'):
     log.debug(self.prefix + (':"%s" %s %s' % 
@@ -327,111 +346,29 @@ class StaticContentHandler (SplitRequestHandler):
         })
 
 
-#NOTE: This is incomplete work towards being able to support handlers
-#      written directly against BaseHTTPRequestHandler.
-#      (The next step is to monkeypatch the handle or handle_one_request
-#      in the user-supplied handler class to call the one in the split
-#      request handler instead.
-#
-#class Recorder (object):
-#  def __init__(self, parent, sock, mode, bufsize):
-#    self.sock = sock
-#    self.reader = sock.makefile(mode, bufsize)
-#    self.parent = parent
-#
-#  def readline (self):
-#    print "READLINE"
-#    b = self.reader.readline()
-#    self.parent.buf += b
-#    return b
-#
-#  def read (self, n = None):
-#    print "READ"
-#    if n is None: # Not sure what default value is
-#      b = self.reader.read()
-#    else:
-#      b = sock.reader.read(n)
-#    self.parent.buf += b
-#
-#  def __getattr__(self, n):
-#    print "Recorder",n
-#    return getattr(self.reader, n)
-#
-#class Player (object):
-#  def __init__(self, parent, sock, mode, bufsize):
-#    self.sock = sock
-#    self.reader = sock.makefile(mode, bufsize)
-#    self.parent = parent
-#
-#  def readline (self):
-#    print "PLAYER READLINE"
-#    if len(self.parent.buf):
-#      l = self.parent.buf.find("\n")
-#      if l == -1:
-#        r = self.parent.buf
-#        self.parent.buf = b''
-#        return r
-#      r = self.parent.buf[0:l]
-#      self.parent.buf = self.parent.buf[l+1:]
-#      return r
-#    b = self.reader.readline()
-#    self.parent.buf += b
-#    return b
-#
-#  def unread (self, stuff):
-#    print "player unread", stuff
-#    self.parent.buf = stuff + self.parent.buf
-#
-#  def read (self, n=None):
-#    if n is None:
-#      r = self.parent.buf
-#      self.parent.buf = b''
-#      return r + self.reader.read()
-#    
-#    if n <= len(self.parent.buf):
-#      r = self.parent.buf[0:n]
-#      self.parent.buf = self.parent.buf[n:]
-#      return r
-#
-#    additional = n - len(self.parent.buf)
-#    r = self.parent.buf
-#    self.parent.buf = b''
-#
-#    return r + self.reader.read(additional)
-#      
-#  def __getattr__(self, n):
-#    print "Player",n
-#    return getattr(self.reader, n)
-#
-#
-#class Playback (object):
-#  def __init__ (self, recording, sock):
-#    self.sock = sock
-#    self.rec = recording
-#    self.buf = recording.buf
-#
-#  def makefile (self, mode='r', bufsize=-1):
-#    if 'w' in mode:
-#      return self.sock.makefile(mode, bufsize)
-#    else:
-#      print self, self.sock,mode,bufsize,"<<"
-#      return Player(self, self.sock, mode, bufsize)
-#    
-#
-#class Recording (object):
-#  def __init__ (self, sock):
-#    self.sock = sock
-#    self.buf = b''
-#
-#  def makefile (self, mode='r', bufsize=-1):
-#    print "makefile",mode,bufsize
-#    if 'w' in mode:
-#      return self.sock.makefile(mode, bufsize)
-#    else:
-#      return Recorder(self, self.sock, mode, bufsize)
-#
-#  def getPlayback (self):
-#    return Playback(self, self.sock)
+def wrapRequestHandler (handlerClass):
+  return type("Split" + handlerClass.__name__,
+              (SplitRequestHandler, handlerClass, object), {})
+
+
+from CGIHTTPServer import CGIHTTPRequestHandler
+class SplitCGIRequestHandler (SplitRequestHandler,
+                              CGIHTTPRequestHandler, object):
+  """
+  Runs CGIRequestHandler serving from an arbitrary path.
+  This really should be a feature of CGIRequestHandler and the way of
+  implementing it here is scary and awful, but it at least sort of works.
+  """
+  __lock = threading.Lock()
+  def _split_dispatch (self, command):
+    with self.__lock:
+      olddir = os.getcwd()
+      try:
+        os.chdir(self.args)
+        return SplitRequestHandler._split_dispatch(self, command)
+      finally:
+        os.chdir(olddir)
+
 
 class SplitterRequestHandler (BaseHTTPRequestHandler):
   def __init__ (self, *args, **kw):
@@ -488,13 +425,7 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
 
       break
 
-    mname = 'do_' + self.command
-    if not hasattr(handler, mname):
-        self.send_error(501, "Unsupported method (%r)" % self.command)
-        return
-    method = getattr(handler, mname)
-    return method()
-
+    return handler._split_dispatch(self.command)
 
 
 class SplitThreadedServer(ThreadingMixIn, HTTPServer):
@@ -555,6 +486,7 @@ def launch (address='', port=8000, debug=False, static=False):
   httpd.set_handler("/", CoreHandler, httpd, True)
   #httpd.set_handler("/foo", StaticContentHandler, {'root':'.'}, True)
   #httpd.set_handler("/f", StaticContentHandler, {'root':'pox'}, True)
+  #httpd.set_handler("/cgis", SplitCGIRequestHandler, "pox/web/www_root")
   if static:
     httpd.add_static_dir('static', 'www_root', relative=True)
 
