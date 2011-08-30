@@ -15,6 +15,11 @@ wrapRequestHandler() function, like so:
 filesystem next to pox.py.  If you create a cgi-bin directory next to
 pox.py, you'll be able to run executables in it.
 
+For this specific purpose, there's actually a SplitCGIRequestHandler
+which demonstrates wrapping a normal request handler while also
+customizing it a bit -- SplitCGIRequestHandler shoehorns in functionality
+to use arbitrary base paths.
+
 BaseHTTPServer is not very fast and needs to run on its own thread.
 It'd actually be great to have a version of this written against, say,
 CherryPy, but I did want to include a simple, dependency-free web solution.
@@ -346,6 +351,25 @@ def wrapRequestHandler (handlerClass):
               (SplitRequestHandler, handlerClass, object), {})
 
 
+from CGIHTTPServer import CGIHTTPRequestHandler
+class SplitCGIRequestHandler (SplitRequestHandler,
+                              CGIHTTPRequestHandler, object):
+  """
+  Runs CGIRequestHandler serving from an arbitrary path.
+  This really should be a feature of CGIRequestHandler and the way of
+  implementing it here is scary and awful, but it at least sort of works.
+  """
+  __lock = threading.Lock()
+  def _split_dispatch (self, command):
+    with self.__lock:
+      olddir = os.getcwd()
+      try:
+        os.chdir(self.args)
+        return SplitRequestHandler._split_dispatch(self, command)
+      finally:
+        os.chdir(olddir)
+
+
 class SplitterRequestHandler (BaseHTTPRequestHandler):
   def __init__ (self, *args, **kw):
     #self.rec = Recording(args[0])
@@ -462,6 +486,7 @@ def launch (address='', port=8000, debug=False, static=False):
   httpd.set_handler("/", CoreHandler, httpd, True)
   #httpd.set_handler("/foo", StaticContentHandler, {'root':'.'}, True)
   #httpd.set_handler("/f", StaticContentHandler, {'root':'pox'}, True)
+  #httpd.set_handler("/cgis", SplitCGIRequestHandler, "pox/web/www_root")
   if static:
     httpd.add_static_dir('static', 'www_root', relative=True)
 
