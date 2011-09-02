@@ -12,12 +12,41 @@ import pox.openflow.of_01
 import pox.lib.revent.revent as revent
 revent.showEventExceptions = True
 
+import sys
+
 options = None
+
+def doImport (name):
+  if name in sys.modules:
+    return name
+
+  def showFail ():
+    import traceback
+    traceback.print_exc()
+    print "Could not import module:",name
+
+  try:
+    __import__(name, globals(), locals())
+    return name
+  except ImportError:
+    # This can be because the one we tried to import wasn't found OR
+    # because one IT tried to import wasn't found.  Try to sort this...
+    s = str(sys.exc_info()[1]).rsplit(" ", 1)[1]
+    if name.endswith(s):
+      #print s,"|",name
+      return True
+    else:
+      showFail()
+      return False
+  except:
+    showFail()
+    return False
 
 def doLaunch ():
   import sys, os
   # Add pox directory to path
   sys.path.append(os.path.abspath('pox'))
+  sys.path.append(os.path.abspath('ext'))
 
   component_order = []
   components = {}
@@ -44,28 +73,16 @@ def doLaunch ():
     launch = name[1] if len(name) == 2 else "launch"
     name = name[0]
 
-    if "pox." + name in sys.modules:
-      name = "pox." + name
-    elif name not in sys.modules:
-      try:
-        __import__("pox." + name, globals(), locals())
-        name = "pox." + name
-      except ImportError:
-        try:
-          __import__(name, globals(), locals())
-        except ImportError:
-          print "No such module:",name
-          return False
-        except:
-          import traceback
-          traceback.print_exc()
-          print "Could not import module:",name
-          return False
-      except:
-        import traceback
-        traceback.print_exc()
-        print "Could not import module:",name
+    r = doImport("pox." + name)
+    if r is False: return False
+    if r is True:
+      r = doImport(name)
+      if r is False: return False
+      if r is True:
+        print "Module", name, "not found"
         return False
+    name = r
+    #print ">>",name
 
     if launch in sys.modules[name].__dict__:
       sys.modules[name].__dict__[launch](**params)
