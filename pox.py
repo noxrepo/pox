@@ -58,17 +58,21 @@ def doLaunch ():
 
   for arg in sys.argv[1:]:
     if not arg.startswith("--"):
-      assert arg not in components
+      if arg not in components:
+        components[arg] = []
       curargs = {}
-      components[arg] = curargs
+      components[arg].append(curargs)
       component_order.append(arg)
     else:
       arg = arg[2:].split("=", 1)
       if len(arg) == 1: arg.append(True)
       curargs[arg[0]] = arg[1]
 
+  inst = {}
   for name in component_order:
-    params = components[name]
+    cname = name
+    inst[name] = inst.get(name, -1) + 1
+    params = components[name][inst[name]]
     name = name.split(":", 1)
     launch = name[1] if len(name) == 2 else "launch"
     name = name[0]
@@ -85,9 +89,25 @@ def doLaunch ():
     #print ">>",name
 
     if launch in sys.modules[name].__dict__:
-      sys.modules[name].__dict__[launch](**params)
+      f = sys.modules[name].__dict__[launch]
+      if f.__class__ is not doLaunch.__class__:
+        print launch, "in", name, "isn't a function!"
+        return False
+      multi = False
+      if f.func_code.co_argcount > 0:
+        if f.func_code.co_varnames[f.func_code.co_argcount-1] == '__INSTANCE__':
+          multi = True
+          params['__INSTANCE__'] = (inst[cname], len(components[cname]),
+                                    inst[cname] + 1 == len(components[cname]))
+
+      if multi == False and len(components[cname]) != 1:
+        print name, "does not accept multiple instances"
+        return False
+
+      f(**params)
     elif len(params) > 0 or launch is not "launch":
-      print "Module %s has no %s(), but it was specified or passed arguments" % (name, launch)
+      print ("Module %s has no %s(), but it was specified or passed arguments"
+             % (name, launch))
       return False
 
   return True
