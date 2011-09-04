@@ -113,7 +113,9 @@ class tcp(packet_base):
         self.urg      = 0 # 16 bits
         self.tcplen   = 20 # Options?
         self.options  = []
-        self.next     = ''
+        self.next     = b''
+
+        self.parsed = False
 
         if arr != None:
             assert(type(arr) == bytes)
@@ -124,8 +126,8 @@ class tcp(packet_base):
         if self.parsed == False:
             return ""
 
-        s = ''.join(('{', str(self.srcport), '>', \
-                         str(self.dstport), '} seq:', \
+        s = ''.join(('{', str(self.srcport), '>',
+                         str(self.dstport), '} seq:',
                          str(self.seq), ' ack:', str(self.ack), ' f:',
                          hex(self.flags)))
         if self.next == None or type(self.next) == type(''):
@@ -142,55 +144,64 @@ class tcp(packet_base):
         arr = self.arr
 
         while i < self.hdr_len:
-            if (arr[i] > 1) and (i + 2 > dlen or arr[i] + arr[i+1] > dlen or arr[i+1] < 2):
-                raise Exception()
-            elif arr[i] == tcp_opt.EOL:
+            # Single-byte options
+            if ord(arr[i]) == tcp_opt.EOL:
                 break
-            elif arr[i] == tcp_opt.NOP:
+            if ord(arr[i]) == tcp_opt.NOP:
                 self.options.append(tcp_opt(tcp_opt.NOP,None))
                 i += 1
                 continue
-            elif arr[i] == tcp_opt.MSS:
-                if arr[i+1] != 4:
-                    raise Exception()
+
+            # Sanity checking
+            if i + 2 > dlen:
+                raise RuntimeError("Very truncated TCP option")
+            if i + ord(arr[i+1]) > dlen:
+                raise RuntimeError("Truncated TCP option")
+            if ord(arr[i+1]) < 2:
+                raise RuntimeError("Illegal TCP option length")
+
+            # Actual option parsing
+            if ord(arr[i]) == tcp_opt.MSS:
+                if ord(arr[i+1]) != 4:
+                    raise RuntimeError("MSS option length != 4")
                 val = struct.unpack('!H',arr[i+2:i+4])[0]
                 self.options.append(tcp_opt(tcp_opt.MSS,val))
-            elif arr[i] == tcp_opt.WSOPT:
-                if arr[i+1] != 3:
-                    raise Exception()
-                self.options.append(tcp_opt(tcp_opt.WSOPT, arr[i+2]))
-            elif arr[i] == tcp_opt.SACKPERM:
-                if arr[i+1] != 2:
-                    raise Exception()
+            elif ord(arr[i]) == tcp_opt.WSOPT:
+                if ord(arr[i+1]) != 3:
+                    raise RuntimeError("WSOPT option length != 3")
+                self.options.append(tcp_opt(tcp_opt.WSOPT, ord(arr[i+2])))
+            elif ord(arr[i]) == tcp_opt.SACKPERM:
+                if ord(arr[i+1]) != 2:
+                    raise RuntimeError("SACKPERM option length != 2")
                 self.options.append(tcp_opt(tcp_opt.SACKPERM, None))
-            elif arr[i] == tcp_opt.SACK:
-                if arr[i+1] >= 2 and ((arr[i+1]-2) % 8) == 0:
-                    num = (arr[i+1] - 2) / 8
+            elif ord(arr[i]) == tcp_opt.SACK:
+                if ord(arr[i+1]) >= 2 and ((ord(arr[i+1])-2) % 8) == 0:
+                    num = (ord(arr[i+1]) - 2) / 8
                     val = struct.unpack("!" + "II" * num, arr[i+2:])
                     val = [(x,y) for x,y in zip(val[0::2],val[1::2])]
                     self.options.append(tcp_opt(tcp_opt.SACK, val))
                 else:
-                    raise Exception()
-            elif arr[i] == tcp_opt.TSOPT:
-                if arr[i+1] != 10:
-                    raise Exception()
+                    raise RuntimeError("Invalid SACK option")
+            elif ord(arr[i]) == tcp_opt.TSOPT:
+                if ord(arr[i+1]) != 10:
+                    raise RuntimeError("TSOPT option length != 10")
                 (val1,val2) = struct.unpack('!II',arr[i+2:i+10])
                 self.options.append(tcp_opt(tcp_opt.TSOPT,(val1,val2)))
             else:
-                self.msg('(tcp parse_options) warning, unknown option %x '\
-                % arr[i])
-                self.options.append(tcp_opt(arr[i], arr[i+2:i+2+arr[i+1]]))
+                self.msg('(tcp parse_options) warning, unknown option %x '
+                         % (ord(arr[i]),))
+                self.options.append(tcp_opt(ord(arr[i]), arr[i+2:i+2+ord(arr[i+1])]))
 
-            i += arr[i+1]
+            i += ord(arr[i+1])
         return i
 
     def parse(self):
         dlen = len(self.arr)
         if dlen < tcp.MIN_LEN:
-            self.msg('(tcp parse) warning TCP packet data too short to parse header: data len %u' % dlen)
+            self.msg('(tcp parse) warning TCP packet data too short to parse header: data len %u' % (dlen,))
             return
 
-        (self.srcport, self.dstport, self.seq, self.ack, offres, self.flags,\
+        (self.srcport, self.dstport, self.seq, self.ack, offres, self.flags,
         self.win, self.csum, self.urg) \
             = struct.unpack('!HHIIBBHHH', self.arr[:tcp.MIN_LEN])
 
@@ -205,12 +216,12 @@ class tcp(packet_base):
             self.msg('(tcp parse) warning TCP packet data shorter than TCP len: %u < %u' % (dlen, self.tcplen))
             return
         if (self.off * 4) < self.MIN_LEN or (self.off * 4) > dlen :
-            self.msg('(tcp parse) warning TCP data offset too long or too short %u' % (self.off))
+            self.msg('(tcp parse) warning TCP data offset too long or too short %u' % (self.off,))
             return
 
         try:
             self.parse_options()
-        except Exception, e:
+        except Exception as e:
             self.msg(e)
             return
 
@@ -219,10 +230,11 @@ class tcp(packet_base):
 
     def hdr(self, payload, calc_checksum = True):
         if calc_checksum:
-            self.csum = self.checksum()
+            self.csum = self.checksum(payload=payload)
             csum = self.csum
         else:
             csum = 0
+
         offres = self.off << 4 | self.res
         packet = struct.pack('!HHIIBBHHH',
             self.srcport, self.dstport, self.seq, self.ack,
@@ -232,13 +244,12 @@ class tcp(packet_base):
             packet += option.to_bytes()
         return packet
 
-    def checksum(self, unparsed=False):
+    def checksum(self, unparsed=False, payload=None):
         """
         Calculates the checksum.
         If unparsed, calculates it on the raw, unparsed data.  This is
         useful for validating that it is correct on an incoming packet.
         """
-
         csum = 0
         if self.prev.__class__.__name__ != 'ipv4':
             self.msg('packet not in ipv4, cannot calculate checksum ' +
@@ -249,13 +260,16 @@ class tcp(packet_base):
             payload_len = len(self.arr)
             payload = self.arr
         else:
-            if isinstance(self.next, packet_base):
+            if payload is not None:
+                pass
+            elif isinstance(self.next, packet_base):
                 payload = self.next.pack()
             elif self.next is None:
                 payload = bytes()
             else:
                 payload = self.next
-            payload_len = udp.MIN_LEN + len(payload)
+            payload = self.hdr(None, calc_checksum = False) + payload
+            payload_len = len(payload)
 
         ippacket = struct.pack('!IIBBH', self.prev.srcip.toUnsigned(),
                                          self.prev.dstip.toUnsigned(),
@@ -263,7 +277,4 @@ class tcp(packet_base):
                                          self.prev.protocol,
                                          payload_len)
 
-        if not unparsed:
-          payload = self.hdr(0, calc_checksum = False) + payload
-
-        return checksum(ippacket + payload, 0, 9)
+        return checksum(ippacket + payload, 0, 14)
