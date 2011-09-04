@@ -1,4 +1,4 @@
-import pxpcap as pcap
+import pxpcap as pcapc
 from pox.lib.addresses import IPAddr, EthAddr
 from threading import Thread
 import pox.lib.packet as pkt
@@ -13,7 +13,7 @@ class PCap (object):
       if addr is None: return None
       if len(addr) != 6: return None
       return EthAddr(addr)
-    devs = pcap.findalldevs()
+    devs = pcapc.findalldevs()
     out = {}
     for d in devs:
       addrs = {}
@@ -42,7 +42,7 @@ class PCap (object):
 
   @staticmethod
   def get_device_names ():
-    return [d[0] for d in pcap.findalldevs()]
+    return [d[0] for d in pcapc.findalldevs()]
 
   def __init__ (self, device = None, promiscuous = True, period = 10,
                 start = True, callback = None, filter = None):
@@ -86,8 +86,8 @@ class PCap (object):
       self.period = period
     if promiscuous is not None:
       self.promiscuous = promiscuous
-    self.pcap = pcap.open_live(device, 65535,
-                               1 if self.promiscuous else 0, self.period)
+    self.pcap = pcapc.open_live(device, 65535,
+                                1 if self.promiscuous else 0, self.period)
     self.packets_received = 0
     self.packets_dropped = 0
     if self.deferred_filter is not None:
@@ -96,29 +96,34 @@ class PCap (object):
 
   def _thread_func (self):
     while not self._quitting:
-      pcap.dispatch(self.pcap,100,self.callback,self)
-      self.packets_received,self.packets_dropped = pcap.stats(self.pcap)
+      pcapc.dispatch(self.pcap,100,self.callback,self)
+      self.packets_received,self.packets_dropped = pcapc.stats(self.pcap)
 
     self._quitting = False
     self._thread = None
 
+  def _handle_GoingDownEvent (self, event):
+    self.close()
+
   def start (self):
     assert self._thread is None
+    from pox.core import core
+    core.addListeners(self, weak=True)
     self._thread = Thread(target=self._thread_func)
-    self._thread.daemon = True
+    #self._thread.daemon = True
     self._thread.start()
 
   def stop (self):
     t = self._thread
     if t is not None:
       self._quitting = True
-      pcap.breakloop(self.pcap)
+      pcapc.breakloop(self.pcap)
       t.join()
 
   def close (self):
     if self.pcap is None: return
     self.stop()
-    pcap.close(self.pcap)
+    pcapc.close(self.pcap)
     self.pcap = None
 
   def __del__ (self):
@@ -129,7 +134,7 @@ class PCap (object):
       data = data.pack()
     if not isinstance(data, bytes):
       data = bytes(data) # Give it a try...
-    return pcap.inject(self.pcap, data)
+    return pcapc.inject(self.pcap, data)
 
   def set_filter (self, filter, optimize = True):
     if self.pcap is None:
@@ -144,7 +149,7 @@ class PCap (object):
     else:
       raise RuntimeError("Filter must be string or Filter object")
 
-    pcap.setfilter(self.pcap, filter._pprogram)
+    pcapc.setfilter(self.pcap, filter._pprogram)
 
 
 class Filter (object):
@@ -158,17 +163,17 @@ class Filter (object):
     delpc = False
     if pcap_obj is None:
       delpc = True
-      pcap_obj = pcap.open_dead(link_type, snaplen)
+      pcap_obj = pcapc.open_dead(link_type, snaplen)
     if isinstance(pcap_obj, PCap):
       pcap_obj = pcap_obj.pcap
-    self._pprogram = pcap.compile(pcap_obj, filter,
-                                  1 if optimize else 0, netmask)
+    self._pprogram = pcapc.compile(pcap_obj, filter,
+                                   1 if optimize else 0, netmask)
     if delpc:
-      pcap.close(pcap_obj)
+      pcapc.close(pcap_obj)
 
   def __del__ (self):
     if self._pprogram:
-      pcap.freecode(self._pprogram)
+      pcapc.freecode(self._pprogram)
 
 
 
@@ -183,7 +188,7 @@ def launch (interface = "en1"):
   def cb (obj, data, sec, usec, length):
     global drop,total,bytes_got,bytes_real,bytes_diff
     #print ">>>",data
-    t,d = pcap.stats(obj.pcap)
+    t,d = pcapc.stats(obj.pcap)
     bytes_got += len(data)
     bytes_real += length
     nbd = bytes_real - bytes_got
@@ -204,13 +209,13 @@ def launch (interface = "en1"):
   print "\n".join(["%i. %s" % x for x in enumerate(PCap.get_device_names())])
 
   if interface.startswith("#"):
-  interface = int(interface[1:])
-  interface = PCap.get_device_names()[interface]
+    interface = int(interface[1:])
+    interface = PCap.get_device_names()[interface]
   print "Interface:",interface
 
   p = PCap(interface, callback = cb,
-      filter = "icmp")#[icmptype] != icmp-echoreply")
-      #filter = "ip host 74.125.224.148")
+           filter = "icmp")#[icmptype] != icmp-echoreply")
+           #filter = "ip host 74.125.224.148")
 
   def ping (eth='00:18:02:6e:ce:55', ip='192.168.0.1'):
     e = pkt.ethernet.ethernet()
