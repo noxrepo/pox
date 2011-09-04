@@ -79,7 +79,7 @@ class eapol(packet_base):
     def parse(self):
         dlen = len(self.arr)
         if dlen < self.MIN_LEN:
-            self.msg('(eapol parse) warning EAPOL packet data too short to parse header: data len %u' % dlen)
+            self.msg('(eapol parse) warning EAPOL packet data too short to parse header: data len %u' % (dlen,))
             return
 
         (self.version, self.type, self.bodylen) \
@@ -93,7 +93,7 @@ class eapol(packet_base):
               or self.type == self.EAPOL_LOGOFF_TYPE):
             pass                # These types have no payloads.
         else:
-            self.msg('warning unsupported EAPOL type: ' % self.type_name(self.type))
+            self.msg('warning unsupported EAPOL type: %s' % (self.type_name(self.type),))
 
     def set_payload(self, payload):
         self.next = payload
