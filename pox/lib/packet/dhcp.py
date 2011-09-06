@@ -106,7 +106,7 @@ class dhcp(packet_base):
     def __init__(self, arr=None, prev=None):
         self.prev = prev
 
-        if self.prev == None:
+        if self.arr is None:
             self.op = 0
             self.htype = 0
             self.hlen = 0
@@ -125,7 +125,7 @@ class dhcp(packet_base):
             self.options = b''
             self.parsedOptions = util.DirtyDict()
         else:
-            assert(type(arr) == bytes)
+            assert(type(arr) is bytes)
             self.arr = arr
             self.parse()
 
