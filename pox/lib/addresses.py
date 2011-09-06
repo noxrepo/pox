@@ -171,6 +171,25 @@ class IPAddr (object):
     """ Return dotted quad representation """
     return socket.inet_ntoa(self.toRaw())
 
+  def inNetwork (self, network, netmask = None):
+    """
+    Returns True if this network is in the specified network.
+    network is a dotted quad (with or without a CIDR or normal style
+    netmask, which can also be specified separately via the netmask parameter),
+    or it can be a tuple of (address,wild-bits) like that returned by
+    parseCIDR().
+    """
+    if type(network) is not tuple:
+      if netmask is not None:
+        network += "/" + str(netmask)
+      n,b = parseCIDR(network)
+    else:
+      n,b = network
+      if type(n) is not IPAddr:
+        n = IPAddr(n)
+
+    return (self.toUnsigned() & ~((1 << b)-1)) == n.toUnsigned()
+
   def __str__ (self):
     return self.toStr()
 
@@ -200,6 +219,13 @@ def parseCIDR (addr, infer=True):
   Can also take a string in the form 'address/netmask', as long as the
   netmask is representable in CIDR.
   """
+  def check (r0, r1):
+    a = r0.toUnsigned()
+    b = r1
+    if a & ((1<<b)-1):
+      raise RuntimeError("Host part of CIDR address not compatible with " +
+                         "network part")
+    return (r0,r1)
   addr = addr.split('/', 2)
   if len(addr) == 1:
     if infer is False:
@@ -207,35 +233,35 @@ def parseCIDR (addr, infer=True):
     addr = IPAddr(addr[0])
     b = inferNetMask(addr)
     m = (1<<b)-1
-    if (addr.toUnsignedN() & m) == 0:
+    if (addr.toUnsigned() & m) == 0:
       # All bits in wildcarded part are 0, so we'll use the wildcard
-      return (addr, b)
+      return check(addr, b)
     else:
       # Some bits in the wildcarded part were set, so we'll assume it was a host
-      return (addr, 0)
+      return check(addr, 0)
   try:
     wild = 32-int(addr[1])
   except:
     # Maybe they passed a netmask
-    m = IPAddr(addr[1]).toUnsignedN()
+    m = IPAddr(addr[1]).toUnsigned()
     b = 0
     while m & (1<<31):
       b += 1
       m <<= 1
     if m & 0x7fffffff != 0:
-      raise RuntimeError("Netmask is not CIDR-compatible")
+      raise RuntimeError("Netmask " + str(addr[1]) + " is not CIDR-compatible")
     wild = 32-b
     assert wild >= 0 and wild <= 32
-    return (IPAddr(addr[0]), wild)
+    return check(IPAddr(addr[0]), wild)
   assert wild >= 0 and wild <= 32
-  return (IPAddr(addr[0]), wild)
+  return check(IPAddr(addr[0]), wild)
 
 def inferNetMask (addr):
   """
   Uses network classes to guess the number of wildcard bits, and returns
   that number in flow_mod-friendly format.
   """
-  addr = addr.toUnsignedN()
+  addr = addr.toUnsigned()
   if addr == 0:
     # Special case -- default network
     return 32 # all bits wildcarded
@@ -269,7 +295,8 @@ if __name__ == '__main__':
     print hex(a.toUnsigned(networkOrder=True)),'ff000001'
     print a.toSigned(),16777471
     print a.toSigned(networkOrder=True),-16777215
-    print [parseCIDR(x)[1]==8 for x in
-           ["192.168.101.0","192.168.102.0/24","1.168.103/255.255.255.0"]]
+    print "----"
+    #print [parseCIDR(x)[1]==8 for x in
+    #       ["192.168.101.0","192.168.102.0/24","1.1.168.103/255.255.255.0"]]
   code.interact(local=locals())
 
