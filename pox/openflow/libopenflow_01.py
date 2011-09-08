@@ -10,16 +10,9 @@ from pox.lib.packet.icmp import icmp
 from pox.lib.packet.arp import arp
 
 from pox.lib.addresses import *
+from pox.lib.util import initHelper
 
 EMPTY_ETH = EthAddr(None)
-
-#TODO: replace this with generic one from util?
-def _initHelper (obj, kw):
-  for k,v in kw.iteritems():
-    if not hasattr(obj, k):
-      raise TypeError(obj.__class__.__name__ + " constructor got "
-      + "unexpected keyword argument '" + k + "'")
-    setattr(obj, k, v)
 
 MAX_XID = 0x7fFFffFF
 _nextXID = 1
@@ -401,7 +394,7 @@ class ofp_match:
       setattr(self, '_' + k, v[0])
     self.wildcards = self._normalize_wildcards(OFPFW_ALL)
 
-    # This is basically _initHelper(), but tweaked slightly since this
+    # This is basically initHelper(), but tweaked slightly since this
     # class does some magic of its own.
     for k,v in kw.iteritems():
       if not hasattr(self, '_'+k):
@@ -708,7 +701,7 @@ class ofp_action_output:
     self.port = 0
     self.max_len = 0xffFF
 
-    _initHelper(self, kw)
+    initHelper(self, kw)
 
   def _assert (self):
     return (True, None)
@@ -1300,7 +1293,7 @@ class ofp_flow_mod (ofp_header):
       kw['actions'] = kw['action']
       del kw['action']
 
-    _initHelper(self, kw)
+    initHelper(self, kw)
 
     # Allow use of actions=<a single action> for kw args.
     if not hasattr(self.actions, '__getitem__'):
@@ -2309,7 +2302,7 @@ class ofp_packet_out (ofp_header):
       kw['actions'] = kw['action']
       del kw['action']
 
-    _initHelper(self, kw)
+    initHelper(self, kw)
 
     # Allow use of actions=<a single action> for kw args.
     if not hasattr(self.actions, '__getitem__'):
@@ -2421,7 +2414,7 @@ class ofp_barrier_request (ofp_header):
     ofp_header.__init__(self)
     self.header_type = OFPT_BARRIER_REQUEST
 
-    _initHelper(self, kw)
+    initHelper(self, kw)
 
   def _assert (self):
     return (True, None)
