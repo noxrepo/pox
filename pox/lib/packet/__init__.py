@@ -11,7 +11,6 @@ Could still use more work.
 # None of this is probably that big, and almost all of it gets loaded
 # under most circumstances anyway.  Let's just load all of it.
 import arp
-import bpdu
 import dhcp
 import dns
 import eap
@@ -19,7 +18,6 @@ import eapol
 import ethernet
 import icmp
 import ipv4
-import llc
 import lldp
 import tcp
 import tcp
@@ -28,7 +26,6 @@ import vlan
 
 __all__ = [
   'arp',
-  'bpdu',
   'dhcp',
   'dns',
   'eap',
@@ -36,7 +33,6 @@ __all__ = [
   'ethernet',
   'icmp',
   'ipv4',
-  'llc',
   'lldp',
   'tcp',
   'udp',
