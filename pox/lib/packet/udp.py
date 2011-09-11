@@ -42,7 +42,7 @@ class udp(packet_base):
 
     MIN_LEN = 8
 
-    def __init__(self, arr=None, prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
 
         self.prev = prev
 
@@ -50,34 +50,32 @@ class udp(packet_base):
         self.dstport = 0
         self.len = 8
         self.csum = 0
-        self.payload = b''
 
-        if arr != None:
-            assert(type(arr) == bytes)
-            self.arr = arr
-            self.parse()
+        if raw is not None:
+            self.parse(raw)
+
+        self._init(kw)
 
     def __str__(self):
-        if self.parsed == False:
-            return ""
-
         s = ''.join(('{', str(self.srcport), '>', \
                          str(self.dstport), '} l:', \
                          str(self.len), ' c: ', str(self.csum)))
 
-        if self.next == None or type(self.next) == type(''):
+        if self.next is None or type(self.next) is bytes:
             return s
         return ''.join((s, str(self.next)))
 
 
-    def parse(self):
-        dlen = len(self.arr)
+    def parse(self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+        dlen = len(raw)
         if dlen < udp.MIN_LEN:
             self.msg('(udp parse) warning UDP packet data too short to parse header: data len %u' % dlen)
             return
 
         (self.srcport, self.dstport, self.len, self.csum) \
-            = struct.unpack('!HHHH', self.arr[:udp.MIN_LEN])
+            = struct.unpack('!HHHH', raw[:udp.MIN_LEN])
 
         self.hdr_len = udp.MIN_LEN
         self.payload_len = self.len - self.hdr_len
@@ -89,15 +87,15 @@ class udp(packet_base):
 
         if (self.dstport == dhcp.SERVER_PORT
                     or self.dstport == dhcp.CLIENT_PORT):
-            self.next = dhcp(arr=self.arr[udp.MIN_LEN:],prev=self)
+            self.next = dhcp(raw=raw[udp.MIN_LEN:],prev=self)
         elif (self.dstport == dns.SERVER_PORT
                     or self.srcport == dns.SERVER_PORT):
-            self.next = dns(arr=self.arr[udp.MIN_LEN:],prev=self)
+            self.next = dns(raw=raw[udp.MIN_LEN:],prev=self)
         elif dlen < self.len:
             self.msg('(udp parse) warning UDP packet data shorter than UDP len: %u < %u' % (dlen, self.len))
             return
-
-        self.payload = self.arr[udp.MIN_LEN:]
+        else:
+            self.payload = raw[udp.MIN_LEN:]
 
     def hdr(self, payload):
         self.len = len(payload) + udp.MIN_LEN
@@ -111,15 +109,14 @@ class udp(packet_base):
         useful for validating that it is correct on an incoming packet.
         """
 
-        csum = 0
         if self.prev.__class__.__name__ != 'ipv4':
             self.msg('packet not in ipv4, cannot calculate checksum ' +
                      'over psuedo-header' )
             return 0
 
         if unparsed:
-            payload_len = len(self.arr)
-            payload = self.arr
+            payload_len = len(self.raw)
+            payload = self.raw
         else:
             if isinstance(self.next, packet_base):
                 payload = self.next.pack()
