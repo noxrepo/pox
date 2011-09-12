@@ -73,7 +73,8 @@ class PCap (object):
   def _handle_rx (self, data, sec, usec, length):
     pass
 
-  def open (self, device, promiscuous = None, period = None):
+  def open (self, device, promiscuous = None, period = None,
+            incoming = True, outgoing = False):
     assert self.device is None
     self.addresses = self.get_devices()[device]['addrs']
     if 'AF_INET' in self.addresses:
@@ -88,11 +89,15 @@ class PCap (object):
       self.promiscuous = promiscuous
     self.pcap = pcapc.open_live(device, 65535,
                                 1 if self.promiscuous else 0, self.period)
+    pcapc.setdirection(self.pcap, incoming, outgoing)
     self.packets_received = 0
     self.packets_dropped = 0
     if self.deferred_filter is not None:
       self.set_filter(*self.deferred_filter)
       self.deferred_filter = None
+
+  def set_direction (self, incoming, outgoing):
+    pcapc.setdirection(self.pcap, incoming, outgoing)
 
   def _thread_func (self):
     while not self._quitting:
@@ -153,7 +158,8 @@ class PCap (object):
 
 
 class Filter (object):
-  def __init__ (self, filter, optimize = True, netmask = None, pcap_obj = None, link_type = 1, snaplen = 65535):
+  def __init__ (self, filter, optimize = True, netmask = None,
+                pcap_obj = None, link_type = 1, snaplen = 65535):
     self._pprogram = None
     if netmask is None:
       netmask = 0
@@ -175,6 +181,14 @@ class Filter (object):
     if self._pprogram:
       pcapc.freecode(self._pprogram)
 
+
+_link_type_names = {}
+for k,v in pcapc.__dict__.iteritems():
+  if k.startswith("DLT_"):
+    _link_type_names[v] = k
+
+def get_link_type_name (dlt):
+  return _link_type_names.get(dlt, "<Unknown " + str(dlt) + ">")
 
 
 def launch (interface = "en1"):
@@ -206,7 +220,8 @@ def launch (interface = "en1"):
     if ip:
       print ip.srcip,"\t",ip.dstip, p
 
-  print "\n".join(["%i. %s" % x for x in enumerate(PCap.get_device_names())])
+  print "\n".join(["%i. %s" % x for x in
+                  enumerate(PCap.get_device_names())])
 
   if interface.startswith("#"):
     interface = int(interface[1:])

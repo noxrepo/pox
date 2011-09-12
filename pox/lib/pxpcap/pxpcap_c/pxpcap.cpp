@@ -63,6 +63,7 @@ ENTRY(DLT_SUNATM),
 ENTRY(DLT_IEEE802_11_RADIO),
 ENTRY(DLT_ARCNET_LINUX),
 ENTRY(DLT_LINUX_IRDA),
+ENTRY(DLT_LINUX_LAPD),
 {0,0},
 };
 #undef ENTRY
@@ -280,6 +281,7 @@ static PyObject * p_loop_or_dispatch (int dispatch, PyObject *self, PyObject *ar
   int cnt;
   int rv;
   if (!PyArg_ParseTuple(args, "liOO", &ppcap, &cnt, &ts.pycallback, &ts.user)) return NULL;
+  Py_INCREF(ts.user);
 
   ts.ppcap = ppcap;
   ts.exception = 0;
@@ -291,6 +293,8 @@ static PyObject * p_loop_or_dispatch (int dispatch, PyObject *self, PyObject *ar
     rv = pcap_dispatch(ppcap, cnt, ld_callback, (u_char *)&ts);
 
   PyEval_RestoreThread(ts.ts);
+
+  Py_DECREF(ts.user);
 
   if (ts.exception) return NULL;
 
@@ -349,6 +353,41 @@ static PyObject * p_compile (PyObject *self, PyObject *args)
     return NULL;
   }
   return Py_BuildValue("l", fp);
+}
+
+static PyObject * p_set_datalink (PyObject *self, PyObject *args)
+{
+  pcap_t * ppcap;
+  int dltype;
+  if (!PyArg_ParseTuple(args, "li", (long*)&ppcap, &dltype)) return NULL;
+  int rv = pcap_set_datalink(ppcap, dltype);
+  if (rv != 0)
+  {
+    PyErr_SetString(PyExc_RuntimeError, pcap_geterr(ppcap));
+    return NULL;
+  }
+  return Py_None;
+}
+
+static PyObject * p_setdirection (PyObject *self, PyObject *args)
+{
+  pcap_t * ppcap;
+  int cap_in, cap_out;
+  pcap_direction_t f;
+  if (!PyArg_ParseTuple(args, "lii", (long*)&ppcap, &cap_in, &cap_out)) return NULL;
+  if (cap_in && cap_out)
+    f = PCAP_D_INOUT;
+  else if (cap_in)
+    f = PCAP_D_IN;
+  else
+    f = PCAP_D_OUT;
+  int rv = pcap_setdirection(ppcap, f);
+  if (rv != 0)
+  {
+    PyErr_SetString(PyExc_RuntimeError, pcap_geterr(ppcap));
+    return NULL;
+  }
+  return Py_None;
 }
 
 static PyObject * p_setfilter (PyObject *self, PyObject *args)
@@ -452,12 +491,43 @@ static PyMethodDef pxpcapmethods[] =
   {"setfilter", p_setfilter, METH_VARARGS, "Set filter.\nPass it ppcap, pprogram (from compile())."},
   {"freecode", p_freecode, METH_VARARGS, "Free compiled filter.\nPass it pprogram from compile()."},
   {"inject", p_inject, METH_VARARGS, "Sends a packet.\nPass it a ppcap and data (bytes) to send.\nReturns number of bytes sent."},
+  {"setdirection", p_setdirection, METH_VARARGS, "Sets the capture direction.\nTakes a ppcap and two boolean args: Incoming and Outgoing.\nSupport varies by platform."},
+  {"set_datalink", p_set_datalink, METH_VARARGS, "Sets the datalink type to capture.\nTakes a ppcap and a datalink type."},
   {NULL, NULL, 0, NULL}
 };
 
+#define ADD_CONST(_s) PyModule_AddIntConstant(m, #_s, _s);
+
 PyMODINIT_FUNC initpxpcap (void)
 {
-  Py_InitModule("pxpcap", pxpcapmethods);
+  PyObject * m = Py_InitModule("pxpcap", pxpcapmethods);
+
+  //TODO: merge with similar list above
+  ADD_CONST(DLT_NULL);
+  ADD_CONST(DLT_EN10MB);
+  ADD_CONST(DLT_IEEE802);
+  ADD_CONST(DLT_ARCNET);
+  ADD_CONST(DLT_SLIP);
+  ADD_CONST(DLT_PPP);
+  ADD_CONST(DLT_FDDI);
+  ADD_CONST(DLT_ATM_RFC1483);
+  ADD_CONST(DLT_RAW);
+  ADD_CONST(DLT_PPP_SERIAL);
+  ADD_CONST(DLT_PPP_ETHER);
+  ADD_CONST(DLT_C_HDLC);
+  ADD_CONST(DLT_IEEE802_11);
+  ADD_CONST(DLT_FRELAY);
+  ADD_CONST(DLT_LOOP);
+  ADD_CONST(DLT_LINUX_SLL);
+  ADD_CONST(DLT_LTALK);
+  ADD_CONST(DLT_PFLOG);
+  ADD_CONST(DLT_PRISM_HEADER);
+  ADD_CONST(DLT_IP_OVER_FC);
+  ADD_CONST(DLT_SUNATM);
+  ADD_CONST(DLT_IEEE802_11_RADIO);
+  ADD_CONST(DLT_ARCNET_LINUX);
+  ADD_CONST(DLT_LINUX_IRDA);
+  ADD_CONST(DLT_LINUX_LAPD);
 }
 
 
