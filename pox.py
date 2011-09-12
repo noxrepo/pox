@@ -1,4 +1,11 @@
-#!/usr/bin/env python
+#!/bin/bash -
+# The following mess gets us Python 2.7 from MacPorts if it's available.
+''''echo -n
+if [ "$(type -P python2.7)" != "" ]; then
+  exec python2.7 -O "$0" "$@"
+fi
+exec python -O "$0" "$@"
+'''
 
 # Set default log level
 import logging
