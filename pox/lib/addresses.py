@@ -10,6 +10,51 @@ import sys
 if 'long' not in sys.modules['__builtin__'].__dict__:
   long = int
 
+
+"""
+# Unfinished oui name stuff formerly from packet library.
+
+    oui = int(a[0]) << 16 | int(a[1]) << 8 | int(a[2])
+
+    # check if globally unique
+    if resolve_name and not (a[0] & 0x2):
+        if _ethoui2name.has_key(oui):
+            return "(%s):%02x:%02x:%02x" %( _ethoui2name[oui], a[3],a[4],a[5])
+"""
+_eth_oui_to_name = {}
+
+def _load_oui_names ():
+    import inspect
+    import os.path
+    filename = os.path.join(os.path.dirname(inspect.stack()[0][1]), 'oui.txt')
+    f = None
+    try:
+        f = open(filename)
+        for line in f.readlines():
+            if len(line) < 1:
+                continue
+            if line[0].isspace():
+                continue
+            split = line.split(' ')
+            if not '-' in split[0]:
+                continue
+            # grab 3-byte OUI
+            oui_str  = split[0].replace('-','')
+            # strip off (hex) identifer and keep rest of name
+            end = ' '.join(split[1:]).strip()
+            end = end.split('\t')
+            end.remove('(hex)')
+            oui_name = ' '.join(end)
+            # convert oui to int
+            oui = int(oui_str, 16)
+            _eth_oui_to_name[oui] = oui_name.strip()
+    except:
+        import logging
+        logging.getLogger().warn("Could not load OUI list")
+    if f: f.close()
+_load_oui_names()
+
+
 class EthAddr (object):
   """
   An Ethernet (MAC) address type.
@@ -279,6 +324,9 @@ def inferNetMask (addr):
     return 0 # exact match
   # Must be a Class E (Experimental)
     return 0
+
+IP_ANY = IPAddr("0.0.0.0")
+IP_BROADCAST = IPAddr("255.255.25.255")
 
 
 if __name__ == '__main__':
