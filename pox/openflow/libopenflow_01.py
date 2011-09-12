@@ -29,11 +29,12 @@ def generateXID ():
 
 #1. Openflow Header
 class ofp_header:
-  def __init__ (self):
+  def __init__ (self, **kw):
     self.version = OFP_VERSION
     self.header_type = 0
     self.length = 8
     self.xid = None
+    initHelper(self, kw)
 
   def _assert (self):
     if self.header_type not in ofp_type_map:
@@ -744,12 +745,14 @@ class ofp_action_output:
     return outstr
 
 class ofp_action_enqueue:
-  def __init__ (self):
+  def __init__ (self, **kw):
     self.type = 0
     self.length = 16
     self.port = 0
     self.pad = b'\x00' * 6
     self.queue_id = 0
+
+    initHelper(self, kw)
 
   def _assert (self):
     if(len(self.pad) != 6):
@@ -796,11 +799,13 @@ class ofp_action_enqueue:
     return outstr
 
 class ofp_action_vlan_vid:
-  def __init__ (self):
+  def __init__ (self, **kw):
     self.type = OFPAT_SET_VLAN_VID
     self.length = 8
     self.vlan_vid = 0
     self.pad = b'\x00' * 2
+
+    initHelper(self, kw)
 
   def _assert (self):
     if len(self.pad) != 2:
@@ -843,11 +848,13 @@ class ofp_action_vlan_vid:
     return outstr
 
 class ofp_action_vlan_pcp:
-  def __init__ (self):
+  def __init__ (self, **kw):
     self.type = OFPAT_SET_VLAN_PCP
     self.length = 8
     self.vlan_pcp = 0
     self.pad = b'\x00' * 3
+
+    initHelper(self, kw)
 
   def _assert (self):
     if(len(self.pad) != 3):
@@ -890,11 +897,14 @@ class ofp_action_vlan_pcp:
     return outstr
 
 class ofp_action_dl_addr:
-  def __init__ (self):
+  def __init__ (self, dl_addr = None):
     self.type = 0
     self.length = 16
     self.dl_addr = EMPTY_ETH
     self.pad = b'\x00' * 6
+
+    if dl_addr is not None:
+      self.dl_addr = EthAddr(dl_addr)
 
   def _assert (self):
     if not isinstance(self.dl_addr, EthAddr) and not isinstance(self.dl_addr, bytes):
@@ -946,10 +956,14 @@ class ofp_action_dl_addr:
     return outstr
 
 class ofp_action_nw_addr:
-  def __init__ (self):
+  def __init__ (self, nw_addr = None):
     self.type = 0
     self.length = 8
-    self.nw_addr = 0
+
+    if nw_addr is not None:
+      self.nw_addr = IPAddr(nw_addr)
+    else:
+      self.nw_addr = IPAddr(0)
 
   def _assert (self):
     return (True, None)
@@ -959,13 +973,14 @@ class ofp_action_nw_addr:
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += struct.pack("!HHL", self.type, self.length, self.nw_addr)
+    packed += struct.pack("!HHL", self.type, self.length, self.nw_addr.toSigned())
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
     (self.type, self.length, self.nw_addr) = struct.unpack_from("!HHL", binaryString, 0)
+    self.nw_addr = IPAddr(self.nw_addr, networkOrder=False)
     return binaryString[8:]
 
   def __len__ (self):
@@ -988,10 +1003,10 @@ class ofp_action_nw_addr:
     return outstr
 
 class ofp_action_nw_tos:
-  def __init__ (self):
+  def __init__ (self, nw_tos = 0):
     self.type = 0
     self.length = 8
-    self.nw_tos = 0
+    self.nw_tos = nw_tos
     self.pad = b'\x00' * 3
 
   def _assert (self):
@@ -1035,10 +1050,10 @@ class ofp_action_nw_tos:
     return outstr
 
 class ofp_action_tp_port:
-  def __init__ (self):
+  def __init__ (self, tp_port = 0):
     self.type = 0
     self.length = 8
-    self.tp_port = 0
+    self.tp_port = tp_port
     self.pad = b'\x00' * 2
 
   def _assert (self):
@@ -1218,10 +1233,12 @@ ofp_capabilities_rev_map = {
 
 ##3.2 Switch Configuration
 class ofp_switch_config (ofp_header):
-  def __init__ (self):
+  def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
+
+    initHelper(self, kw)
 
   def _assert (self):
     return (True, None)
@@ -1457,10 +1474,12 @@ class ofp_port_mod (ofp_header):
 
 ##3.4 Queue Configuration Messages
 class ofp_queue_get_config_request (ofp_header):
-  def __init__ (self):
+  def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.port = 0
     self.pad = b'\x00' * 2
+
+    initHelper(self, kw)
 
   def _assert (self):
     if(len(self.pad) != 2):
@@ -2451,7 +2470,7 @@ class ofp_barrier_request (ofp_header):
 
 #4 Asynchronous Messages
 class ofp_packet_in (ofp_header):
-  def __init__ (self):
+  def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.header_type = OFPT_PACKET_IN
     self.buffer_id = 0
@@ -2459,7 +2478,9 @@ class ofp_packet_in (ofp_header):
     self.in_port = 0
     self.reason = 0
     self.pad = 0
-    self.data = []
+    self.data = None
+
+    initHelper(self, kw)
 
   def _assert (self):
     return (True, None)
@@ -2471,8 +2492,7 @@ class ofp_packet_in (ofp_header):
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!LHHBB", self.buffer_id & 0xffFFffFF, self.total_len, self.in_port, self.reason, self.pad)
-    for i in self.data:
-      packed += struct.pack("!B",i)
+    packet += self.data
     return packed
 
   def unpack (self, binaryString):
