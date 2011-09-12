@@ -299,6 +299,9 @@ except:
 
 class Recv (BlockingOperation):
   def __init__ (self, fd, bufsize = 1024*8, flags = defaultRecvFlags, timeout = None):
+    """
+    Recv call on fd.
+    """
     self._fd = fd
     self._length = bufsize
     self._timeout = timeout
@@ -316,7 +319,7 @@ class Recv (BlockingOperation):
       return sock.recv(self._length, self._flags)
     except:
       traceback.print_exc()
-      return b''
+      return None #
 
   def execute (self, task, scheduler):
     task.rf = self._recvReturnFunc
