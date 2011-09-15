@@ -117,8 +117,7 @@ class LLDPSender (object):
     eth.set_payload(discovery_packet)
     eth.type = ethernet.LLDP_TYPE
 
-    po = of.ofp_packet_out(in_port = of.OFPP_CONTROLLER,
-                           action = of.ofp_action_output(port=portNum),
+    po = of.ofp_packet_out(action = of.ofp_action_output(port=portNum),
                            data = eth.pack())
     return po.pack()
 
