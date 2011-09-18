@@ -385,7 +385,7 @@ class Connection (EventMixin):
     l = len(self.buf)
     while l > 4:
       if ord(self.buf[0]) != of.OFP_VERSION:
-        print "Bad OpenFlow version (" + str(ord(self.buf[0])) + ") on connection " + str(self)
+        log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) + ") on connection " + str(self))
         return False
       t = ord(self.buf[1])
       pl = ord(self.buf[2]) << 8 | ord(self.buf[3])
