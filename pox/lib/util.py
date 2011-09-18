@@ -128,7 +128,7 @@ def makePinger ():
 
   #return PipePinger((os.pipe()[0],os.pipe()[1]))  # To test failure case
 
-  if os.name is "posix":
+  if os.name == "posix":
     return PipePinger(os.pipe())
 
   #TODO: clean up sockets?
