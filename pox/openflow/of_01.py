@@ -15,6 +15,7 @@ import threading
 import os
 import sys
 import exceptions
+from errno import EAGAIN
 
 
 import traceback
@@ -40,7 +41,7 @@ def handle_FLOW_REMOVED (con, msg):
 def handle_FEATURES_REPLY (con, msg):
   con.features = msg
   con.dpid = msg.datapath_id
-  con.msg("Connected to dpid " + str(msg.datapath_id))
+  con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
   openflowHub._connections[con.dpid] = con
   #for p in msg.ports: print(p.show())
   openflowHub.raiseEvent(ConnectionUp, con, msg)
@@ -252,9 +253,10 @@ class DeferredSender (threading.Thread):
                   break
                 del alldata[0]
               except socket.error as (errno, strerror):
-                if errno != socket.EAGAIN:
-                  con.msg("Socket errror: " + strerror)
+                if errno != EAGAIN:
+                  con.msg("DeferredSender/Socket error: " + strerror)
                   con.disconnect()
+                  del self._dataForConnection[con]
                 break
               except:
                 con.msg("Unknown error doing deferred sending")
@@ -315,6 +317,7 @@ class Connection (EventMixin):
     self.ID = Connection.ID
     self.dpid = None
     self.features = None
+    self.disconnected = False
 
     msg = of.ofp_hello()
     self.send(msg.pack())
@@ -324,8 +327,14 @@ class Connection (EventMixin):
   def fileno (self):
     return self.sock.fileno()
 
-  def disconnect (self):
-    self.msg("disconnected")
+  def disconnect (self, hard = False):
+    if self.disconnected and not hard:
+      self.err("already disconnected!")
+    if hard:
+      self.info("disconnected")
+    else:
+      self.msg("disconnecting")
+    self.disconnected = True
     try:
       del openflowHub._connections[self.dpid]
     except:
@@ -346,7 +355,11 @@ class Connection (EventMixin):
     except:
       pass
     try:
-      self.sock.close()
+      if hard:
+        self.sock.close()
+      else:
+        self.sock.shutdown(socket.SHUT_RDWR)
+      pass
     except:
       pass
     try:
@@ -356,6 +369,7 @@ class Connection (EventMixin):
       pass
 
   def send (self, data):
+    if self.disconnected: return
     if type(data) is not bytes:
       if hasattr(data, 'pack'):
         data = data.pack()
@@ -370,11 +384,11 @@ class Connection (EventMixin):
         data = data[l:]
         deferredSender.send(self, data)
     except socket.error as (errno, strerror):
-      if errno == socket.EAGAIN:
+      if errno == EAGAIN:
         self.msg("Out of send buffer space.  Consider increasing SO_SNDBUF.")
         deferredSender.send(self, data)
       else:
-        self.msg("Socket errror: " + strerror)
+        self.msg("Socket error: " + strerror)
         self.disconnect()
 
   def read (self):
@@ -500,7 +514,7 @@ class OpenFlow_01_Task (Task):
               raise RuntimeError("Error on listener socket")
             else:
               try:
-                con.disconnect()
+                con.disconnect(True)
               except:
                 pass
               try:
@@ -517,7 +531,7 @@ class OpenFlow_01_Task (Task):
               #print str(newcon) + " connected"
             else:
               if con.read() == False:
-                con.disconnect()
+                con.disconnect(True)
                 sockets.remove(con)
       except exceptions.KeyboardInterrupt:
         break
@@ -530,7 +544,7 @@ class OpenFlow_01_Task (Task):
           print "Error in listener.  Aborting"
           break
         try:
-          con.disconnect()
+          con.disconnect(True)
         except:
           pass
         try:
