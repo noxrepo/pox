@@ -217,6 +217,11 @@ if __name__ == '__main__':
     sys.exit(1)
 
   if cli:
+    print "This program comes with ABSOLUTELY NO WARRANTY.  This program is " \
+          "free software,"
+    print "and you are welcome to redistribute it under certain conditions."
+    print "Type 'help(pox.license)' for details."
+    import pox.license
     import time
     time.sleep(1)
     import code

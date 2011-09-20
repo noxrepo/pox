@@ -155,7 +155,8 @@ class POXCore (EventMixin):
     self.running = True
     self.components = {}
 
-    print "POX v0.0"
+    print "POX v0.0 / Copyright 2011 James McCauley"
+
     self.scheduler = recoco.Scheduler(daemon=True)
 
   def callLater (_self, _func, *args, **kw):

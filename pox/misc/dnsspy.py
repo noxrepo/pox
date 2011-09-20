@@ -1,4 +1,5 @@
 # Copyright 2011 James McCauley
+# Copyright 2008 (C) Nicira, Inc.
 #
 # This file is part of POX.
 #
