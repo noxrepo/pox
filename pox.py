@@ -1,6 +1,16 @@
 #!/bin/bash -
-# The following mess gets us Python 2.7 from MacPorts if it's available.
+
+# If you have PyPy 1.6+ in a directory called pypy alongside pox.py, we
+# use it.
+# Otherwise, we try to use a Python interpreter called python2.7, which
+# is a good idea if you're using Python from MacPorts, for example.
+# We fall back to just "python" and hope that works.
+
 ''''echo -n
+if [ -x pypy/bin/pypy ]; then
+  exec pypy/bin/pypy -O "$0" "$@"
+fi
+
 if [ "$(type -P python2.7)" != "" ]; then
   exec python2.7 -O "$0" "$@"
 fi
@@ -144,7 +154,34 @@ def post_startup ():
 
   pox.openflow.of_01.launch() # Always launch of_01
 
+def _monkeypatch_console ():
+  """
+  The readline in pypy (which is the readline from pyrepl) turns off output
+  postprocessing, which disables normal NL->CRLF translation.  An effect of
+  this is that output *from other threads* (like log messages) which try to
+  print newlines end up just getting linefeeds and the output is all stair-
+  stepped.  We monkeypatch the function in pyrepl which disables OPOST to turn
+  OPOST back on again.  This doesn't immediately seem to break anything in the
+  simple cases, and makes the console reasonable to use in pypy.
+  """
+  try:
+    import termios
+    import sys
+    import pyrepl.unix_console
+    uc = pyrepl.unix_console.UnixConsole
+    old = uc.prepare
+    def prep (self):
+      old(self)
+      f = sys.stdin.fileno()
+      a = termios.tcgetattr(f)
+      a[1] |= 1 # Turn on postprocessing (OPOST)
+      termios.tcsetattr(f, termios.TCSANOW, a)
+    uc.prepare = prep
+  except:
+    pass
+
 if __name__ == '__main__':
+  _monkeypatch_console()
   launchOK = False
   try:
     pre_startup()
