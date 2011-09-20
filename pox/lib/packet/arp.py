@@ -63,7 +63,7 @@ class arp (packet_base):
     REV_REQUEST = 3 # RARP
     REV_REPLY   = 4 # RARP
 
-    def __init__(self, arr=None, prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
         self.prev = prev
 
         self.hwtype     = arp.HW_TYPE_ETHERNET
@@ -77,38 +77,38 @@ class arp (packet_base):
         self.protodst   = IP_ANY
         self.next       = b''
 
-        if arr != None:
-            if (type(arr) != bytes):
-                self.err("arr of type %s unsupported" % (type(arr),))
-                assert(0)
-            self.arr = arr
-            self.parse()
+        if raw is not None:
+            self.parse(raw)
 
-    def parse(self):
-        dlen = len(self.arr)
+        self._init(kw)
+
+    def parse (self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+        dlen = len(raw)
         if dlen < arp.MIN_LEN:
             self.msg('(arp parse) warning IP packet data too short to parse header: data len %u' % dlen)
             return
 
         (self.hwtype, self.prototype, self.hwlen, self.protolen,self.opcode) =\
-        struct.unpack('!HHBBH', self.arr[:8])
+        struct.unpack('!HHBBH', raw[:8])
 
         if self.hwtype != arp.HW_TYPE_ETHERNET:
             self.msg('(arp parse) hw type unknown %u' % self.hwtype)
         if self.hwlen != 6:
             self.msg('(arp parse) unknown hw len %u' % self.hwlen)
         else:
-            self.hwsrc = EthAddr(self.arr[8:14])
-            self.hwdst = EthAddr(self.arr[18:24])
+            self.hwsrc = EthAddr(raw[8:14])
+            self.hwdst = EthAddr(raw[18:24])
         if self.prototype != arp.PROTO_TYPE_IP:
             self.msg('(arp parse) proto type unknown %u' % self.prototype)
         if self.protolen != 4:
             self.msg('(arp parse) unknown proto len %u' % self.protolen)
         else:
-            self.protosrc = IPAddr(struct.unpack('!I',self.arr[14:18])[0])
-            self.protodst = IPAddr(struct.unpack('!I',self.arr[24:28])[0])
+            self.protosrc = IPAddr(struct.unpack('!I',raw[14:18])[0])
+            self.protodst = IPAddr(struct.unpack('!I',raw[24:28])[0])
 
-        self.next = self.arr[28:]
+        self.next = raw[28:]
         self.parsed = True
 
     def hdr(self, payload):
@@ -157,9 +157,9 @@ class arp (packet_base):
             elif self.opcode == arp.REV_REPLY:
                 op = "REV_REPLY"
 
-        s = ''.join(('(',op,'[hw:'+str(self.hwtype),'p:'+str(self.prototype),\
-                         '[', str(EthAddr(self.hwsrc)),'>', \
-                              str(EthAddr(self.hwdst)),']:', \
-                              '[',str(IPAddr(self.protosrc)), '>',  \
+        s = ''.join(('(',op,'[hw:'+str(self.hwtype),'p:'+str(self.prototype),
+                         '[', str(EthAddr(self.hwsrc)),'>',
+                              str(EthAddr(self.hwdst)),']:',
+                              '[',str(IPAddr(self.protosrc)), '>',
                                   str(IPAddr(self.protodst)),'])'))
         return s

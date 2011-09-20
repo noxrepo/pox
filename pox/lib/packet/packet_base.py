@@ -18,6 +18,8 @@
 import logging
 lg = logging.getLogger('packet')
 
+from pox.lib.util import initHelper
+
 class packet_base (object):
     """
     Base class for packets.
@@ -57,6 +59,13 @@ class packet_base (object):
     next = None
     prev = None
     parsed = False
+    raw = None
+
+    def _init (self, kw):
+        if 'payload' in kw:
+          self.set_payload(kw['payload'])
+          del kw['payload']
+        initHelper(self, kw)
 
     def msg(self, *args):
         """ Shortcut for logging """
@@ -74,7 +83,7 @@ class packet_base (object):
         lg.warning(*args)
 
     def __nonzero__(self):
-        return self.parsed == True
+        return self.parsed is True
 
     def __len__(self):
         return len(self.pack())
@@ -123,7 +132,7 @@ class packet_base (object):
         else:
             raise TypeError("payload must be string or packet subclass")
 
-    def parse(self):
+    def parse(self, raw):
         '''Override me with packet parsing code'''
         raise NotImplementedError("parse() not implemented")
 
@@ -134,6 +143,10 @@ class packet_base (object):
     def hdr(self, payload):
         '''Override me to return packet headers'''
         raise NotImplementedError("hdr() not implemented")
+
+    @classmethod
+    def unpack (cls, raw, prev=None):
+        return cls(raw=raw, prev=prev)
 
     def pack(self):
         '''Convert header and payload to bytes'''

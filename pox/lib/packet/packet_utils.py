@@ -25,9 +25,6 @@ from socket import ntohs
 _ethtype_to_str = {}
 _ipproto_to_str = {}
 
-# Map ethernet oui to name
-_ethoui2name = {}
-
 # Map ethernet type to string
 _ethtype_to_str[0x0800] = 'IP'
 _ethtype_to_str[0x0806] = 'ARP'
@@ -46,7 +43,7 @@ _ipproto_to_str[17] = 'UDP'
 _ipproto_to_str[47] = 'GRE'
 _ipproto_to_str[89] = 'OSPF'
 
-def checksum(data, start = 0, skip_word = None):
+def checksum (data, start = 0, skip_word = None):
 
     if len(data) % 2 != 0:
         arr = array.array('H', data[:-1])
@@ -70,72 +67,9 @@ def checksum(data, start = 0, skip_word = None):
 
     return ntohs(~start & 0xffff)
 
-
-def ip_to_str(a):
-    return "%d.%d.%d.%d" % ((a >> 24) & 0xff, (a >> 16) & 0xff,
-                            (a >> 8) & 0xff, a & 0xff)
-
-
-def ipstr_to_int(a):
-    octets = a.split('.')
-    return (int(octets[0]) << 24 |
-            int(octets[1]) << 16 |
-            int(octets[2]) <<  8 |
-            int(octets[3]))
-
-def array_to_ipstr(a):
-    return "%d.%d.%d.%d" % (a[0], a[1], a[2], a[3])
-
-def array_to_octstr(arr):
-    bstr = ''
-    for byte in arr:
-        if bstr != '':
-            bstr += ':%02x' % (byte,)
-        else:
-            bstr += '%02x' %(byte,)
-    return bstr
-
-"""
-def longlong_to_octstr(ll):
-    return array_to_octstr(array.array('B',struct.pack('!Q',ll)))
-"""
-
-def mac_to_oui(a):
-    if type(a) == type(1L):
-        a = struct.pack('!Q', a)[2:]
-    if type(a) == bytes:
-        a = array.array('B',a)
-
-    oui = int(a[0]) << 16 | int(a[1]) << 8 | int(a[2])
-
-    if _ethoui2name.has_key(oui):
-        return _ethoui2name[oui]
-    else:
-        return ""
-
-def mac_to_str(a, resolve_name = False):
-    if type(a) == type(1L):
-        a = struct.pack('!Q', a)[2:]
-    if type(a) == bytes:
-        a = array.array('B', a)
-
-    oui = int(a[0]) << 16 | int(a[1]) << 8 | int(a[2])
-
-    # check if globally unique
-    if resolve_name and not (a[0] & 0x2):
-        if _ethoui2name.has_key(oui):
-            return "(%s):%02x:%02x:%02x" %( _ethoui2name[oui], a[3],a[4],a[5])
-    return array_to_octstr(a)
-
-def mac_to_int(mac):
-    value = 0
-    for byte in struct.unpack('6B', mac):
-        value = (value << 8) | byte
-    return long(value)
-
 def ethtype_to_str(t):
     if t < 0x0600:
-        return "llc"
+        return "llc/%04x" % (t,)
     if _ethtype_to_str.has_key(t):
         return _ethtype_to_str[t]
     else:
@@ -146,34 +80,3 @@ def ipproto_to_str(t):
         return _ipproto_to_str[t]
     else:
         return "%x" % t
-
-def load_oui_names():
-    import inspect
-    import os.path
-    filename = os.path.join(os.path.dirname(inspect.stack()[0][1]), 'oui.txt')
-    f = None
-    try:
-        f = open(filename)
-        for line in f.readlines():
-            if len(line) < 1:
-                continue
-            if line[0].isspace():
-                continue
-            split = line.split(' ')
-            if not '-' in split[0]:
-                continue
-            # grab 3-byte OUI
-            oui_str  = split[0].replace('-','')
-            # strip off (hex) identifer and keep rest of name
-            end = ' '.join(split[1:]).strip()
-            end = end.split('\t')
-            end.remove('(hex)')
-            oui_name = ' '.join(end)
-            # convert oui to int
-            oui = int(oui_str, 16)
-            _ethoui2name[oui] = oui_name.strip()
-    except:
-        import logging
-        logging.getLogger().warn("Could not load OUI list")
-    if f: f.close()
-load_oui_names()

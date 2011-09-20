@@ -34,7 +34,6 @@ from packet_utils       import *
 
 from packet_base import packet_base
 
-
 TYPE_ECHO_REPLY   = 0
 TYPE_DEST_UNREACH = 3
 TYPE_SRC_QUENCH   = 4
@@ -75,36 +74,36 @@ class echo(packet_base):
 
     MIN_LEN = 4
 
-    def __init__(self, arr=None, prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
 
         self.prev = prev
 
         self.id  = random.randint(0, 65535)
         self.seq = 0
 
-        if arr != None:
-            assert(type(arr) == bytes)
-            self.arr = arr
-            self.parse()
+        if raw is not None:
+            self.parse(raw)
+
+        self._init(kw)
 
     def __str__(self):
-        if self.parsed == False:
-            return ""
-
         return "{id:%i seq:%i}" % (self.id, self.seq)
 
-    def parse(self):
-        dlen = len(self.arr)
+    def parse(self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+
+        dlen = len(raw)
 
         if dlen < self.MIN_LEN:
-            self.msg('(echo parse) warning echo payload too short to parse header: data len %u' % dlen)
+            self.msg('(echo parse) warning echo payload too short to '
+                     'parse header: data len %u' % (dlen,))
             return
 
-        (self.id, self.seq) \
-            = struct.unpack('!HH', self.arr[:self.MIN_LEN])
+        (self.id, self.seq) = struct.unpack('!HH', raw[:self.MIN_LEN])
 
         self.parsed = True
-        self.next = self.arr[echo.MIN_LEN:]
+        self.next = raw[echo.MIN_LEN:]
 
     def hdr(self, payload):
         return struct.pack('!HH', self.id, self.seq)
@@ -127,46 +126,45 @@ class unreach(packet_base):
 
     MIN_LEN = 4
 
-    def __init__(self, arr=None, prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
 
         self.prev = prev
 
         self.unused = 0
         self.next_mtu = 0
 
-        if arr != None:
-            assert(type(arr) == bytes)
-            self.arr = arr
-            self.parse()
+        if raw is not None:
+            self.parse(raw)
+
+        self._init(kw)
 
     def __str__(self):
-        if self.parsed == False:
-            return ""
-
         s = ''.join(('{', 'm:', str(self.next_mtu), '}'))
 
-        if self.next == None:
+        if self.next is None:
             return s
 
         return ''.join((s, str(self.next)))
 
-    def parse(self):
-        dlen = len(self.arr)
+    def parse(self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+        dlen = len(raw)
         if dlen < self.MIN_LEN:
             self.msg('(unreach parse) warning unreachable payload too short to parse header: data len %u' % dlen)
             return
 
         (self.unused, self.next_mtu) \
-            = struct.unpack('!HH', self.arr[:self.MIN_LEN])
+            = struct.unpack('!HH', raw[:self.MIN_LEN])
 
         self.parsed = True
 
         if dlen >= 28:
             # xxx We're assuming this is IPv4!
             import ipv4
-            self.next = ipv4.ipv4(arr=self.arr[unreach.MIN_LEN:],prev=self)
+            self.next = ipv4.ipv4(raw=raw[unreach.MIN_LEN:],prev=self)
         else:
-            self.next = self.arr[unreach.MIN_LEN:]
+            self.next = raw[unreach.MIN_LEN:]
 
     def hdr(self, payload):
         return struct.pack('!HH', self.unused, self.next_mtu)
@@ -177,7 +175,7 @@ class icmp(packet_base):
 
     MIN_LEN = 4
 
-    def __init__(self, arr=None, prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
 
         self.prev = prev
 
@@ -185,40 +183,39 @@ class icmp(packet_base):
         self.code = 0
         self.csum = 0
 
-        if arr != None:
-            assert(type(arr) == bytes)
-            self.arr = arr
-            self.parse()
+        if raw is not None:
+            self.parse(raw)
+
+        self._init(kw)
 
     def __str__(self):
-        if self.parsed == False:
-            return ""
-
         t = _type_to_name.get(self.type, str(self.type))
         s = '{t:%s c:%i chk:%x}' % (t, self.code, self.csum)
 
-        if self.next == None:
+        if self.next is None:
             return s
 
         return ''.join((s, str(self.next)))
 
-    def parse(self):
-        dlen = len(self.arr)
+    def parse(self, raw):
+        assert isinstance(raw, bytes)
+        dlen = len(raw)
         if dlen < self.MIN_LEN:
-            self.msg('(icmp parse) warning ICMP packet data too short to parse header: data len %u' % dlen)
+            self.msg('(icmp parse) warning ICMP packet data too short to '
+                     + 'parse header: data len %u' % (dlen,))
             return
 
         (self.type, self.code, self.csum) \
-            = struct.unpack('!BBH', self.arr[:self.MIN_LEN])
+            = struct.unpack('!BBH', raw[:self.MIN_LEN])
 
         self.parsed = True
 
         if (self.type == TYPE_ECHO_REQUEST or self.type == TYPE_ECHO_REPLY):
-            self.next = echo(arr=self.arr[self.MIN_LEN:],prev=self)
+            self.next = echo(raw=raw[self.MIN_LEN:],prev=self)
         elif self.type == TYPE_DEST_UNREACH:
-            self.next = unreach(arr=self.arr[self.MIN_LEN:],prev=self)
+            self.next = unreach(raw=raw[self.MIN_LEN:],prev=self)
         else:
-            self.next = self.arr[self.MIN_LEN:]
+            self.next = raw[self.MIN_LEN:]
 
     def hdr(self, payload):
         self.csum = checksum(struct.pack('!BBH', self.type, self.code, 0) +

@@ -121,42 +121,44 @@ class eap(packet_base):
                    EXPERIMENTAL_TYPE : "experimental"
                  }
 
+    @staticmethod
     def code_name(code):
         return eap.code_names.get(code, "code%d" % code)
-    code_name = staticmethod(code_name)
 
+    @staticmethod
     def type_name(type):
         return eap.type_names.get(type, "type%d" % type)
-    type_name = staticmethod(type_name)
 
-    def __init__(self, arr=None, prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
         self.prev = prev
 
         self.code = self.REQUEST_CODE
         self.id = 0
         self.length = 0
 
-        if arr != None:
-            assert(type(arr) == bytes)
-            self.arr = arr
-            self.parse()
+        if raw is not None:
+            self.parse(raw)
+
+        self._init(kw)
 
     def __str__(self):
         s = '{ EAP %s id=%d }' % (eap.code_name(self.code), self.id)
         if hasattr(self, 'type'):
             s += '{%s}' % (eap.type_names[self.type])
-        if self.next != None:
+        if self.next is not None:
             s += str(self.next)
         return s
 
-    def parse(self):
-        dlen = len(self.arr)
+    def parse(self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+        dlen = len(raw)
         if dlen < self.MIN_LEN:
-            self.msg('(eapol parse) warning EAP packet data too short to parse header: data len %u' % dlen)
+            self.msg('(eapol parse) warning EAP packet data too short to parse header: data len %u' % (dlen,))
             return
 
         (self.code, self.id, self.length) \
-            = struct.unpack('!BBH', self.arr[:self.MIN_LEN])
+            = struct.unpack('!BBH', raw[:self.MIN_LEN])
 
         self.hdr_len = self.length
         self.payload_len = 0
@@ -164,21 +166,19 @@ class eap(packet_base):
 
         if self.code == self.REQUEST_CODE:
             (self.type,) \
-                = struct.unpack('!B', self.arr[self.MIN_LEN:self.MIN_LEN + 1 ])
+                = struct.unpack('!B', raw[self.MIN_LEN:self.MIN_LEN + 1 ])
             # not yet implemented
         elif self.code == self.RESPONSE_CODE:
             (self.type,) \
-                = struct.unpack('!B', self.arr[self.MIN_LEN:self.MIN_LEN + 1 ])
+                = struct.unpack('!B', raw[self.MIN_LEN:self.MIN_LEN + 1 ])
             # not yet implemented
         elif self.code == self.SUCCESS_CODE:
             self.next = None    # Success packets have no payload
         elif self.code == self.REQUEST_CODE:
             self.next = None    # Failure packets have no payload
         else:
-            self.msg('warning unsupported EAP code: %s' % eap.code_name(self.code))
-
-    def set_payload(self, payload):
-        self.next = payload
+            self.msg('warning unsupported EAP code: %s' %
+                     (eap.code_name(self.code),))
 
     def hdr(self, payload):
         return struct.pack('!BBH', self.code, self.id, self.length)

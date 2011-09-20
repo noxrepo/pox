@@ -27,15 +27,9 @@
 #======================================================================
 
 import struct
-import time
 
 from packet_base import packet_base
 from ethernet import ethernet
-
-from arp      import arp
-from tcp      import tcp
-from ipv4     import ipv4
-from udp      import udp
 
 from packet_utils       import *
 
@@ -45,26 +39,20 @@ class vlan(packet_base):
 
     MIN_LEN = 4
 
-    def __init__(self, arr=None, prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
         self.prev = prev
 
         self.next = None
-        self.parsed = False
-
-        if type(ethernet) == type(time):
-            ethernet.ethernet.type_parsers[ethernet.VLAN_TYPE] = vlan
-        else:
-            ethernet.type_parsers[ethernet.VLAN_TYPE] = vlan
 
         self.pcp      = 0
         self.cfi      = 0
         self.id       = 0
         self.eth_type = 0
 
-        if arr != None:
-            assert(type(arr) == bytes)
-            self.arr = arr
-            self.parse()
+        if raw is not None:
+            self.parse(raw)
+
+        self._init(kw)
 
     def __str__(self):
         s = ''.join(('(vlanid='+str(self.id)+':pcp='+str(self.pcp)+")["+ethtype_to_str(self.eth_type)+']'))
@@ -72,14 +60,16 @@ class vlan(packet_base):
             return s
         return ''.join((s, str(self.next)))
 
-    def parse(self):
-        dlen = len(self.arr)
+    def parse(self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+        dlen = len(raw)
         if dlen < vlan.MIN_LEN:
-            self.msg('(vlan parse) warning VLAN packet data too short to parse header: data len %u' % dlen)
+            self.msg('(vlan parse) warning VLAN packet data too short to '
+                     + 'parse header: data len %u' % (dlen,))
             return
 
-        (pcpid, self.eth_type) = struct.unpack("!HH", \
-                self.arr[:vlan.MIN_LEN])
+        (pcpid, self.eth_type) = struct.unpack("!HH", raw[:vlan.MIN_LEN])
 
         self.pcp = pcpid >> 13
         self.c   = pcpid  & 0x1000
@@ -87,12 +77,17 @@ class vlan(packet_base):
 
         self.parsed = True
 
-        if self.eth_type in ethernet.type_parsers:
-            self.next = ethernet.type_parsers[self.eth_type](arr=self.arr[vlan.MIN_LEN:],prev=self)
+        # Don't know what to do about a VLAN'd VLAN...
+        assert self.eth_type != 0x8100
 
-    def hdr(self, payload_len):
+        if self.eth_type in ethernet.type_parsers:
+            self.next = ethernet.type_parsers[self.eth_type](raw=raw[vlan.MIN_LEN:],prev=self)
+
+    def hdr(self, payload):
         pcpid  = self.pcp << 13
         pcpid |= self.c   << 12
         pcpid |= self.id
         buf = struct.pack("!HH", pcpid, self.eth_type)
         return buf
+
+ethernet.type_parsers[ethernet.VLAN_TYPE] = vlan

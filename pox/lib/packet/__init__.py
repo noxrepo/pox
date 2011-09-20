@@ -10,19 +10,18 @@ Could still use more work.
 
 # None of this is probably that big, and almost all of it gets loaded
 # under most circumstances anyway.  Let's just load all of it.
-import arp
-import dhcp
-import dns
-import eap
-import eapol
-import ethernet
-import icmp
-import ipv4
-import lldp
-import tcp
-import tcp
-import udp
-import vlan
+from arp import *
+from dhcp import *
+from dns import *
+from eap import *
+from eapol import *
+from ethernet import *
+from icmp import *
+from ipv4 import *
+from lldp import *
+from tcp import *
+from udp import *
+from vlan import *
 
 __all__ = [
   'arp',
@@ -35,6 +34,7 @@ __all__ = [
   'ipv4',
   'lldp',
   'tcp',
+  'tcp_opt',
   'udp',
   'vlan',
 ]

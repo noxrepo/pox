@@ -26,7 +26,6 @@ import struct
 from packet_base import packet_base
 from packet_utils import ethtype_to_str
 
-import pox.lib.util
 from pox.lib.addresses import *
 
 ETHER_ANY            = EthAddr(b"\x00\x00\x00\x00\x00\x00")
@@ -53,7 +52,7 @@ class ethernet(packet_base):
 
   type_parsers = {}
 
-  def __init__(self, arr=None, prev=None, **kw):
+  def __init__(self, raw=None, prev=None, **kw):
     if len(ethernet.type_parsers) == 0:
       # trying to bypass hairy cyclical include problems
       from vlan import vlan
@@ -75,33 +74,33 @@ class ethernet(packet_base):
     self.type = 0
     self.next = b''
 
-    pox.lib.util.initHelper(self, kw)
+    if raw is not None:
+      self.parse(raw)
 
-    if arr != None:
-      assert(type(arr) == bytes)
-      self.arr = arr
-      self.parse()
+    self._init(kw)
 
-  def parse(self):
-    alen = len(self.arr)
+  def parse (self, raw):
+    assert isinstance(raw, bytes)
+    self.raw = raw
+    alen = len(raw)
     if alen < ethernet.MIN_LEN:
       self.msg('warning eth packet data too short to parse header: data len %u' % alen)
       return
 
-    self.dst = EthAddr(self.arr[:6])
-    self.src = EthAddr(self.arr[6:12])
-    self.type = struct.unpack('!H', self.arr[12:ethernet.MIN_LEN])[0]
+    self.dst = EthAddr(raw[:6])
+    self.src = EthAddr(raw[6:12])
+    self.type = struct.unpack('!H', raw[12:ethernet.MIN_LEN])[0]
 
     self.hdr_len = ethernet.MIN_LEN
     self.payload_len = alen - self.hdr_len
 
-    self.parsed = True
-
     # xxx Need to support SNAP/LLC frames
     if self.type in ethernet.type_parsers:
-      self.next = ethernet.type_parsers[self.type](self.arr[ethernet.MIN_LEN:], self)
+      self.next = ethernet.type_parsers[self.type](raw[ethernet.MIN_LEN:], self)
     else:
-      self.next = self.arr[ethernet.MIN_LEN:]
+      self.next = raw[ethernet.MIN_LEN:]
+
+    self.parsed = True
 
   @staticmethod
   def getNameForType (ethertype):

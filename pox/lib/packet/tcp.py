@@ -97,7 +97,7 @@ class tcp(packet_base):
     ECN  = 0x40
     CWR  = 0x80
 
-    def __init__(self, arr=None, prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
 
         self.prev = prev
 
@@ -115,33 +115,28 @@ class tcp(packet_base):
         self.options  = []
         self.next     = b''
 
-        self.parsed = False
+        if raw is not None:
+            self.parse(raw)
 
-        if arr != None:
-            assert(type(arr) == bytes)
-            self.arr = arr
-            self.parse()
-
+        self._init(kw)
+        
     def __str__(self):
-        if self.parsed == False:
-            return ""
-
         s = ''.join(('{', str(self.srcport), '>',
                          str(self.dstport), '} seq:',
                          str(self.seq), ' ack:', str(self.ack), ' f:',
                          hex(self.flags)))
-        if self.next == None or type(self.next) == type(''):
+        if self.next is None or type(self.next) is bytes:
             return s
         return ''.join((s, str(self.next)))
 
-    def parse_options(self):
+    def parse_options(self, raw):
 
         self.options = []
-        dlen = len(self.arr)
+        dlen = len(raw)
 
         # option parsing
         i = tcp.MIN_LEN
-        arr = self.arr
+        arr = raw
 
         while i < self.hdr_len:
             # Single-byte options
@@ -195,15 +190,17 @@ class tcp(packet_base):
             i += ord(arr[i+1])
         return i
 
-    def parse(self):
-        dlen = len(self.arr)
+    def parse(self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+        dlen = len(raw)
         if dlen < tcp.MIN_LEN:
             self.msg('(tcp parse) warning TCP packet data too short to parse header: data len %u' % (dlen,))
             return
 
         (self.srcport, self.dstport, self.seq, self.ack, offres, self.flags,
         self.win, self.csum, self.urg) \
-            = struct.unpack('!HHIIBBHHH', self.arr[:tcp.MIN_LEN])
+            = struct.unpack('!HHIIBBHHH', raw[:tcp.MIN_LEN])
 
         self.off = offres >> 4
         self.res = offres & 0x0f
@@ -220,12 +217,12 @@ class tcp(packet_base):
             return
 
         try:
-            self.parse_options()
+            self.parse_options(raw)
         except Exception as e:
             self.msg(e)
             return
 
-        self.next   = self.arr[self.hdr_len:]
+        self.next   = raw[self.hdr_len:]
         self.parsed = True
 
     def hdr(self, payload, calc_checksum = True):
@@ -250,15 +247,14 @@ class tcp(packet_base):
         If unparsed, calculates it on the raw, unparsed data.  This is
         useful for validating that it is correct on an incoming packet.
         """
-        csum = 0
         if self.prev.__class__.__name__ != 'ipv4':
             self.msg('packet not in ipv4, cannot calculate checksum ' +
                      'over psuedo-header' )
             return 0
 
         if unparsed:
-            payload_len = len(self.arr)
-            payload = self.arr
+            payload_len = len(self.raw)
+            payload = self.raw
         else:
             if payload is not None:
                 pass

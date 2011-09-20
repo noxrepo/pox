@@ -56,6 +56,7 @@ from packet_utils       import *
 
 from packet_base import packet_base
 import pox.lib.util as util
+from pox.lib.addresses import *
 
 class dhcp(packet_base):
     "DHCP Packet struct"
@@ -103,68 +104,76 @@ class dhcp(packet_base):
 
     MAGIC = b'\x63\x82\x53\x63'
 
-    def __init__(self, arr=None, prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
         self.prev = prev
 
-        if self.arr is None:
-            self.op = 0
-            self.htype = 0
-            self.hlen = 0
-            self.hops = 0
-            self.xid = 0
-            self.secs = 0
-            self.flags = 0
-            self.ciaddr = 0
-            self.yiaddr = 0
-            self.siaddr = 0
-            self.giaddr = 0
-            self.chaddr =b''
-            self.sname = b''
-            self.file = b''
-            self.magic = b''
-            self.options = b''
-            self.parsedOptions = util.DirtyDict()
+        self.op = 0
+        self.htype = 0
+        self.hlen = 0
+        self.hops = 0
+        self.xid = 0
+        self.secs = 0
+        self.flags = 0
+        self.ciaddr = IP_ANY
+        self.yiaddr = IP_ANY
+        self.siaddr = IP_ANY
+        self.giaddr = IP_ANY
+        self.chaddr = None
+        self.sname = b''
+        self.file = b''
+        self.magic = b''
+        self.options = b''
+
+        if raw is not None:
+            self.parse(raw)
         else:
-            assert(type(arr) is bytes)
-            self.arr = arr
-            self.parse()
+            self.parsedOptions = util.DirtyDict()
+
+        self._init(kw)
 
     def __str__(self):
-        if self.parsed == False:
-            return ""
-
-        return ' '.join(('[','op:'+str(self.op),'htype:'+str(self.htype), \
-                            'hlen:'+str(self.hlen),'hops:'+str(self.hops), \
-                            'xid:'+str(self.xid),'secs:'+str(self.secs), \
-                            'flags:'+str(self.flags), \
-                            'ciaddr:'+ip_to_str(self.ciaddr), \
-                            'yiaddr:'+ip_to_str(self.yiaddr), \
-                            'siaddr:'+ip_to_str(self.siaddr), \
-                            'giaddr:'+ip_to_str(self.giaddr), \
-                            'chaddr:'+mac_to_str(self.chaddr[:self.hlen]), \
-                            'magic:'+str([ord(x) for x in self.magic]), \
+        return ' '.join(('[','op:'+str(self.op),'htype:'+str(self.htype),
+                            'hlen:'+str(self.hlen),'hops:'+str(self.hops),
+                            'xid:'+str(self.xid),'secs:'+str(self.secs),
+                            'flags:'+str(self.flags),
+                            'ciaddr:'+str(self.ciaddr),
+                            'yiaddr:'+str(self.yiaddr),
+                            'siaddr:'+str(self.siaddr),
+                            'giaddr:'+str(self.giaddr),
+                            'chaddr:'+ (self.chaddr if isinstance(self.chaddr, EthAddr) else "?" ),
+                            'magic:'+str([ord(x) for x in self.magic]),
                             'options:'+str([ord(x) for x in self.options]),']'))
 
-    def parse(self):
-        dlen = len(self.arr)
+    def parse(self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+        dlen = len(raw)
         if dlen < dhcp.MIN_LEN:
-            self.msg('(dhcp parse) warning DHCP packet data too short to parse header: data len %u' % dlen)
+            self.msg('(dhcp parse) warning DHCP packet data too short to parse header: data len %u' % (dlen,))
             return None
 
-        (self.op, self.htype, self.hlen, self.hops, self.xid, self.secs, \
+        (self.op, self.htype, self.hlen, self.hops, self.xid, self.secs,
              self.flags, self.ciaddr, self.yiaddr, self.siaddr, self.giaddr) \
-             = struct.unpack('!BBBBIHHIIII', self.arr[:28])
+             = struct.unpack('!BBBBIHHIIII', raw[:28])
 
-        self.chaddr = self.arr[28:44]
-        self.sname = self.arr[44:108]
-        self.file = self.arr[102:236]
-        self.magic = self.arr[236:240]
+        self.ciaddr = IPAddr(self.ciaddr)
+        self.yiaddr = IPAddr(self.yiaddr)
+        self.siaddr = IPAddr(self.siaddr)
+        self.giaddr = IPAddr(self.giaddr)
+
+        self.chaddr = raw[28:44]
+        if self.hlen == 6:
+          # Assume chaddr is ethernet
+          self.chaddr = EthAddr(self.chaddr[:6])
+        self.sname = raw[44:108]
+        self.file = raw[102:236]
+        self.magic = raw[236:240]
 
         self.hdr_len = dlen
         self.parsed = True
 
         if self.hlen > 16:
-            self.warn('(dhcp parse) DHCP hlen %u too long' % self.hlen)
+            self.warn('(dhcp parse) DHCP hlen %u too long' % (self.hlen),)
             return
 
         for i in range(4):
@@ -172,9 +181,7 @@ class dhcp(packet_base):
                 self.warn('(dhcp parse) bad DHCP magic value %s' % str(self.magic))
                 return
 
-        self.parsedOptions = {}
-
-        self.options = self.arr[240:]
+        self.options = raw[240:]
         self.parseOptions()
         self.parsed = True
 
@@ -184,7 +191,7 @@ class dhcp(packet_base):
         if dhcp.OVERLOAD_OPT in self.parsedOptions:
             opt_val = self.parsedOptions[dhcp.OVERLOAD_OPT]
             if opt_val[0] != 1:
-                self.warn('DHCP overload option has bad len %u' % opt_val[0])
+                self.warn('DHCP overload option has bad len %u' % (opt_val[0],))
                 return
             if opt_val[1] == 1 or opt_val[1] == 3:
                 self.parseOptionSegment(self.file)
@@ -246,18 +253,20 @@ class dhcp(packet_base):
         if self.parsedOptions.dirty:
           self.packOptions()
 
+        if isinstance(self.chaddr, EthAddr):
+          chaddr = self.chaddr.toRaw() + (b'\x00' * 10)
         fmt = '!BBBBIHHIIII16s64s128s4s%us' % (len(self.options),)
         return struct.pack(fmt, self.op, self.htype, self.hlen,
                     self.hops, self.xid, self.secs, self.flags,
                     self.ciaddr, self.yiaddr, self.siaddr, self.giaddr,
-                    self.chaddr, self.sname,
+                    chaddr, self.sname,
                     self.file, self.magic,
                     self.options)
 
     def hasParsedOption(self, opt, len):
-        if self.parsedOptions.has_key(opt) == False:
+        if opt not in self.parsedOptions:
             return False
-        if len != None and self.parsedOptions[opt][0][0] != len:
+        if len is not None and self.parsedOptions[opt][0][0] != len:
             return False
         return True
 

@@ -54,21 +54,22 @@ class eapol(packet_base):
                   EAPOL_LOGOFF_TYPE: "EAPOL-Logoff",
                   EAPOL_KEY_TYPE: "EAPOL-Key",
                   EAPOL_ENCAPSULATED_ASF_ALERT: "EAPOL-Encapsulated-ASF-Alert"}
+
+    @staticmethod
     def type_name(type):
         return eapol.type_names.get(type, "type%d" % type)
-    type_name = staticmethod(type_name)
 
-    def __init__(self, arr=None,prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
         self.prev = prev
 
         self.version = self.V1_PROTO
         self.type = self.EAP_TYPE
         self.bodylen = 0
 
-        if arr != None:
-            assert(type(arr) == bytes)
-            self.arr = arr
-            self.parse()
+        if raw is not None:
+            self.parse(raw)
+
+        self._init(kw)
 
     def __str__(self):
         s = '{ EAPOL v%d %s }' % (self.version, self.type_name(self.type))
@@ -76,28 +77,26 @@ class eapol(packet_base):
             s += str(self.next)
         return s
 
-    def parse(self):
-        dlen = len(self.arr)
+    def parse(self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+        dlen = len(raw)
         if dlen < self.MIN_LEN:
             self.msg('(eapol parse) warning EAPOL packet data too short to parse header: data len %u' % (dlen,))
             return
 
         (self.version, self.type, self.bodylen) \
-            = struct.unpack('!BBH', self.arr[:self.MIN_LEN])
+            = struct.unpack('!BBH', raw[:self.MIN_LEN])
 
         self.parsed = True
 
         if self.type == self.EAP_TYPE:
-            self.next = eap(arr=self.arr[self.MIN_LEN:], prev=self)
+            self.next = eap(raw=raw[self.MIN_LEN:], prev=self)
         elif (self.type == self.EAPOL_START_TYPE
               or self.type == self.EAPOL_LOGOFF_TYPE):
             pass                # These types have no payloads.
         else:
             self.msg('warning unsupported EAPOL type: %s' % (self.type_name(self.type),))
-
-    def set_payload(self, payload):
-        self.next = payload
-
 
     def hdr(self, payload):
         return struct.pack('!BBH', self.version, self.type, self.bodylen)

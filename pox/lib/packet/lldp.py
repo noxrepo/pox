@@ -60,9 +60,9 @@
 import struct
 import time
 from packet_utils       import *
-from array  import *
 
 from packet_base import packet_base
+from pox.lib.addresses import EthAddr
 
 import logging
 lg = logging.getLogger('packet')
@@ -94,30 +94,21 @@ class lldp (packet_base):
 
     tlv_parsers = {}
 
-    def __init__(self, arr=None, prev=None):
+    def __init__(self, raw=None, prev=None, **kw):
         self.prev = prev
 
         self.next = None
-        self.parsed = False
         self.tlvs = []
 
-        if arr != None:
-            assert(type(arr) == bytes)
-            self.arr = arr
-            self.parse()
+        if raw is not None:
+            self.parse(raw)
 
-    def __nonzero__(self):
-        return self.parsed == True
-
-    def array(self):
-        if self.prev == None:
-            return None
-        return self.prev.array()
+        self._init(kw)
 
     def next_tlv(self, array):
 
         if len(array) < 2:
-            self.msg('(lldp tlv parse) warning TLV data too short to read type/len (%u)' % len(array))
+            self.msg('(lldp tlv parse) warning TLV data too short to read type/len (%u)' % (len(array),))
             return
 
         (typelen,) = struct.unpack("!H",array[0:2])
@@ -125,29 +116,31 @@ class lldp (packet_base):
         type      = typelen >> 9
         length    = typelen & 0x01ff
 
-        if len(array) < (length):
-            self.msg( '(lldp tlv parse) warning TLV data too short to parse (%u)' % len(array))
+        if len(array) < length:
+            self.msg( '(lldp tlv parse) warning TLV data too short to parse (%u)' % (len(array),))
             return
 
         if type in lldp.tlv_parsers:
             self.tlvs.append(lldp.tlv_parsers[type](array[0: 2 + length]))
             return 2 + length
         else:
-            self.msg( '(lldp tlv parse) warning unknown tlv type (%u)' % type )
+            self.msg( '(lldp tlv parse) warning unknown tlv type (%u)' % (type,) )
             self.tlvs.append(unknown_tlv(array[0: 2 + length]))
             return 2 + length
 
-    def parse(self):
-        dlen = len(self.arr)
+    def parse(self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+        dlen = len(raw)
         if dlen < lldp.MIN_LEN:
-            self.msg( '(lldp parse) warning LLDP packet data too short to parse header: data len %u' % dlen)
+            self.msg( '(lldp parse) warning LLDP packet data too short to parse header: data len %u' % (dlen,))
             return
 
         # point to the beginning of the pdu
         pduhead = 0
 
         # get Chassis ID
-        ret = self.next_tlv(self.arr)
+        ret = self.next_tlv(raw)
         if ret == None:
             self.msg( '(lldp parse) error parsing chassis ID tlv' )
             return
@@ -157,8 +150,8 @@ class lldp (packet_base):
             return
 
         # get PORT ID
-        ret = self.next_tlv(self.arr[pduhead:])
-        if ret == None:
+        ret = self.next_tlv(raw[pduhead:])
+        if ret is None:
             self.msg( '(lldp parse) error parsing port ID TLV' )
             return
         pduhead += ret
@@ -167,7 +160,7 @@ class lldp (packet_base):
             return
 
         # get  TTL
-        ret = self.next_tlv(self.arr[pduhead:])
+        ret = self.next_tlv(raw[pduhead:])
         if ret == None:
             self.msg( '(lldp parse) error parsing TTL TLV' )
             return
@@ -177,9 +170,9 @@ class lldp (packet_base):
             return
 
         # Loop over all other TLVs
-        arr_len = len(self.arr)
+        arr_len = len(raw)
         while True:
-            ret = self.next_tlv(self.arr[pduhead:])
+            ret = self.next_tlv(raw[pduhead:])
             if ret == None:
                 self.msg( '(lldp parse) error parsing TLV' )
                 return
@@ -196,7 +189,7 @@ class lldp (packet_base):
         self.tlvs.append(tlv)
 
     def __str__(self):
-        lstr = b''
+        lstr = ''
         for tlv in self.tlvs:
             lstr += str(tlv)
         return lstr
@@ -233,15 +226,16 @@ class chassis_id:
     subtype_to_str[SUB_LOCAL]    = "local"
 
     # Construct from packet data
-    def __init__(self, array = None):
+    def __init__(self, raw = None, **kw):
         self.parsed   = False
         self.strlen   = 0
         self.subtype  = 0
         self.id       = None
         self.arr      = None
-        if array != None:
-            self.arr = array
+        if raw is not None:
+            self.arr = raw
             self.parse()
+        initHelper(self, kw)
 
     def fill(self, _subtype, strval):
         self.strlen  = 1 + len(strval)
@@ -258,6 +252,7 @@ class chassis_id:
         assert(self.strlen >= 2)
         (self.subtype,) = struct.unpack("!B",self.arr[2:3])
         self.id = self.arr[3:]
+        self.parsed = True
 
     def hdr(self, payload):
         typelen = 0
@@ -271,13 +266,13 @@ class chassis_id:
         return packet
 
     def __str__(self):
-        id_str = array_to_octstr(self.id)
-
         if self.subtype == chassis_id.SUB_MAC:
-            assert (len(self.id) == 6)
-            id_str = mac_to_str(self.id, False)
+            assert len(self.id) == 6
+            id_str = str(EthAddr(self.id))
+        else:
+            id_str = ":".join(["%02x" % (ord(x),) for x in self.id])
 
-        return ''.join(['<chassis ID:',id_str,'>'])
+        return ''.join(['<chasis ID:',id_str,'>'])
 
 class port_id:
     tlv_type = lldp.PORT_ID_TLV
@@ -299,18 +294,20 @@ class port_id:
     subtype_to_str[SUB_CIRC_ID]  = "agent circuit ID"
     subtype_to_str[SUB_LOCAL]    = "local"
 
-    def __init__(self, array = None):
+    def __init__(self, raw = None, **kw):
         self.parsed = False
-        self.strlen  = 0
         self.subtype = 0
         self.id      = None
-        self.arr     = array
-        if array != None:
+        self.arr     = raw
+        if raw is not None:
             self.parse()
 
-    def fill(self, _subtype, strval):
-        self.strlen  = 1 + len(strval)
-        self.subtype = _subtype
+    @property
+    def strlen (self):
+      return 1 + len(self.id)
+
+    def fill(self, subtype, strval):
+        self.subtype = subtype
         self.id      = strval
 
     # assume lldp has done the type/len checking
@@ -319,17 +316,19 @@ class port_id:
 
         self.tlv_type = typelen >> 9
         assert(self.tlv_type == 2)
-        self.strlen = typelen & 0x01ff
-        assert(self.strlen >= 2)
+        strlen = typelen & 0x01ff
+        assert(strlen >= 2)
         (self.subtype,) = struct.unpack("!B",self.arr[2:3])
         self.id = self.arr[3:]
+        assert strlen == 1 + len(self.id)
+        parsed = True
 
     def __str__(self):
-        id_str = array_to_octstr(self.id)
-
         if self.subtype == chassis_id.SUB_MAC:
-            assert (len(self.id) == 6)
-            id_str = mac_to_str(self.id, True)
+            assert len(self.id) == 6
+            id_str = str(EthAddr(self.id))
+        else:
+            id_str = ":".join(["%02x" % (ord(x),) for x in self.id])
 
         return ''.join(['<port ID:',id_str,'>'])
 
@@ -343,18 +342,19 @@ class port_id:
 class ttl:
     tlv_type = lldp.TTL_TLV
 
-    def __init__(self, array = None):
+    def __init__(self, raw = None, **kw):
         self.parsed = False
-        self.strlen  = 0
+        self.strlen  = 2
         self.ttl     = 0
-        self.arr     = array
+        self.arr     = raw
 
-        if array != None:
+        if raw is not None:
             self.parse()
 
-    def fill(self, _ttl):
-        self.strlen = 2
-        self.ttl    = _ttl
+        initHelper(self, kw)
+
+    def fill(self, ttl):
+        self.ttl    = ttl
 
     # assume lldp has done the type/len checking
     def parse(self):
@@ -367,6 +367,7 @@ class ttl:
             lg.info('(ttl tlv parse) length incorrect (should be 2) %u' % (self.strlen))
             return
         (self.ttl,) = struct.unpack("!H",self.arr[2:4])
+        self.parsed = True
 
     def __str__(self):
         return ''.join(['<ttl:',str(self.ttl),'>'])
@@ -381,11 +382,11 @@ class ttl:
 class end_tlv:
     tlv_type = lldp.END_TLV
 
-    def __init__(self, array = None):
+    def __init__(self, raw = None):
         self.parsed = False
         self.strlen  = 0
-        self.arr     = array
-        if array != None:
+        self.arr     = raw 
+        if raw is not None:
             self.parse()
 
     # assume lldp has done the type/len checking
@@ -397,9 +398,10 @@ class end_tlv:
         if self.strlen != 0:
             lg.info('(tl end parse) length incorrect (should be 0) %u' % (self.strlen))
             return
+        self.parsed = True
 
     def __str__(self):
-        return ''.join(['<tlv end>'])
+        return '<tlv end>'
 
     def pack(self):
         typelen = 0
@@ -409,12 +411,12 @@ class end_tlv:
 
 class basic_tlv (object):
     #tlv_type = <type>
-    def __init__(self, array = None):
+    def __init__(self, raw = None):
         self.parsed = False
         self.len    = 0
-        self.arr    = array
+        self.arr    = raw
         self.next   = b''
-        if array != None:
+        if raw is not None:
             self.parse()
 
     def fill(self, strval):
@@ -427,6 +429,7 @@ class basic_tlv (object):
         self.tlv_type = typelen >> 9
         self.len  = typelen & 0x01ff
         self.next = self.arr[2:]
+        self.parsed = True
 
     def pack(self):
         typelen = 0
@@ -440,15 +443,15 @@ class system_description (basic_tlv):
 class management_address (object):
     tlv_type = lldp.MANAGEMENT_ADDR_TLV
 
-    def __init__ (self, data = None):
+    def __init__ (self, raw = None):
         self.address_subtype = 0
         self.address = b''
         self.interface_numbering_subtype = 0
         self.interface_number = 0
         self.object_identifier = b''
 
-        if data != None:
-            self.parse(data)
+        if raw is not None:
+            self.parse(raw)
 
     def parse (self, data):
         typelen = struct.unpack("!H",data[0:2])[0]
@@ -486,11 +489,11 @@ class system_name (basic_tlv):
 
 class organizationally_specific (basic_tlv):
     tlv_type = lldp.ORGANIZATIONALLY_SPECIFIC_TLV
-    def __init__ (self, array = None):
+    def __init__ (self, raw = None):
         self.oui = '\x00\x00\x00'
         self.subtype = 0
         self.next = bytes()
-        basic_tlv.__init__(self, array)
+        basic_tlv.__init__(self, raw)
       
     def parse (self):
         basic_tlv.parse(self)
@@ -513,10 +516,10 @@ class system_capabilities (basic_tlv):
                  "Router", "Telephone", "DOCSIS cable device",
                  "Station Only"]
 
-    def __init__ (self, array = None):
+    def __init__ (self, raw = None):
         self.caps = [False] * 16
         self.enabled_caps = [False] * 16
-        basic_tlv.__init__(self, array)
+        basic_tlv.__init__(self, raw)
       
     def parse (self):
         basic_tlv.parse(self)
