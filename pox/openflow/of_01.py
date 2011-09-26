@@ -416,7 +416,8 @@ class Connection (EventMixin):
     l = len(self.buf)
     while l > 4:
       if ord(self.buf[0]) != of.OFP_VERSION:
-        log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) + ") on connection " + str(self))
+        log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) +
+                    ") on connection " + str(self))
         return False
       t = ord(self.buf[1])
       pl = ord(self.buf[2]) << 8 | ord(self.buf[3])
@@ -429,9 +430,8 @@ class Connection (EventMixin):
         h = handlers[t]
         h(self, msg)
       except:
-        print msg.show(str(self) + " " + str(of.ofp_type[t]) + " caused:")
-        import traceback
-        traceback.print_exc()
+        log.exception("%s: Exception while handling OpenFlow message:\n%s %s",
+                      self,self,("\n" + str(self) + " ").join(str(msg).split('\n')))
         continue
     return True
 
