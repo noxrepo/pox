@@ -94,13 +94,14 @@ class ofp_header:
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'version: ' + str(self.version) + '\n'
-    outstr += prefix + 'type:    ' + str(self.header_type) + '\n'
+    outstr += prefix + 'type:    ' + str(self.header_type)# + '\n'
+    outstr += " (" + ofp_type_map.get(self.header_type, "Unknown") + ")\n"
     outstr += prefix + 'length:  ' + str(self.length) + '\n'
     outstr += prefix + 'xid:     ' + str(self.xid) + '\n'
     return outstr
 
   def __str__ (self):
-    return self.show().strip()
+    return self.__class__.__name__ + "\n  " + self.show('  ').strip()
 
 #2. Common Structures
 ##2.1 Port Structures
