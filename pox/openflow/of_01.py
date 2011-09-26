@@ -32,7 +32,7 @@ import threading
 import os
 import sys
 import exceptions
-from errno import EAGAIN
+from errno import EAGAIN, ECONNRESET
 
 
 import traceback
@@ -553,12 +553,17 @@ class OpenFlow_01_Task (Task):
       except exceptions.KeyboardInterrupt:
         break
       except:
-        print "Exception",con,sys.exc_info()[0],sys.exc_info()[1]
-        print "Traceback (most recent last):"
-        traceback.print_tb(sys.exc_info()[2])
+        doTraceback = True
+        if sys.exc_info()[0] is socket.error:
+          if sys.exc_info()[1][0] == ECONNRESET:
+            con.info("Connection reset")
+            doTraceback = False
+
+        if doTraceback:
+          log.exception("Exception reading connection " + str(con))
 
         if con is listener:
-          print "Error in listener.  Aborting"
+          log.error("Excepting on OpenFlow listener.  Aborting.")
           break
         try:
           con.disconnect(True)
