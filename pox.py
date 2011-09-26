@@ -138,7 +138,75 @@ def doLaunch ():
         print name, "does not accept multiple instances"
         return False
 
-      f(**params)
+      try:
+        f(**params)
+      except TypeError as exc:
+        instText = ''
+        if inst[cname] > 0:
+          instText = "instance {0} of ".format(inst[cname] + 1)
+        print "Error executing {2}{0}.{1}:".format(name,launch,instText)
+        import inspect
+        if inspect.currentframe() is sys.exc_info()[2].tb_frame:
+          # Error is with calling the function
+          # Try to give some useful feedback
+          import traceback
+          print ''.join(traceback.format_exception_only(*sys.exc_info()[0:2])),
+          print
+          EMPTY = "<Unspecified>"
+          code = f.__code__
+          argcount = code.co_argcount
+          argnames = code.co_varnames[:argcount]
+          defaults = list((f.func_defaults) or [])
+          defaults = [EMPTY] * (argcount - len(defaults)) + defaults
+          args = {}
+          for n, a in enumerate(argnames):
+            args[a] = [EMPTY,EMPTY]
+            if n < len(defaults):
+              args[a][0] = defaults[n]
+            if a in params:
+              args[a][1] = params[a]
+              del params[a]
+          if '__INSTANCE__' in args:
+            del args['__INSTANCE__']
+
+          if f.__doc__ is not None:
+            print "Documentation for {0}:".format(name)
+            doc = f.__doc__.split("\n")
+            #TODO: only strip the same leading space as was on the first
+            #      line
+            doc = map(str.strip, doc)
+            print '',("\n ".join(doc)).strip()
+
+          #print params
+          #print args
+
+          print "Parameters:"
+          if len(args) == 0:
+            print " None."
+          else:
+            print " {0:25} {1:25} {2:25}".format("Name", "Default",
+                                                "Active")
+            print " {0:25} {0:25} {0:25}".format("-" * 15)
+
+            for k,v in args.iteritems():
+              print " {0:25} {1:25} {2:25}".format(k,v[0],
+              v[1] if v[1] is not EMPTY else v[0])
+
+          if len(params):
+            print "This component does not have a parameter named '{}'.".format(
+             params.keys()[0])
+            return False
+          missing = [k for k,x in args.iteritems()
+                     if x[1] is EMPTY and x[0] is EMPTY]
+          if len(missing):
+            print "You must specify a value for the '{}' parameter.".format(
+             missing[0])
+            return False
+
+          return False
+        else:
+          # Error is inside the function
+          raise
     elif len(params) > 0 or launch is not "launch":
       print ("Module %s has no %s(), but it was specified or passed arguments"
              % (name, launch))
