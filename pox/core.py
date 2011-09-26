@@ -155,9 +155,14 @@ class POXCore (EventMixin):
     self.running = True
     self.components = {}
 
-    print "POX v0.0 / Copyright 2011 James McCauley"
+    self.version = (0,0,0)
+    print "{0} / Copyright 2011 James McCauley".format(self.version_string)
 
     self.scheduler = recoco.Scheduler(daemon=True)
+
+  @property
+  def version_string (self):
+    return "POX " + '.'.join(map(str, self.version))
 
   def callLater (_self, _func, *args, **kw):
     """
@@ -203,7 +208,15 @@ class POXCore (EventMixin):
     self.running = False
 
   def goUp (self):
-    log.debug("Going up...")
+    log.debug(self.version_string + " going up...")
+
+    import platform
+    py = "{impl} ({vers}/{build})".format(
+     impl=platform.python_implementation(),
+     vers=platform.python_version(),
+     build=platform.python_build()[1].replace("  "," "))
+    log.debug("Running on " + py)
+
     self.raiseEvent(GoingUpEvent())
     log.info("Up...")
     self.raiseEvent(UpEvent())
