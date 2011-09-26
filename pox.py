@@ -180,7 +180,7 @@ def doLaunch ():
           #print params
           #print args
 
-          print "Parameters:"
+          print "Parameters for {0}:".format(name)
           if len(args) == 0:
             print " None."
           else:
