@@ -563,7 +563,7 @@ class OpenFlow_01_Task (Task):
           log.exception("Exception reading connection " + str(con))
 
         if con is listener:
-          log.error("Excepting on OpenFlow listener.  Aborting.")
+          log.error("Exception on OpenFlow listener.  Aborting.")
           break
         try:
           con.disconnect(True)
