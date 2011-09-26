@@ -193,13 +193,13 @@ def doLaunch ():
               v[1] if v[1] is not EMPTY else v[0])
 
           if len(params):
-            print "This component does not have a parameter named '{}'.".format(
-             params.keys()[0])
+            print "This component does not have a parameter named " + \
+                  "'{0}'.".format(params.keys()[0])
             return False
           missing = [k for k,x in args.iteritems()
                      if x[1] is EMPTY and x[0] is EMPTY]
           if len(missing):
-            print "You must specify a value for the '{}' parameter.".format(
+            print "You must specify a value for the '{0}' parameter.".format(
              missing[0])
             return False
 
