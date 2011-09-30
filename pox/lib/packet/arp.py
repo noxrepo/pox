@@ -162,9 +162,10 @@ class arp (packet_base):
             elif self.opcode == arp.REV_REPLY:
                 op = "REV_REPLY"
 
-        s = ''.join(('(',op,'[hw:'+str(self.hwtype),'p:'+str(self.prototype),
-                         '[', str(EthAddr(self.hwsrc)),'>',
-                              str(EthAddr(self.hwdst)),']:',
-                              '[',str(IPAddr(self.protosrc)), '>',
-                                  str(IPAddr(self.protodst)),'])'))
+        s = "{0} hw:{1} p:{2} {3}>{4} {5}>{6}".format(op, self.hwtype,
+                                                      self.prototype,
+                                                      EthAddr(self.hwsrc),
+                                                      EthAddr(self.hwdst),
+                                                      IPAddr(self.protosrc),
+                                                      IPAddr(self.protodst))
         return s

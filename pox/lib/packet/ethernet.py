@@ -57,7 +57,6 @@ class ethernet(packet_base):
 
   def __init__(self, raw=None, prev=None, **kw):
     if len(ethernet.type_parsers) == 0:
-      # trying to bypass hairy cyclical include problems
       from vlan import vlan
       ethernet.type_parsers[ethernet.VLAN_TYPE] = vlan
       from arp  import arp
@@ -97,7 +96,7 @@ class ethernet(packet_base):
     self.hdr_len = ethernet.MIN_LEN
     self.payload_len = alen - self.hdr_len
 
-    # xxx Need to support SNAP/LLC frames
+    #TODO: support SNAP/LLC frames
     if self.type in ethernet.type_parsers:
       self.next = ethernet.type_parsers[self.type](raw[ethernet.MIN_LEN:], self)
     else:
@@ -113,18 +112,18 @@ class ethernet(packet_base):
   def __str__(self):
     s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self.dst)),':',
                 ethernet.getNameForType(self.type),']'))
-    if self.next == None:
+    if self.next is None:
       return s
-    elif type(self.next) == bytes:
-      return s + '<' + str(len(self.next)) + ' bytes>'
+    elif isinstance(type(self.next), bytes):
+      return s + '|<' + str(len(self.next)) + ' bytes>'
     else:
-      return ''.join((s, str(self.next)))
+      return s + "|" + str(self.next)
 
   def hdr(self, payload):
     dst = self.dst
     src = self.src
-    if type(dst) == EthAddr:
+    if type(dst) is EthAddr:
       dst = dst.toRaw()
-    if type(src) == EthAddr:
+    if type(src) is EthAddr:
       src = src.toRaw()
     return struct.pack('!6s6sH', dst, src, self.type)

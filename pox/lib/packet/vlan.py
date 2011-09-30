@@ -60,10 +60,11 @@ class vlan(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = ''.join(('(vlanid='+str(self.id)+':pcp='+str(self.pcp)+")["+ethtype_to_str(self.eth_type)+']'))
-        if self.next == None:
+        s = "vlan={0} pcp={1} ether={2}".format(self.id, self.pcp,
+                                                ethtype_to_str(self.eth_type))
+        if self.next is None:
             return s
-        return ''.join((s, str(self.next)))
+        return s + "|" + str(self.next)
 
     def parse(self, raw):
         assert isinstance(raw, bytes)
@@ -86,7 +87,8 @@ class vlan(packet_base):
         assert self.eth_type != 0x8100
 
         if self.eth_type in ethernet.type_parsers:
-            self.next = ethernet.type_parsers[self.eth_type](raw=raw[vlan.MIN_LEN:],prev=self)
+            self.next = ethernet.type_parsers[self.eth_type]\
+             (raw=raw[vlan.MIN_LEN:],prev=self)
 
     def hdr(self, payload):
         pcpid  = self.pcp << 13
@@ -94,5 +96,3 @@ class vlan(packet_base):
         pcpid |= self.id
         buf = struct.pack("!HH", pcpid, self.eth_type)
         return buf
-
-ethernet.type_parsers[ethernet.VLAN_TYPE] = vlan
