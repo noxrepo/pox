@@ -372,7 +372,6 @@ class ofp_match:
   @classmethod
   def from_packet (cls, packet, in_port = None):
     #NOTE: this may not belong here and may be moved
-
     assert(isinstance(packet, ethernet))
 
     match = cls()
@@ -407,8 +406,8 @@ class ofp_match:
     elif isinstance(p, arp):
       if p.opcode <= 255:
         match.nw_proto = p.opcode
-        match.tp_src = p.protosrc
-        match.tp_dst = p.protodst
+        match.nw_src = p.protosrc
+        match.nw_dst = p.protodst
 
     return match
 
@@ -610,6 +609,9 @@ class ofp_match:
 
   def __ne__ (self, other): return not self.__eq__(other)
 
+  def __str__ (self):
+    return self.__class__.__name__ + "\n  " + self.show('  ').strip()
+
   def show (self, prefix=''):
     def binstr (n):
       s = ''
@@ -625,7 +627,7 @@ class ofp_match:
     outstr += prefix + 'dl_dst: ' + str(self.dl_dst) + '\n'
     outstr += prefix + 'dl_vlan: ' + str(self.dl_vlan) + '\n'
     outstr += prefix + 'dl_vlan_pcp: ' + str(self.dl_vlan_pcp) + '\n'
-    outstr += prefix + 'dl_type: ' + str(self.dl_type) + '\n'
+    outstr += prefix + 'dl_type: ' + hex(self.dl_type) + '\n'
     outstr += prefix + 'nw_tos: ' + str(self.nw_tos) + '\n'
     outstr += prefix + 'nw_proto: ' + str(self.nw_proto) + '\n'
     outstr += prefix + 'nw_src: ' + str(self.nw_src) + '\n'
