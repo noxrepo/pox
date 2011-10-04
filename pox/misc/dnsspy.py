@@ -23,8 +23,7 @@ This is a port of NOX's DNSSpy component.
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.revent.revent import *
-import pox.lib.packet.ethernet as ethernet
-import pox.lib.packet.ipv4 as ipv4
+from pox.lib.packet import *
 
 log = core.getLogger()
 
@@ -37,8 +36,8 @@ class DNSSpy (EventMixin):
   def _handle_ConnectionUp (self, event):
     msg = of.ofp_flow_mod()
     msg.match = of.ofp_match()
-    msg.match.dl_type = ethernet.ethernet.IP_TYPE
-    msg.match.nw_proto = ipv4.ipv4.UDP_PROTOCOL
+    msg.match.dl_type = ethernet.IP_TYPE
+    msg.match.nw_proto = ipv4.UDP_PROTOCOL
     msg.match.tp_src = 53
     msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
     event.connection.send(msg)
