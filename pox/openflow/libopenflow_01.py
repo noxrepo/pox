@@ -383,7 +383,7 @@ class ofp_match:
     match.dl_src = packet.src
     match.dl_dst = packet.dst
     match.dl_type = packet.type
-    p = ethernet.next
+    p = packet.next
 
     if isinstance(p, vlan):
       match.dl_vlan = p.id
