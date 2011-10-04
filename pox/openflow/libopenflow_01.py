@@ -557,7 +557,13 @@ class ofp_match:
     packed += '\x00' # Hardcode padding
     packed += struct.pack("!HBB", self.dl_type or 0, self.nw_tos or 0, self.nw_proto or 0)
     packed += '\x00\x00' # Hardcode padding
-    packed += struct.pack("!LLHH", self.nw_src or 0, self.nw_dst or 0, self.tp_src or 0, self.tp_dst or 0)
+    def fix (addr):
+      if addr is None: return 0
+      if type(addr) is int: return addr
+      if type(addr) is long: return addr
+      return addr.toSigned()
+    packed += struct.pack("!LLHH", fix(self.nw_src), fix(self.nw_dst),
+                          self.tp_src or 0, self.tp_dst or 0)
     return packed
 
   def _normalize_wildcards (self, wildcards):
