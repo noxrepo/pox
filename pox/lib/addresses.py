@@ -256,6 +256,7 @@ class IPAddr (object):
     return self.toStr()
 
   def __cmp__ (self, other):
+    if other is None: return 1
     try:
       if not isinstance(other, IPAddr):
         other = IPAddr(other)
