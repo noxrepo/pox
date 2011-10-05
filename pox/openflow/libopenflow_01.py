@@ -559,8 +559,8 @@ class ofp_match:
     packed += '\x00\x00' # Hardcode padding
     def fix (addr):
       if addr is None: return 0
-      if type(addr) is int: return addr
-      if type(addr) is long: return addr
+      if type(addr) is int: return addr & 0xffFFffFF
+      if type(addr) is long: return addr & 0xffFFffFF
       return addr.toUnsigned()
     packed += struct.pack("!LLHH", fix(self.nw_src), fix(self.nw_dst),
                           self.tp_src or 0, self.tp_dst or 0)
