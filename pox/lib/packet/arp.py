@@ -69,6 +69,8 @@ class arp (packet_base):
     REV_REPLY   = 4 # RARP
 
     def __init__(self, raw=None, prev=None, **kw):
+        packet_base.__init__(self)
+
         self.prev = prev
 
         self.hwtype     = arp.HW_TYPE_ETHERNET

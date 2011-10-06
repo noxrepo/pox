@@ -110,6 +110,8 @@ class dhcp(packet_base):
     MAGIC = b'\x63\x82\x53\x63'
 
     def __init__(self, raw=None, prev=None, **kw):
+        packet_base.__init__(self)
+
         self.prev = prev
 
         self.op = 0

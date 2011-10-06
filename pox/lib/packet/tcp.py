@@ -103,6 +103,7 @@ class tcp(packet_base):
     CWR  = 0x80
 
     def __init__(self, raw=None, prev=None, **kw):
+        packet_base.__init__(self)
 
         self.prev = prev
 

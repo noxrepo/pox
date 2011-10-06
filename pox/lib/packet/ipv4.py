@@ -71,6 +71,7 @@ class ipv4(packet_base):
     ip_id = int(time.time())
 
     def __init__(self, raw=None, prev=None, **kw):
+        packet_base.__init__(self)
 
         self.prev = prev
 

@@ -26,6 +26,8 @@ from pox.lib.util import initHelper
 
 class packet_base (object):
     """
+    TODO: This description is somewhat outdated and should be fixed.
+
     Base class for packets.
 
     Classes that perform packet manipulation (parsing and contruction)
@@ -36,6 +38,8 @@ class packet_base (object):
     class foo (packet_base):
 
         def __init__(data=None, prev=None):
+          packet_base.__init__(self)
+
           # data: is the data for the packet as a "bytes" object.
           # prev: is a pointer to the previous header
           # which is expected to be of type packet_base
@@ -60,10 +64,11 @@ class packet_base (object):
         def __str__(self):
             # optionally convert to human readable string
     """
-    next = None
-    prev = None
-    parsed = False
-    raw = None
+    def __init__ (self):
+        self.next = None
+        self.prev = None
+        self.parsed = False
+        self.raw = None
 
     def _init (self, kw):
         if 'payload' in kw:

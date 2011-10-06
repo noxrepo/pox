@@ -134,6 +134,8 @@ class dns(packet_base):
     MIN_LEN     = 12
 
     def __init__(self, raw=None, prev=None, **kw):
+        packet_base.__init__(self)
+
         self.prev = prev
 
         self.questions   = []
@@ -381,7 +383,7 @@ class dns(packet_base):
         rddata = self.get_rddata(l, qtype, rdlen, index + 10)
         rr_list.append(dns.rr(name, qtype, qclass,ttl,rdlen,rddata))
 
-        return index + 10 +rdlen
+        return index + 10 + rdlen
 
     def get_rddata(self, l, type, dlen, beg_index):
         if beg_index + dlen > len(l):

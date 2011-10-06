@@ -45,6 +45,8 @@ class vlan(packet_base):
     MIN_LEN = 4
 
     def __init__(self, raw=None, prev=None, **kw):
+        packet_base.__init__(self)
+
         self.prev = prev
 
         self.next = None

@@ -135,6 +135,8 @@ class eap(packet_base):
         return eap.type_names.get(type, "type%d" % type)
 
     def __init__(self, raw=None, prev=None, **kw):
+        packet_base.__init__(self)
+
         self.prev = prev
 
         self.code = self.REQUEST_CODE

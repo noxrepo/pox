@@ -56,6 +56,8 @@ class ethernet(packet_base):
   type_parsers = {}
 
   def __init__(self, raw=None, prev=None, **kw):
+    packet_base.__init__(self)
+
     if len(ethernet.type_parsers) == 0:
       from vlan import vlan
       ethernet.type_parsers[ethernet.VLAN_TYPE] = vlan
