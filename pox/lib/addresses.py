@@ -181,7 +181,7 @@ class IPAddr (object):
     """ Can be initialized with several formats.
         If addr is an int/long, then it is assumed to be in host byte order
         unless networkOrder = True
-        Stored in host byte order as a signed int
+        Stored in network byte order as a signed int
     """
 
     # Always stores as a signed network-order int
@@ -190,7 +190,7 @@ class IPAddr (object):
         # dotted quad
         self._value = struct.unpack('i', socket.inet_aton(addr))[0]
       else:
-        self._value = struct.unpack('!i', addr)[0]
+        self._value = struct.unpack('i', addr)[0]
     elif isinstance(addr, IPAddr):
       self._value = addr._value
     elif isinstance(addr, int) or isinstance(addr, long):
