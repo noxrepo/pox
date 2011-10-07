@@ -1266,6 +1266,7 @@ class ofp_switch_config (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.flags = 0
+    self.header_type = OFPT_SET_CONFIG
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
     initHelper(self, kw)
@@ -1277,6 +1278,8 @@ class ofp_switch_config (ofp_header):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
+
+    self.length = self.__len__()
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.flags, self.miss_send_len)
