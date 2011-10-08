@@ -49,7 +49,7 @@ def generateXID ():
 # Structure definitions
 
 #1. Openflow Header
-class ofp_header:
+class ofp_header (object):
   def __init__ (self, **kw):
     self.version = OFP_VERSION
     self.header_type = 0
@@ -105,7 +105,7 @@ class ofp_header:
 
 #2. Common Structures
 ##2.1 Port Structures
-class ofp_phy_port:
+class ofp_phy_port (object):
   def __init__ (self):
     self.port_no = 0
     self.hw_addr = EMPTY_ETH
@@ -214,7 +214,7 @@ ofp_port_features_rev_map = {
 }
 
 ##2.2 Queue Structures
-class ofp_packet_queue:
+class ofp_packet_queue (object):
   def __init__ (self):
     self.queue_id = 0
     self.length = 0
@@ -273,7 +273,7 @@ ofp_queue_properties_rev_map = {
 }
 OFPQT_NONE         = 0
 
-class ofp_queue_prop_header:
+class ofp_queue_prop_header (object):
   def __init__ (self):
     self.property = 0
     self.length = 8
@@ -317,7 +317,7 @@ class ofp_queue_prop_header:
     outstr += prefix + 'len: ' + str(self.length) + '\n'
     return outstr
 
-class ofp_queue_prop_min_rate:
+class ofp_queue_prop_min_rate (object):
   def __init__ (self):
     self.prop_header = ofp_queue_prop_header()
     self.rate = 0
@@ -368,7 +368,7 @@ class ofp_queue_prop_min_rate:
     return outstr
 
 ##2.3 Flow Match Structures
-class ofp_match:
+class ofp_match (object):
   @classmethod
   def from_packet (cls, packet, in_port = None):
     #NOTE: this may not belong here and may be moved
@@ -697,7 +697,7 @@ ofp_action_type_rev_map = {
   'OFPAT_VENDOR'       : 65535,
 }
 
-class ofp_action_header:
+class ofp_action_header (object):
   def __init__ (self):
     self.type = 0
     self.length = 8
@@ -741,7 +741,7 @@ class ofp_action_header:
     outstr += prefix + 'len: ' + str(self.length) + '\n'
     return outstr
 
-class ofp_action_output:
+class ofp_action_output (object):
   def __init__ (self, **kw):
     self.type = OFPAT_OUTPUT
     self.length = 8
@@ -790,7 +790,7 @@ class ofp_action_output:
     outstr += prefix + 'max_len: ' + str(self.max_len) + '\n'
     return outstr
 
-class ofp_action_enqueue:
+class ofp_action_enqueue (object):
   def __init__ (self, **kw):
     self.type = 0
     self.length = 16
@@ -844,7 +844,7 @@ class ofp_action_enqueue:
     outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
     return outstr
 
-class ofp_action_vlan_vid:
+class ofp_action_vlan_vid (object):
   def __init__ (self, **kw):
     self.type = OFPAT_SET_VLAN_VID
     self.length = 8
@@ -893,7 +893,7 @@ class ofp_action_vlan_vid:
     outstr += prefix + 'vlan_vid: ' + str(self.vlan_vid) + '\n'
     return outstr
 
-class ofp_action_vlan_pcp:
+class ofp_action_vlan_pcp (object):
   def __init__ (self, **kw):
     self.type = OFPAT_SET_VLAN_PCP
     self.length = 8
@@ -942,7 +942,7 @@ class ofp_action_vlan_pcp:
     outstr += prefix + 'vlan_pcp: ' + str(self.vlan_pcp) + '\n'
     return outstr
 
-class ofp_action_dl_addr:
+class ofp_action_dl_addr (object):
   def __init__ (self, dl_addr = None):
     self.type = 0
     self.length = 16
@@ -1001,7 +1001,7 @@ class ofp_action_dl_addr:
     outstr += prefix + 'dl_addr: ' + str(self.dl_addr) + '\n'
     return outstr
 
-class ofp_action_nw_addr:
+class ofp_action_nw_addr (object):
   def __init__ (self, nw_addr = None):
     self.type = 0
     self.length = 8
@@ -1048,7 +1048,7 @@ class ofp_action_nw_addr:
     outstr += prefix + 'nw_addr: ' + str(self.nw_addr) + '\n'
     return outstr
 
-class ofp_action_nw_tos:
+class ofp_action_nw_tos (object):
   def __init__ (self, nw_tos = 0):
     self.type = 0
     self.length = 8
@@ -1095,7 +1095,7 @@ class ofp_action_nw_tos:
     outstr += prefix + 'nw_tos: ' + str(self.nw_tos) + '\n'
     return outstr
 
-class ofp_action_tp_port:
+class ofp_action_tp_port (object):
   def __init__ (self, tp_port = 0):
     self.type = 0
     self.length = 8
@@ -1142,7 +1142,7 @@ class ofp_action_tp_port:
     outstr += prefix + 'tp_port: ' + str(self.tp_port) + '\n'
     return outstr
 
-class ofp_action_vendor_header:
+class ofp_action_vendor_header (object):
   def __init__ (self):
     self.type = OFPAT_VENDOR
     self.length = 8
@@ -1281,8 +1281,9 @@ ofp_capabilities_rev_map = {
 class ofp_switch_config (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.flags = 0
     self.header_type = OFPT_SET_CONFIG
+    self.length = 12
+    self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
     initHelper(self, kw)
@@ -1294,8 +1295,6 @@ class ofp_switch_config (ofp_header):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
-
-    self.length = self.__len__()
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.flags, self.miss_send_len)
@@ -1751,7 +1750,7 @@ ofp_stats_reply_flags_rev_map = {
   'OFPSF_REPLY_MORE' : 1,
 }
 
-class ofp_desc_stats:
+class ofp_desc_stats (object):
   def __init__ (self):
     self.mfr_desc= ""
     self.hw_desc= ""
@@ -1827,7 +1826,7 @@ class ofp_desc_stats:
     outstr += prefix + 'dp_desc: ' + str(self.dp_desc) + '\n'
     return outstr
 
-class ofp_flow_stats_request:
+class ofp_flow_stats_request (object):
   def __init__ (self):
     self.match = ofp_match()
     self.table_id = 0
@@ -1877,7 +1876,7 @@ class ofp_flow_stats_request:
     outstr += prefix + 'out_port: ' + str(self.out_port) + '\n'
     return outstr
 
-class ofp_flow_stats:
+class ofp_flow_stats (object):
   def __init__ (self):
     self.length = 0
     self.table_id = 0
@@ -1969,7 +1968,7 @@ class ofp_flow_stats:
       outstr += obj.show(prefix + '  ')
     return outstr
 
-class ofp_aggregate_stats_request:
+class ofp_aggregate_stats_request (object):
   def __init__ (self):
     self.match = ofp_match()
     self.table_id = 0
@@ -2018,7 +2017,7 @@ class ofp_aggregate_stats_request:
     outstr += prefix + 'out_port: ' + str(self.out_port) + '\n'
     return outstr
 
-class ofp_aggregate_stats_reply:
+class ofp_aggregate_stats_reply (object):
   def __init__ (self):
     self.packet_count = 0
     self.byte_count = 0
@@ -2065,7 +2064,7 @@ class ofp_aggregate_stats_reply:
     outstr += prefix + 'flow_count: ' + str(self.flow_count) + '\n'
     return outstr
 
-class ofp_table_stats:
+class ofp_table_stats (object):
   def __init__ (self):
     self.table_id = 0
     self.pad = b'\x00' * 3
@@ -2132,7 +2131,7 @@ class ofp_table_stats:
     outstr += prefix + 'matched_count: ' + str(self.matched_count) + '\n'
     return outstr
 
-class ofp_port_stats_request:
+class ofp_port_stats_request (object):
   def __init__ (self):
     self.port_no = 0
     self.pad = b'\x00' * 6
@@ -2173,7 +2172,7 @@ class ofp_port_stats_request:
     outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
     return outstr
 
-class ofp_port_stats:
+class ofp_port_stats (object):
   def __init__ (self):
     self.port_no = 0
     self.pad = b'\x00' * 6
@@ -2252,7 +2251,7 @@ class ofp_port_stats:
     outstr += prefix + 'collisions: ' + str(self.collisions) + '\n'
     return outstr
 
-class ofp_queue_stats_request:
+class ofp_queue_stats_request (object):
   def __init__ (self):
     self.port_no = 0
     self.pad = b'\x00' * 2
@@ -2298,7 +2297,7 @@ class ofp_queue_stats_request:
     outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
     return outstr
 
-class ofp_queue_stats:
+class ofp_queue_stats (object):
   def __init__ (self):
     self.port_no = 0
     self.pad = b'\x00' * 2
