@@ -422,7 +422,7 @@ class ofp_match:
       if not hasattr(self, '_'+k):
         raise TypeError(self.__class__.__name__ + " constructor got "
           + "unexpected keyword argument '" + k + "'")
-      setattr(obj, k, v)
+      setattr(self, k, v)
 
   def get_nw_dst (self):
     if (self.wildcards & OFPFW_NW_DST_ALL) == OFPFW_NW_DST_ALL: return (None, 0)
@@ -593,6 +593,22 @@ class ofp_match:
 
   def __len__ (self):
     return 40
+
+  def hash_code (self):
+    '''
+    ofp_match is not properly hashable since it is mutable, but it can still be
+    useful to easily generate a hash code.
+    '''
+
+    h = self.wildcards
+    for f in ofp_match_data:
+      v = getattr(self, f)
+      if type(v) is int:
+        h ^= v
+      elif type(v) is long:
+        h ^= v
+
+    return int(h & 0x7fFFffFF)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -1332,7 +1348,7 @@ class ofp_flow_mod (ofp_header):
     self.hard_timeout = 0
     self.priority = OFP_DEFAULT_PRIORITY
     self.buffer_id = -1
-    self.out_port = 0
+    self.out_port = OFPP_NONE
     self.flags = 0
     self.actions = []
 

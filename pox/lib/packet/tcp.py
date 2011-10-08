@@ -93,14 +93,48 @@ class tcp(packet_base):
 
     MIN_LEN = 20
 
-    FIN  = 0x01
-    SYN  = 0x02
-    RST  = 0x04
-    PUSH = 0x08
-    ACK  = 0x10
-    URG  = 0x20
-    ECN  = 0x40
-    CWR  = 0x80
+    FIN_flag = 0x01
+    SYN_flag = 0x02
+    RST_flag = 0x04
+    PSH_flag = 0x08
+    ACK_flag = 0x10
+    URG_flag = 0x20
+    ECN_flag = 0x40
+    CWR_flag = 0x80
+
+    @property
+    def FIN (self): return True if self.flags & self.FIN_flag else False
+    @property
+    def SYN (self): return True if self.flags & self.SYN_flag else False
+    @property
+    def RST (self): return True if self.flags & self.RST_flag else False
+    @property
+    def PSH (self): return True if self.flags & self.PSH_flag else False
+    @property
+    def ACK (self): return True if self.flags & self.ACK_flag else False
+    @property
+    def URG (self): return True if self.flags & self.URG_flag else False
+    @property
+    def ECN (self): return True if self.flags & self.ECN_flag else False
+    @property
+    def CWR (self): return True if self.flags & self.CWR_flag else False
+
+    @FIN.setter
+    def FIN (self, value): self._setflag(self.FIN_flag)
+    @SYN.setter
+    def SYN (self, value): self._setflag(self.SYN_flag)
+    @RST.setter
+    def RST (self, value): self._setflag(self.RST_flag)
+    @PSH.setter
+    def PSH (self, value): self._setflag(self.PSH_flag)
+    @ACK.setter
+    def ACK (self, value): self._setflag(self.ACK_flag)
+    @URG.setter
+    def URG (self, value): self._setflag(self.URG_flag)
+    @ECN.setter
+    def ECN (self, value): self._setflag(self.ECN_flag)
+    @CWR.setter
+    def CWR (self, value): self._setflag(self.CWR_flag)
 
     def __init__(self, raw=None, prev=None, **kw):
         packet_base.__init__(self)
