@@ -98,13 +98,13 @@ class FlowRemoved (Event):
     self.hardTimeout = False
     self.deleted = False
     self.timeout = False
-    if ofp.reason == OFPRR_IDLE_TIMEOUT:
+    if ofp.reason == of.OFPRR_IDLE_TIMEOUT:
       self.timeout = True
       self.idleTimeout = True
-    elif ofp.reason == OFPRR_HARD_TIMEOUT:
+    elif ofp.reason == of.OFPRR_HARD_TIMEOUT:
       self.timeout = True
       self.hardTimeout = True
-    elif ofp.reason == OFPRR_DELETE:
+    elif ofp.reason == of.OFPRR_DELETE:
       self.deleted = True
 
 class RawStatsReply (Event):
