@@ -1019,7 +1019,7 @@ class ofp_action_nw_addr (object):
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += struct.pack("!HHL", self.type, self.length, self.nw_addr.toSigned())
+    packed += struct.pack("!HHl", self.type, self.length, self.nw_addr.toSigned())
     return packed
 
   def unpack (self, binaryString):
