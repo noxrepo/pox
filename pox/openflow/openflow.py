@@ -214,7 +214,7 @@ class BarrierIn (Event):
     self.connection = connection
     self.ofp = ofp
     self.dpid = connection.dpid
-    self.xid = ofp.header.xid
+    self.xid = ofp.xid
 
 
 class OpenFlowHub (EventMixin):
