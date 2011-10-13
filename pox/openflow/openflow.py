@@ -241,6 +241,13 @@ class OpenFlowHub (EventMixin):
     QueueStatsReceived,
     FlowRemoved,
   ])
+
+  # Bytes to send to controller when a packet misses all flows
+  miss_send_len = of.OFP_DEFAULT_MISS_SEND_LEN
+
+  # Enable/Disable clearing of flows on switch connect
+  clear_flows_on_connect = True
+
   def __init__ (self):
     self._connections = {}#weakref.WeakValueDictionary() # DPID -> Connection
 

@@ -58,11 +58,28 @@ def handle_FLOW_REMOVED (con, msg):
 def handle_FEATURES_REPLY (con, msg):
   con.features = msg
   con.dpid = msg.datapath_id
-  con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
   openflowHub._connections[con.dpid] = con
-  #for p in msg.ports: print(p.show())
-  openflowHub.raiseEvent(ConnectionUp, con, msg)
-  con.raiseEvent(ConnectionUp, con, msg)
+
+  if openflowHub.miss_send_len is not None:
+    con.send(of.ofp_switch_config(miss_send_len = openflowHub.miss_send_len))
+  if openflowHub.clear_flows_on_connect:
+    con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
+  barrier = of.ofp_barrier_request()
+  con.send(barrier)
+
+  def finish_connecting (event):
+    if event.xid != barrier.xid:
+      con.dpid = None
+      con.err("Failed connect for " + pox.lib.util.dpidToStr(msg.datapath_id))
+      con.disconnect()
+    else:
+      con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
+      #for p in msg.ports: print(p.show())
+      openflowHub.raiseEventNoErrors(ConnectionUp, con, msg)
+      con.raiseEventNoErrors(ConnectionUp, con, msg)
+    return EventHaltAndRemove
+
+  con.addListener(BarrierIn, finish_connecting)
 
 def handle_STATS_REPLY (con, msg):
   openflowHub.raiseEventNoErrors(RawStatsReply, con, msg)
@@ -336,8 +353,7 @@ class Connection (EventMixin):
     self.features = None
     self.disconnected = False
 
-    msg = of.ofp_hello()
-    self.send(msg.pack())
+    self.send(of.ofp_hello())
 
     #TODO: set a time that makes sure we actually establish a connection by some timeout
 
