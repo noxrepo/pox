@@ -69,7 +69,8 @@ class ofp_header (object):
       if(not ofp_header._assert(self)[0]):
         return None
     packed = ""
-    packed += struct.pack("!BBHL", self.version, self.header_type, self.length, self.xid)
+    packed += struct.pack("!BBHL", self.version, self.header_type, self.length,
+                          self.xid)
     return packed
 
   def unpack (self, binaryString):
@@ -1340,9 +1341,12 @@ class ofp_flow_mod (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.header_type = OFPT_FLOW_MOD
-    self.match = ofp_match()
+    if 'match' in kw:
+      self.match = None
+    else:
+      self.match = ofp_match()
     self.cookie = 0
-    self.command = 0
+    self.command = OFPFC_ADD
     self.idle_timeout = 0
     self.hard_timeout = 0
     self.priority = OFP_DEFAULT_PRIORITY
