@@ -2521,9 +2521,9 @@ class ofp_packet_in (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.header_type = OFPT_PACKET_IN
-    self.buffer_id = 0
+    self.buffer_id = -1
     self.total_len = 0
-    self.in_port = 0
+    self.in_port = OFPP_NONE
     self.reason = 0
     self.pad = 0
     self.data = None
