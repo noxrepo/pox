@@ -32,7 +32,7 @@ class packet_base (object):
 
     Classes that perform packet manipulation (parsing and contruction)
     should derive from this class.
-    
+
     The general layout of such a subclass is as follows:
 
     class foo (packet_base):
