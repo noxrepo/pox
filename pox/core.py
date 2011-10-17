@@ -206,9 +206,15 @@ class POXCore (EventMixin):
     Shut down POX.
     """
     if self.running:
-      print "Quitting..."
+      self.running = False
+      log.info("Quitting...")
       self.raiseEvent(GoingDownEvent())
-    self.running = False
+      self.callLater(self.scheduler.quit)
+      for i in range(50):
+        if self.scheduler._hasQuit: break
+        time.sleep(.1)
+      if not self.scheduler._allDone:
+        log.warning("Scheduler didn't quit in time")
 
   def goUp (self):
     log.debug(self.version_string + " going up...")

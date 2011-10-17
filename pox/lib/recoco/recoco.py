@@ -119,6 +119,7 @@ class Scheduler (object):
 
     self._lock = threading.Lock()
     self._callLaterTask = None
+    self._allDone = False
 
     global defaultScheduler
     if isDefaultScheduler or (isDefaultScheduler is None and defaultScheduler is None):
@@ -191,6 +192,7 @@ class Scheduler (object):
       #print("Scheduler done")
       self._hasQuit = True
       self._selectHub._cycle()
+      self._allDone = True
 
   def cycle (self):
     #if len(self._ready) == 0: return False
