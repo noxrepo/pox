@@ -120,21 +120,24 @@ class tcp(packet_base):
     def CWR (self): return True if self.flags & self.CWR_flag else False
 
     @FIN.setter
-    def FIN (self, value): self._setflag(self.FIN_flag)
+    def FIN (self, value): self._setflag(self.FIN_flag, value)
     @SYN.setter
-    def SYN (self, value): self._setflag(self.SYN_flag)
+    def SYN (self, value): self._setflag(self.SYN_flag, value)
     @RST.setter
-    def RST (self, value): self._setflag(self.RST_flag)
+    def RST (self, value): self._setflag(self.RST_flag, value)
     @PSH.setter
-    def PSH (self, value): self._setflag(self.PSH_flag)
+    def PSH (self, value): self._setflag(self.PSH_flag, value)
     @ACK.setter
-    def ACK (self, value): self._setflag(self.ACK_flag)
+    def ACK (self, value): self._setflag(self.ACK_flag, value)
     @URG.setter
-    def URG (self, value): self._setflag(self.URG_flag)
+    def URG (self, value): self._setflag(self.URG_flag, value)
     @ECN.setter
-    def ECN (self, value): self._setflag(self.ECN_flag)
+    def ECN (self, value): self._setflag(self.ECN_flag, value)
     @CWR.setter
-    def CWR (self, value): self._setflag(self.CWR_flag)
+    def CWR (self, value): self._setflag(self.CWR_flag, value)
+
+    def _setflag (self, flag, value):
+      self.flags = (self.flags & ~flag) | (flag if value else 0)
 
     def __init__(self, raw=None, prev=None, **kw):
         packet_base.__init__(self)
@@ -159,7 +162,7 @@ class tcp(packet_base):
             self.parse(raw)
 
         self._init(kw)
-        
+
     def __str__(self):
         s = ''.join(('{', str(self.srcport), '>',
                          str(self.dstport), '} seq:',
