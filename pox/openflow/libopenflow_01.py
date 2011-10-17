@@ -793,7 +793,7 @@ class ofp_action_output (object):
 
 class ofp_action_enqueue (object):
   def __init__ (self, **kw):
-    self.type = 0
+    self.type = OFPAT_ENQUEUE
     self.length = 16
     self.port = 0
     self.pad = b'\x00' * 6
