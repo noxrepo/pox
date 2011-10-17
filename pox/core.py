@@ -29,7 +29,8 @@ import time
 import os
 
 _path = inspect.stack()[0][1]
-#_path = _path[0:_path.rindex('/')] # Uncomment if you want "pox."
+_ext_path = _path[0:_path.rindex('/')]
+_ext_path = os.path.dirname(_ext_path) + os.sep
 _path = os.path.dirname(_path) + os.sep
 
 SQUELCH_TIME = 5
@@ -52,6 +53,8 @@ def getLogger (name=None, moreFrames=0):
       name = name[0:-4]
     if name.startswith(_path):
       name = name[len(_path):]
+    elif name.startswith(_ext_path):
+      name = name[len(_ext_path):]
     name = name.replace('/', '.').replace('\\', '.') #FIXME: use os.path or whatever
 
     # Remove double names ("topology.topology" -> "topology")
