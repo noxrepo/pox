@@ -79,8 +79,8 @@ def doImport (name):
 def doLaunch ():
   import sys, os
   # Add pox directory to path
-  sys.path.append(os.path.abspath('pox'))
-  sys.path.append(os.path.abspath('ext'))
+  sys.path.append(os.path.abspath(os.path.join(sys.path[0], 'pox')))
+  sys.path.append(os.path.abspath(os.path.join(sys.path[0], 'ext')))
 
   component_order = []
   components = {}
