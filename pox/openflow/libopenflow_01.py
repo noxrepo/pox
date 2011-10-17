@@ -742,7 +742,7 @@ class ofp_action_output (object):
   def __init__ (self, **kw):
     self.type = OFPAT_OUTPUT
     self.length = 8
-    self.port = 0
+    self.port = None # Purposely bad -- require specification
     self.max_len = 0xffFF
 
     initHelper(self, kw)
