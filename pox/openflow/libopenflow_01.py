@@ -478,12 +478,8 @@ class ofp_match (object):
       ip = ipOrIPAndBits
       b = 32 if b is None else b
 
-    #TODO: fix addr using IPAddress
-    """
     if type(ip) is str:
-    if len(ip) == 4:
-      # It's a packed IP
-    """
+      ip = IPAddr(ip)
 
     if bits != None: b = bits
     if b > 32: b = 32
