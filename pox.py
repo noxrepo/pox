@@ -150,7 +150,11 @@ def doLaunch ():
           # Error is with calling the function
           # Try to give some useful feedback
           import traceback
-          print ''.join(traceback.format_exception_only(*sys.exc_info()[0:2])),
+          if options.get("verbose"):
+            traceback.print_exc()
+          else:
+            exc = sys.exc_info()[0:2]
+            print ''.join(traceback.format_exception_only(*exc)),
           print
           EMPTY = "<Unspecified>"
           code = f.__code__
