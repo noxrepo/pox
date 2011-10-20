@@ -221,13 +221,15 @@ def doLaunch ():
 cli = True
 
 def process_options ():
+  # TODO: define this list somewhere else. Or use an option-parsing library.
+  pox_options = ["no-cli", "verbose"]
   for k,v in options.iteritems():
     #print k,"=",v
     if k == "no-cli":
       if str(v).lower() == "true":
         global cli
         cli = False
-    else:
+    elif k not in pox_options:
       print "Unknown option: ", k
       import sys
       sys.exit(1)
