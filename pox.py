@@ -215,18 +215,24 @@ def doLaunch ():
   return True
 
 cli = True
+verbose = False
+
+def _opt_no_cli (v):
+  if str(v).lower() == "true":
+    global cli
+    cli = False
+
+def _opt_verbose (v):
+  verbose = str(v).lower() == "true"
 
 def process_options ():
   # TODO: define this list somewhere else. Or use an option-parsing library.
-  pox_options = ["no-cli", "verbose"]
   for k,v in options.iteritems():
-    #print k,"=",v
-    if k == "no-cli":
-      if str(v).lower() == "true":
-        global cli
-        cli = False
-    elif k not in pox_options:
-      print "Unknown option: ", k
+    rk = '_opt_' + k.replace("-", "_")
+    if rk in globals():
+      globals()[rk](v)
+    else:
+      print "Unknown option:", k
       import sys
       sys.exit(1)
 
@@ -274,9 +280,13 @@ if __name__ == '__main__':
     pre_startup()
     launchOK = doLaunch()
     if launchOK:
-      process_options()
-      post_startup()
-      core.goUp()
+      try:
+        process_options()
+      except:
+        launchOK = False
+      if launchOK:
+        post_startup()
+        core.goUp()
   except:
     import traceback
     traceback.print_exc()
