@@ -34,10 +34,6 @@ fi
 exec python -O "$0" "$@"
 '''
 
-# Set default log level
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
 from pox.core import core
 import pox.openflow.openflow
 import pox.openflow.of_01
