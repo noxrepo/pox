@@ -64,6 +64,7 @@ def launch (__INSTANCE__ = None, **kw):
     if k == "no-default" and v:
       import pox.core
       logging.getLogger().removeHandler(pox.core._default_log_handler)
+      logging.getLogger().addHandler(logging.NullHandler())
     elif k == "file":
       standard(use_kw, v, logging.FileHandler)
     elif k == "watchedfile":
