@@ -15,15 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Allows configuring log levels from the commandline.
-
-For example, to turn off the verbose web logging, try:
-pox.py web.webcore log --web.webcore=INFO
-"""
 from pox.core import core
 
 def launch (**kw):
+  """
+  Allows configuring log levels from the commandline.
+
+  For example, to turn off the verbose web logging, try:
+  pox.py web.webcore log.level --web.webcore=INFO
+  """
   for k,v in kw.iteritems():
     core.getLogger(k).setLevel(v)
 
