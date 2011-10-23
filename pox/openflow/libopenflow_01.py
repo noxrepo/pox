@@ -1293,6 +1293,8 @@ class ofp_features_reply (ofp_header):
       outstr += obj.show(prefix + '  ')
     return outstr
 
+ofp_switch_features = ofp_features_reply
+
 ofp_capabilities_rev_map = {
   'OFPC_FLOW_STATS'   : 1,
   'OFPC_TABLE_STATS'  : 2,
