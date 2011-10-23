@@ -88,6 +88,7 @@ def doLaunch ():
 
   for arg in sys.argv[1:]:
     if not arg.startswith("--"):
+      pre_startup()
       if arg not in components:
         components[arg] = []
       curargs = {}
@@ -212,10 +213,18 @@ def doLaunch ():
              % (name, launch))
       return False
 
+  # If no options, might not have done pre_startup yet.
+  pre_startup()
+
   return True
 
 cli = True
 verbose = False
+enable_openflow = True
+
+def _opt_no_openflow (v):
+  global enable_openflow
+  enable_openflow = str(v).lower() != "true"
 
 def _opt_no_cli (v):
   if str(v).lower() == "true":
@@ -223,6 +232,7 @@ def _opt_no_cli (v):
     cli = False
 
 def _opt_verbose (v):
+  global verbose
   verbose = str(v).lower() == "true"
 
 def process_options ():
@@ -236,8 +246,18 @@ def process_options ():
       import sys
       sys.exit(1)
 
+_done_pre_startup = False
 def pre_startup ():
-  pox.openflow.openflow.launch() # Always launch OpenFlow
+  global _done_pre_startup
+  if _done_pre_startup: return True
+  _done_pre_startup = True
+
+  process_options()
+
+  if enable_openflow:
+    pox.openflow.openflow.launch() # Always launch OpenFlow
+
+  return True
 
 def post_startup ():
   #core.register("openflow_topology", pox.openflow.openflowtopology.OpenFlowTopology())
@@ -245,7 +265,8 @@ def post_startup ():
   #core.register("openflow_discovery", pox.openflow.discovery.Discovery())
   #core.register("switch", pox.dumb_l3_switch.dumb_l3_switch.dumb_l3_switch())
 
-  pox.openflow.of_01.launch() # Always launch of_01
+  if enable_openflow:
+    pox.openflow.of_01.launch() # Always launch of_01
 
 def _monkeypatch_console ():
   """
@@ -273,28 +294,21 @@ def _monkeypatch_console ():
   except:
     pass
 
-if __name__ == '__main__':
+def main ():
   _monkeypatch_console()
-  launchOK = False
   try:
-    pre_startup()
-    launchOK = doLaunch()
-    if launchOK:
-      try:
-        process_options()
-      except:
-        launchOK = False
-      if launchOK:
-        post_startup()
-        core.goUp()
+    if doLaunch():
+      post_startup()
+      core.goUp()
+    else:
+      return
+
+  except SystemExit:
+    return
   except:
     import traceback
     traceback.print_exc()
-    launchOK = False
-
-  if not launchOK:
-    import sys
-    sys.exit(1)
+    return
 
   if cli:
     print "This program comes with ABSOLUTELY NO WARRANTY.  This program is " \
@@ -318,4 +332,10 @@ if __name__ == '__main__':
       pass
     #core.scheduler._thread.join() # Sleazy
 
-  pox.core.core.quit()
+  try:
+    pox.core.core.quit()
+  except:
+    pass
+
+if __name__ == '__main__':
+  main()
