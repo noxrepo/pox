@@ -188,7 +188,6 @@ class CometRequestHandler (SplitRequestHandler):
     else:
       data = json.loads(self.rfile.read(int(l)))
     payload = data['data']
-
     # We send null payload for timeout poking and initial setup
     if payload is not None:
       if not hmh._check_rx_seq(data['seq']):
@@ -196,7 +195,7 @@ class CometRequestHandler (SplitRequestHandler):
         data = '{"seq":-1,"ses":"%s"}' % (hmh.session_key,)
         self.send_response(400, "Bad sequence number")
         self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(data))
+        self.send_header("Content-Length", len(data))
         self.send_header("X-POX-Messenger-Sequence-Number", "-1")
         if self.auth_function: self.send_header("WWW-Authenticate",  'Basic realm="POX"')
         self.end_headers()
@@ -212,7 +211,7 @@ class CometRequestHandler (SplitRequestHandler):
       data = '{"seq":-1,"ses":"%s"}' % (hmh.session_key,)
       self.send_response(200, "OK")
       self.send_header("Content-Type", "application/json")
-      self.send_header("Content-Length", str(data))
+      self.send_header("Content-Length", len(data))
       self.send_header("X-POX-Messenger-Sequence-Number", "-1")
       if self.auth_function: self.send_header("WWW-Authenticate",  'Basic realm="POX"')
       self.end_headers()
@@ -247,7 +246,7 @@ class CometRequestHandler (SplitRequestHandler):
         data = '{"seq":-1,"ses":"%s"}' % (hmh.session_key,)
         self.send_response(200, "OK")
         self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(data))
+        self.send_header("Content-Length", len(data))
         self.send_header("X-POX-Messenger-Sequence-Number", "-1")
         if self.auth_function: self.send_header("WWW-Authenticate",  'Basic realm="POX"')
         self.end_headers()
@@ -264,7 +263,7 @@ class CometRequestHandler (SplitRequestHandler):
     try:
       self.send_response(200, "OK")
       self.send_header("Content-Type", "application/json")
-      self.send_header("Content-Length", str(data))
+      self.send_header("Content-Length", len(data))
       self.send_header("X-POX-Messenger-Sequence-Number", str(seq))
       if self.auth_function: self.send_header("WWW-Authenticate",  'Basic realm="POX"')
       self.end_headers()
