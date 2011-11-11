@@ -82,7 +82,7 @@ class LogMessenger (logging.Handler):
     if doFormat:
       self.setFormatter(logging.Formatter(self._format, self._dateFormat))
 
-  def _handle_MessageRecieved (self, event, msg):
+  def _handle_MessageReceived (self, event, msg):
     if event.con.isReadable():
       r = event.con.read()
       if type(r) is dict:
@@ -120,9 +120,9 @@ class LogMessengerListener (object):
   (like "level").
   """
   def __init__ (self):
-    core.messenger.addListener(MessageRecieved, self._handle_global_MessageRecieved)
+    core.messenger.addListener(MessageReceived, self._handle_global_MessageReceived)
 
-  def _handle_global_MessageRecieved (self, event, msg):
+  def _handle_global_MessageReceived (self, event, msg):
     try:
       json = False
       if msg['hello'] == 'logger':
