@@ -98,7 +98,6 @@ class LearningSwitch (EventMixin):
         msg.buffer_id = event.ofp.buffer_id
         self.connection.send(msg)
 
-
 class dumb_l2_switch (EventMixin):
   """
   Waits for OpenFlow switches to connect and makes them learning switches.

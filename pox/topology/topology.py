@@ -28,17 +28,23 @@ log = core.getLogger()
 class EntityEvent (Event):
   def __init__ (self, entity):
     self.entity = entity
+    
+# An entity is inserted into the NOM
+class EntityJoin (EntityEvent): pass
+# An entity is removed from the NOM
+class EntityLeave (EntityEvent): pass
 
 class SwitchEvent (EntityEvent): pass
+# As opposed to ConnectionUP, SwitchJoin occurs over large time scales 
+# (e.g. an administrator physically moves a switch). 
 class SwitchJoin (SwitchEvent): pass
+# As opposed to ConnectionDOWN, SwitchLEAVE occurs over large time scales 
+# (e.g. an administrator physically moves a switch). 
 class SwitchLeave (SwitchEvent): pass
 
 class HostEvent (EntityEvent): pass
 class HostJoin (HostEvent): pass
 class HostLeave (HostEvent): pass
-
-class EntityJoin (EntityEvent): pass
-class EntityLeave (EntityEvent): pass
 
 class Entity (object):
   def __init__ (self, id):
@@ -73,6 +79,7 @@ class Topology (EventMixin):
     self.entities = {}
 
   def getEntityByID (self, ID, fail=False):
+    """ Raises an exception if fail is True and the entity is not in the NOM """    
     if fail:
       return self.entities[ID]
     else:
@@ -89,6 +96,7 @@ class Topology (EventMixin):
       self.raiseEvent(EntityLeave, entity)
 
   def addEntity (self, entity):
+    """ Will raise an exception if entity.id is already in the NOM """
     assert entity.id not in self.entities
     self.entities[entity.id] = entity
     log.info(str(entity) + " joined")
