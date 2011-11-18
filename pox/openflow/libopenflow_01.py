@@ -100,7 +100,7 @@ class ofp_header (object):
     outstr += prefix + 'length:  ' + str(self.length) + '\n'
     outstr += prefix + 'xid:     ' + str(self.xid) + '\n'
     return outstr
-
+  
   def __str__ (self):
     return self.__class__.__name__ + "\n  " + self.show('  ').strip()
 

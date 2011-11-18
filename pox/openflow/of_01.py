@@ -216,6 +216,7 @@ statsHandlerMap = {
 # Deferred sending should be unusual, so don't worry too much about efficiency
 class DeferredSender (threading.Thread):
   def __init__ (self):
+    # Threads, not recoco?
     threading.Thread.__init__(self)
     self._dataForConnection = {}
     self._lock = threading.RLock()
@@ -226,6 +227,10 @@ class DeferredSender (threading.Thread):
     self.start()
 
   def _sliceup (self, data):
+    """
+    Takes an array of data bytes, and slices into elements of
+    select.PIPE_BUF bytes each
+    """
     out = []
     while len(data) > select.PIPE_BUF:
       out.append(data[0:select.PIPE_BUF])
@@ -309,9 +314,14 @@ class DeferredSender (threading.Thread):
             except:
               pass
 
+# Used by the Connection class below
 deferredSender = DeferredSender()
 
 class Connection (EventMixin):
+  """
+  A Connection object represents a single TCP session with an openflow-enabled switch.
+  If the switch reconnects, a new connection object is instantiated.
+  """
   _eventMixin_events = set([
     ConnectionUp,
     ConnectionDown,
@@ -328,7 +338,8 @@ class Connection (EventMixin):
     QueueStatsReceived,
     FlowRemoved,
   ])
-
+  
+  # Globally unique identifier for the Connection instance
   ID = 0
 
   def msg (self, m):
@@ -347,7 +358,7 @@ class Connection (EventMixin):
 
     self.sock = sock
     self.buf = ''
-    Connection.ID += 1;
+    Connection.ID += 1
     self.ID = Connection.ID
     self.dpid = None
     self.features = None
@@ -361,6 +372,11 @@ class Connection (EventMixin):
     return self.sock.fileno()
 
   def disconnect (self, hard = False):
+    """
+    disconnect is only invoked from within this module, afaict
+    
+    What does `hard` do? Force a disconnect even if already disconnected?
+    """
     if self.disconnected and not hard:
       self.err("already disconnected!")
     if hard:
@@ -402,6 +418,10 @@ class Connection (EventMixin):
       pass
 
   def send (self, data):
+    """
+    interface for sending raw data to a switch. use a higher layer
+    of abstraction to pack the data (?)
+    """
     if self.disconnected: return
     if type(data) is not bytes:
       if hasattr(data, 'pack'):
@@ -425,6 +445,10 @@ class Connection (EventMixin):
         self.disconnect()
 
   def read (self):
+    """
+    Note: if no data is available to read, this method will block. Only invoke
+    after select() has returned this socket.
+    """
     d = self.sock.recv(2048)
     if len(d) == 0:
       return False
@@ -452,7 +476,7 @@ class Connection (EventMixin):
     return True
 
   def _incoming_stats_reply (self, ofp):
-    # This assumes that you don't recieve multiple stats replies
+    # This assumes that you don't receive multiple stats replies
     # to different requests out of order/interspersed.
     more = (ofp.flags & 1) != 0
     if more:
@@ -462,7 +486,7 @@ class Connection (EventMixin):
                   str(ofp.type))
         self._previous_stats = []
         return
-
+      
     if len(self._previous_stats) != 0:
       if ((ofp.xid == self._previous_stats[0].xid) and
           (ofp.type == self._previous_stats[0].type)):
@@ -494,6 +518,9 @@ class Connection (EventMixin):
 from pox.lib.recoco.recoco import *
 
 class OpenFlow_01_Task (Task):
+  """
+  The main recoco thread for listening to openflow messages
+  """
   def __init__ (self, port = 6633, address = '0.0.0.0'):
     Task.__init__(self)
     self.port = int(port)
@@ -510,9 +537,9 @@ class OpenFlow_01_Task (Task):
     self.start()
 
   def run (self):
-    #TODO: This is actually "the main thread", and should actually be pulled out
-    #      so that other things (OpenFlow 1.1 switches, etc.) can use it too.
-    #      Probably this should mean that this thread will run the cooperative
+    #TODO: This is actually "the main thread" for openflow events, and should actually
+    #      be pulled out so that other things (OpenFlow 1.1 switches, etc.) can use it
+    #      too. Probably this should mean that this thread will run the cooperative
     #      threads.
 
     # List of open sockets/connections to select on

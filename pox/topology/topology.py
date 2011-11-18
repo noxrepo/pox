@@ -15,6 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+The Topology module encapsulates the Network Object Model (NOM).
+"""
+
 from pox.lib.revent.revent import *
 from pox.core import core
 from pox.lib.addresses import *
