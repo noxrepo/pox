@@ -15,6 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+This module is an "adaptor" for translating between OpenFlow discovery and
+pox.topology (which is protocol agnostitic?)
+"""
+
 from pox.lib.revent.revent import *
 import libopenflow_01 as of
 from openflow import *
