@@ -188,7 +188,7 @@ class OpenFlowSwitch (EventMixin, pox.topology.topology.Switch):
   perform.
   
   Note that for the purposes of the debugger, we can interpose on
-  a switch by enumerating all listeners for the events listed below, and
+  a switch entity by enumerating all listeners for the events listed below, and
   triggering mock events for those listeners.
   """
   _eventMixin_events = set([

@@ -21,7 +21,11 @@
 
 """
 This module discovers OpenFlow Switches in the network by sending out LLDP
-packets.
+packets. To be notified of this information, listen to LinkEvents on the
+discovery object below.
+
+Note that of_01.Task /passively/ listens to switch connections. This module
+/actively/ discovers switches in the network.
 
 It's possible that some of this should be abstracted out into a generic
 Discovery module, or a Discovery superclass.
