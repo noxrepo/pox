@@ -178,10 +178,18 @@ class OpenFlowPort (pox.topology.topology.Port):
 
 class OpenFlowSwitch (EventMixin, pox.topology.topology.Switch):
   """
+  OpenFlowSwitches are an entity in the NOM. 
+  
   OpenFlowSwitches are persistent; that is, if a switch reconnects, the Connection
   field of the original OpenFlowSwitch object will simply be reset.
   
-  TODO: make me a proxy to self.connection
+  For now, OpenFlowSwitch is primarily a proxy to its underlying connection
+  object. Later, we'll possibly add more explicit operations the client can
+  perform.
+  
+  Note that for the purposes of the debugger, we can interpose on
+  a switch by enumerating all listeners for the events listed below, and
+  triggering mock events for those listeners.
   """
   _eventMixin_events = set([
     SwitchJoin, # Defined in pox.topology
@@ -277,6 +285,15 @@ class OpenFlowSwitch (EventMixin, pox.topology.topology.Switch):
 
   def __repr__ (self):
     return "<%s %s>" % (self.__class__.__name__, dpidToStr(self.dpid))
+  
+  def __getattr__( self, name ):
+    """
+    NOTE: for now, we're making OpenflowSwitch a proxy to its underlying
+    connection object. This could be dangerous... so perhaps we should
+    explicitly define the connection operations? Or just force the client
+    to call sw.connection.send() rather than sw.send()
+    """
+    return getattr( self.connection, name )
 
 def launch ():
   if not core.hasComponent("openflow_topology"):
