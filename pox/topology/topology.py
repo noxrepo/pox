@@ -17,6 +17,9 @@
 
 """
 The Topology module encapsulates the Network Object Model (NOM).
+
+Is this the "top-level" NOM that we present to applications, or the 
+"substrate" NOM that represents raw OpenFlow entities?
 """
 
 from pox.lib.revent.revent import *

@@ -20,6 +20,9 @@
 # been substantially rewritten.
 
 """
+This module discovers OpenFlow Switches in the network by sending out LLDP
+packets.
+
 It's possible that some of this should be abstracted out into a generic
 Discovery module, or a Discovery superclass.
 """
@@ -47,7 +50,6 @@ TIMEOUT_CHECK_PERIOD = 5.0
 LINK_TIMEOUT         = 10.0
 
 log = core.getLogger()
-
 
 class LLDPSender (object):
   """
@@ -366,7 +368,6 @@ class Discovery (EventMixin):
       if link.dpid2 == dpid and link.port2 == port:
         return True
     return False
-
 
 def launch ():
   core.registerNew(Discovery)

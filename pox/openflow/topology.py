@@ -17,7 +17,17 @@
 
 """
 This module is an "adaptor" for translating between OpenFlow discovery and
-pox.topology (which is protocol agnostitic?)
+pox.topology (which is protocol agnostic?)
+
+Thoughts:
+
+Is this intended to be the "upper-layer" NOM that we present to applications, or the
+"substrate" NOM that we later build on top of?
+
+It seems a bit odd to me to put NOM functionality into the adaptor... In my mind the
+adaptor simply translates one state representation to another. So maybe I should move
+the OpenFlow entities to discovery.py, or its own module? Or, maybe I shouldn't be
+thinking of pox.openflow.topology as an "adaptor" per se..? 
 """
 
 from pox.lib.revent.revent import *
@@ -54,10 +64,12 @@ class OpenFlowTopology (EventMixin):
     got = set()
     for c in self._wantComponents:
       if core.hasComponent(c):
+        # This line initializes self.topology, self.openflow, etc. 
         setattr(self, c, getattr(core, c))
         self.listenTo(getattr(core, c), prefix=c)
         got.add(c)
       else:
+        # This line initializes self.topology, self.openflow, etc. 
         setattr(self, c, None)
     for c in got:
       self._wantComponents.remove(c)
@@ -69,11 +81,17 @@ class OpenFlowTopology (EventMixin):
     return False
 
   def __init__ (self):
+    """ Note that self.topology is initialized in _resolveComponents"""
+    # Could this line also be EventMixin.__init__(self) ?
     super(EventMixin, self).__init__()
     if not self._resolveComponents():
       self.listenTo(core)
   
   def _handle_openflow_discovery_LinkEvent (self, event):
+    """
+    Are the underscores of this method name interpreted as module directives? i.e., does
+    this handle LinkEvents raised by pox.openflow.discovery? If so, wow, fancy!
+    """
     if self.topology is None: return
     link = event.link
     sw1 = self.topology.getEntityByID(link.dpid1)
@@ -119,8 +137,7 @@ class OpenFlowTopology (EventMixin):
       sw.connection = None
       log.info("Switch " + str(event.dpid) + " disconnected")
 
-
-class OpenFlowPort (Port):
+class OpenFlowPort (pox.topology.topology.Port):
   def __init__ (self, ofp):
     # Passed an ofp_phy_port
     Port.__init__(self, ofp.port_no, ofp.hw_addr, ofp.name)
@@ -141,6 +158,8 @@ class OpenFlowPort (Port):
     return item in self.entities
 
   def addEntity (self, entity, single = False):
+    # Invariant (not currently enforced): 
+    #   len(self.entities) <= 2  ?
     if single:
       self.entities = set([entity])
     else:
@@ -149,9 +168,15 @@ class OpenFlowPort (Port):
   def __repr__ (self):
     return "<Port #" + str(self.number) + ">"
 
-class OpenFlowSwitch (EventMixin, Switch):
+class OpenFlowSwitch (EventMixin, pox.topology.topology.Switch):
+  """
+  Are OpenFlowSwitches persistent? If a switch reconnects, will the Connection
+  field of the original OpenFlowSwitch object simply be reset?
+  
+  TODO: make me a proxy to self.connection
+  """
   _eventMixin_events = set([
-    SwitchJoin,
+    SwitchJoin, # Defined in pox.topology
     SwitchLeave,
 
     PortStatus,
@@ -159,6 +184,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     PacketIn,
     BarrierIn,
   ])
+  
   def __init__ (self, dpid):
     super(Switch, self).__init__(dpid)
     EventMixin.__init__(self)
@@ -170,6 +196,10 @@ class OpenFlowSwitch (EventMixin, Switch):
     self._reconnectTimeout = None # Timer for reconnection
 
   def _setConnection (self, connection, ofp=None):
+    # Why do we remove all listeners? 
+    # We execute:
+    #   self._listeners = self.listenTo(connection, prefix="con")
+    # below, but can't listeners also be externally added? 
     if self.connection: self.connection.removeListeners(self._listeners)
     self._listeners = []
     self.connection = connection
@@ -179,7 +209,9 @@ class OpenFlowSwitch (EventMixin, Switch):
     if connection is None:
       self._reconnectTimeout = Timer(RECONNECT_TIMEOUT, self._timer_ReconnectTimeout)
     if ofp is not None:
+      # update capabilities
       self.capabilities = ofp.capabilities
+      # update all ports 
       untouched = set(self.ports.keys())
       for p in ofp.ports:
         if p.port_no in self.ports:
