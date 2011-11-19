@@ -15,6 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+In charge of OpenFLow 1.0 switches.
+
+NOTE: this module is loaded automatically by pox.py
+"""
+
 from pox.core import core
 import pox
 import pox.lib.util
@@ -525,13 +531,13 @@ class OpenFlow_01_Task (Task):
     Task.__init__(self)
     self.port = int(port)
     self.address = address
-    # XXX What does this variable do?
+    # This variable has no effect, I believe
     self.daemon = True
 
     core.addListener(pox.core.GoingUpEvent, self._handle_GoingUpEvent)
 
   def _handle_GoingUpEvent (self, event):
-    # XXX I don't understand what the next two lines are doing...
+    # The next two lines are somewhat confusing, but they're referenced later
     global openflowHub
     openflowHub = core.openflow
     self.start()
@@ -552,7 +558,7 @@ class OpenFlow_01_Task (Task):
     sockets.append(listener)
     wsocks = []
 
-    log.debug("Listening for connections")
+    log.debug("Listening for connections.")
 
     con = None
     while core.running:
@@ -588,6 +594,8 @@ class OpenFlow_01_Task (Task):
             if con is listener:
               new_sock = listener.accept()[0]
               new_sock.setblocking(0)
+              # Note that instantiating a Connection object fires a ConnectionUp event
+              # (after negotation has completed)
               newcon = Connection(new_sock)
               sockets.append( newcon )
               #print str(newcon) + " connected"

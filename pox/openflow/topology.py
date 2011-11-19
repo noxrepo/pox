@@ -19,11 +19,6 @@
 This module is an "adaptor" for translating between OpenFlow discovery and
 pox.topology (which is protocol agnostic?)
 
-Thoughts:
-
-Is this intended to be the "upper-layer" NOM that we present to applications, or the
-"substrate" NOM that we later build on top of?
-
 It seems a bit odd to me to put NOM functionality into the adaptor... In my mind the
 adaptor simply translates one state representation to another. So maybe I should move
 the OpenFlow entities to discovery.py, or its own module? Or, maybe I shouldn't be
@@ -54,6 +49,10 @@ class OpenFlowTopology (EventMixin):
   know anything about OpenFlow.  This class knows something about both,
   and hooks the two of them together
   """
+  
+  # Won't boot up OpenFlowTopology until all of these components are loaded into
+  # pox.core. Note though that these components won't be loaded proactively; they
+  # must be specified on the command line (with the exception of openflow)  
   _wantComponents = set(['openflow','topology','openflow_discovery'])
 
   def _resolveComponents (self):
@@ -69,7 +68,8 @@ class OpenFlowTopology (EventMixin):
         self.listenTo(getattr(core, c), prefix=c)
         got.add(c)
       else:
-        # This line initializes self.topology, self.openflow, etc. 
+        # This line also initializes self.topology, self.openflow, if
+        # the corresponding objects are not loaded yet into pox.core
         setattr(self, c, None)
     for c in got:
       self._wantComponents.remove(c)
@@ -89,6 +89,9 @@ class OpenFlowTopology (EventMixin):
   
   def _handle_openflow_discovery_LinkEvent (self, event):
     """
+    The discovery module simply sends out LLDP packets, and triggers LinkEvents for 
+    discovered switches. It's our job to take these LinkEvents and update pox.topology.
+    
     Are the underscores of this method name interpreted as module directives? i.e., does
     this handle LinkEvents raised by pox.openflow.discovery? If so, wow, fancy!
     """
@@ -106,6 +109,10 @@ class OpenFlowTopology (EventMixin):
       sw2.ports[link.port2].entities.remove(sw1)
 
   def _handle_ComponentRegistered (self, event):
+    """
+    A component was registered with pox.core. If we were dependent on it, 
+    check again if all of our dependencies are now satisfied so we can boot.
+    """
     if self._resolveComponents():
       return EventRemove
 
@@ -138,6 +145,7 @@ class OpenFlowTopology (EventMixin):
       log.info("Switch " + str(event.dpid) + " disconnected")
 
 class OpenFlowPort (pox.topology.topology.Port):
+  """ What are OpenFlowPorts used for? """
   def __init__ (self, ofp):
     # Passed an ofp_phy_port
     Port.__init__(self, ofp.port_no, ofp.hw_addr, ofp.name)
@@ -158,7 +166,7 @@ class OpenFlowPort (pox.topology.topology.Port):
     return item in self.entities
 
   def addEntity (self, entity, single = False):
-    # Invariant (not currently enforced): 
+    # Invariant (not currently enforced?): 
     #   len(self.entities) <= 2  ?
     if single:
       self.entities = set([entity])
@@ -170,8 +178,8 @@ class OpenFlowPort (pox.topology.topology.Port):
 
 class OpenFlowSwitch (EventMixin, pox.topology.topology.Switch):
   """
-  Are OpenFlowSwitches persistent? If a switch reconnects, will the Connection
-  field of the original OpenFlowSwitch object simply be reset?
+  OpenFlowSwitches are persistent; that is, if a switch reconnects, the Connection
+  field of the original OpenFlowSwitch object will simply be reset.
   
   TODO: make me a proxy to self.connection
   """
@@ -179,7 +187,7 @@ class OpenFlowSwitch (EventMixin, pox.topology.topology.Switch):
     SwitchJoin, # Defined in pox.topology
     SwitchLeave,
 
-    PortStatus,
+    PortStatus, # Defined in libopenflow_01
     FlowRemoved,
     PacketIn,
     BarrierIn,

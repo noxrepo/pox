@@ -18,8 +18,28 @@
 """
 The Topology module encapsulates the Network Object Model (NOM).
 
-Is this the "top-level" NOM that we present to applications, or the 
-"substrate" NOM that represents raw OpenFlow entities?
+This is the "substrate" NOM, containing non-virtualized (read: raw OpenFlow)
+entities.
+
+NOTE: this module is passive; it won't do anything unless other modules call
+methods on it. As an example, to populate it with OpenFlow switches you would 
+need to invoke:
+   $ ./pox.py topology openflow.discovery openflow.topology
+   
+   
+topology is this module, which simply stores the NOM datastructure.
+
+openflow.discovery sends out LLDP packets and discovers OpenFLow
+switches in the network.
+
+openflow.topology is an "adaptor" between OpenFlow semantics and 
+topology semantics; it listens on openflow.discovery events, and pushes
+(generic) changes to this module.
+
+TODO: the above invocation is somewhat awkward and error-prone. Is there a better
+way to add Openflow switches to the NOM? I suppose this module is intended to 
+implement "OS"-functionality; when most applications move to using the NOM, the NOM
+will automatically be populated by pox. 
 """
 
 from pox.lib.revent.revent import *
@@ -38,11 +58,11 @@ class EntityJoin (EntityEvent): pass
 class EntityLeave (EntityEvent): pass
 
 class SwitchEvent (EntityEvent): pass
-# As opposed to ConnectionUP, SwitchJoin occurs over large time scales 
-# (e.g. an administrator physically moves a switch). 
+# As opposed to ConnectionUp, SwitchJoin occurs over large time scales 
+# (e.g. an administrator physically moving a switch). 
 class SwitchJoin (SwitchEvent): pass
-# As opposed to ConnectionDOWN, SwitchLEAVE occurs over large time scales 
-# (e.g. an administrator physically moves a switch). 
+# As opposed to ConnectionDown, SwitchLeave occurs over large time scales 
+# (e.g. an administrator physically moving a switch). 
 class SwitchLeave (SwitchEvent): pass
 
 class HostEvent (EntityEvent): pass
@@ -50,6 +70,17 @@ class HostJoin (HostEvent): pass
 class HostLeave (HostEvent): pass
 
 class Entity (object):
+  """ 
+  Note that the Entity class is intentionally simple; It only serves as a 
+  convenient SuperClass type.
+  
+  It's up to subclasses to implement specific functionality (e.g. OpenFlow1.0 
+  switch functionality). This is possible since Python is a dynamic language... 
+  the purpose of this design decision is to prevent protocol specific details
+  from being leaked into this module... But this design decision does /not/
+  imply that pox.toplogy serves to define a generic interface to abstract
+  entity types.
+  """
   def __init__ (self, id):
     self.id = id
 
@@ -57,6 +88,10 @@ class Host (Entity):
   pass
 
 class Switch (Entity):
+  """
+  Subclassed by protocol-specific switch classes,
+  e.g. pox.openflow.topology.OpenFlowSwitch
+  """
   pass
 
 class Port (Entity):

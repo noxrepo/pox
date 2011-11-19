@@ -32,6 +32,8 @@ difficult, really, but that hasn't stopped it from beind handled wrong
 wrong more than once).  In POX, the raw events are available, but you will
 generally just want to listen to the aggregate stats events which take
 care of this for you and are only fired when all data is available.
+
+NOTE: this module is automatically loaded by pox.py
 """
 
 from pox.lib.revent.revent import *

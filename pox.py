@@ -236,7 +236,6 @@ def _opt_verbose (v):
   verbose = str(v).lower() == "true"
 
 def process_options ():
-  # TODO: define this list somewhere else. Or use an option-parsing library.
   for k,v in options.iteritems():
     rk = '_opt_' + k.replace("-", "_")
     if rk in globals():

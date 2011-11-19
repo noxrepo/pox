@@ -302,6 +302,7 @@ class Discovery (EventMixin):
           # to fit into an ethernet address
           if len(lldph.tlvs[0].id) == 6:
             try:
+              # It would appear that `s` is not defined..?
               originatorDPID = struct.unpack("!Q",'\x00\x00' + s)[0]
             except:
               pass
