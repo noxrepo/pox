@@ -31,7 +31,7 @@ from pox.messenger.messenger import *
 from pox.lib.revent.revent import *
 import traceback
 
-from pox.log_messenger.log_messenger import LogMessenger
+from pox.messenger.log_service import LogMessenger
 
 log = core.getLogger()
 
