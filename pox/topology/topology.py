@@ -84,8 +84,8 @@ class Entity (object):
   imply that pox.toplogy serves to define a generic interface to abstract
   entity types.
   """
-  def __init__ (self, id):
-    self.id = id
+  def __init__ (self, identifier):
+    self.identifier = identifier
 
 class Host (Entity):
   pass
