@@ -389,7 +389,7 @@ class CallProxy (object):
     if o is not None:
       return self.method(o, *args, **kw)
     print "callProxy object is gone!"
-    raise RuntimeException("callProxy object is gone!")
+    raise RuntimeError("callProxy object is gone!")
   def __str__ (self):
     return "<CallProxy for " + self.name + ">"
 
