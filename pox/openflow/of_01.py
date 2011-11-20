@@ -108,10 +108,6 @@ def handle_ERROR_MSG (con, msg): #A
   openflowHub.raiseEventNoErrors(ErrorIn, con, msg)
   con.raiseEventNoErrors(ErrorIn, con, msg)
 
-def handle_FLOW_REMOVED (con, msg): #A
-  openflowHub.raiseEventNoErrors(FlowRemoved, con, msg)
-  con.raiseEventNoErrors(FlowRemoved, con, msg)
-
 def handle_BARRIER (con, msg):
   openflowHub.raiseEventNoErrors(BarrierIn, con, msg)
   con.raiseEventNoErrors(BarrierIn, con, msg)
