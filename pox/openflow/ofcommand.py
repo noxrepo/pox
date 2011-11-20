@@ -97,7 +97,9 @@ class FloodPacketCommand(PacketOutCommand):
 def sendPacket(con, inport, packet, buf, bufid=None):
   """Send a packet out a single port on a switch
   """
-  sendCommand(con, sendPacketCommand(inport, outport, packet, buf, bufid))
+  # TODO: there is no `outport` variable defined here... o
+  #       what does is it supposed to refer to?
+  sendCommand(con, SendPacketCommand(inport, outport, packet, buf, bufid))
   print con, "sent packet"
   
 def multicastPacket(con, inport, outports, packet, buf, bufid=None):
