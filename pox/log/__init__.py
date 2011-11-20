@@ -96,7 +96,7 @@ def launch (__INSTANCE__ = None, **kw):
       else:
         if len(v) > 1:
           v[0] = (v[0], v[1])
-          del a[1]
+          del v[1]
         elif len(v) > 0:
           if v[0] == '' or v[0] == '*':
             v[0] = '/dev/log'
