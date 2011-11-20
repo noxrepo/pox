@@ -247,6 +247,8 @@ class EventMixin (object):
 
   def addListener (self, eventType, handler, once=False, weak=False, priority=None, byName=False):
     """
+    Add an event handler for an event triggered by this object. 
+    
     eventType : event class object (e.g. ConnectionUp). If byName is True, should
                 be a string (e.g. "ConnectionUp") 
     handler : method object to be invoked on event triggers
@@ -296,11 +298,21 @@ class EventMixin (object):
 
   def listenTo (self, *args, **kv):
     """
-    sink and source arguments must be present
+    source argument must be present
+    
+    sink is set to self
     """
     return autoBindEvents(self, *args, **kv)
 
   def addListeners (self, sink, prefix='', weak=False):
+    """
+    Reflection foo: pick up all _handle methods defined by sink, and make sure
+    they are executed when this object triggers the corresponding events.
+    
+    sink - the object to trigger listeners for
+    
+    source is set to self
+    """
     return autoBindEvents(sink, self, prefix, weak)
 
 
