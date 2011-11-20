@@ -144,7 +144,8 @@ class OpenFlowTopology (EventMixin):
       sw.connection = None
       log.info("Switch " + str(event.dpid) + " disconnected")
 
-class OpenFlowPort (pox.topology.topology.Port):
+# inherits from pox.topology.Port
+class OpenFlowPort (Port):
   """ What are OpenFlowPorts used for? """
   def __init__ (self, ofp):
     # Passed an ofp_phy_port
@@ -176,7 +177,8 @@ class OpenFlowPort (pox.topology.topology.Port):
   def __repr__ (self):
     return "<Port #" + str(self.number) + ">"
 
-class OpenFlowSwitch (EventMixin, pox.topology.topology.Switch):
+# inherits from pox.topology.topology.Switch
+class OpenFlowSwitch (EventMixin, Switch):
   """
   OpenFlowSwitches are an entity in the NOM. 
   
