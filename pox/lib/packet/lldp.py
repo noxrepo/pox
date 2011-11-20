@@ -132,6 +132,7 @@ class lldp (packet_base):
             return 2 + length
         else:
             self.msg( '(lldp tlv parse) warning unknown tlv type (%u)' % (type,) )
+            # TODO: unknown_tlv is an undefined variable! Check me in?
             self.tlvs.append(unknown_tlv(array[0: 2 + length]))
             return 2 + length
 
