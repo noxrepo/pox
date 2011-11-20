@@ -16,7 +16,7 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Fires up topology, discovery, and a switch
+Fires up topology, discovery, and a l2 learning switch controller
 """
 
 def launch ():
