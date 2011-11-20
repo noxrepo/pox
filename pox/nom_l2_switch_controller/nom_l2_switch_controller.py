@@ -27,13 +27,12 @@ NOM functionality (e.g. pox.openflow.topology) from the application developer.
 So,
 - Should the application developer define custom NOM entities within their own
   modules, or at a lower layer? 
-- If in their own module, is the breach of layering a problem? Also, how do we
-  get the lower layers (i.e. pox.openflow.topology) to instantiate the custom
-  NOM entity rather than the default (i.e. OpenFlowSwitch)
-- If the breach of layering is a problem, should we provide a generic
-  mechanism for users to define custom NOM entities? For example,
-  we could allow them to add handlers via python reflection foo to the
-  default NOM entities.  
+- If in their own module, how do we get the lower layers
+  (i.e. pox.openflow.topology) to instantiate the custom  NOM entity rather
+  than the default (i.e. OpenFlowSwitch)
+- Should we provide a generic mechanism for users to define custom NOM entities 
+  from their own module? For example, we could allow them to add handlers via
+  python reflection foo to the default NOM entities.
 
 More thoughts inline.
 """
@@ -71,14 +70,13 @@ class nom_l2_switch_controller (EventMixin):
     # Note that we can externally add attributes to NOM entities easily like so:
     switch.macToPort = {}
 
-    # Adding join_event handlers to NOM entities is a little trickier:
+    # Adding event handlers to NOM entities is a little trickier:
     # Hopefully there's a better way? Another option would be to add a method
-    # `_handle_PacketIn` with python foo. 
+    # `_handle_PacketIn` with python reflection foo. 
     def PacketIn_handler (packet_in_event):
       log.debug("PacketIn_handler! packet_in_event: %s" % (str(packet_in_event)))
-      # TODO: will the fact this switch is not `self` screw python up?
       """
-      The learning switch "brain" associated with a single OpenFlow switch.
+      The learning switch "brain". 
   
       When we see a packet, we'd like to output it on a port which will join_eventually
       lead to the destination.  To accomplish this, we build a table that maps
@@ -107,7 +105,7 @@ class nom_l2_switch_controller (EventMixin):
                        goes out the appopriate port
                  2bb2) Send buffered packet out appopriate port
   
-      Handles packet in messages from the switch to implement above algorithm.
+      Handles PacketIn messages from the switch to implement above algorithm.
       """
       def flood ():
         """ Floods the packet """
@@ -120,6 +118,9 @@ class nom_l2_switch_controller (EventMixin):
         msg.in_port = packet_in_event.port
         # Switch is a proxy to its underlying connection. Maybe should change?
         # alternative is: switch.connection.send(msg)
+        # One downside of the alternative is that it enables the user to
+        # store a reference to the connection object, which shouldn't happen!
+        # (we want reconnects to be transparent)
         switch.send(msg)
 
       packet = packet_in_event.parse()
