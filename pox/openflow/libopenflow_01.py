@@ -1575,7 +1575,7 @@ class ofp_queue_get_config_request (ofp_header):
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port)
-    packed += pad
+    packed += self.pad
     return packed
 
   def unpack (self, binaryString):
@@ -2574,7 +2574,7 @@ class ofp_packet_in (ofp_header):
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!LHHBB", self.buffer_id & 0xffFFffFF, self.total_len, self.in_port, self.reason, self.pad)
-    packet += self.data
+    packed += self.data
     return packed
 
   def unpack (self, binaryString):
@@ -3100,7 +3100,7 @@ class ofp_vendor (ofp_header):
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!L", self.vendor)
-    packet += self.data
+    packed += self.data
     return packed
 
   def unpack (self, binaryString):
@@ -3132,7 +3132,7 @@ class ofp_vendor (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
-    outstr += prefix + 'data: ' + data + '\n'
+    outstr += prefix + 'data: ' + self.data + '\n'
     return outstr
 
 class ofp_features_request (ofp_header):
