@@ -16,6 +16,6 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 def launch ():
-  import pox.topology.topology
+  from pox.topology import topology
   from pox.core import core
-  core.registerNew(pox.topology.topology.Topology)
+  core.registerNew(topology.Topology)
