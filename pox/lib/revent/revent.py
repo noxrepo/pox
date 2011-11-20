@@ -152,7 +152,7 @@ class EventMixin (object):
       event = eventType(*args, **kw)
       args = ()
       kw = {}
-      if event.source is None: event.source = self
+      if not hasattr(event, 'source') or event.source is None: event.source = self
     #print "raise",event,eventType
     if self._eventMixin_events != True and eventType not in self._eventMixin_events:
       raise RuntimeError("Event " + str(eventType) + " not defined on object of type " + str(type(self)))
