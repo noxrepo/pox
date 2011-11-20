@@ -1,5 +1,6 @@
 from time import time
 
+# TODO: mac_to_str and mact_to_int aren't currently defined in packet_utils...
 from pox.lib.packet.packet_utils  import mac_to_str, mac_to_int
 from pox.lib.packet.ethernet      import ethernet
 from pox.lib.packet.tcp           import tcp
