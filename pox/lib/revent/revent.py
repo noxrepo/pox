@@ -20,14 +20,34 @@ Revent is a custom event library for POX.
 
 The most common use case of revent is to inherit from EventMixin.
 
-For Example:
+For example:
 
 class Foo (EventMixin):
   def __init__(self):
-   # This 
+   # This tells revent that we want to listen to events triggered by pox.core
    self.listenTo(pox.core)
   
+  
+  def _handle_ComponentRegistered(self, event):
+    # The name of this method has a special meaning. Any method with a prefix
+    # of '_handle_', and a suffix naming an EventType will automatically
+    # be registered as an event handler.
+    #  
+    # This method will now be called whenever pox.core triggers a 
+    # ComponentRegistered event.
+    
+    # All event handlers are passed an event object as a second parameter. 
+    component = event.component
+    name = event.name
+    print "I see you,", name, "!"
 
+  # A second way to register handlers is to explicitly call self.addListener()
+  # For example:
+  def bar_handler(self, event):
+    print "bar!", event
+  
+  # This has the same effect as defining a method called "_handle_UpEvent"
+  self.addListener(UpEvent, bar_handler)
 """
 import operator
 # weakrefs are used for some event handlers. 
