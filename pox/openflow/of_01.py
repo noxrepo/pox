@@ -558,7 +558,7 @@ class OpenFlow_01_Task (Task):
     sockets.append(listener)
     wsocks = []
 
-    log.debug("Listening for connections.")
+    log.debug("Listening for connections on %s:%s" % (self.address, self.port))
 
     con = None
     while core.running:
