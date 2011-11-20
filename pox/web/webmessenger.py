@@ -218,7 +218,7 @@ class CometRequestHandler (SplitRequestHandler):
       self.wfile.write(data)
     except:
       import traceback
-      tracekback.print_exc()
+      traceback.print_exc()
       pass
     return
     
