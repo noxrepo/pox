@@ -60,7 +60,10 @@ class EntityLeave (EntityEvent): pass
 class SwitchEvent (EntityEvent): pass
 # As opposed to ConnectionUp, SwitchJoin occurs over large time scales 
 # (e.g. an administrator physically moving a switch). 
-class SwitchJoin (SwitchEvent): pass
+class SwitchJoin (SwitchEvent): 
+  def __init__ (self, switch):
+    self.switch = switch
+    
 # As opposed to ConnectionDown, SwitchLeave occurs over large time scales 
 # (e.g. an administrator physically moving a switch). 
 class SwitchLeave (SwitchEvent): pass
@@ -101,6 +104,12 @@ class Port (Entity):
     self.name = name
 
 class Topology (EventMixin):
+  # Hmm, it's not clear that we want these events. An alternative would be to have 
+  # all applications interested in using the NOM to define a method `nom_update()`, which
+  # feeds in updated NOMs. We then call that single interface when any of the events below
+  # occur. Makes it a little easier for the application programmer, I would argue. Haven't
+  # thought about it too deeply though... This definitely gives the programmer more 
+  # fine-grained control over the events they see.
   _eventMixin_events = [
     SwitchJoin,
     SwitchLeave,
@@ -151,5 +160,13 @@ class Topology (EventMixin):
     else:
       return (x for x in self.entities.itervalues() if isinstance(x, t))
 
-
-
+  def getSwitcheWithConnection (self, connection):
+    """
+    OpenFlow events only contain a refence to a connection object, not a
+    switch object. Perhaps this should be changed, but for now, find the
+    switch the corresponding connection object.
+    
+    Return None if no such switch found.
+    """
+    self.getEntitiesOfType(Switch).find(lambda switch: switch.connection == connection)
+    
