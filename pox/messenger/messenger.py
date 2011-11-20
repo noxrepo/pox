@@ -186,7 +186,7 @@ class MessengerConnection (EventMixin):
     return len(self._msgs) > 0
 
   def peek (self, default = None):
-    return read(default = default, peek=True)
+    return self.read(default = default, peek=True)
 
   def read (self, default = None, peek = False):
     if len(self._msgs) == 0: return default
