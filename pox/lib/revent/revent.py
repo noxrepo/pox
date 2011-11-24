@@ -22,11 +22,10 @@ The most common use case of revent is to inherit from EventMixin.
 
 For example:
 
-class Foo (EventMixin):
+class Sink (EventMixin):
   def __init__(self):
    # This tells revent that we want to listen to events triggered by pox.core
    self.listenTo(pox.core)
-  
   
   def _handle_ComponentRegistered(self, event):
     # The name of this method has a special meaning. Any method with a prefix
@@ -48,8 +47,34 @@ class Foo (EventMixin):
   
   # This has the same effect as defining a method called "_handle_UpEvent"
   self.addListener(UpEvent, bar_handler)
+  
+  
+Event sources can also use the EventMixin library:
+
+class Source (EventMixin):
+  # Defining this variable tells the revent library what kind of events this
+  # source can raise.
+  _eventMixin_events = [ComponentRegistered]
+
+  def __init__(self):
+    foo()
+    
+    
+  def foo(self):
+    # We can raise events as follows:
+    component = "fake_pox_component"
+    self.raiseEvent(ComponentRegistered, component)
+    
+    # In the above invocation, the first argument is the Event type. After that,
+    # we can put arbitrarily many arguments to pass to the registered event handler.
+    
+    # The above method invocation will crash /this/ method if it throws an exception
+    # To squelch exceptions, run:
+    self.raiseEventNoErrors(ComponentRegistered, component)
+  
 """
 import operator
+
 # weakrefs are used for some event handlers. 
 #
 # See: http://docs.python.org/library/weakref.html:
@@ -62,6 +87,7 @@ showEventExceptions = False
 
 nextEventID = 0
 def generateEventID ():
+  # Single threaded programs are a wonderful thing!
   global nextEventID
   nextEventID += 1
   return nextEventID
