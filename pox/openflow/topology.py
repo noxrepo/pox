@@ -16,13 +16,9 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-This module is an "adaptor" for translating between OpenFlow discovery and
-pox.topology (which is protocol agnostic?)
-
-It seems a bit odd to me to put NOM functionality into the adaptor... In my mind the
-adaptor simply translates one state representation to another. So maybe I should move
-the OpenFlow entities to discovery.py, or its own module? Or, maybe I shouldn't be
-thinking of pox.openflow.topology as an "adaptor" per se..? 
+OpenFlow doesn't know anything about Topology, and Topology doesn't
+know anything about OpenFlow.  This module knows something about both,
+and hooks the two of them together.
 """
 
 from pox.lib.revent.revent import *
@@ -45,14 +41,14 @@ log = core.getLogger()
 
 class OpenFlowTopology (EventMixin):
   """
-  OpenFlow doesn't know anything about Topology, and Topology doesn't
-  know anything about OpenFlow.  This class knows something about both,
-  and hooks the two of them together
+  Listens to various OpenFlow-specific events and uses those to manipulate
+  Topology accordingly.
   """
   
-  # Won't boot up OpenFlowTopology until all of these components are loaded into
-  # pox.core. Note though that these components won't be loaded proactively; they
-  # must be specified on the command line (with the exception of openflow)  
+  # Won't boot up OpenFlowTopology until all of these components are loaded
+  # into pox.core. Note though that these components won't be loaded
+  # proactively; they must be specified on the command line (with the
+  # exception of openflow which usally loads automatically)
   _wantComponents = set(['openflow','topology','openflow_discovery'])
 
   def _resolveComponents (self):
@@ -81,19 +77,16 @@ class OpenFlowTopology (EventMixin):
     return False
 
   def __init__ (self):
-    """ Note that self.topology is initialized in _resolveComponents"""
-    # Could this line also be EventMixin.__init__(self) ?
+    """ Note that self.topology is initialized in _resolveComponents """
     super(EventMixin, self).__init__()
     if not self._resolveComponents():
       self.listenTo(core)
   
   def _handle_openflow_discovery_LinkEvent (self, event):
     """
-    The discovery module simply sends out LLDP packets, and triggers LinkEvents for 
-    discovered switches. It's our job to take these LinkEvents and update pox.topology.
-    
-    Are the underscores of this method name interpreted as module directives? i.e., does
-    this handle LinkEvents raised by pox.openflow.discovery? If so, wow, fancy!
+    The discovery module simply sends out LLDP packets, and triggers LinkEvents
+    for discovered switches. It's our job to take these LinkEvents and update
+    pox.topology.
     """
     if self.topology is None: return
     link = event.link
@@ -144,9 +137,13 @@ class OpenFlowTopology (EventMixin):
       sw.connection = None
       log.info("Switch " + str(event.dpid) + " disconnected")
 
-# inherits from pox.topology.Port
+
 class OpenFlowPort (Port):
-  """ What are OpenFlowPorts used for? """
+  """
+  A subclass of topology.Port for OpenFlow switch ports.
+
+  Note: Not presently used.
+  """
   def __init__ (self, ofp):
     # Passed an ofp_phy_port
     Port.__init__(self, ofp.port_no, ofp.hw_addr, ofp.name)
@@ -177,13 +174,13 @@ class OpenFlowPort (Port):
   def __repr__ (self):
     return "<Port #" + str(self.number) + ">"
 
-# inherits from pox.topology.topology.Switch
+
 class OpenFlowSwitch (EventMixin, Switch):
   """
-  OpenFlowSwitches are an entity in the NOM. 
+  OpenFlowSwitches are Topology entities (inheriting from topology.Switch)
   
-  OpenFlowSwitches are persistent; that is, if a switch reconnects, the Connection
-  field of the original OpenFlowSwitch object will simply be reset.
+  OpenFlowSwitches are persistent; that is, if a switch reconnects, the
+  Connection field of the original OpenFlowSwitch object will simply be reset.
   
   For now, OpenFlowSwitch is primarily a proxy to its underlying connection
   object. Later, we'll possibly add more explicit operations the client can
@@ -214,10 +211,6 @@ class OpenFlowSwitch (EventMixin, Switch):
     self._reconnectTimeout = None # Timer for reconnection
 
   def _setConnection (self, connection, ofp=None):
-    # Why do we remove all listeners? 
-    # We execute:
-    #   self._listeners = self.listenTo(connection, prefix="con")
-    # below, but can't listeners also be externally added? 
     if self.connection: self.connection.removeListeners(self._listeners)
     self._listeners = []
     self.connection = connection
@@ -296,6 +289,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     to call sw.connection.send() rather than sw.send()
     """
     return getattr( self.connection, name )
+
 
 def launch ():
   if not core.hasComponent("openflow_topology"):

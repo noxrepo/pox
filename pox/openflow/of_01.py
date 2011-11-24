@@ -375,9 +375,11 @@ class Connection (EventMixin):
 
   def disconnect (self, hard = False):
     """
-    disconnect is only invoked from within this module, afaict
-    
-    What does `hard` do? Force a disconnect even if already disconnected?
+    disconnect this Connection (usually not invoked manually).
+
+    'hard' is usually used under error conditions, and means we don't care
+    about closing it gracefully; we just want it closed.  This could be done
+    more elegantly.
     """
     if self.disconnected and not hard:
       self.err("already disconnected!")
@@ -421,8 +423,12 @@ class Connection (EventMixin):
 
   def send (self, data):
     """
-    interface for sending raw data to a switch. use a higher layer
-    of abstraction to pack the data (?)
+    Send raw data to the switch.
+
+    Generally, data is a bytes object.  If not, we check if it has a pack()
+    method and call it (hoping the result will be a bytes object).  This
+    way, you can just pass one of the OpenFlow objects from the OpenFlow
+    library to it and get the expected result, for example.
     """
     if self.disconnected: return
     if type(data) is not bytes:
@@ -448,6 +454,9 @@ class Connection (EventMixin):
 
   def read (self):
     """
+    Read data from this connection.  Generally this is just called by the
+    main OpenFlow loop below.
+
     Note: if no data is available to read, this method will block. Only invoke
     after select() has returned this socket.
     """
@@ -539,11 +548,6 @@ class OpenFlow_01_Task (Task):
     self.start()
 
   def run (self):
-    #TODO: This is actually "the main thread" for openflow events, and should actually
-    #      be pulled out so that other things (OpenFlow 1.1 switches, etc.) can use it
-    #      too. Probably this should mean that this thread will run the cooperative
-    #      threads.
-
     # List of open sockets/connections to select on
     sockets = []
 
