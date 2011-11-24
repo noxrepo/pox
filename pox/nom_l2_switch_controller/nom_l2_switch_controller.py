@@ -64,6 +64,9 @@ class nom_l2_switch_controller (EventMixin):
     self.listenTo(topo)
 
   def _handle_SwitchJoin(self, join_event):
+    # TODO: what if there are already switches in topology before we boot?
+    # This handler won't be triggered for them...
+    # Further argument for a `nom_update()` method? 
     switch = join_event.switch
     log.debug("SwitchJoin! %s" % (str(switch)))
     # Turn that sucker into a Learning switch!
