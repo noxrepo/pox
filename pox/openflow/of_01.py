@@ -16,9 +16,10 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-In charge of OpenFLow 1.0 switches.
+In charge of OpenFlow 1.0 switches.
 
-NOTE: this module is loaded automatically by pox.py
+NOTE: This module is loaded automatically on startup unless POX is run
+      with --no-openflow .
 """
 
 from pox.core import core
@@ -536,13 +537,11 @@ class OpenFlow_01_Task (Task):
     Task.__init__(self)
     self.port = int(port)
     self.address = address
-    # This variable has no effect, I believe
-    self.daemon = True
 
     core.addListener(pox.core.GoingUpEvent, self._handle_GoingUpEvent)
 
   def _handle_GoingUpEvent (self, event):
-    # The next two lines are somewhat confusing, but they're referenced later
+    # We keep our own module-level reference to the main OpenFlow component
     global openflowHub
     openflowHub = core.openflow
     self.start()
@@ -639,11 +638,10 @@ for h in handlerMap:
   #print handlerMap[h]
 
 
-def launch (*args, **kw):
+def launch (port = 6633, address = "0.0.0.0"):
   if core.hasComponent('of_01'):
     return None
-  l = OpenFlow_01_Task(*args, **kw)
-  #l = OpenFlow_01_Loop(*args, **kw)
+  l = OpenFlow_01_Task(port = int(port), address = address)
   core.register("of_01", l)
   return l
 

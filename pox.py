@@ -35,7 +35,7 @@ exec python -O "$0" "$@"
 '''
 
 from pox.core import core
-import pox.openflow.openflow
+import pox.openflow
 import pox.openflow.of_01
 
 # Turn on extra info for event exceptions
@@ -261,7 +261,7 @@ def pre_startup ():
   process_options()
 
   if enable_openflow:
-    pox.openflow.openflow.launch() # Always launch OpenFlow
+    pox.openflow.launch() # Default OpenFlow launch
 
   return True
 
