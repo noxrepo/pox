@@ -176,7 +176,7 @@ class AddFlowEntryCommand(FlowModCommand):
 def modifyFlow(con, inport, packet, buf, bufid=None):
   """Modify a switch's flow table
   """
-  command = flowModCommand(inport, packet, buf, bufid)
+  command = FlowModCommand(inport, packet, buf, bufid)
   sendCommand(con, command)
   
 def addFlowEntry(con, inport, match, actions, bufid=None):
