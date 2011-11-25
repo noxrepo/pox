@@ -221,7 +221,6 @@ def doLaunch ():
 cli = True
 verbose = False
 enable_openflow = True
-default_address = "0.0.0.0"
 
 def _opt_no_openflow (v):
   global enable_openflow
@@ -235,12 +234,6 @@ def _opt_no_cli (v):
 def _opt_verbose (v):
   global verbose
   verbose = str(v).lower() == "true"
-
-def _opt_address (v):
-  """ The address to run the controller on """
-  global default_address
-  # TODO: sanity check address
-  default_address = v
 
 def process_options ():
   for k,v in options.iteritems():
@@ -272,7 +265,7 @@ def post_startup ():
   #core.register("switch", pox.dumb_l3_switch.dumb_l3_switch.dumb_l3_switch())
 
   if enable_openflow:
-    pox.openflow.of_01.launch(address = default_address) # Always launch of_01
+    pox.openflow.of_01.launch() # Usually, we launch of_01
 
 def _monkeypatch_console ():
   """
