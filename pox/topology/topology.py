@@ -160,7 +160,7 @@ class Topology (EventMixin):
     else:
       return (x for x in self.entities.itervalues() if isinstance(x, t))
 
-  def getSwitcheWithConnection (self, connection):
+  def getSwitchWithConnection (self, connection):
     """
     OpenFlow events only contain a refence to a connection object, not a
     switch object. Perhaps this should be changed, but for now, find the
@@ -169,4 +169,13 @@ class Topology (EventMixin):
     Return None if no such switch found.
     """
     self.getEntitiesOfType(Switch).find(lambda switch: switch.connection == connection)
+    
+  def __str__(self):
+    # TODO: display me graphically
+    strings = []
+    strings.append("topology (%d total entities)" % len(self.entities))
+    for id,entity in self.entities:
+      strings.append("%s %s" % (str(id), str(entity))) 
+      
+    return strings
     
