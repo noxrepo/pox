@@ -58,7 +58,7 @@ def handle_ECHO_REQUEST (con, msg): #S
   reply.header_type = of.OFPT_ECHO_REPLY
   con.send(reply.pack())
 
-def handle_FLOW_REMOVED (con, msg):
+def handle_FLOW_REMOVED (con, msg): #A
   openflowHub.raiseEventNoErrors(FlowRemoved, con, msg)
   con.raiseEventNoErrors(FlowRemoved, con, msg)
 
