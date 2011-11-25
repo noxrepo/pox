@@ -68,6 +68,7 @@ from packet_utils       import *
 
 from packet_base import packet_base
 from pox.lib.addresses import EthAddr
+from pox.lib.util import initHelper
 
 import logging
 lg = logging.getLogger('packet')
@@ -213,16 +214,6 @@ class lldp (packet_base):
 #                          TLV definitions
 #======================================================================
         
-def initHelper(self, kw):
-  # TODO: implement me! The classes below depend on this, but it doesn't
-  # seem to be present 
-  # (throwing an exception: 
-  #   File "/Users/rcs/Research/UCB/mainline_pox/pox/lib/packet/lldp.py", line 245, in __init__
-  #    initHelper(self, kw)
-  # NameError: global name 'initHelper' is not defined
-  pass
- 
-
 class chassis_id:
     tlv_type = lldp.CHASSIS_ID_TLV
 
