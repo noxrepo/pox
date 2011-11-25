@@ -102,7 +102,26 @@ import operator
 # collection is free to destroy the referent"
 import weakref
 
-showEventExceptions = False
+
+def handleEventException (source, event, args, kw, exc_info):
+  """
+  Called when an exception is raised by an event handler when the event
+  was raised by raiseEventNoErrors().
+
+  You can replace this method if you'd like to replace the default handling
+  (printing an error message an a traceback) with your own (for example if
+  you are using a logging system and would like to use that).
+
+  "source" is the object sourcing the event.  "event" is the event that was
+  being raised when the exception occurred.  "args" and "kw" were the args
+  and kwargs passed to raiseEventNoErrors.  "exc_info" is the exception info
+  as returned by sys.exc_info()).
+  """
+  print "Event handler raised exception"
+  if showEventExceptions:
+    import traceback
+    traceback.print_exception(*exc_info)
+
 
 nextEventID = 0
 def generateEventID ():
@@ -111,22 +130,48 @@ def generateEventID ():
   nextEventID += 1
   return nextEventID
 
+
 def EventReturn (halt = False, remove = False):
+  """
+  Event handlers can return special values.  You can craft these with this
+  function.
+
+  If halt is True, further handlers will not be called for this particular
+  event.
+
+  If remove is True, the handler will be removed (i.e. unsubscribed) and will
+  not be called anymore.
+
+  Shortcut names are also available.  You can also simply do:
+  return EventHalt
+  return EventRemove
+  return HaltAndRemove
+  """
   return (halt, remove)
 
+
+# Event handlers can return this to stop further handling of this event
 EventHalt = EventReturn(halt=True)
 
+# A handler can return this if it wants to remove itself (unsubscribe)
 EventRemove = EventReturn(remove=True)
 
+# A handler can return this if it wants to both stop further processing
+# and unsubscribe
 EventHaltAndRemove = EventReturn(remove=True, halt=True)
 
+
 class Event (object):
+  """
+  Superclass for events
+  """
   def __init__ (self):
     self.halt = False
     self.source = None
 
   def _invoke (self, handler, *args, **kw):
     return handler(self, *args, **kw)
+
 
 class EventMixin (object):
   """
@@ -168,10 +213,8 @@ class EventMixin (object):
     try:
       return self.raiseEvent(event, *args, **kw)
     except:
-      print "Event handler raised exception"
-      if showEventExceptions:
-        import traceback
-        traceback.print_exc()
+      import sys
+      handleEventException(self, event, args, kw, sys.exc_info())
     return None
 
   def raiseEvent (self, event, *args, **kw):
