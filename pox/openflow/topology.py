@@ -23,7 +23,7 @@ and hooks the two of them together.
 
 from pox.lib.revent.revent import *
 import libopenflow_01 as of
-from openflow import *
+from pox.openflow import *
 from pox.core import core
 from pox.topology.topology import *
 from pox.openflow.discovery import *

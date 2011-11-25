@@ -17,12 +17,13 @@
 
 import pox.lib.recoco.recoco as recoco
 import pox.lib.revent.revent as revent
+import threading
 
 class ReventWaiter (revent.EventMixin):
   def __init__ (self):
     self.waitEvents = set()
-    EventMixin.__init__(self)
-    self._events = deque()
+    revent.EventMixin.__init__(self)
+    self._events = recoco.deque()
     self._task = None
     self._scheduler = None
     self._wakeLock = threading.Lock()

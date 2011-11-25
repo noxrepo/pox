@@ -39,7 +39,7 @@ More thoughts inline.
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
-from pox.openflow.openflow import PacketIn 
+from pox.openflow import PacketIn 
 from pox.lib.revent.revent import *
 
 log = core.getLogger()

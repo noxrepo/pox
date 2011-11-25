@@ -27,6 +27,7 @@ import traceback
 import os
 import socket
 import pox.lib.util
+import random
 
 CYCLE_MAXIMUM = 2
 
@@ -554,7 +555,7 @@ class Synchronizer (object):
       self.syncer = SyncTask()
       self.syncer.start(self.scheduler) #NOTE: maybe add it to head of list?
       self.syncer.inlock.acquire()
-    return this.syncer
+    return self.syncer
 
   def __exit__ (self, type_, value, traceback):
     self.enter -= 1

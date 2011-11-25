@@ -38,6 +38,7 @@
 
 import struct
 import pox.openflow.libopenflow_01 as of
+from pox.openflow import *
 
 from pox.lib.packet.tcp       import tcp
 from pox.lib.packet.udp       import udp

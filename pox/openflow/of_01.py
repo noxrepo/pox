@@ -27,7 +27,7 @@ import pox
 import pox.lib.util
 from pox.lib.revent.revent import EventMixin
 
-from pox.openflow.openflow import *
+from pox.openflow import *
 
 log = core.getLogger()
 

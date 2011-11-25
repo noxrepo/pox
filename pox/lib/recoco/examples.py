@@ -38,41 +38,47 @@ class EventLoopExample (Task):
    of python's threading.thread interface. 
    """
    def __init__(self):
-       Task.__init__(self)  # call our superconstructor
+     Task.__init__(self)  # call our superconstructor
 
-       self.sockets = get_sockets() # ... the sockets to listen to events on
-       
-       # Note! We can't start our event loop until the core is up. Therefore, 
-       # we'll add an event handler.
-       core.addListener(pox.core.GoingUpEvent, self.start_event_loop)
+     self.sockets = self.get_sockets() # ... the sockets to listen to events on
+    
+     # Note! We can't start our event loop until the core is up. Therefore, 
+     # we'll add an event handler.
+     core.addListener(pox.core.GoingUpEvent, self.start_event_loop)
 
    def start_event_loop(self, event):
-       """
-       Takes a second parameter: the GoingUpEvent object (which we ignore)
-       """ 
-       # This causes us to be added to the scheduler's recurring Task queue
-       Task.start(self) 
+     """
+     Takes a second parameter: the GoingUpEvent object (which we ignore)
+     """ 
+     # This causes us to be added to the scheduler's recurring Task queue
+     Task.start(self) 
+       
+   def get_sockets(self):
+     return []
+ 
+   def handle_read_events(self):
+      pass
 
    def run(self):
+     """
+     run() is the method that gets called by the scheduler to execute this task
+      """
+     while core.running:
        """
-       run() is the method that gets called by the scheduler to execute this task
+       This looks almost exactly like python's select.select, except that it's
+       it's handled cooperatively by recoco
+       
+       The only difference in Syntax is the "yield" statement, and the
+       capital S on "Select"
        """
-       while core.running:
-           """
-           This looks almost exactly like python's select.select, except that it's
-           it's handled cooperatively by recoco
-           
-           The only difference in Syntax is the "yield" statement, and the
-           capital S on "Select"
-           """
-           rlist,wlist,elist = yield Select(self.sockets, [], [], 3)
-           events = []
-           for read_sock in rlist:
-                if read_sock in self.sockets:
-                    events.append(read_sock)
+       rlist,wlist,elist = yield Select(self.sockets, [], [], 3)
+       events = []
+       for read_sock in rlist:
+         if read_sock in self.sockets:
+           events.append(read_sock)
     
-            if events:
-                handle_read_events() # ...
+         if events:
+           self.handle_read_events() # ...
 
 
 """
