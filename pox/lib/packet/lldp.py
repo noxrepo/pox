@@ -446,6 +446,9 @@ class basic_tlv (object):
         typelen = typelen | (self.len & 0x01ff)
         return struct.pack('!H', typelen) + self.next
 
+class unknown_tlv (basic_tlv):
+    tlv_type = None
+
 class system_description (basic_tlv):
     tlv_type = lldp.SYSTEM_DESC_TLV
 
