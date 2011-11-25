@@ -3,12 +3,12 @@ locates the modules, calls their launch() methods, and then opens up a command
 line prompt allowing you to interact with the modules interactively.
 
 Module names can be fully specified, or abbreviated to just the top level
-directory name under pox/ or ext/. For example, the following to invocations
+directory name under pox/ or ext/. For example, the following two invocations
 are equivalent:
 
   ./pox.py pox.dumb_l2_switch
 
-  ./pox.py dump_l2_switch
+  ./pox.py dumb_l2_switch
 
 You can pass options to the modules by specifying options after the module
 name. For example, to set the address or port of the controller, invoke
@@ -17,6 +17,6 @@ as follows:
   ./pox.py of_01 --address=10.1.1.1 --port=6634
 
 pox.py also supports a few command line options of its own:
- --verbose
- --no-cli
- --no-openflow
+ --verbose      print stack traces for initialization exceptions
+ --no-cli       don't bring up a command line prompt
+ --no-openflow  don't boot pox.openflow automatically
