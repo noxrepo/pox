@@ -84,21 +84,29 @@ class Entity (object):
   imply that pox.toplogy serves to define a generic interface to abstract
   entity types.
   """
-  def __init__ (self, identifier):
-    self.identifier = identifier
+  # Globally unique id for this entity
+  ID = 0
+  
+  def __init__ (self):
+    Entity.ID += 1
+    self.id = Entity.ID
 
 class Host (Entity):
-  pass
+  def __init__(self):
+    Entity.__init__(self)
 
 class Switch (Entity):
   """
   Subclassed by protocol-specific switch classes,
   e.g. pox.openflow.topology.OpenFlowSwitch
   """
-  pass
+  def __init__(self, id):
+    # Switch takes a dpid instead of calling super constructor
+    self.id = id
 
 class Port (Entity):
   def __init__ (self, num, hwAddr, name):
+    Entity.__init__(self)
     self.number = num
     self.hwAddr = EthAddr(hwAddr)
     self.name = name
@@ -118,12 +126,18 @@ class Topology (EventMixin):
     EntityJoin,
     EntityLeave,
   ]
-
+  
   _core_name = "topology" # We want to be core.topology
 
   def __init__ (self):
     EventMixin.__init__(self)
     self.entities = {}
+    
+    # If a client registers a handler for these events after they have already
+    # occurred, we promise to re-issue them to the newly joined client.
+    self._event_promises = {
+      SwitchJoin : self._fulfill_SwitchJoin_promise
+    }
 
   def getEntityByID (self, ID, fail=False):
     """ Raises an exception if fail is True and the entity is not in the NOM """    
@@ -169,6 +183,22 @@ class Topology (EventMixin):
     Return None if no such switch found.
     """
     self.getEntitiesOfType(Switch).find(lambda switch: switch.connection == connection)
+    
+  def addListener(self, eventType, handler, once=False, weak=False, priority=None, byName=False):
+    """
+    We interpose on EventMixin.addListener to check if the eventType is
+    in our promise list. If so, trigger the handler for all previously
+    triggered events.
+    """
+    if eventType in self._event_promises:
+      self._event_promises[eventType](handler)
+    
+    return EventMixin.addListener(self, eventType, handler, once=once, weak=weak, priority=priority, byName=byName)
+  
+  def _fulfill_SwitchJoin_promise(self, handler):
+    """ Trigger the SwitchJoin handler for all pre-existing switches """
+    for switch in self.getEntitiesOfType(Switch, True):
+      handler(switch)
     
   def __str__(self):
     # TODO: display me graphically
