@@ -288,7 +288,6 @@ class MessengerHub (EventMixin):
   ])
   def __init__ (self):
     EventMixin.__init__(self)
-    # TODO: weakref.WeakSet() does not appear to exist in python2.6
     self.connections = weakref.WeakSet()
 
 
