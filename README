@@ -11,8 +11,8 @@ pox.py boots up POX. It takes a list of module names on the command line,
 locates the modules, calls their launch() function (if it exists), and
 then opens up a Python commandline for interactive use.
 
-The "pox" and "ext" directories are added to the Python path, so you can
-specify modules in either one without qualification.  For example:
+Modules are looked for everywhere that Python normally looks, plus the
+"pox" and "ext" directories.  Thus, you can do the following:
 
   ./pox.py dumb_l2_switch
 
@@ -22,7 +22,8 @@ to set the address or port of the controller, invoke as follows:
 
   ./pox.py of_01 --address=10.1.1.1 --port=6634
 
-pox.py also supports a few command line options of its own:
+pox.py also supports a few command line options of its own which should
+be given first:
  --verbose      print stack traces for initialization exceptions
- --no-cli       don't bring up a command line prompt
- --no-openflow  don't boot pox.openflow automatically
+ --no-cli       don't bring up a Python interpreter
+ --no-openflow  don't start the openflow module automatically
