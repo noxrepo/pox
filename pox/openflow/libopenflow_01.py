@@ -1865,7 +1865,7 @@ class ofp_flow_stats_request (object):
     self.match = ofp_match()
     self.table_id = 0
     self.pad = 0
-    self.out_port = 0
+    self.out_port = OFPP_NONE
 
   def _assert (self):
     if(not isinstance(self.match, ofp_match)):
@@ -2007,7 +2007,7 @@ class ofp_aggregate_stats_request (object):
     self.match = ofp_match()
     self.table_id = 0
     self.pad = 0
-    self.out_port = 0
+    self.out_port = OFPP_NONE
 
   def _assert (self):
     if(not isinstance(self.match, ofp_match)):
