@@ -111,7 +111,8 @@ class Task (BaseTask):
 
 class Scheduler (object):
   """ Scheduler for Tasks """
-  def __init__ (self, isDefaultScheduler = None, startInThread = True, daemon = False):
+  def __init__ (self, isDefaultScheduler = None, startInThread = True,
+                daemon = False):
     self._ready = deque()
     self._hasQuit = False
     self._selectHub = SelectHub(self)
@@ -123,7 +124,8 @@ class Scheduler (object):
     self._allDone = False
 
     global defaultScheduler
-    if isDefaultScheduler or (isDefaultScheduler is None and defaultScheduler is None):
+    if isDefaultScheduler or (isDefaultScheduler is None and
+                              defaultScheduler is None):
       defaultScheduler = self
 
     if startInThread:
@@ -228,7 +230,8 @@ class Scheduler (object):
       try:
         rv.execute(t, self)
       except:
-        print("Task", t, "caused exception during a blocking operation and was de-scheduled")
+        print("Task", t, "caused exception during a blocking operation and " +
+              "was de-scheduled")
         traceback.print_exc()
     elif rv is False:
       # Just unschedule/sleep
@@ -318,7 +321,8 @@ except:
   pass
 
 class Recv (BlockingOperation):
-  def __init__ (self, fd, bufsize = 1024*8, flags = defaultRecvFlags, timeout = None):
+  def __init__ (self, fd, bufsize = 1024*8, flags = defaultRecvFlags,
+                timeout = None):
     """
     Recv call on fd.
     """
@@ -343,7 +347,8 @@ class Recv (BlockingOperation):
 
   def execute (self, task, scheduler):
     task.rf = self._recvReturnFunc
-    scheduler._selectHub.registerSelect(task, [self._fd], None, [self._fd], timeout=self._timeout)
+    scheduler._selectHub.registerSelect(task, [self._fd], None, [self._fd],
+                                        timeout=self._timeout)
 
 
 class Send (BlockingOperation):
@@ -462,7 +467,9 @@ class SelectHub (object):
           self._return(t, ([],[],[]))
 
       if timeout is None: timeout = CYCLE_MAXIMUM
-      ro, wo, xo = select.select(rl.keys() + [self._pinger], wl.keys(), xl.keys(), timeout)
+      ro, wo, xo = select.select( rl.keys() + [self._pinger],
+                                  wl.keys(),
+                                  xl.keys(), timeout )
 
       if len(ro) == 0 and len(wo) == 0 and len(xo) == 0 and timeoutTask != None:
         # IO is idle - dispatch timers / release timeouts
@@ -501,7 +508,8 @@ class SelectHub (object):
           del tasks[t]
           self._return(t, v)
 
-  def registerSelect (self, task, rlist = None, wlist = None, xlist = None, timeout = None, timeIsAbsolute = False):
+  def registerSelect (self, task, rlist = None, wlist = None, xlist = None,
+                      timeout = None, timeIsAbsolute = False):
     if not timeIsAbsolute:
       if timeout != None:
         timeout += time.time()
@@ -520,7 +528,8 @@ class SelectHub (object):
     Register a task to be wakened up interval units in the future.
     It means timeToWake seconds in the future if absoluteTime is False.
     """
-    return self.registerSelect(task, None, None, None, timeToWake, timeIsAbsolute)
+    return self.registerSelect(task, None, None, None, timeToWake,
+                               timeIsAbsolute)
 
   def _return (self, sleepingTask, returnVal):
     #print("reschedule", sleepingTask)
@@ -564,10 +573,25 @@ class Synchronizer (object):
 
 
 class Timer (Task):
-  def __init__ (self, timeToWake, callback, absoluteTime = False, recurring = False, args = (), kw = {}, scheduler = None, started = True):
+  """
+  A simple timer.
+
+  timeToWake     Amount of time to wait before calling callback (seconds)
+  callback       Some callable to be called when the timer expires
+  absoluteTime   A specific time to fire (as from time.time())
+  recurring      Whether to call repeatedly or just once
+  args, kw       Args and keyword args for the callback
+  scheduler      The recoco scheduler to use (None means default scheduler)
+  started        If False, requires you to call .start() to begin timer
+  selfStoppable  If True, the callback can return False to cancel the timer
+  """
+  def __init__ (self, timeToWake, callback, absoluteTime = False,
+                recurring = False, args = (), kw = {}, scheduler = None,
+                started = True, selfStoppable = True):
     if absoluteTime and recurring:
       raise RuntimeError("Can't have a recurring timer for an absolute time!")
     Task.__init__(self)
+    self._self_stoppable = selfStoppable
     self._next = timeToWake
     self._interval = timeToWake if recurring else 0
     if not absoluteTime:
@@ -590,7 +614,8 @@ class Timer (Task):
       yield Sleep(timeToWake=self._next, absoluteTime=True)
       if self._cancelled: break
       self._next = time.time() + self._interval
-      self._callback(*self._args,**self._kw)
+      rv = self._callback(*self._args,**self._kw)
+      if self._self_stoppable and (rv is False): break
       if not self._recurring: break
     yield False # Quit
 
