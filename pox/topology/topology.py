@@ -198,7 +198,7 @@ class Topology (EventMixin):
   def _fulfill_SwitchJoin_promise(self, handler):
     """ Trigger the SwitchJoin handler for all pre-existing switches """
     for switch in self.getEntitiesOfType(Switch, True):
-      handler(switch)
+      handler(SwitchJoin(switch))
     
   def __str__(self):
     # TODO: display me graphically
