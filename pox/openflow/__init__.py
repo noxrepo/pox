@@ -89,7 +89,7 @@ class FlowRemoved (Event):
   idleTimeout (bool) - True if expired because of idleness
   hardTimeout (bool) - True if expired because of hard timeout
   timeout (bool) - True if either of the above is true
-  deleted (bool) - True if deleted explictly
+  deleted (bool) - True if deleted explicitly
   """
   def __init__ (self, connection, ofp):
     Event.__init__(self)
