@@ -80,7 +80,7 @@ class tcp_opt:
             return struct.pack('!BB',self.type,2)
         elif self.type == tcp_opt.SACK:
             return struct.pack("!" + "II" * len(self.val),
-                               [x for p in self.val for x in p])
+                               *[x for p in self.val for x in p])
         elif self.type == tcp_opt.TSOPT:
             return struct.pack('!BBII',self.type,10,self.val[0],self.val[1])
         else:
@@ -144,17 +144,17 @@ class tcp(packet_base):
 
         self.prev = prev
 
-        self.srcport  = 0 # 16 bit
-        self.dstport  = 0 # 16 bit
-        self.seq      = 0 # 32 bit
-        self.ack      = 0 # 32 bit
-        self.off      = 0 # 4 bits
-        self.res      = 0 # 4 bits
-        self.flags    = 0 # reserved, 2 bits flags 6 bits
-        self.win      = 0 # 16 bits
-        self.csum     = 0 # 16 bits
-        self.urg      = 0 # 16 bits
-        self.tcplen   = 20 # Options?
+        self.srcport  = 0  # 16 bit
+        self.dstport  = 0  # 16 bit
+        self.seq      = 0  # 32 bit
+        self.ack      = 0  # 32 bit
+        self.off      = 0  # 4 bits
+        self.res      = 0  # 4 bits
+        self.flags    = 0  # reserved, 2 bits flags 6 bits
+        self.win      = 0  # 16 bits
+        self.csum     = 0  # 16 bits
+        self.urg      = 0  # 16 bits
+        self.tcplen   = 0  # Options? #TODO: FIXME
         self.options  = []
         self.next     = b''
 
