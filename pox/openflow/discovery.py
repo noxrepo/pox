@@ -31,7 +31,7 @@ It's possible that some of this should be abstracted out into a generic
 Discovery module, or a Discovery superclass.
 """
 
-from pox.lib.revent.revent        import *
+from pox.lib.revent               import *
 from pox.lib.recoco.recoco        import Timer
 from pox.lib.packet.ethernet      import LLDP_MULTICAST, NDP_MULTICAST
 from pox.lib.packet.ethernet      import ethernet

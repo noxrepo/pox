@@ -823,7 +823,7 @@ class HTMLDoc(Doc):
             except TypeError:
                 attrs.sort(lambda t1, t2: cmp(t1[0], t2[0]))    # 2.3 compat
 
-            from pox.lib.revent.revent import EventMixin
+            from pox.lib.revent import EventMixin
             if hasattr(object, '_eventMixin_events') and issubclass(object, EventMixin):
               events = list(object._eventMixin_events)
               if len(events) > 0:

@@ -16,7 +16,7 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 import pox.lib.recoco.recoco as recoco
-import pox.lib.revent.revent as revent
+import pox.lib.revent as revent
 import threading
 
 class ReventWaiter (revent.EventMixin):

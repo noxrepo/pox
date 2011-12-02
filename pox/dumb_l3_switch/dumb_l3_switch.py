@@ -38,7 +38,7 @@ from pox.lib.packet.arp import arp
 
 import pox.openflow.libopenflow_01 as of
 
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 
 import time
 

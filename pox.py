@@ -39,7 +39,7 @@ import pox.openflow
 import pox.openflow.of_01
 
 # Turn on extra info for event exceptions
-import pox.lib.revent.revent as revent
+import pox.lib.revent as revent
 revent.showEventExceptions = True
 
 import sys

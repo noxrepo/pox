@@ -42,7 +42,7 @@ implement "OS"-functionality; when most applications move to using the NOM, the 
 will automatically be populated by pox. 
 """
 
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 from pox.core import core
 from pox.lib.addresses import *
 
@@ -208,4 +208,4 @@ class Topology (EventMixin):
       strings.append("%s %s" % (str(id), str(entity))) 
       
     return strings
-    
+

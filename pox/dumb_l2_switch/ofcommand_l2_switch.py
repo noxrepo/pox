@@ -11,7 +11,7 @@ from pox.lib.packet.icmp          import icmp
 from pox.lib.packet.ethernet      import ethernet
 
 from pox.core import core
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 from pox.lib.addresses import EthAddr
 
 log = core.getLogger()

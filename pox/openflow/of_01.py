@@ -25,7 +25,7 @@ NOTE: This module is loaded automatically on startup unless POX is run
 from pox.core import core
 import pox
 import pox.lib.util
-from pox.lib.revent.revent import EventMixin
+from pox.lib.revent import EventMixin
 
 from pox.openflow import *
 

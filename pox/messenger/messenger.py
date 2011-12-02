@@ -69,7 +69,7 @@ the messages it receives, and it can be polled later.
 
 
 
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 from pox.lib.recoco.recoco import *
 import pox.core
 from pox.core import core as core

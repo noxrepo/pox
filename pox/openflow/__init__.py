@@ -36,7 +36,7 @@ care of this for you and are only fired when all data is available.
 NOTE: this module is automatically loaded by pox.py
 """
 
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 import libopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
 from pox.core import core

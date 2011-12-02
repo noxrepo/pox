@@ -33,7 +33,7 @@ Note: log messages are treated separately, and use their own communication
 channel
 """
 
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 from pox.lib.recoco.recoco import *
 import pox.core
 from pox.core import core as core

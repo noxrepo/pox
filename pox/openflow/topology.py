@@ -21,7 +21,7 @@ know anything about OpenFlow.  This module knows something about both,
 and hooks the two of them together.
 """
 
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 import libopenflow_01 as of
 from pox.openflow import *
 from pox.core import core

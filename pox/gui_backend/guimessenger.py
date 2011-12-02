@@ -16,8 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
-#from pox.lib.revent.revent import *
-#from pox.lib.recoco.recoco import *
 from pox.core import core as core
 from pox.messenger.messenger import MessageReceived
 #import weakref
@@ -28,7 +26,7 @@ log = core.getLogger()
 
 from pox.core import core
 from pox.messenger.messenger import *
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 import traceback
 
 from pox.messenger.log_service import LogMessenger
