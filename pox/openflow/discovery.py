@@ -32,7 +32,7 @@ Discovery module, or a Discovery superclass.
 """
 
 from pox.lib.revent               import *
-from pox.lib.recoco.recoco        import Timer
+from pox.lib.recoco               import Timer
 from pox.lib.packet.ethernet      import LLDP_MULTICAST, NDP_MULTICAST
 from pox.lib.packet.ethernet      import ethernet
 from pox.lib.packet.lldp          import lldp, chassis_id, port_id, end_tlv

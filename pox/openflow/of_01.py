@@ -527,7 +527,7 @@ class Connection (EventMixin):
     return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
 
 
-from pox.lib.recoco.recoco import *
+from pox.lib.recoco import *
 
 class OpenFlow_01_Task (Task):
   """

@@ -34,7 +34,7 @@ channel
 """
 
 from pox.lib.revent import *
-from pox.lib.recoco.recoco import *
+from pox.lib.recoco import *
 import pox.core
 from pox.core import core as core
 import json

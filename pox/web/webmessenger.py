@@ -30,7 +30,7 @@ import hashlib
 import base64
 import json
 
-from pox.lib.recoco.recoco import Timer
+from pox.lib.recoco import Timer
 
 from pox.messenger.messenger import MessengerConnection
 

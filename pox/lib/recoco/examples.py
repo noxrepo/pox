@@ -26,7 +26,7 @@ Murphy rolled recoco himself?
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.revent import *
-from pox.lib.recoco.recoco import *
+from pox.lib.recoco import *
 
 class EventLoopExample (Task):
    """

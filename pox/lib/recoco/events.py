@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
-import pox.lib.recoco.recoco as recoco
+import pox.lib.recoco as recoco
 import pox.lib.revent as revent
 import threading
 
