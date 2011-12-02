@@ -48,7 +48,7 @@ class Sink (EventMixin):
   def __init__(self):
    # This tells revent that we want to listen to events triggered by pox.core
    self.listenTo(pox.core)
-  
+
   def _handle_ComponentRegistered (self, event):
     # The name of this method has a special meaning. Any method with a prefix
     # of '_handle_', and a suffix naming an EventType that the source
@@ -56,7 +56,7 @@ class Sink (EventMixin):
     #  
     # This method will now be called whenever pox.core triggers a 
     # ComponentRegistered event.
-    
+
     # Most event handlers are passed an event object as a parameter (though
     # individual Event classes can override this behavior by altering their
     # _invoke() method).
@@ -74,12 +74,12 @@ class Source (EventMixin):
 
   def __init__ (self):
     foo()
- 
+
   def foo (self):
     # We can raise events as follows:
     component = "fake_pox_component"
     self.raiseEvent(ComponentRegistered(component))
-    
+
     # In the above invocation, the argument is an instance of
     # ComponentRegistered (which is a subclass of Event).  The following is
     # functionally equivalent, but has the nice property that 
@@ -87,7 +87,7 @@ class Source (EventMixin):
     #self.raiseEvent(ComponentRegistered, component)
     # In both cases, "component" is passed to the __init__ method for the
     # ComponentRegistered class.
-    
+
     # The above method invocation will raise an exception if an event
     # handler rauses an exception.  To project yourself from exceptions in
     # handlers, see raiseEventNoErrors().
@@ -341,7 +341,7 @@ class EventMixin (object):
     """
     Add a listener by name. An eventType argument must be present, which is
     used as the name. A handler argument must also be present.
-    
+
     Also see addListener().
     """
     kw['byName'] = True
@@ -351,7 +351,7 @@ class EventMixin (object):
                    priority=None, byName=False):
     """
     Add an event handler for an event triggered by this object (subscribe).
-    
+
     eventType : event class object (e.g. ConnectionUp). If byName is True,
                 should be a string (e.g. "ConnectionUp") 
     handler : function/method to be invoked when event is raised 
@@ -365,7 +365,7 @@ class EventMixin (object):
                for an event type.  Should probably be an integer, where higher
                means to call it earlier.  Do not specify if you don't care.
     byName : True if eventType is a string name, else it's an Event subclass
-    
+
     Raises an exception unless eventType is in the source's _eventMixin_events
     set (or, alternately, _eventMixin_events must be True).
 
