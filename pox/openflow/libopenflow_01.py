@@ -219,11 +219,11 @@ class ofp_packet_queue (object):
   def __init__ (self):
     self.queue_id = 0
     self.length = 0
-    self.pad = b'\x00' * 2
+    self._pad = b'\x00' * 2
     self.properties = []
 
   def _assert (self):
-    if(len(self.pad) != 2):
+    if(len(self._pad) != 2):
       return (False, "pad is not of size 2")
     return (True, None)
 
@@ -233,7 +233,7 @@ class ofp_packet_queue (object):
         return None
     packed = ""
     packed += struct.pack("!LH", self.queue_id, self.length)
-    packed += self.pad
+    packed += self._pad
     for i in self.properties:
       packed += i.pack(assertstruct)
     return packed
@@ -254,7 +254,7 @@ class ofp_packet_queue (object):
     if type(self) != type(other): return False
     if self.queue_id !=  other.queue_id: return False
     if self.length !=  other.length: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.properties !=  other.properties: return False
     return True
 
@@ -278,10 +278,10 @@ class ofp_queue_prop_header (object):
   def __init__ (self):
     self.property = 0
     self.length = 8
-    self.pad = b'\x00' * 4
+    self._pad = b'\x00' * 4
 
   def _assert (self):
-    if(len(self.pad) != 4):
+    if(len(self._pad) != 4):
       return (False, "pad is not of size 4")
     return (True, None)
 
@@ -291,7 +291,7 @@ class ofp_queue_prop_header (object):
         return None
     packed = ""
     packed += struct.pack("!HH", self.property, self.length)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -307,7 +307,7 @@ class ofp_queue_prop_header (object):
     if type(self) != type(other): return False
     if self.property !=  other.property: return False
     if self.length !=  other.length: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -322,12 +322,12 @@ class ofp_queue_prop_min_rate (object):
   def __init__ (self):
     self.prop_header = ofp_queue_prop_header()
     self.rate = 0
-    self.pad = b'\x00' * 6
+    self._pad = b'\x00' * 6
 
   def _assert (self):
     if(not isinstance(self.prop_header, ofp_queue_prop_header)):
       return (False, "prop_header is not class ofp_queue_prop_header")
-    if(len(self.pad) != 6):
+    if(len(self._pad) != 6):
       return (False, "pad is not of size 6")
     return (True, None)
 
@@ -338,7 +338,7 @@ class ofp_queue_prop_min_rate (object):
     packed = ""
     packed += self.prop_header.pack()
     packed += struct.pack("!H", self.rate)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -356,7 +356,7 @@ class ofp_queue_prop_min_rate (object):
     if type(self) != type(other): return False
     if self.prop_header !=  other.prop_header: return False
     if self.rate !=  other.rate: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -526,9 +526,9 @@ class ofp_match (object):
     if len(self._dl_dst) != 6:
       return "self.dl_dst is not of size 6"
     if len(self._pad1) != 1:
-      return "self.pad1 is not of size 1"
+      return "self._pad1 is not of size 1"
     if len(self._pad2) != 2:
-      return "self.pad2 is not of size 2"
+      return "self._pad2 is not of size 2"
     return None
 
   def pack (self, assertstruct=True):
@@ -617,11 +617,11 @@ class ofp_match (object):
     if self.dl_dst !=  other.dl_dst: return False
     if self.dl_vlan !=  other.dl_vlan: return False
     if self.dl_vlan_pcp !=  other.dl_vlan_pcp: return False
-    if self.pad1 !=  other.pad1: return False
+    if self._pad1 !=  other._pad1: return False
     if self.dl_type !=  other.dl_type: return False
     if self.nw_tos !=  other.nw_tos: return False
     if self.nw_proto !=  other.nw_proto: return False
-    if self.pad2 !=  other.pad2: return False
+    if self._pad2 !=  other._pad2: return False
     if self.nw_src !=  other.nw_src: return False
     if self.nw_dst !=  other.nw_dst: return False
     if self.tp_src !=  other.tp_src: return False
@@ -700,10 +700,10 @@ class ofp_action_header (object):
   def __init__ (self):
     self.type = 0
     self.length = 8
-    self.pad = b'\x00' * 4
+    self._pad = b'\x00' * 4
 
   def _assert (self):
-    if(len(self.pad) != 4):
+    if(len(self._pad) != 4):
       return (False, "pad is not of size 4")
     return (True, None)
 
@@ -713,7 +713,7 @@ class ofp_action_header (object):
         return None
     packed = ""
     packed += struct.pack("!HH", self.type, self.length)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -729,7 +729,7 @@ class ofp_action_header (object):
     if type(self) != type(other): return False
     if self.type !=  other.type: return False
     if self.length !=  other.length: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -794,13 +794,13 @@ class ofp_action_enqueue (object):
     self.type = OFPAT_ENQUEUE
     self.length = 16
     self.port = 0
-    self.pad = b'\x00' * 6
+    self._pad = b'\x00' * 6
     self.queue_id = 0
 
     initHelper(self, kw)
 
   def _assert (self):
-    if(len(self.pad) != 6):
+    if(len(self._pad) != 6):
       return (False, "pad is not of size 6")
     return (True, None)
 
@@ -810,7 +810,7 @@ class ofp_action_enqueue (object):
         return None
     packed = ""
     packed += struct.pack("!HHH", self.type, self.length, self.port)
-    packed += self.pad
+    packed += self._pad
     packed += struct.pack("!L", self.queue_id)
     return packed
 
@@ -829,7 +829,7 @@ class ofp_action_enqueue (object):
     if self.type !=  other.type: return False
     if self.length !=  other.length: return False
     if self.port !=  other.port: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.queue_id !=  other.queue_id: return False
     return True
 
@@ -848,12 +848,12 @@ class ofp_action_vlan_vid (object):
     self.type = OFPAT_SET_VLAN_VID
     self.length = 8
     self.vlan_vid = 0
-    self.pad = b'\x00' * 2
+    self._pad = b'\x00' * 2
 
     initHelper(self, kw)
 
   def _assert (self):
-    if len(self.pad) != 2:
+    if len(self._pad) != 2:
       return (False, "pad is not of size 2")
     return (True, None)
 
@@ -863,7 +863,7 @@ class ofp_action_vlan_vid (object):
         return None
     packed = ""
     packed += struct.pack("!HHH", self.type, self.length, self.vlan_vid)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -880,7 +880,7 @@ class ofp_action_vlan_vid (object):
     if self.type !=  other.type: return False
     if self.length !=  other.length: return False
     if self.vlan_vid !=  other.vlan_vid: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -897,12 +897,12 @@ class ofp_action_vlan_pcp (object):
     self.type = OFPAT_SET_VLAN_PCP
     self.length = 8
     self.vlan_pcp = 0
-    self.pad = b'\x00' * 3
+    self._pad = b'\x00' * 3
 
     initHelper(self, kw)
 
   def _assert (self):
-    if(len(self.pad) != 3):
+    if(len(self._pad) != 3):
       return (False, "pad is not of size 3")
     return (True, None)
 
@@ -912,7 +912,7 @@ class ofp_action_vlan_pcp (object):
         return None
     packed = ""
     packed += struct.pack("!HHB", self.type, self.length, self.vlan_pcp)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -929,7 +929,7 @@ class ofp_action_vlan_pcp (object):
     if self.type !=  other.type: return False
     if self.length !=  other.length: return False
     if self.vlan_pcp !=  other.vlan_pcp: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -956,7 +956,7 @@ class ofp_action_dl_addr (object):
     self.type = type
     self.length = 16
     self.dl_addr = EMPTY_ETH
-    self.pad = b'\x00' * 6
+    self._pad = b'\x00' * 6
 
     if dl_addr is not None:
       self.dl_addr = EthAddr(dl_addr)
@@ -966,7 +966,7 @@ class ofp_action_dl_addr (object):
       return (False, "dl_addr is not string or EthAddr")
     if isinstance(self.dl_addr, bytes) and len(self.dl_addr) != 6:
       return (False, "dl_addr is not of size 6")
-    if len(self.pad) != 6:
+    if len(self._pad) != 6:
       return (False, "pad is not of size 6")
     return (True, None)
 
@@ -980,7 +980,7 @@ class ofp_action_dl_addr (object):
       packed += self.dl_addr.toRaw()
     else:
       packed += self.dl_addr
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -998,7 +998,7 @@ class ofp_action_dl_addr (object):
     if self.type !=  other.type: return False
     if self.length !=  other.length: return False
     if self.dl_addr !=  other.dl_addr: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1072,10 +1072,10 @@ class ofp_action_nw_tos (object):
     self.type = OFPAT_SET_NW_TOS
     self.length = 8
     self.nw_tos = nw_tos
-    self.pad = b'\x00' * 3
+    self._pad = b'\x00' * 3
 
   def _assert (self):
-    if(len(self.pad) != 3):
+    if(len(self._pad) != 3):
       return (False, "pad is not of size 3")
     return (True, None)
 
@@ -1085,7 +1085,7 @@ class ofp_action_nw_tos (object):
         return None
     packed = ""
     packed += struct.pack("!HHB", self.type, self.length, self.nw_tos)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -1102,7 +1102,7 @@ class ofp_action_nw_tos (object):
     if self.type !=  other.type: return False
     if self.length !=  other.length: return False
     if self.nw_tos !=  other.nw_tos: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1129,10 +1129,10 @@ class ofp_action_tp_port (object):
     self.type = type
     self.length = 8
     self.tp_port = tp_port
-    self.pad = b'\x00' * 2
+    self._pad = b'\x00' * 2
 
   def _assert (self):
-    if(len(self.pad) != 2):
+    if(len(self._pad) != 2):
       return (False, "pad is not of size 2")
     return (True, None)
 
@@ -1142,7 +1142,7 @@ class ofp_action_tp_port (object):
         return None
     packed = ""
     packed += struct.pack("!HHH", self.type, self.length, self.tp_port)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -1159,7 +1159,7 @@ class ofp_action_tp_port (object):
     if self.type !=  other.type: return False
     if self.length !=  other.length: return False
     if self.tp_port !=  other.tp_port: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1218,19 +1218,22 @@ class ofp_action_vendor_header (object):
 ##3.1 Handshake
 # was ofp_switch_features
 class ofp_features_reply (ofp_header):
-  def __init__ (self):
+  def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_FEATURES_REPLY
     self.datapath_id = 0
     self.n_buffers = 0
     self.n_tables = 0
-    self.pad = b'\x00' * 3
     self.capabilities = 0
     self.actions = 0
     self.ports = []
+    
+    initHelper(self, kw)
+  
+    self.header_type = OFPT_FEATURES_REPLY
+    self._pad = b'\x00' * 3
 
   def _assert (self):
-    if(len(self.pad) != 3):
+    if(len(self._pad) != 3):
       return (False, "pad is not of size 3")
     return (True, None)
 
@@ -1241,7 +1244,7 @@ class ofp_features_reply (ofp_header):
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!QLB", self.datapath_id, self.n_buffers, self.n_tables)
-    packed += self.pad
+    packed += self._pad
     packed += struct.pack("!LL", self.capabilities, self.actions)
     for i in self.ports:
       packed += i.pack(assertstruct)
@@ -1252,7 +1255,9 @@ class ofp_features_reply (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.datapath_id, self.n_buffers, self.n_tables) = struct.unpack_from("!QLB", binaryString, 8)
+    print "Wee! dpid %d n_buffers %s n_tables %d" % (self.datapath_id, self.n_buffers, self.n_tables) #TODO
     (self.capabilities, self.actions) = struct.unpack_from("!LL", binaryString, 24)
+    print "Wee! capabilities %s actions %d" % (self.capabilities, self.actions) #TODO
     portCount = (self.length - 32) / OFP_PHY_PORT_BYTES
     self.ports = []
     for i in xrange(0, portCount):
@@ -1273,7 +1278,7 @@ class ofp_features_reply (ofp_header):
     if self.datapath_id !=  other.datapath_id: return False
     if self.n_buffers !=  other.n_buffers: return False
     if self.n_tables !=  other.n_tables: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.capabilities !=  other.capabilities: return False
     if self.actions !=  other.actions: return False
     if self.ports !=  other.ports: return False
@@ -1492,14 +1497,14 @@ class ofp_port_mod (ofp_header):
     self.config = 0
     self.mask = 0
     self.advertise = 0
-    self.pad = b'\x00' * 4
+    self._pad = b'\x00' * 4
 
   def _assert (self):
     if not isinstance(self.hw_addr, bytes) and not isinstance(self.hw_addr, EthAddr):
       return (False, "hw_addr is not bytes or EthAddr")
     if len(self.hw_addr) != 6:
       return (False, "hw_addr is not of size 6")
-    if len(self.pad) != 4:
+    if len(self._pad) != 4:
       return (False, "pad is not of size 4")
     return (True, None)
 
@@ -1515,7 +1520,7 @@ class ofp_port_mod (ofp_header):
     else:
       packed += self.hw_addr.toRaw()
     packed += struct.pack("!LLL", self.config, self.mask, self.advertise)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -1538,7 +1543,7 @@ class ofp_port_mod (ofp_header):
     if self.config !=  other.config: return False
     if self.mask !=  other.mask: return False
     if self.advertise !=  other.advertise: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1559,12 +1564,12 @@ class ofp_queue_get_config_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.port = 0
-    self.pad = b'\x00' * 2
+    self._pad = b'\x00' * 2
 
     initHelper(self, kw)
 
   def _assert (self):
-    if(len(self.pad) != 2):
+    if(len(self._pad) != 2):
       return (False, "pad is not of size 2")
     return (True, None)
 
@@ -1575,7 +1580,7 @@ class ofp_queue_get_config_request (ofp_header):
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -1592,7 +1597,7 @@ class ofp_queue_get_config_request (ofp_header):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
     if self.port !=  other.port: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1608,11 +1613,11 @@ class ofp_queue_get_config_reply (ofp_header):
   def __init__ (self):
     ofp_header.__init__(self)
     self.port = 0
-    self.pad = b'\x00' * 6
+    self._pad = b'\x00' * 6
     self.queues = []
 
   def _assert (self):
-    if(len(self.pad) != 6):
+    if(len(self._pad) != 6):
       return (False, "pad is not of size 6")
     return (True, None)
 
@@ -1623,7 +1628,7 @@ class ofp_queue_get_config_reply (ofp_header):
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port)
-    packed += self.pad
+    packed += self._pad
     for i in self.queues:
       packed += i.pack(assertstruct)
     return packed
@@ -1645,7 +1650,7 @@ class ofp_queue_get_config_reply (ofp_header):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
     if self.port !=  other.port: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.queues !=  other.queues: return False
     return True
 
@@ -1864,8 +1869,8 @@ class ofp_flow_stats_request (object):
   def __init__ (self):
     self.match = ofp_match()
     self.table_id = 0
-    self.pad = 0
-    self.out_port = OFPP_NONE
+    self._pad = 0
+    self.out_port = 0
 
   def _assert (self):
     if(not isinstance(self.match, ofp_match)):
@@ -1878,14 +1883,14 @@ class ofp_flow_stats_request (object):
         return None
     packed = ""
     packed += self.match.pack()
-    packed += struct.pack("!BBH", self.table_id, self.pad, self.out_port)
+    packed += struct.pack("!BBH", self.table_id, self._pad, self.out_port)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 44):
       return binaryString
     self.match.unpack(binaryString[0:])
-    (self.table_id, self.pad, self.out_port) = struct.unpack_from("!BBH", binaryString, 40)
+    (self.table_id, self._pad, self.out_port) = struct.unpack_from("!BBH", binaryString, 40)
     return binaryString[44:]
 
   def __len__ (self):
@@ -1896,7 +1901,7 @@ class ofp_flow_stats_request (object):
     if type(self) != type(other): return False
     if self.match !=  other.match: return False
     if self.table_id !=  other.table_id: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.out_port !=  other.out_port: return False
     return True
 
@@ -1914,14 +1919,14 @@ class ofp_flow_stats (object):
   def __init__ (self):
     self.length = 0
     self.table_id = 0
-    self.pad = 0
+    self._pad = 0
     self.match = ofp_match()
     self.duration_sec = 0
     self.duration_nsec = 0
     self.priority = OFP_DEFAULT_PRIORITY
     self.idle_timeout = 0
     self.hard_timeout = 0
-    self.pad2 = b'\x00' * 6
+    self._pad2 = b'\x00' * 6
     self.cookie = 0
     self.packet_count = 0
     self.byte_count = 0
@@ -1930,7 +1935,7 @@ class ofp_flow_stats (object):
   def _assert (self):
     if(not isinstance(self.match, ofp_match)):
       return (False, "match is not class ofp_match")
-    if(len(self.pad2) != 6):
+    if(len(self._pad2) != 6):
       return (False, "pad2 is not of size 6")
     return (True, None)
 
@@ -1939,10 +1944,10 @@ class ofp_flow_stats (object):
       if(not self._assert()[0]):
         return None
     packed = ""
-    packed += struct.pack("!HBB", self.length, self.table_id, self.pad)
+    packed += struct.pack("!HBB", self.length, self.table_id, self._pad)
     packed += self.match.pack()
     packed += struct.pack("!LLHHH", self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout)
-    packed += self.pad2
+    packed += self._pad2
     packed += struct.pack("!QQQ", self.cookie, self.packet_count, self.byte_count)
     for i in self.actions:
       packed += i.pack(assertstruct)
@@ -1951,7 +1956,7 @@ class ofp_flow_stats (object):
   def unpack (self, binaryString):
     if (len(binaryString) < 88):
       return binaryString
-    (self.length, self.table_id, self.pad) = struct.unpack_from("!HBB", binaryString, 0)
+    (self.length, self.table_id, self._pad) = struct.unpack_from("!HBB", binaryString, 0)
     self.match.unpack(binaryString[4:])
     (self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout) = struct.unpack_from("!LLHHH", binaryString, 44)
     (self.cookie, self.packet_count, self.byte_count) = struct.unpack_from("!QQQ", binaryString, 64)
@@ -1967,14 +1972,14 @@ class ofp_flow_stats (object):
     if type(self) != type(other): return False
     if self.length !=  other.length: return False
     if self.table_id !=  other.table_id: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.match !=  other.match: return False
     if self.duration_sec !=  other.duration_sec: return False
     if self.duration_nsec !=  other.duration_nsec: return False
     if self.priority !=  other.priority: return False
     if self.idle_timeout !=  other.idle_timeout: return False
     if self.hard_timeout !=  other.hard_timeout: return False
-    if self.pad2 !=  other.pad2: return False
+    if self._pad2 !=  other._pad2: return False
     if self.cookie !=  other.cookie: return False
     if self.packet_count !=  other.packet_count: return False
     if self.byte_count !=  other.byte_count: return False
@@ -2006,8 +2011,8 @@ class ofp_aggregate_stats_request (object):
   def __init__ (self):
     self.match = ofp_match()
     self.table_id = 0
-    self.pad = 0
-    self.out_port = OFPP_NONE
+    self._pad = 0
+    self.out_port = 0
 
   def _assert (self):
     if(not isinstance(self.match, ofp_match)):
@@ -2020,14 +2025,14 @@ class ofp_aggregate_stats_request (object):
         return None
     packed = ""
     packed += self.match.pack()
-    packed += struct.pack("!BBH", self.table_id, self.pad, self.out_port)
+    packed += struct.pack("!BBH", self.table_id, self._pad, self.out_port)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 44):
       return binaryString
     self.match.unpack(binaryString[0:])
-    (self.table_id, self.pad, self.out_port) = struct.unpack_from("!BBH", binaryString, 40)
+    (self.table_id, self._pad, self.out_port) = struct.unpack_from("!BBH", binaryString, 40)
     return binaryString[44:]
 
   def __len__ (self):
@@ -2037,7 +2042,7 @@ class ofp_aggregate_stats_request (object):
     if type(self) != type(other): return False
     if self.match !=  other.match: return False
     if self.table_id !=  other.table_id: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.out_port !=  other.out_port: return False
     return True
 
@@ -2056,10 +2061,10 @@ class ofp_aggregate_stats_reply (object):
     self.packet_count = 0
     self.byte_count = 0
     self.flow_count = 0
-    self.pad = b'\x00' * 4
+    self._pad = b'\x00' * 4
 
   def _assert (self):
-    if(len(self.pad) != 4):
+    if(len(self._pad) != 4):
       return (False, "pad is not of size 4")
     return (True, None)
 
@@ -2069,7 +2074,7 @@ class ofp_aggregate_stats_reply (object):
         return None
     packed = ""
     packed += struct.pack("!QQL", self.packet_count, self.byte_count, self.flow_count)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -2086,7 +2091,7 @@ class ofp_aggregate_stats_reply (object):
     if self.packet_count !=  other.packet_count: return False
     if self.byte_count !=  other.byte_count: return False
     if self.flow_count !=  other.flow_count: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2101,7 +2106,7 @@ class ofp_aggregate_stats_reply (object):
 class ofp_table_stats (object):
   def __init__ (self):
     self.table_id = 0
-    self.pad = b'\x00' * 3
+    self._pad = b'\x00' * 3
     self.name= ""
     self.wildcards = 0
     self.max_entries = 0
@@ -2110,7 +2115,7 @@ class ofp_table_stats (object):
     self.matched_count = 0
 
   def _assert (self):
-    if(len(self.pad) != 3):
+    if(len(self._pad) != 3):
       return (False, "pad is not of size 3")
     if(not isinstance(self.name, str)):
       return (False, "name is not string")
@@ -2124,7 +2129,7 @@ class ofp_table_stats (object):
         return None
     packed = ""
     packed += struct.pack("!B", self.table_id)
-    packed += self.pad
+    packed += self._pad
     packed += self.name.ljust(32,'\0')
     packed += struct.pack("!LLLQQ", self.wildcards, self.max_entries, self.active_count, self.lookup_count, self.matched_count)
     return packed
@@ -2143,7 +2148,7 @@ class ofp_table_stats (object):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.table_id !=  other.table_id: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.name !=  other.name: return False
     if self.wildcards !=  other.wildcards: return False
     if self.max_entries !=  other.max_entries: return False
@@ -2168,10 +2173,10 @@ class ofp_table_stats (object):
 class ofp_port_stats_request (object):
   def __init__ (self):
     self.port_no = 0
-    self.pad = b'\x00' * 6
+    self._pad = b'\x00' * 6
 
   def _assert (self):
-    if(len(self.pad) != 6):
+    if(len(self._pad) != 6):
       return (False, "pad is not of size 6")
     return (True, None)
 
@@ -2181,7 +2186,7 @@ class ofp_port_stats_request (object):
         return None
     packed = ""
     packed += struct.pack("!H", self.port_no)
-    packed += self.pad
+    packed += self._pad
     return packed
 
   def unpack (self, binaryString):
@@ -2196,7 +2201,7 @@ class ofp_port_stats_request (object):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.port_no !=  other.port_no: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2209,7 +2214,7 @@ class ofp_port_stats_request (object):
 class ofp_port_stats (object):
   def __init__ (self):
     self.port_no = 0
-    self.pad = b'\x00' * 6
+    self._pad = b'\x00' * 6
     self.rx_packets = 0
     self.tx_packets = 0
     self.rx_bytes = 0
@@ -2224,7 +2229,7 @@ class ofp_port_stats (object):
     self.collisions = 0
 
   def _assert (self):
-    if(len(self.pad) != 6):
+    if(len(self._pad) != 6):
       return (False, "pad is not of size 6")
     return (True, None)
 
@@ -2234,7 +2239,7 @@ class ofp_port_stats (object):
         return None
     packed = ""
     packed += struct.pack("!H", self.port_no)
-    packed += self.pad
+    packed += self._pad
     packed += struct.pack("!QQQQQQQQQQQQ", self.rx_packets, self.tx_packets, self.rx_bytes, self.tx_bytes, self.rx_dropped, self.tx_dropped, self.rx_errors, self.tx_errors, self.rx_frame_err, self.rx_over_err, self.rx_crc_err, self.collisions)
     return packed
 
@@ -2251,7 +2256,7 @@ class ofp_port_stats (object):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.port_no !=  other.port_no: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.rx_packets !=  other.rx_packets: return False
     if self.tx_packets !=  other.tx_packets: return False
     if self.rx_bytes !=  other.rx_bytes: return False
@@ -2288,11 +2293,11 @@ class ofp_port_stats (object):
 class ofp_queue_stats_request (object):
   def __init__ (self):
     self.port_no = 0
-    self.pad = b'\x00' * 2
+    self._pad = b'\x00' * 2
     self.queue_id = 0
 
   def _assert (self):
-    if(len(self.pad) != 2):
+    if(len(self._pad) != 2):
       return (False, "pad is not of size 2")
     return (True, None)
 
@@ -2302,7 +2307,7 @@ class ofp_queue_stats_request (object):
         return None
     packed = ""
     packed += struct.pack("!H", self.port_no)
-    packed += self.pad
+    packed += self._pad
     packed += struct.pack("!L", self.queue_id)
     return packed
 
@@ -2319,7 +2324,7 @@ class ofp_queue_stats_request (object):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.port_no !=  other.port_no: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.queue_id !=  other.queue_id: return False
     return True
 
@@ -2334,14 +2339,14 @@ class ofp_queue_stats_request (object):
 class ofp_queue_stats (object):
   def __init__ (self):
     self.port_no = 0
-    self.pad = b'\x00' * 2
+    self._pad = b'\x00' * 2
     self.queue_id = 0
     self.tx_bytes = 0
     self.tx_packets = 0
     self.tx_errors = 0
 
   def _assert (self):
-    if(len(self.pad) != 2):
+    if(len(self._pad) != 2):
       return (False, "pad is not of size 2")
     return (True, None)
 
@@ -2351,7 +2356,7 @@ class ofp_queue_stats (object):
         return None
     packed = ""
     packed += struct.pack("!H", self.port_no)
-    packed += self.pad
+    packed += self._pad
     packed += struct.pack("!LQQQ", self.queue_id, self.tx_bytes, self.tx_packets, self.tx_errors)
     return packed
 
@@ -2368,7 +2373,7 @@ class ofp_queue_stats (object):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.port_no !=  other.port_no: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.queue_id !=  other.queue_id: return False
     if self.tx_bytes !=  other.tx_bytes: return False
     if self.tx_packets !=  other.tx_packets: return False
@@ -2468,6 +2473,8 @@ class ofp_packet_out (ofp_header):
     outstr += prefix + 'actions_len: ' + str(len(self.actions)) + '\n'
     outstr += prefix + 'actions: \n'
     for obj in self.actions:
+      if obj is None:
+        raise RuntimeError("An element of self.actions was None! Bad formatting...")
       outstr += obj.show(prefix + '  ')
     return outstr
 
@@ -2554,15 +2561,18 @@ class ofp_barrier_request (ofp_header):
 class ofp_packet_in (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_PACKET_IN
-    self.buffer_id = -1
-    self.total_len = 0
+    
     self.in_port = OFPP_NONE
+    # If self.buffer_id != -1, self.data must only contain the packet header
+    self.buffer_id = -1
     self.reason = 0
-    self.pad = 0
     self.data = None
-
+    
     initHelper(self, kw)
+    
+    self.header_type = OFPT_PACKET_IN
+    self._total_len = 0
+    self._pad = b'\x00' * 1 # A single byte of padding
 
   def _assert (self):
     return (True, None)
@@ -2572,8 +2582,9 @@ class ofp_packet_in (ofp_header):
       if(not self._assert()[0]):
         return None
     packed = ""
+    self._total_len = len(self) # TODO: Is this correct?
     packed += ofp_header.pack(self)
-    packed += struct.pack("!LHHBB", self.buffer_id & 0xffFFffFF, self.total_len, self.in_port, self.reason, self.pad)
+    packed += struct.pack("!LHHBB", self.buffer_id & 0xffFFffFF, self._total_len, self.in_port, self.reason, self._pad)
     packed += self.data
     return packed
 
@@ -2581,7 +2592,7 @@ class ofp_packet_in (ofp_header):
     if (len(binaryString) < 18):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
-    (self.buffer_id, self.total_len, self.in_port, self.reason, self.pad) = struct.unpack_from("!LHHBB", binaryString, 8)
+    (self.buffer_id, self._total_len, self.in_port, self.reason, self._pad) = struct.unpack_from("!LHHBB", binaryString, 8)
     if self.buffer_id == 0xFFffFFff:
       self.buffer_id = -1
     if (len(binaryString) < self.length):
@@ -2598,10 +2609,10 @@ class ofp_packet_in (ofp_header):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
     if self.buffer_id !=  other.buffer_id: return False
-    if self.total_len !=  other.total_len: return False
+    if self._total_len !=  other._total_len: return False
     if self.in_port !=  other.in_port: return False
     if self.reason !=  other.reason: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.data !=  other.data: return False
     return True
 
@@ -2612,7 +2623,7 @@ class ofp_packet_in (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'buffer_id: ' + str(self.buffer_id) + '\n'
-    outstr += prefix + 'total_len: ' + str(self.total_len) + '\n'
+    outstr += prefix + '_total_len: ' + str(self._total_len) + '\n'
     outstr += prefix + 'in_port: ' + str(self.in_port) + '\n'
     outstr += prefix + 'reason: ' + str(self.reason) + '\n'
     outstr += prefix + 'data: ' + str(self.data) + '\n'
@@ -2631,20 +2642,20 @@ class ofp_flow_removed (ofp_header):
     self.cookie = 0
     self.priority = 0
     self.reason = 0
-    self.pad = b'\x00' * 1
+    self._pad = b'\x00' * 1
     self.duration_sec = 0
     self.duration_nsec = 0
     self.idle_timeout = 0
-    self.pad2 = b'\x00' * 2
+    self._pad2 = b'\x00' * 2
     self.packet_count = 0
     self.byte_count = 0
 
   def _assert (self):
     if(not isinstance(self.match, ofp_match)):
       return (False, "match is not class ofp_match")
-    if(len(self.pad) != 1):
+    if(len(self._pad) != 1):
       return (False, "pad is not of size 1")
-    if(len(self.pad2) != 2):
+    if(len(self._pad2) != 2):
       return (False, "pad2 is not of size 2")
     return (True, None)
 
@@ -2656,9 +2667,9 @@ class ofp_flow_removed (ofp_header):
     packed += ofp_header.pack(self)
     packed += self.match.pack()
     packed += struct.pack("!QHB", self.cookie, self.priority, self.reason)
-    packed += self.pad
+    packed += self._pad
     packed += struct.pack("!LLH", self.duration_sec, self.duration_nsec, self.idle_timeout)
-    packed += self.pad2
+    packed += self._pad2
     packed += struct.pack("!QQ", self.packet_count, self.byte_count)
     return packed
 
@@ -2682,11 +2693,11 @@ class ofp_flow_removed (ofp_header):
     if self.cookie !=  other.cookie: return False
     if self.priority !=  other.priority: return False
     if self.reason !=  other.reason: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.duration_sec !=  other.duration_sec: return False
     if self.duration_nsec !=  other.duration_nsec: return False
     if self.idle_timeout !=  other.idle_timeout: return False
-    if self.pad2 !=  other.pad2: return False
+    if self._pad2 !=  other._pad2: return False
     if self.packet_count !=  other.packet_count: return False
     if self.byte_count !=  other.byte_count: return False
     return True
@@ -2720,11 +2731,11 @@ class ofp_port_status (ofp_header):
     ofp_header.__init__(self)
     self.header_type = OFPT_PORT_STATUS
     self.reason = 0
-    self.pad = b'\x00' * 7
+    self._pad = b'\x00' * 7
     self.desc = ofp_phy_port()
 
   def _assert (self):
-    if(len(self.pad) != 7):
+    if(len(self._pad) != 7):
       return (False, "pad is not of size 7")
     if(not isinstance(self.desc, ofp_phy_port)):
       return (False, "desc is not class ofp_phy_port")
@@ -2737,7 +2748,7 @@ class ofp_port_status (ofp_header):
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!B", self.reason)
-    packed += self.pad
+    packed += self._pad
     packed += self.desc.pack()
     return packed
 
@@ -2756,7 +2767,7 @@ class ofp_port_status (ofp_header):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
     if self.reason !=  other.reason: return False
-    if self.pad !=  other.pad: return False
+    if self._pad !=  other._pad: return False
     if self.desc !=  other.desc: return False
     return True
 
