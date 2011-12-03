@@ -21,7 +21,7 @@ know anything about OpenFlow.  This module knows something about both,
 and hooks the two of them together.
 """
 
-from pox.lib.revent import *
+from pox.lib.revent.revent import *
 import libopenflow_01 as of
 from pox.openflow import *
 from pox.core import core
@@ -29,7 +29,6 @@ from pox.topology.topology import *
 from pox.openflow.discovery import *
 from pox.lib.util import dpidToStr
 from pox.lib.addresses import *
-
 
 # After a switch disconnects, it has this many seconds to reconnect in
 # order to reactivate the same OpenFlowSwitch object.  After this, if
@@ -174,7 +173,6 @@ class OpenFlowPort (Port):
   def __repr__ (self):
     return "<Port #" + str(self.number) + ">"
 
-
 class OpenFlowSwitch (EventMixin, Switch):
   """
   OpenFlowSwitches are Topology entities (inheriting from topology.Switch)
@@ -206,14 +204,15 @@ class OpenFlowSwitch (EventMixin, Switch):
     self.dpid = dpid
     self.ports = {}
     self.capabilities = 0
-    self.connection = None
+    self._connection = None
     self._listeners = []
     self._reconnectTimeout = None # Timer for reconnection
 
   def _setConnection (self, connection, ofp=None):
-    if self.connection: self.connection.removeListeners(self._listeners)
+    ''' ofp - a FeaturesReply message '''
+    if self._connection: self._connection.removeListeners(self._listeners)
     self._listeners = []
-    self.connection = connection
+    self._connection = connection
     if self._reconnectTimeout is not None:
       self._reconnectTimeout.cancel()
       self._reconnectTimeout = None
@@ -288,7 +287,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     explicitly define the connection operations? Or just force the client
     to call sw.connection.send() rather than sw.send()
     """
-    return getattr( self.connection, name )
+    return getattr( self._connection, name )
 
 
 def launch ():
