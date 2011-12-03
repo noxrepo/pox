@@ -10,6 +10,10 @@ Date November 2009
 Created by ykk
 """
 
+# TODO: Don't have SwitchImpl take a socket object... Should really have a 
+# OF_01 like task that listens for socket connections, creates a new socket, 
+# wraps it in a ControllerConnection object, and calls SwitchImpl._handle_ConnectionUp
+
 from pox.core import core
 from pox.openflow.libopenflow_01 import *
 from pox.openflow.of_01 import make_type_to_class_table, deferredSender
@@ -44,7 +48,7 @@ class SwitchImpl(object):
        # TODO: many more packet types to process
     }
     ##Reference to connection with controller
-    self.connection = ControllerConnection(sock, ofp_handlers)
+    self._connection = ControllerConnection(sock, ofp_handlers)
     ##Name to use for logging
     self.name = self.__class__.__name__+str(id(self))
     ##Capabilities
@@ -61,20 +65,22 @@ class SwitchImpl(object):
   # ==================================== #
   def _receive_hello(self, packet):
     log.debug("Receive hello %s" % self.name)
+    # How does the OpenFlow protocol prevent an infinite loop of Hello messages?
+    self.send_hello() 
 
   def _receive_echo(self, packet):
     """Reply to echo request
     """
     log.debug("Reply echo of xid: %s %s" % (str(packet), self.name)) # TODO: packet.xid
     msg = ofp_echo_request()
-    self.connection.send(msg)
+    self._connection.send(msg)
     
   def _receive_features_request(self, packet):
     """Reply to feature request
     """
     log.debug("Reply features request of xid %s %s" % (str(packet), self.name)) # TODO: packet.xid
     msg = self._generate_features_message()   
-    self.connection.send(msg)
+    self._connection.send(msg)
     
   def _generate_features_message(self):
     return ofp_features_reply(datapath_id = self.dpid, n_buffers = self.n_buffers, 
@@ -108,7 +114,7 @@ class SwitchImpl(object):
     """
     log.debug("Send hello %s " % self.name)
     msg = ofp_hello()
-    self.connection.send(msg)
+    self._connection.send(msg)
 
   def send_packet_in(self, inport, bufferid=None, packet="", xid=0, reason=None):
     """Send PacketIn
@@ -123,14 +129,14 @@ class SwitchImpl(object):
     
     msg = ofp_packet_in(inport = inport, bufferid = bufferid, reason = reason, 
                         data = packet)
-    self.connection.send(msg)
+    self._connection.send(msg)
     
   def send_echo(self, xid=0):
     """Send echo request
     """
     log.debug("Send echo %s" % self.name)
     msg = ofp_echo_request()
-    self.connection.send(msg)
+    self._connection.send(msg)
         
 class ControllerConnection (object):
   # Globally unique identifier for the Connection instance
@@ -156,6 +162,7 @@ class ControllerConnection (object):
     self.ofp_msgs = make_type_to_class_table()
     ## Hash from ofp_type -> handler(packet)
     self.ofp_handlers = ofp_handlers
+    self.disconnected = False
     
   def fileno (self):
     return self.sock.fileno()
