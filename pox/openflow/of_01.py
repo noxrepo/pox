@@ -25,7 +25,7 @@ NOTE: This module is loaded automatically on startup unless POX is run
 from pox.core import core
 import pox
 import pox.lib.util
-from pox.lib.revent import EventMixin
+from pox.lib.revent.revent import EventMixin
 
 from pox.openflow import *
 
@@ -66,14 +66,7 @@ def handle_FEATURES_REPLY (con, msg):
   con.features = msg
   con.dpid = msg.datapath_id
   openflowHub._connections[con.dpid] = con
-
-  if openflowHub.miss_send_len is not None:
-    con.send(of.ofp_switch_config(miss_send_len = openflowHub.miss_send_len))
-  if openflowHub.clear_flows_on_connect:
-    con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
-  barrier = of.ofp_barrier_request()
-  con.send(barrier)
-
+  
   def finish_connecting (event):
     if event.xid != barrier.xid:
       con.dpid = None
@@ -87,6 +80,14 @@ def handle_FEATURES_REPLY (con, msg):
     return EventHaltAndRemove
 
   con.addListener(BarrierIn, finish_connecting)
+
+  if openflowHub.miss_send_len is not None:
+    con.send(of.ofp_switch_config(miss_send_len = openflowHub.miss_send_len))
+  if openflowHub.clear_flows_on_connect:
+    con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
+  barrier = of.ofp_barrier_request()
+  con.send(barrier)
+
 
 def handle_STATS_REPLY (con, msg):
   openflowHub.raiseEventNoErrors(RawStatsReply, con, msg)
@@ -363,6 +364,8 @@ class Connection (EventMixin):
     self.buf = ''
     Connection.ID += 1
     self.ID = Connection.ID
+    # TODO: dpid and features don't belong here; they should be eventually
+    # be in topology.switch
     self.dpid = None
     self.features = None
     self.disconnected = False
@@ -437,6 +440,7 @@ class Connection (EventMixin):
         data = data.pack()
 
     if deferredSender.sending:
+      log.debug("deferred sender is sending!")
       deferredSender.send(self, data)
       return
     try:
@@ -471,15 +475,16 @@ class Connection (EventMixin):
         log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) +
                     ") on connection " + str(self))
         return False
-      t = ord(self.buf[1])
-      pl = ord(self.buf[2]) << 8 | ord(self.buf[3])
-      if pl > l: break
-      msg = classes[t]()
+      # OpenFlow parsing occurs here:
+      ofp_type = ord(self.buf[1])
+      packet_length = ord(self.buf[2]) << 8 | ord(self.buf[3])
+      if packet_length > l: break
+      msg = classes[ofp_type]()
       msg.unpack(self.buf)
-      self.buf = self.buf[pl:]
+      self.buf = self.buf[packet_length:]
       l = len(self.buf)
       try:
-        h = handlers[t]
+        h = handlers[ofp_type]
         h(self, msg)
       except:
         log.exception("%s: Exception while handling OpenFlow message:\n%s %s",
@@ -527,7 +532,7 @@ class Connection (EventMixin):
     return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
 
 
-from pox.lib.recoco import *
+from pox.lib.recoco.recoco import *
 
 class OpenFlow_01_Task (Task):
   """
