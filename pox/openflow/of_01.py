@@ -65,7 +65,11 @@ def handle_FLOW_REMOVED (con, msg): #A
 def handle_FEATURES_REPLY (con, msg):
   con.features = msg
   con.dpid = msg.datapath_id
-  openflowHub._connections[con.dpid] = con
+  openflowHubExists = 'openflowHub' in globals()
+  if openflowHubExists:
+    openflowHub._connections[con.dpid] = con
+  
+  barrier = of.ofp_barrier_request()
   
   def finish_connecting (event):
     if event.xid != barrier.xid:
@@ -75,17 +79,19 @@ def handle_FEATURES_REPLY (con, msg):
     else:
       con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
       #for p in msg.ports: print(p.show())
-      openflowHub.raiseEventNoErrors(ConnectionUp, con, msg)
+      if openflowHubExists:
+        openflowHub.raiseEventNoErrors(ConnectionUp, con, msg)
       con.raiseEventNoErrors(ConnectionUp, con, msg)
     return EventHaltAndRemove
 
   con.addListener(BarrierIn, finish_connecting)
 
-  if openflowHub.miss_send_len is not None:
-    con.send(of.ofp_switch_config(miss_send_len = openflowHub.miss_send_len))
-  if openflowHub.clear_flows_on_connect:
-    con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
-  barrier = of.ofp_barrier_request()
+  if openflowHubExists:
+    if openflowHub.miss_send_len is not None:
+      con.send(of.ofp_switch_config(miss_send_len = openflowHub.miss_send_len))
+    if openflowHub.clear_flows_on_connect:
+      con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
+      
   con.send(barrier)
 
 
@@ -111,7 +117,9 @@ def handle_ERROR_MSG (con, msg): #A
   con.raiseEventNoErrors(ErrorIn, con, msg)
 
 def handle_BARRIER (con, msg):
-  openflowHub.raiseEventNoErrors(BarrierIn, con, msg)
+  openflowHubExists = 'openflowHub' in globals()
+  if openflowHubExists:
+    openflowHub.raiseEventNoErrors(BarrierIn, con, msg)
   con.raiseEventNoErrors(BarrierIn, con, msg)
 
 #TODO: def handle_VENDOR (con, msg): #S
@@ -404,7 +412,8 @@ class Connection (EventMixin):
       self.err("ConnectionDown event caused exception")
     """
     if self.dpid != None:
-      openflowHub.raiseEventNoErrors(ConnectionDown(self))
+      if 'openflowHub' in globals():
+        openflowHub.raiseEventNoErrors(ConnectionDown(self))
 
     try:
       #deferredSender.kill(self)
@@ -465,6 +474,8 @@ class Connection (EventMixin):
     Note: if no data is available to read, this method will block. Only invoke
     after select() has returned this socket.
     """
+    if(self.buf != ''):
+      raise AssertionError("buf=%s, which is non-zero before read()" % self.buf)
     d = self.sock.recv(2048)
     if len(d) == 0:
       return False
