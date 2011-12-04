@@ -139,6 +139,8 @@ class SwitchImpl(object):
     self._connection.send(msg)
         
 class ControllerConnection (object):
+  # Unlike of_01.Connection, this is persistent (at least until we implement a proper
+  # recoco Connection Listener loop)
   # Globally unique identifier for the Connection instance
   ID = 0
 
@@ -162,7 +164,6 @@ class ControllerConnection (object):
     self.ofp_msgs = make_type_to_class_table()
     ## Hash from ofp_type -> handler(packet)
     self.ofp_handlers = ofp_handlers
-    self.disconnected = False
     
   def fileno (self):
     return self.sock.fileno()
@@ -178,7 +179,6 @@ class ControllerConnection (object):
     """
     # TODO: this is taken directly from of_01.Connection. Refoactor to reduce
     # redundancy
-    if self.disconnected: return
     if type(data) is not bytes:
       if hasattr(data, 'pack'):
         data = data.pack()
