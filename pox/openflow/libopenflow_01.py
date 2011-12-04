@@ -67,7 +67,7 @@ class ofp_header (object):
       self.xid = generateXID()
     if(assertstruct):
       if(not ofp_header._assert(self)[0]):
-        return None
+        raise RuntimeError("assertstruct failed")
     packed = ""
     packed += struct.pack("!BBHL", self.version, self.header_type, self.length,
                           self.xid)
@@ -1231,6 +1231,7 @@ class ofp_features_reply (ofp_header):
   
     self.header_type = OFPT_FEATURES_REPLY
     self._pad = b'\x00' * 3
+    self.length = len(self)
 
   def _assert (self):
     if(len(self._pad) != 3):
@@ -1255,9 +1256,7 @@ class ofp_features_reply (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.datapath_id, self.n_buffers, self.n_tables) = struct.unpack_from("!QLB", binaryString, 8)
-    print "Wee! dpid %d n_buffers %s n_tables %d" % (self.datapath_id, self.n_buffers, self.n_tables) #TODO
     (self.capabilities, self.actions) = struct.unpack_from("!LL", binaryString, 24)
-    print "Wee! capabilities %s actions %d" % (self.capabilities, self.actions) #TODO
     portCount = (self.length - 32) / OFP_PHY_PORT_BYTES
     self.ports = []
     for i in xrange(0, portCount):
@@ -1268,8 +1267,8 @@ class ofp_features_reply (ofp_header):
 
   def __len__ (self):
     l = 32
-    for i in self.ports:
-      l += i.length()
+    for _ in self.ports:
+      l += OFP_PHY_PORT_BYTES
     return l
 
   def __eq__ (self, other):
@@ -2490,7 +2489,7 @@ class ofp_barrier_reply (ofp_header):
   def pack (self, assertstruct=True):
     if(assertstruct):
       if(not self._assert()[0]):
-        return None
+        raise RuntimeError("assertstruct failed")
     packed = ""
     packed += ofp_header.pack(self)
     return packed
