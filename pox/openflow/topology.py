@@ -140,6 +140,9 @@ class OpenFlowTopology (EventMixin):
 class OpenFlowPort (Port):
   """
   A subclass of topology.Port for OpenFlow switch ports.
+  
+  Adds the notion of "connected entities", which the default
+  ofp_phy_port class does not have.
 
   Note: Not presently used.
   """
@@ -169,6 +172,11 @@ class OpenFlowPort (Port):
       self.entities = set([entity])
     else:
       self.entities.add(entity)
+
+  def to_ofp_phy_port(self):
+    return of.ofp_phy_port(port_no = self.number, hw_addr = self.hwAddr,
+                           name = self.name, config = self._config, 
+                           state = self._state)
 
   def __repr__ (self):
     return "<Port #" + str(self.number) + ">"

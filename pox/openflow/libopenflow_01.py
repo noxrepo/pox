@@ -107,7 +107,7 @@ class ofp_header (object):
 #2. Common Structures
 ##2.1 Port Structures
 class ofp_phy_port (object):
-  def __init__ (self):
+  def __init__ (self, **kw):
     self.port_no = 0
     self.hw_addr = EMPTY_ETH
     self.name = ""
@@ -117,6 +117,7 @@ class ofp_phy_port (object):
     self.advertised = 0
     self.supported = 0
     self.peer = 0
+    initHelper(self, kw)
 
   def _assert (self):
     if not isinstance(self.hw_addr, bytes) and not isinstance(self.hw_addr, EthAddr):
