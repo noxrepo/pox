@@ -42,6 +42,7 @@ class SwitchImpl(object):
        ofp_type_rev_map['OFPT_FEATURES_REQUEST'] : self._receive_features_request,
        ofp_type_rev_map['OFPT_FLOW_MOD'] : self._receive_flow_mod,
        ofp_type_rev_map['OFPT_PACKET_OUT'] : self._receive_packet_out,
+       ofp_type_rev_map['OFPT_BARRIER_REQUEST'] : self.receive_barrier_request,
        
        # Proactive responses
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
@@ -105,6 +106,11 @@ class SwitchImpl(object):
     
   def _receive_echo_reply(self, packet):
     log.debug("Echo reply: %s %s" % (str(packet), self.name))
+    
+  def _receive_barrier_request(self, packet):
+    log.debug("Barrier request %s %s" % (self.name, str(packet)))
+    msg = ofp_barrier_reply()
+    self._connection.send(msg)
     
   # ==================================== #
   #    Proactive OFP processing          #
@@ -229,7 +235,9 @@ class ControllerConnection (object):
       self.buf = self.buf[packet_length:]
       l = len(self.buf)
       try:
-        assert(ofp_type in self.ofp_handlers, "No handler for ofp_type %d" % ofp_type)
+        if ofp_type not in self.ofp_handlers:
+          raise RuntimeError("No handler for ofp_type %d" % ofp_type))
+       
         h = self.ofp_handlers[ofp_type]
         h(msg)
       except Exception as e:
