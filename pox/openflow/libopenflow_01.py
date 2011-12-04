@@ -2479,9 +2479,10 @@ class ofp_packet_out (ofp_header):
 
 ##3.7 Barrier Message
 class ofp_barrier_reply (ofp_header):
-  def __init__ (self):
+  def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.header_type = OFPT_BARRIER_REPLY
+    initHelper(self, kw)
 
   def _assert (self):
     return (True, None)
