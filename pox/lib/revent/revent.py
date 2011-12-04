@@ -119,7 +119,7 @@ def handleEventException (source, event, args, kw, exc_info):
   """
   print "Event handler raised exception"
   # TODO: showEventExceptions is not defined
-  if showEventExceptions:
+  if True: # showEventExceptions:
     import traceback
     traceback.print_exception(*exc_info)
 
