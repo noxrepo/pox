@@ -42,7 +42,7 @@ class SwitchImpl(object):
        ofp_type_rev_map['OFPT_FEATURES_REQUEST'] : self._receive_features_request,
        ofp_type_rev_map['OFPT_FLOW_MOD'] : self._receive_flow_mod,
        ofp_type_rev_map['OFPT_PACKET_OUT'] : self._receive_packet_out,
-       ofp_type_rev_map['OFPT_BARRIER_REQUEST'] : self.receive_barrier_request,
+       ofp_type_rev_map['OFPT_BARRIER_REQUEST'] : self._receive_barrier_request,
        
        # Proactive responses
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
@@ -106,7 +106,7 @@ class SwitchImpl(object):
     
   def _receive_barrier_request(self, packet):
     log.debug("Barrier request %s %s" % (self.name, str(packet)))
-    msg = ofp_barrier_reply()
+    msg = ofp_barrier_reply(xid = packet.xid)
     self._connection.send(msg)
     
   # ==================================== #
