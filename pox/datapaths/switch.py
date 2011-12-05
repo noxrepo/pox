@@ -80,16 +80,13 @@ class SwitchImpl(object):
     """Reply to feature request
     """
     log.debug("Reply features request of xid %s %s" % (str(packet), self.name)) # TODO: packet.xid
-    msg = self._generate_features_message()   
-    self._connection.send(msg)
-    
-  def _generate_features_message(self):
-    return ofp_features_reply(datapath_id = self.dpid, n_buffers = self.n_buffers, 
+    msg = ofp_features_reply(datapath_id = self.dpid, n_buffers = self.n_buffers, 
                              n_tables = self.n_tables,
                              capabilities = self.capabilities.get_capabilities(),
                              actions = self.capabilities.get_actions(), 
                              ports = self.ports)
-                             
+    self._connection.send(msg)
+                               
   def _receive_flow_mod(self, packet):
     """Handle flow mod: just print it here
     """
@@ -236,7 +233,7 @@ class ControllerConnection (object):
       l = len(self.buf)
       try:
         if ofp_type not in self.ofp_handlers:
-          raise RuntimeError("No handler for ofp_type %d" % ofp_type))
+          raise RuntimeError("No handler for ofp_type %d" % ofp_type)
        
         h = self.ofp_handlers[ofp_type]
         h(msg)
