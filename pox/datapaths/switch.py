@@ -32,8 +32,8 @@ class SwitchImpl(object):
     self.n_buffers = n_buffers
     ##Number of tables
     self.n_tables= n_tables
-    ##List of ports. TODO: what type?
-    self.ports = []
+    ##List of ports. Type is openflow.pylibopenflow_01.ofp_phy_port
+    self.ports = ports 
     ## (OpenFlow Handler map)
     ofp_handlers = {
        # Reactive handlers
@@ -87,8 +87,8 @@ class SwitchImpl(object):
     return ofp_features_reply(datapath_id = self.dpid, n_buffers = self.n_buffers, 
                              n_tables = self.n_tables,
                              capabilities = self.capabilities.get_capabilities(),
-                             actions = self.capabilities.get_actions())
-                             # ports = self.ports) # will self.ports break? XXX?
+                             actions = self.capabilities.get_actions(), 
+                             ports = self.ports)
                              
   def _receive_flow_mod(self, packet):
     """Handle flow mod: just print it here
