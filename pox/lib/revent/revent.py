@@ -103,16 +103,16 @@ import operator
 import weakref
 
 
-nextEventID = 0
-def generateEventID ():
+_nextEventID = 0
+def _generateEventID ():
   """
   Generates an event ID
   This is (at present) mostly so that an event can later be removed.
   Note that this function is not threadsafe.
   """
-  global nextEventID
-  nextEventID += 1
-  return nextEventID
+  global _nextEventID
+  _nextEventID += 1
+  return _nextEventID
 
 
 def EventReturn (halt = False, remove = False):
@@ -409,7 +409,7 @@ class EventMixin (object):
     else:
       handlers = self._eventMixin_handlers[eventType]
 
-    eid = generateEventID()
+    eid = _generateEventID()
 
     if weak: handler = CallProxy(self, handler, (eventType, eid))
 
