@@ -1,2 +1,2 @@
 
-from revent import *
+from pox.lib.revent.revent import *

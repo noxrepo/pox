@@ -103,30 +103,13 @@ import operator
 import weakref
 
 
-def handleEventException (source, event, args, kw, exc_info):
-  """
-  Called when an exception is raised by an event handler when the event
-  was raised by raiseEventNoErrors().
-
-  You can replace this method if you'd like to replace the default handling
-  (printing an error message an a traceback) with your own (for example if
-  you are using a logging system and would like to use that).
-
-  "source" is the object sourcing the event.  "event" is the event that was
-  being raised when the exception occurred.  "args" and "kw" were the args
-  and kwargs passed to raiseEventNoErrors.  "exc_info" is the exception info
-  as returned by sys.exc_info()).
-  """
-  print "Event handler raised exception"
-  # TODO: showEventExceptions is not defined
-  if True: # showEventExceptions:
-    import traceback
-    traceback.print_exception(*exc_info)
-
-
 nextEventID = 0
 def generateEventID ():
-  # Single threaded programs are a wonderful thing!
+  """
+  Generates an event ID
+  This is (at present) mostly so that an event can later be removed.
+  Note that this function is not threadsafe.
+  """
   global nextEventID
   nextEventID += 1
   return nextEventID
@@ -174,6 +157,35 @@ class Event (object):
     return handler(self, *args, **kw)
 
 
+def handleEventException (source, event, args, kw, exc_info):
+  """
+  Called when an exception is raised by an event handler when the event
+  was raised by raiseEventNoErrors().
+
+  You can replace this method if you'd like to replace the default handling
+  (printing an error message an a traceback) with your own (for example if
+  you are using a logging system and would like to use that).  You can also
+  replace it with None to have events fail silently.
+
+  "source" is the object sourcing the event.  "event" is the event that was
+  being raised when the exception occurred.  "args" and "kw" were the args
+  and kwargs passed to raiseEventNoErrors.  "exc_info" is the exception info
+  as returned by sys.exc_info()).
+  """
+  try:
+    c = source
+    t = event
+    if hasattr(c, "__class__"): c = c.__class__.__name__
+    if isinstance(t, Event): t = t.__class__.__name__
+    elif issubclass(t, Event): t = t.__name__
+  except:
+    pass
+  import sys
+  sys.stderr.write("Exception while handling %s!%s...\n" % (c,t))
+  import traceback
+  traceback.print_exception(*exc_info)
+
+
 class EventMixin (object):
   """
   Mixin to be inherited from if the subclass is interested in handling events
@@ -205,8 +217,8 @@ class EventMixin (object):
 
   def raiseEventNoErrors (self, event, *args, **kw):
     """
-    Raise an event, catching exceptions thrown by the handler and printing
-    a stack trace if showEventExceptions is True
+    Raise an event, catching exceptions thrown by the handler.
+    If exceptions are caught, the global handleEventExceptions() is called.
     Also see raiseEvent()
     """
     #TODO: this should really keep subsequent events executing and print the
@@ -214,8 +226,9 @@ class EventMixin (object):
     try:
       return self.raiseEvent(event, *args, **kw)
     except:
-      import sys
-      handleEventException(self, event, args, kw, sys.exc_info())
+      if handleEventException is not None:
+        import sys
+        handleEventException(self, event, args, kw, sys.exc_info())
     return None
 
   def raiseEvent (self, event, *args, **kw):
