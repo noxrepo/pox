@@ -108,6 +108,21 @@ log = (lambda : getLogger())()
 
 from pox.lib.revent import *
 
+# Now use revent's exception hook to put exceptions in event handlers into
+# the log...
+def _revent_exception_hook (source, event, args, kw, exc_info):
+  try:
+    c = source
+    t = event
+    if hasattr(c, "__class__"): c = c.__class__.__name__
+    if isinstance(t, Event): t = t.__class__.__name__
+    elif issubclass(t, Event): t = t.__name__
+  except:
+    pass
+  log.exception("Exception while handling %s!%s...\n" % (c,t))
+import pox.lib.revent.revent
+pox.lib.revent.revent.handleEventException = _revent_exception_hook
+
 class GoingUpEvent (Event):
   """ Fired when system is going up. """
   pass
