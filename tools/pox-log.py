@@ -27,8 +27,8 @@ decoder = json.JSONDecoder()
 host = "localhost"
 port = 7790
 
-if len(sys.argv) >= 2 : host = argv[1]
-if len(sys.argv) >= 3 : port = int(argv[2])
+if len(sys.argv) >= 2 : host = sys.argv[1]
+if len(sys.argv) >= 3 : port = int(sys.argv[2])
 
 while True:
   try:
