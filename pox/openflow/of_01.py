@@ -615,7 +615,7 @@ class OpenFlow_01_Task (Task):
               sockets.append( newcon )
               #print str(newcon) + " connected"
             else:
-              if con.read() == False:
+              if con.read() is False:
                 con.disconnect(True)
                 sockets.remove(con)
       except exceptions.KeyboardInterrupt:
