@@ -170,9 +170,9 @@ class Topology (EventMixin):
 
   def getEntitiesOfType (self, t=Entity, subtypes=True):
     if subtypes is False:
-      return (x for x in self.entities.itervalues() if type(x) is t)
+      return filter(lambda x: type(x) is t, self.entities.values())
     else:
-      return (x for x in self.entities.itervalues() if isinstance(x, t))
+      return filter(lambda x: isinstance(x, t), self.entities.values())
 
   def getSwitchWithConnection (self, connection):
     """
