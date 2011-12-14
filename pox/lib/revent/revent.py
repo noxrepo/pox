@@ -156,7 +156,6 @@ class Event (object):
   def _invoke (self, handler, *args, **kw):
     return handler(self, *args, **kw)
 
-
 def handleEventException (source, event, args, kw, exc_info):
   """
   Called when an exception is raised by an event handler when the event
@@ -469,6 +468,7 @@ def autoBindEvents (sink, source, prefix='', weak=False):
   if len(prefix) > 0 and prefix[0] != '_': prefix = '_' + prefix
   if hasattr(source, '_eventMixin_events') is False:
     # If source does not declare that it raises any events, do nothing
+    print "Warning: source doesn't raise any events!", source.__class__.__name__
     return []
 
   events = {}
@@ -486,15 +486,17 @@ def autoBindEvents (sink, source, prefix='', weak=False):
     if callable(a):
       # if it has the revent prefix signature, 
       if m.startswith("_handle" + prefix):
-        m = m[8+len(prefix):]
+        event = m[8+len(prefix):]
         # and it is one of the events our source triggers
-        if m in events:
+        if event in events:
           # append the listener
-          listeners.append(source.addListener(events[m], a, weak))
+          listeners.append(source.addListener(events[event], a, weak))
           #print "autoBind: ",source,m,"to",sink
+        else:
+          print("Warning: %s found in %s, but %s not raised by %s" %
+                 (m, sink.__class__.__name__, event, source.__class__.__name__))
 
   return listeners
-
 
 class CallProxy (object):
   """
