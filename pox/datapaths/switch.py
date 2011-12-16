@@ -25,11 +25,15 @@ log = core.getLogger()
 
 class SwitchImpl(object):
   # ports is a list of ofp_phy_ports
-  def __init__(self, dpid, sock, ports=[], miss_send_len=128,
+  def __init__(self, dpid, sock, name=None, ports=[], miss_send_len=128,
                n_buffers=100, n_tables=1, capabilities=None):
     """Initialize switch"""
     ##Datapath id of switch
     self.dpid = dpid
+    ## Human-readable name of the switch
+    self.name = name
+    if self.name is None:
+      self.name = str(dpid) 
     ##Number of buffers
     self.n_buffers = n_buffers
     ##Number of tables
