@@ -1432,10 +1432,13 @@ class ofp_flow_mod (ofp_header):
     
     actions_binary = binaryString[72:]
     while len(actions_binary) >= 8:
+      # Action "Header" is a misnomer. It's more like Action "BluePrint". It's a common set of
+      # fields for all Action structs. There is /no/ separate header.
       action_header = ofp_action_header()
       action_header.unpack(actions_binary[0:8])
       action = ofp_action_classes[action_header.type]()
-      action.unpack(actions_binary[8:action_header.length - 8])
+      # NOTE: same bytes as we read for the header
+      action.unpack(actions_binary[0:action_header.length])
       self.actions.append(action)
       actions_binary = actions_binary[action_header.length:] 
       
