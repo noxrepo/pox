@@ -1,1 +1,29 @@
-Someone should write this!
+POX is a network controller written in Python.
+
+POX requires Python 2.7, and should run under Linux, Mac OS, and Windows.
+You can place a pypy distribution alongside in pox.py (in a directory
+named "pypy"), and POX will run with pypy (this can be a significant
+performance boost!).
+
+POX communicates with OpenFlow 1.0 switches.
+
+pox.py boots up POX. It takes a list of module names on the command line,
+locates the modules, calls their launch() function (if it exists), and
+then opens up a Python commandline for interactive use.
+
+Modules are looked for everywhere that Python normally looks, plus the
+"pox" and "ext" directories.  Thus, you can do the following:
+
+  ./pox.py dumb_l2_switch
+
+You can pass options to the modules by specifying options after the module
+name.  These are passed to the module's launch() funcion.  For example,
+to set the address or port of the controller, invoke as follows:
+
+  ./pox.py of_01 --address=10.1.1.1 --port=6634
+
+pox.py also supports a few command line options of its own which should
+be given first:
+ --verbose      print stack traces for initialization exceptions
+ --no-cli       don't bring up a Python interpreter
+ --no-openflow  don't start the openflow module automatically

@@ -121,7 +121,7 @@ class ipv4(packet_base):
         self.hl = vhl & 0x0f
 
         self.flags = self.frag >> 13
-        self.frag  = self.frag & 0x1f
+        self.frag  = self.frag & 0x1fff
 
         if self.v != ipv4.IPv4:
             self.msg('ip parse) warning IP version %u not IPv4' % self.v)

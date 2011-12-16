@@ -17,7 +17,7 @@
 
 from pox.core import core
 from pox.messenger.messenger import *
-from pox.lib.revent.revent import autoBindEvents
+from pox.lib.revent import autoBindEvents
 import logging
 import traceback
 

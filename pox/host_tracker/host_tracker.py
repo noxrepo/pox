@@ -229,8 +229,8 @@ class host_tracker (EventMixin):
       log.warning("%i %i ignoring unparsed packet", dpid, inport)
       return
 
-    # This should use Topology later
-    if core.openflow_discovery.isSwitchOnlyPort(dpid, inport):
+    # This should use Topology later 
+    if False: # should be if core.openflow_discovery.isSwitchOnlyPort(dpid, inport):
       # No host should be right behind a switch-only port
       log.debug("%i %i ignoring packetIn at switch-only port", dpid, inport)
       return

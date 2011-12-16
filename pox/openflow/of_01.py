@@ -15,12 +15,19 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+In charge of OpenFlow 1.0 switches.
+
+NOTE: This module is loaded automatically on startup unless POX is run
+      with --no-openflow .
+"""
+
 from pox.core import core
 import pox
 import pox.lib.util
 from pox.lib.revent.revent import EventMixin
 
-from pox.openflow.openflow import *
+from pox.openflow import *
 
 log = core.getLogger()
 
@@ -51,22 +58,19 @@ def handle_ECHO_REQUEST (con, msg): #S
   reply.header_type = of.OFPT_ECHO_REPLY
   con.send(reply.pack())
 
-def handle_FLOW_REMOVED (con, msg):
+def handle_FLOW_REMOVED (con, msg): #A
   openflowHub.raiseEventNoErrors(FlowRemoved, con, msg)
   con.raiseEventNoErrors(FlowRemoved, con, msg)
 
 def handle_FEATURES_REPLY (con, msg):
   con.features = msg
   con.dpid = msg.datapath_id
-  openflowHub._connections[con.dpid] = con
-
-  if openflowHub.miss_send_len is not None:
-    con.send(of.ofp_switch_config(miss_send_len = openflowHub.miss_send_len))
-  if openflowHub.clear_flows_on_connect:
-    con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
+  openflowHubExists = 'openflowHub' in globals()
+  if openflowHubExists:
+    openflowHub._connections[con.dpid] = con
+  
   barrier = of.ofp_barrier_request()
-  con.send(barrier)
-
+  
   def finish_connecting (event):
     if event.xid != barrier.xid:
       con.dpid = None
@@ -75,11 +79,21 @@ def handle_FEATURES_REPLY (con, msg):
     else:
       con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
       #for p in msg.ports: print(p.show())
-      openflowHub.raiseEventNoErrors(ConnectionUp, con, msg)
+      if openflowHubExists:
+        openflowHub.raiseEventNoErrors(ConnectionUp, con, msg)
       con.raiseEventNoErrors(ConnectionUp, con, msg)
     return EventHaltAndRemove
 
   con.addListener(BarrierIn, finish_connecting)
+
+  if openflowHubExists:
+    if openflowHub.miss_send_len is not None:
+      con.send(of.ofp_switch_config(miss_send_len = openflowHub.miss_send_len))
+    if openflowHub.clear_flows_on_connect:
+      con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
+      
+  con.send(barrier)
+
 
 def handle_STATS_REPLY (con, msg):
   openflowHub.raiseEventNoErrors(RawStatsReply, con, msg)
@@ -102,12 +116,10 @@ def handle_ERROR_MSG (con, msg): #A
   openflowHub.raiseEventNoErrors(ErrorIn, con, msg)
   con.raiseEventNoErrors(ErrorIn, con, msg)
 
-def handle_FLOW_REMOVED (con, msg): #A
-  openflowHub.raiseEventNoErrors(FlowRemoved, con, msg)
-  con.raiseEventNoErrors(FlowRemoved, con, msg)
-
 def handle_BARRIER (con, msg):
-  openflowHub.raiseEventNoErrors(BarrierIn, con, msg)
+  openflowHubExists = 'openflowHub' in globals()
+  if openflowHubExists:
+    openflowHub.raiseEventNoErrors(BarrierIn, con, msg)
   con.raiseEventNoErrors(BarrierIn, con, msg)
 
 #TODO: def handle_VENDOR (con, msg): #S
@@ -360,6 +372,8 @@ class Connection (EventMixin):
     self.buf = ''
     Connection.ID += 1
     self.ID = Connection.ID
+    # TODO: dpid and features don't belong here; they should be eventually
+    # be in topology.switch
     self.dpid = None
     self.features = None
     self.disconnected = False
@@ -373,9 +387,11 @@ class Connection (EventMixin):
 
   def disconnect (self, hard = False):
     """
-    disconnect is only invoked from within this module, afaict
-    
-    What does `hard` do? Force a disconnect even if already disconnected?
+    disconnect this Connection (usually not invoked manually).
+
+    'hard' is usually used under error conditions, and means we don't care
+    about closing it gracefully; we just want it closed.  This could be done
+    more elegantly.
     """
     if self.disconnected and not hard:
       self.err("already disconnected!")
@@ -396,7 +412,8 @@ class Connection (EventMixin):
       self.err("ConnectionDown event caused exception")
     """
     if self.dpid != None:
-      openflowHub.raiseEventNoErrors(ConnectionDown(self))
+      if 'openflowHub' in globals():
+        openflowHub.raiseEventNoErrors(ConnectionDown(self))
 
     try:
       #deferredSender.kill(self)
@@ -419,8 +436,12 @@ class Connection (EventMixin):
 
   def send (self, data):
     """
-    interface for sending raw data to a switch. use a higher layer
-    of abstraction to pack the data (?)
+    Send raw data to the switch.
+
+    Generally, data is a bytes object.  If not, we check if it has a pack()
+    method and call it (hoping the result will be a bytes object).  This
+    way, you can just pass one of the OpenFlow objects from the OpenFlow
+    library to it and get the expected result, for example.
     """
     if self.disconnected: return
     if type(data) is not bytes:
@@ -428,6 +449,7 @@ class Connection (EventMixin):
         data = data.pack()
 
     if deferredSender.sending:
+      log.debug("deferred sender is sending!")
       deferredSender.send(self, data)
       return
     try:
@@ -446,9 +468,14 @@ class Connection (EventMixin):
 
   def read (self):
     """
+    Read data from this connection.  Generally this is just called by the
+    main OpenFlow loop below.
+
     Note: if no data is available to read, this method will block. Only invoke
     after select() has returned this socket.
     """
+    if(self.buf != ''):
+      raise AssertionError("buf=%s, which is non-zero before read()" % self.buf)
     d = self.sock.recv(2048)
     if len(d) == 0:
       return False
@@ -459,15 +486,16 @@ class Connection (EventMixin):
         log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) +
                     ") on connection " + str(self))
         return False
-      t = ord(self.buf[1])
-      pl = ord(self.buf[2]) << 8 | ord(self.buf[3])
-      if pl > l: break
-      msg = classes[t]()
+      # OpenFlow parsing occurs here:
+      ofp_type = ord(self.buf[1])
+      packet_length = ord(self.buf[2]) << 8 | ord(self.buf[3])
+      if packet_length > l: break
+      msg = classes[ofp_type]()
       msg.unpack(self.buf)
-      self.buf = self.buf[pl:]
+      self.buf = self.buf[packet_length:]
       l = len(self.buf)
       try:
-        h = handlers[t]
+        h = handlers[ofp_type]
         h(self, msg)
       except:
         log.exception("%s: Exception while handling OpenFlow message:\n%s %s",
@@ -525,23 +553,16 @@ class OpenFlow_01_Task (Task):
     Task.__init__(self)
     self.port = int(port)
     self.address = address
-    # XXX What does this variable do?
-    self.daemon = True
 
     core.addListener(pox.core.GoingUpEvent, self._handle_GoingUpEvent)
 
   def _handle_GoingUpEvent (self, event):
-    # XXX I don't understand what the next two lines are doing...
+    # We keep our own module-level reference to the main OpenFlow component
     global openflowHub
     openflowHub = core.openflow
     self.start()
 
   def run (self):
-    #TODO: This is actually "the main thread" for openflow events, and should actually
-    #      be pulled out so that other things (OpenFlow 1.1 switches, etc.) can use it
-    #      too. Probably this should mean that this thread will run the cooperative
-    #      threads.
-
     # List of open sockets/connections to select on
     sockets = []
 
@@ -552,7 +573,7 @@ class OpenFlow_01_Task (Task):
     sockets.append(listener)
     wsocks = []
 
-    log.debug("Listening for connections")
+    log.debug("Listening for connections on %s:%s" % (self.address, self.port))
 
     con = None
     while core.running:
@@ -588,11 +609,13 @@ class OpenFlow_01_Task (Task):
             if con is listener:
               new_sock = listener.accept()[0]
               new_sock.setblocking(0)
+              # Note that instantiating a Connection object fires a ConnectionUp event
+              # (after negotation has completed)
               newcon = Connection(new_sock)
               sockets.append( newcon )
               #print str(newcon) + " connected"
             else:
-              if con.read() == False:
+              if con.read() is False:
                 con.disconnect(True)
                 sockets.remove(con)
       except exceptions.KeyboardInterrupt:
@@ -631,11 +654,10 @@ for h in handlerMap:
   #print handlerMap[h]
 
 
-def launch (*args, **kw):
+def launch (port = 6633, address = "0.0.0.0"):
   if core.hasComponent('of_01'):
     return None
-  l = OpenFlow_01_Task(*args, **kw)
-  #l = OpenFlow_01_Loop(*args, **kw)
+  l = OpenFlow_01_Task(port = int(port), address = address)
   core.register("of_01", l)
   return l
 

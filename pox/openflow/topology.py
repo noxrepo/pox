@@ -15,15 +15,20 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+OpenFlow doesn't know anything about Topology, and Topology doesn't
+know anything about OpenFlow.  This module knows something about both,
+and hooks the two of them together.
+"""
+
 from pox.lib.revent.revent import *
 import libopenflow_01 as of
-from openflow import *
+from pox.openflow import *
 from pox.core import core
 from pox.topology.topology import *
 from pox.openflow.discovery import *
 from pox.lib.util import dpidToStr
 from pox.lib.addresses import *
-
 
 # After a switch disconnects, it has this many seconds to reconnect in
 # order to reactivate the same OpenFlowSwitch object.  After this, if
@@ -35,10 +40,14 @@ log = core.getLogger()
 
 class OpenFlowTopology (EventMixin):
   """
-  OpenFlow doesn't know anything about Topology, and Topology doesn't
-  know anything about OpenFlow.  This class knows something about both,
-  and hooks the two of them together
+  Listens to various OpenFlow-specific events and uses those to manipulate
+  Topology accordingly.
   """
+  
+  # Won't boot up OpenFlowTopology until all of these components are loaded
+  # into pox.core. Note though that these components won't be loaded
+  # proactively; they must be specified on the command line (with the
+  # exception of openflow which usally loads automatically)
   _wantComponents = set(['openflow','topology','openflow_discovery'])
 
   def _resolveComponents (self):
@@ -49,10 +58,13 @@ class OpenFlowTopology (EventMixin):
     got = set()
     for c in self._wantComponents:
       if core.hasComponent(c):
+        # This line initializes self.topology, self.openflow, etc. 
         setattr(self, c, getattr(core, c))
         self.listenTo(getattr(core, c), prefix=c)
         got.add(c)
       else:
+        # This line also initializes self.topology, self.openflow, if
+        # the corresponding objects are not loaded yet into pox.core
         setattr(self, c, None)
     for c in got:
       self._wantComponents.remove(c)
@@ -64,11 +76,17 @@ class OpenFlowTopology (EventMixin):
     return False
 
   def __init__ (self):
+    """ Note that self.topology is initialized in _resolveComponents """
     super(EventMixin, self).__init__()
     if not self._resolveComponents():
       self.listenTo(core)
   
   def _handle_openflow_discovery_LinkEvent (self, event):
+    """
+    The discovery module simply sends out LLDP packets, and triggers LinkEvents
+    for discovered switches. It's our job to take these LinkEvents and update
+    pox.topology.
+    """
     if self.topology is None: return
     link = event.link
     sw1 = self.topology.getEntityByID(link.dpid1)
@@ -83,6 +101,10 @@ class OpenFlowTopology (EventMixin):
       sw2.ports[link.port2].entities.remove(sw1)
 
   def _handle_ComponentRegistered (self, event):
+    """
+    A component was registered with pox.core. If we were dependent on it, 
+    check again if all of our dependencies are now satisfied so we can boot.
+    """
     if self._resolveComponents():
       return EventRemove
 
@@ -116,6 +138,14 @@ class OpenFlowTopology (EventMixin):
 
 
 class OpenFlowPort (Port):
+  """
+  A subclass of topology.Port for OpenFlow switch ports.
+  
+  Adds the notion of "connected entities", which the default
+  ofp_phy_port class does not have.
+
+  Note: Not presently used.
+  """
   def __init__ (self, ofp):
     # Passed an ofp_phy_port
     Port.__init__(self, ofp.port_no, ofp.hw_addr, ofp.name)
@@ -136,45 +166,70 @@ class OpenFlowPort (Port):
     return item in self.entities
 
   def addEntity (self, entity, single = False):
+    # Invariant (not currently enforced?): 
+    #   len(self.entities) <= 2  ?
     if single:
       self.entities = set([entity])
     else:
       self.entities.add(entity)
 
+  def to_ofp_phy_port(self):
+    return of.ofp_phy_port(port_no = self.number, hw_addr = self.hwAddr,
+                           name = self.name, config = self._config, 
+                           state = self._state)
+
   def __repr__ (self):
     return "<Port #" + str(self.number) + ">"
 
 class OpenFlowSwitch (EventMixin, Switch):
+  """
+  OpenFlowSwitches are Topology entities (inheriting from topology.Switch)
+  
+  OpenFlowSwitches are persistent; that is, if a switch reconnects, the
+  Connection field of the original OpenFlowSwitch object will simply be reset.
+  
+  For now, OpenFlowSwitch is primarily a proxy to its underlying connection
+  object. Later, we'll possibly add more explicit operations the client can
+  perform.
+  
+  Note that for the purposes of the debugger, we can interpose on
+  a switch entity by enumerating all listeners for the events listed below, and
+  triggering mock events for those listeners.
+  """
   _eventMixin_events = set([
-    SwitchJoin,
+    SwitchJoin, # Defined in pox.topology
     SwitchLeave,
 
-    PortStatus,
+    PortStatus, # Defined in libopenflow_01
     FlowRemoved,
     PacketIn,
     BarrierIn,
   ])
+  
   def __init__ (self, dpid):
-    super(Switch, self).__init__(dpid)
+    Switch.__init__(self, dpid)
     EventMixin.__init__(self)
     self.dpid = dpid
     self.ports = {}
     self.capabilities = 0
-    self.connection = None
+    self._connection = None
     self._listeners = []
     self._reconnectTimeout = None # Timer for reconnection
 
   def _setConnection (self, connection, ofp=None):
-    if self.connection: self.connection.removeListeners(self._listeners)
+    ''' ofp - a FeaturesReply message '''
+    if self._connection: self._connection.removeListeners(self._listeners)
     self._listeners = []
-    self.connection = connection
+    self._connection = connection
     if self._reconnectTimeout is not None:
       self._reconnectTimeout.cancel()
       self._reconnectTimeout = None
     if connection is None:
       self._reconnectTimeout = Timer(RECONNECT_TIMEOUT, self._timer_ReconnectTimeout)
     if ofp is not None:
+      # update capabilities
       self.capabilities = ofp.capabilities
+      # update all ports 
       untouched = set(self.ports.keys())
       for p in ofp.ports:
         if p.port_no in self.ports:
@@ -232,6 +287,16 @@ class OpenFlowSwitch (EventMixin, Switch):
 
   def __repr__ (self):
     return "<%s %s>" % (self.__class__.__name__, dpidToStr(self.dpid))
+  
+  def __getattr__( self, name ):
+    """
+    NOTE: for now, we're making OpenflowSwitch a proxy to its underlying
+    connection object. This could be dangerous... so perhaps we should
+    explicitly define the connection operations? Or just force the client
+    to call sw.connection.send() rather than sw.send()
+    """
+    return getattr( self._connection, name )
+
 
 def launch ():
   if not core.hasComponent("openflow_topology"):

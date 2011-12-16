@@ -22,7 +22,7 @@ This is a port of NOX's DNSSpy component.
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 from pox.lib.packet import *
 
 log = core.getLogger()

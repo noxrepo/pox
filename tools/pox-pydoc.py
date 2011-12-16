@@ -163,13 +163,16 @@ def visiblename(name, all=None):
     """Decide whether to show documentation on a variable."""
     # Certain special names are redundant.
     _hidden_names = ('__builtins__', '__doc__', '__file__', '__path__',
-                     '__module__', '__name__', '__slots__', '__package__')
+                     '__module__', '__name__', '__slots__', '__package__',
+                     '__dict__', '__weakref__')
     if name in _hidden_names: return 0
     # Private names are hidden, but special names are displayed.
     if name.startswith('__') and name.endswith('__'): return 1
     if all is not None:
         # only document that which the programmer exported in __all__
         return name in all
+    elif name.startswith('_handle_'):
+        return 1
     else:
         return not name.startswith('_')
 
@@ -805,6 +808,10 @@ class HTMLDoc(Doc):
                 continue
             elif thisclass is object:
                 tag = 'defined here'
+            elif thisclass.__name__ == "EventMixin":
+                # Special case -- don't show
+                attrs = inherited
+                continue
             else:
                 tag = 'inherited from %s' % self.classlink(thisclass,
                                                            object.__module__)
@@ -816,7 +823,7 @@ class HTMLDoc(Doc):
             except TypeError:
                 attrs.sort(lambda t1, t2: cmp(t1[0], t2[0]))    # 2.3 compat
 
-            from pox.lib.revent.revent import EventMixin
+            from pox.lib.revent import EventMixin
             if hasattr(object, '_eventMixin_events') and issubclass(object, EventMixin):
               events = list(object._eventMixin_events)
               if len(events) > 0:

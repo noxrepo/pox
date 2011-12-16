@@ -106,7 +106,22 @@ def getLogger (name=None, moreFrames=0):
 
 log = (lambda : getLogger())()
 
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
+
+# Now use revent's exception hook to put exceptions in event handlers into
+# the log...
+def _revent_exception_hook (source, event, args, kw, exc_info):
+  try:
+    c = source
+    t = event
+    if hasattr(c, "__class__"): c = c.__class__.__name__
+    if isinstance(t, Event): t = t.__class__.__name__
+    elif issubclass(t, Event): t = t.__name__
+  except:
+    pass
+  log.exception("Exception while handling %s!%s...\n" % (c,t))
+import pox.lib.revent.revent
+pox.lib.revent.revent.handleEventException = _revent_exception_hook
 
 class GoingUpEvent (Event):
   """ Fired when system is going up. """
@@ -131,7 +146,7 @@ class ComponentRegistered (Event):
     self.name = name
     self.component = component
 
-import pox.lib.recoco.recoco as recoco
+import pox.lib.recoco as recoco
 
 class POXCore (EventMixin):
   """
@@ -174,6 +189,8 @@ class POXCore (EventMixin):
     return "POX " + '.'.join(map(str, self.version))
 
   def callLater (_self, _func, *args, **kw):
+    # first arg is `_self` rather than `self` in case the user wants
+    # to specify self as a keyword argument
     """
     Call the given function with the given arguments within the context
     of the co-operative threading environment.
@@ -191,6 +208,8 @@ class POXCore (EventMixin):
     _self.scheduler.callLater(_func, *args, **kw)
 
   def raiseLater (_self, _obj, *args, **kw):
+    # first arg is `_self` rather than `self` in case the user wants
+    # to specify self as a keyword argument
     """
     This is similar to callLater(), but provides an easy way to raise a
     revent event from outide the co-operative context.

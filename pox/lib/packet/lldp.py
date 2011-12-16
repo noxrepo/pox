@@ -68,6 +68,7 @@ from packet_utils       import *
 
 from packet_base import packet_base
 from pox.lib.addresses import EthAddr
+from pox.lib.util import initHelper
 
 import logging
 lg = logging.getLogger('packet')
@@ -132,6 +133,7 @@ class lldp (packet_base):
             return 2 + length
         else:
             self.msg( '(lldp tlv parse) warning unknown tlv type (%u)' % (type,) )
+            # TODO: unknown_tlv is an undefined variable! Check me in?
             self.tlvs.append(unknown_tlv(array[0: 2 + length]))
             return 2 + length
 
@@ -211,7 +213,7 @@ class lldp (packet_base):
 #======================================================================
 #                          TLV definitions
 #======================================================================
-
+        
 class chassis_id:
     tlv_type = lldp.CHASSIS_ID_TLV
 
@@ -243,7 +245,7 @@ class chassis_id:
             self.arr = raw
             self.parse()
         initHelper(self, kw)
-
+   
     def fill(self, _subtype, strval):
         self.strlen  = 1 + len(strval)
         self.subtype = _subtype
@@ -443,6 +445,9 @@ class basic_tlv (object):
         typelen = self.tlv_type << 9
         typelen = typelen | (self.len & 0x01ff)
         return struct.pack('!H', typelen) + self.next
+
+class unknown_tlv (basic_tlv):
+    tlv_type = None
 
 class system_description (basic_tlv):
     tlv_type = lldp.SYSTEM_DESC_TLV

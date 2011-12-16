@@ -17,7 +17,7 @@
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 
 log = core.getLogger()
 
@@ -68,9 +68,6 @@ class LearningSwitch (EventMixin):
     """
     def flood ():
       """ Floods the packet """
-      # Should there be a layer below this to build this packet?
-      # I guess I would have expected something like:
-      # msg = of.ofp_packet_out(actions = [foo],  buffer_id = event.ofp.buffer_id, in_port = event.port)
       msg = of.ofp_packet_out()
       msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
       msg.buffer_id = event.ofp.buffer_id
@@ -97,6 +94,7 @@ class LearningSwitch (EventMixin):
         msg.actions.append(of.ofp_action_output(port = port))
         msg.buffer_id = event.ofp.buffer_id
         self.connection.send(msg)
+
 
 class dumb_l2_switch (EventMixin):
   """

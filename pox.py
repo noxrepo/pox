@@ -35,12 +35,11 @@ exec python -O "$0" "$@"
 '''
 
 from pox.core import core
-import pox.openflow.openflow
+import pox.openflow
 import pox.openflow.of_01
 
 # Turn on extra info for event exceptions
-import pox.lib.revent.revent as revent
-revent.showEventExceptions = True
+import pox.lib.revent as revent
 
 import sys
 
@@ -236,7 +235,6 @@ def _opt_verbose (v):
   verbose = str(v).lower() == "true"
 
 def process_options ():
-  # TODO: define this list somewhere else. Or use an option-parsing library.
   for k,v in options.iteritems():
     rk = '_opt_' + k.replace("-", "_")
     if rk in globals():
@@ -255,7 +253,7 @@ def pre_startup ():
   process_options()
 
   if enable_openflow:
-    pox.openflow.openflow.launch() # Always launch OpenFlow
+    pox.openflow.launch() # Default OpenFlow launch
 
   return True
 
@@ -266,7 +264,7 @@ def post_startup ():
   #core.register("switch", pox.dumb_l3_switch.dumb_l3_switch.dumb_l3_switch())
 
   if enable_openflow:
-    pox.openflow.of_01.launch() # Always launch of_01
+    pox.openflow.of_01.launch() # Usually, we launch of_01
 
 def _monkeypatch_console ():
   """

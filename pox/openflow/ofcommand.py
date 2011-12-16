@@ -38,6 +38,7 @@
 
 import struct
 import pox.openflow.libopenflow_01 as of
+from pox.openflow import *
 
 from pox.lib.packet.tcp       import tcp
 from pox.lib.packet.udp       import udp
@@ -97,7 +98,9 @@ class FloodPacketCommand(PacketOutCommand):
 def sendPacket(con, inport, packet, buf, bufid=None):
   """Send a packet out a single port on a switch
   """
-  sendCommand(con, sendPacketCommand(inport, outport, packet, buf, bufid))
+  # TODO: there is no `outport` variable defined here... o
+  #       what does is it supposed to refer to?
+  sendCommand(con, SendPacketCommand(inport, outport, packet, buf, bufid))
   print con, "sent packet"
   
 def multicastPacket(con, inport, outports, packet, buf, bufid=None):
@@ -173,7 +176,7 @@ class AddFlowEntryCommand(FlowModCommand):
 def modifyFlow(con, inport, packet, buf, bufid=None):
   """Modify a switch's flow table
   """
-  command = flowModCommand(inport, packet, buf, bufid)
+  command = FlowModCommand(inport, packet, buf, bufid)
   sendCommand(con, command)
   
 def addFlowEntry(con, inport, match, actions, bufid=None):
