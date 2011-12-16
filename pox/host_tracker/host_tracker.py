@@ -230,7 +230,7 @@ class host_tracker (EventMixin):
       return
 
     # This should use Topology later 
-    if False: # should be if core.openflow_discovery.isSwitchOnlyPort(dpid, inport):
+    if core.openflow_discovery.isSwitchOnlyPort(dpid, inport):
       # No host should be right behind a switch-only port
       log.debug("%i %i ignoring packetIn at switch-only port", dpid, inport)
       return

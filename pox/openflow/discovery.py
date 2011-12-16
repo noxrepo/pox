@@ -367,7 +367,7 @@ class Discovery (EventMixin):
   def isSwitchOnlyPort (self, dpid, port):
     """ Returns True if (dpid, port) designates a port that has any
     neighbor switches"""
-    for link in self.adjacency_list:
+    for link in self.adjacency:
       if link.dpid1 == dpid and link.port1 == port:
         return True
       if link.dpid2 == dpid and link.port2 == port:
