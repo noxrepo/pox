@@ -1422,7 +1422,6 @@ class ofp_flow_mod (ofp_header):
     return packed
 
   def unpack (self, binaryString):
-    #TODO: unpack actions
     if (len(binaryString) < 72):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
@@ -1430,6 +1429,16 @@ class ofp_flow_mod (ofp_header):
     (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 48)
     if self.buffer_id == 0xffffffff:
       self.buffer_id = -1
+    
+    actions_binary = binaryString[72:]
+    while len(actions_binary) >= 8:
+      action_header = ofp_action_header()
+      action_header.unpack(actions_binary[0:8])
+      action = ofp_action_classes[action_header.type]()
+      action.unpack(actions_binary[8:action_header.length - 8])
+      self.actions.append(action)
+      actions_binary = actions_binary[action_header.length:] 
+      
     return binaryString[72:]
 
   def __len__ (self):
@@ -3486,4 +3495,20 @@ ofp_match_data = {
   'nw_dst' : (0, OFPFW_NW_DST_ALL),
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
+}
+
+ofp_action_classes = {
+  OFPAT_OUTPUT : ofp_action_output,
+  OFPAT_SET_VLAN_VID : ofp_action_vlan_vid,
+  OFPAT_SET_VLAN_PCP : ofp_action_vlan_pcp,
+  OFPAT_STRIP_VLAN  : None, # TODO: is the class defined?
+  OFPAT_SET_DL_SRC : ofp_action_dl_addr,
+  OFPAT_SET_DL_DST : ofp_action_dl_addr,
+  OFPAT_SET_NW_SRC : ofp_action_nw_addr,
+  OFPAT_SET_NW_DST : ofp_action_nw_addr,
+  OFPAT_SET_NW_TOS : ofp_action_nw_tos,
+  OFPAT_SET_TP_SRC : ofp_action_tp_port,
+  OFPAT_SET_TP_DST : ofp_action_tp_port,
+  OFPAT_ENQUEUE : ofp_action_enqueue,
+  OFPAT_VENDOR : ofp_action_vendor_header,
 }
