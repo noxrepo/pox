@@ -60,8 +60,6 @@ class SwitchImpl(object):
     }
     ##Reference to connection with controller
     self._connection = ControllerConnection(sock, ofp_handlers)
-    ##Name to use for logging
-    self.name = self.__class__.__name__+str(id(self))
     ##Capabilities
     if (isinstance(capabilities, SwitchCapabilities)):
         self.capabilities = capabilities
