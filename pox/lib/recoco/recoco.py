@@ -48,6 +48,16 @@ class BaseTask  (object):
   #running = False
   priority = 1
 
+  @classmethod
+  def new (cls, *args, **kw):
+    """
+    Creates a task and starts it on the default scheduler with the
+    default priority.
+    """
+    o = cls(*args, **kw)
+    o.start(fast=True)
+    return o
+
   def __init__ (self, *args, **kw):
     #NOTE: keep in sync with Task.__init__ !
     #      (better yet, refactor)
@@ -56,10 +66,19 @@ class BaseTask  (object):
     self.rv = None
     self.rf = None # ReturnFunc
 
-  def start (self, scheduler = None, priority = None):
+  def start (self, scheduler = None, priority = None, fast = False):
+    """
+    Schedules this task.
+
+    See Scheduler.schedule() and Scheduler.fast_schedule() for the meaning
+    of the 'fast' argument.
+    """
     if scheduler is None: scheduler = defaultScheduler
     if priority != None: self.priority = priority
-    scheduler.schedule(self)
+    if fast:
+      scheduler.fast_schedule(self)
+    else:
+      scheduler.schedule(self)
 
   def execute (self):
     if self.rf is not None:
@@ -158,20 +177,55 @@ class Scheduler (object):
     return Synchronizer(self)
 
   def schedule (self, task, first = False):
-    # The following line is not really guaranteed to catch multiple schedulings
-    # of the same task.  So you really should implement your own logic to keep
-    # that from happening.
-
     """
-    print("schedule", task, " (",len(self._ready), "already running)")
-    import traceback
-    traceback.print_stack()
-    print("---")
+    Schedule the given task to run later.
+    If first is True, the task will be the next to run.
+
+    Unlike fast_schedule(), this method will not schedule a task to run
+    multiple times.  The one exception is if a Task actually schedules
+    itself.  The easiest way to avoid this is simply not to do it.
+    See fast_schedule() and ScheduleTask for more info.
+    """
+    if threading.current_thread() is self._thread:
+      # We're know we're good.
+      #TODO: Refactor the following with ScheduleTask
+      if task in self._ready:
+        # It might make sense to keep a flag on the task, since checking
+        # if it's in the ready list is not very efficient.
+        # Not sure if it makes sense to print out a message here or not.
+        import logging
+        logging.getLogger("recoco").info("Task %s scheduled multiple " +
+                                         "times", task)
+        return False
+      self.fast_schedule(task, first)
+      return True
+
+    st = ScheduleTask(self, task)
+    st.start(fast=True)
+
+  def fast_schedule (self, task, first = False):
+    """
+    Schedule the given task to run later.
+    If first is True, the task will be the next to run.
+
+    This method does not protect you from scheduling the same Task more
+    than once, which you probably really don't want to do.
+
+    If you are scheduling an existing Task (waking it) from another Task,
+    you should either implement your own logic to ensure that you don't
+    schedule it multiple times, or you should just use schedule().
+
+    If you are scheduling an existing Task (waking it) from any thread
+    besides the one the scheduler is running on, there's a race condition
+    which makes it nontrivial to ensure that multiple schedulings never
+    happen, and you should just use schedule() for such Tasks.
+
+    If you are scheduling a new Task that you just created, this method
+    is always safe.
     """
 
-    if task in self._ready:
-      raise RuntimeError("Task " + str(task) + " scheduled multiple times")
-      #return
+    # Sanity check.  Won't catch all cases.
+    assert task not in self._ready
 
     if first:
       self._ready.appendleft(task)
@@ -201,6 +255,7 @@ class Scheduler (object):
     #if len(self._ready) == 0: return False
 
     # Patented hilarious priority system
+    #TODO: Replace it with something better
     t = None
     try:
       while True:
@@ -297,7 +352,7 @@ class Sleep (BlockingOperation):
       return
     if self._t is 0 or self._t < time.time():
       # Just reschedule
-      scheduler.schedule(task)
+      scheduler.fast_schedule(task)
       return
     scheduler._selectHub.registerTimer(task, self._t, True) # A bit ugly
 
@@ -534,7 +589,38 @@ class SelectHub (object):
   def _return (self, sleepingTask, returnVal):
     #print("reschedule", sleepingTask)
     sleepingTask.rv = returnVal
-    self._scheduler.schedule(sleepingTask)
+    self._scheduler.fast_schedule(sleepingTask)
+
+
+class ScheduleTask (BaseTask):
+  """
+  If multiple real threads (such as a recoco scheduler thread and any
+  other thread, or any two other threads) try to schedule ("wake") the
+  same Task with Scheduler.fast_schedule(), there is a race condition where
+  the Task may get scheduled multiple times, which is probably quite bad.
+
+  Scheduler.schedule() fixes this by creating one of these ScheduleTasks,
+  and it's this ScheduleTask that actually calls fast_schedule().  This
+  way, the Task is only ever *really* scheduled from the scheduler thread
+  and the race condition doesn't exist.
+  """
+  def __init__ (self, scheduler, task):
+    BaseTask.__init__(self)
+    self._scheduler = scheduler
+    self._task = task
+
+  def run (self):
+    #TODO: Refactor the following, since it is copy/pasted from schedule().
+    if self._task in self._scheduler._ready:
+      # It might make sense to keep a flag on the task, since checking
+      # if it's in the ready list is not very efficient.
+      # Not sure if it makes sense to print out a message here or not.
+      import logging
+      logging.getLogger("recoco").info("Task %s scheduled multiple " +
+                                       "times", self._task)
+    else:
+      self._scheduler.fast_schedule(self._task, True)
+    yield False
 
 
 class SyncTask (BaseTask):
