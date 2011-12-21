@@ -24,6 +24,7 @@ from collections import namedtuple
 log = core.getLogger()
 
 class SwitchImpl(object):
+  # ports is a list of ofp_phy_ports
   def __init__(self, dpid, sock, ports=[], miss_send_len=128,
                n_buffers=100, n_tables=1, capabilities=None):
     """Initialize switch"""
@@ -35,8 +36,10 @@ class SwitchImpl(object):
     self.n_tables= n_tables
     # TODO: don't assume a single table
     self.table = FlowTable()
-    ##List of ports. Type is openflow.pylibopenflow_01.ofp_phy_port
-    self.ports = ports 
+    ## Hash of port_no -> openflow.pylibopenflow_01.ofp_phy_ports
+    self.ports = {}
+    for port in ports:
+      self.ports[port.port_no] = port
     ## (OpenFlow Handler map)
     ofp_handlers = {
        # Reactive handlers
@@ -87,7 +90,7 @@ class SwitchImpl(object):
                              n_tables = self.n_tables,
                              capabilities = self.capabilities.get_capabilities(),
                              actions = self.capabilities.get_actions(), 
-                             ports = self.ports)
+                             ports = self.ports.values())
     self._connection.send(msg)
                                
   def _receive_flow_mod(self, packet):
