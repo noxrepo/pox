@@ -19,6 +19,10 @@
 OpenFlow doesn't know anything about Topology, and Topology doesn't
 know anything about OpenFlow.  This module knows something about both,
 and hooks the two of them together.
+
+Specifically, this module is somewhat like an adapter that listens to
+events from other parts of the openflow substem (such as discovery), and
+uses them to populate and manipulate Topology.
 """
 
 from pox.lib.revent.revent import *

@@ -16,30 +16,13 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-The Topology module encapsulates the Network Object Model (NOM).
+The Topology module is the root of an object model composed of entities
+like switches, hosts, links, etc.  This object model is populated by other
+modules.  For example, openflow.topology populates the topology object
+with OpenFlow switches.
 
-This is the "substrate" NOM, containing non-virtualized (read: raw OpenFlow)
-entities.
-
-NOTE: this module is passive; it won't do anything unless other modules call
-methods on it. As an example, to populate it with OpenFlow switches you would 
-need to invoke:
+Note that this means that you often want to invoke something like:
    $ ./pox.py topology openflow.discovery openflow.topology
-   
-   
-topology is this module, which simply stores the NOM datastructure.
-
-openflow.discovery sends out LLDP packets and discovers OpenFLow
-switches in the network.
-
-openflow.topology is an "adaptor" between OpenFlow semantics and 
-topology semantics; it listens on openflow.discovery events, and pushes
-(generic) changes to this module.
-
-TODO: the above invocation is somewhat awkward and error-prone. Is there a better
-way to add Openflow switches to the NOM? I suppose this module is intended to 
-implement "OS"-functionality; when most applications move to using the NOM, the NOM
-will automatically be populated by pox. 
 """
 
 from pox.lib.revent import *

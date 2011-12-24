@@ -20,12 +20,9 @@
 # been substantially rewritten.
 
 """
-This module discovers OpenFlow Switches in the network by sending out LLDP
-packets. To be notified of this information, listen to LinkEvents on the
-discovery object below.
-
-Note that of_01.Task /passively/ listens to switch connections. This module
-/actively/ discovers switches in the network.
+This module discovers the connectivity between OpenFlow switches by sending
+out LLDP packets. To be notified of this information, listen to LinkEvents
+on core.Discovery.
 
 It's possible that some of this should be abstracted out into a generic
 Discovery module, or a Discovery superclass.
@@ -65,8 +62,8 @@ class LLDPSender (object):
                       ('dpid','portNum','packet'))
 
   #NOTE: This class keeps the packets to send in a flat list, which makes
-  #      adding/removing them on switch join/leave or (especially) port status
-  #      changes relatively expensive.  This could easily be improved.
+  #      adding/removing them on switch join/leave or (especially) port
+  #      status changes relatively expensive. This could easily be improved.
 
   def __init__ (self):
     self._packets = []
@@ -80,7 +77,8 @@ class LLDPSender (object):
       if portNum > of.OFPP_MAX:
         # Ignore local
         continue
-      self._packets.append(LLDPSender.SendItem(dpid, portNum, self.create_discovery_packet(dpid, portNum, portAddr)))
+      self._packets.append(LLDPSender.SendItem(dpid, portNum,
+       self.create_discovery_packet(dpid, portNum, portAddr)))
 
     self._setTimer()
 
@@ -89,20 +87,23 @@ class LLDPSender (object):
     self._setTimer()
 
   def delPort (self, dpid, portNum):
-    self._packets = [p for p in self._packets if p.dpid != dpid or p.portNum != portNum]
+    self._packets = [p for p in self._packets
+                     if p.dpid != dpid or p.portNum != portNum]
     self._setTimer()
 
   def addPort (self, dpid, portNum, portAddr):
     if portNum > of.OFPP_MAX: return
     self.delPort(dpid, portNum)
-    self._packets.append(LLDPSender.SendItem(dpid, portNum, self.create_discovery_packet(dpid, portNum, portAddr)))
+    self._packets.append(LLDPSender.SendItem(dpid, portNum,
+     self.create_discovery_packet(dpid, portNum, portAddr)))
     self._setTimer()
 
   def _setTimer (self):
     if self._timer: self._timer.cancel()
     self._timer = None
     if len(self._packets) != 0:
-      self._timer = Timer(LLDP_SEND_CYCLE / len(self._packets), self._timerHandler, recurring=True)
+      self._timer = Timer(LLDP_SEND_CYCLE / len(self._packets),
+                          self._timerHandler, recurring=True)
 
   def _timerHandler (self):
     """
@@ -168,7 +169,8 @@ class Discovery (EventMixin):
   """
   Component that attempts to discover topology.
   Works by sending out LLDP packets
-  discovery application for topology inference """
+  discovery application for topology inference
+  """
 
   _eventMixin_events = set([
     LinkEvent,
@@ -200,7 +202,8 @@ class Discovery (EventMixin):
     assert event.dpid not in self._dps
 
     self._dps.add(event.dpid)
-    self._sender.addSwitch(event.dpid, [(p.port_no, p.hw_addr) for p in event.ofp.ports])
+    self._sender.addSwitch(event.dpid, [(p.port_no, p.hw_addr)
+                                        for p in event.ofp.ports])
 
   def _handle_ConnectionDown (self, event):
     """ On datapath leave, delete all associated links """
@@ -232,8 +235,8 @@ class Discovery (EventMixin):
 
   def _expireLinks (self):
     '''
-    Called periodially by a timer to expire links that haven't been refreshed
-    recently.
+    Called periodially by a timer to expire links that haven't been
+    refreshed recently.
     '''
     curtime = time.time()
 
@@ -335,7 +338,8 @@ class Discovery (EventMixin):
       except:
         pass
     if originatorPort is None:
-      log.warning("Thought we found a DPID, but port number didn't make sense")
+      log.warning("Thought we found a DPID, but port number didn't " +
+                  "make sense")
       return
 
     if (event.dpid, event.port) == (originatorDPID, originatorPort):
@@ -344,7 +348,8 @@ class Discovery (EventMixin):
 
     # print 'LLDP packet in from',longlong_to_octstr(chassid),' port',str(portid)
 
-    link = Discovery.Link(originatorDPID, originatorPort, event.dpid, event.port)
+    link = Discovery.Link(originatorDPID, originatorPort, event.dpid,
+                          event.port)
 
     if link not in self.adjacency:
       self.adjacency[link] = time.time()
