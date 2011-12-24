@@ -190,15 +190,16 @@ class OpenFlowSwitch (EventMixin, Switch):
   OpenFlowSwitches are Topology entities (inheriting from topology.Switch)
   
   OpenFlowSwitches are persistent; that is, if a switch reconnects, the
-  Connection field of the original OpenFlowSwitch object will simply be reset.
+  Connection field of the original OpenFlowSwitch object will simply be
+  reset to refer to the new connection.
   
   For now, OpenFlowSwitch is primarily a proxy to its underlying connection
   object. Later, we'll possibly add more explicit operations the client can
   perform.
   
   Note that for the purposes of the debugger, we can interpose on
-  a switch entity by enumerating all listeners for the events listed below, and
-  triggering mock events for those listeners.
+  a switch entity by enumerating all listeners for the events listed
+  below, and triggering mock events for those listeners.
   """
   _eventMixin_events = set([
     SwitchJoin, # Defined in pox.topology
@@ -211,7 +212,7 @@ class OpenFlowSwitch (EventMixin, Switch):
   ])
   
   def __init__ (self, dpid):
-    Switch.__init__(self, dpid)
+    Switch.__init__(self, id=dpid)
     EventMixin.__init__(self)
     self.dpid = dpid
     self.ports = {}
@@ -229,7 +230,8 @@ class OpenFlowSwitch (EventMixin, Switch):
       self._reconnectTimeout.cancel()
       self._reconnectTimeout = None
     if connection is None:
-      self._reconnectTimeout = Timer(RECONNECT_TIMEOUT, self._timer_ReconnectTimeout)
+      self._reconnectTimeout = Timer(RECONNECT_TIMEOUT,
+                                     self._timer_ReconnectTimeout)
     if ofp is not None:
       # update capabilities
       self.capabilities = ofp.capabilities
