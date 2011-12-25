@@ -85,6 +85,7 @@ class Update (Event):
   Fired by Topology whenever anything has changed
   """
   def __init__ (self, event):
+    Event.__init__(self)
     self.event = event
 
 class Entity (object):
@@ -156,9 +157,10 @@ class Topology (EventMixin):
       SwitchJoin : self._fulfill_SwitchJoin_promise
     }
 
-  @property
-  def entity (self, ID):
-    return self._entities.get(ID)
+  # TODO: put me back when tests.topology.topology passes
+  #@property
+  #def entity (self, ID):
+  #  return self._entities.get(ID)
 
   def getEntityByID (self, ID, fail=False):
     """
