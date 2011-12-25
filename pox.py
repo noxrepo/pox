@@ -42,7 +42,6 @@ import pox.openflow.of_01
 import pox.lib.revent as revent
 
 import sys
-
 options = None
 
 def doImport (name):
@@ -217,9 +216,11 @@ def doLaunch ():
 
   return True
 
+# TODOC: why is cli in globals(), but the rest are in globals()['options']) ?
 cli = True
 verbose = False
 enable_openflow = True
+script = False
 
 def _opt_no_openflow (v):
   global enable_openflow
@@ -233,6 +234,19 @@ def _opt_no_cli (v):
 def _opt_verbose (v):
   global verbose
   verbose = str(v).lower() == "true"
+
+def _opt_script (v):
+  """
+  Run the given script after pox.core has gone up. Useful for unit-testing
+  
+  v - python module to execute
+  """
+  global script
+  _opt_no_cli(True)
+  if type(v) is bool:
+    print "--script option requires a specified python module"
+    return # Raise an exception instead?
+  script = v
 
 def process_options ():
   for k,v in options.iteritems():
@@ -307,7 +321,7 @@ def main ():
     import traceback
     traceback.print_exc()
     return
-
+  
   if cli:
     print "This program comes with ABSOLUTELY NO WARRANTY.  This program is " \
           "free software,"
@@ -321,6 +335,9 @@ def main ():
     sys.ps1 = "POX> "
     sys.ps2 = " ... "
     code.interact('Ready.', local=locals())
+  elif options['script']:
+    # TODO: __import__ is kind of hacky, to load a string rather than a module.
+    __import__(options['script'])
   else:
     try:
       import time
