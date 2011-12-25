@@ -36,11 +36,27 @@ class EntityEvent (Event):
     self.entity = entity
     
 class EntityJoin (EntityEvent):
-  """ An entity has been added """
+  """
+  An entity has been added.
+
+  Note that if there is a more specific join event defined for a particular
+  entity, (e.g., SwitchJoin), this event will not be fired.
+
+  TODO: or we could always raise EntityJoins along with SwitchJoins, which
+  seems more intuitive to me.
+  """
   pass
 
 class EntityLeave (EntityEvent):
-  """ An entity has been removed """
+  """
+  An entity has been removed 
+
+  Note that if there is a more specific leave event defined for a particular
+  entity, (e.g., SwitchLeave), this event will not be fired.
+
+  TODO: or we could always raise EntityLeaves along with SwitchLeaves, which
+  seems more intuitive to me.
+  """
   pass
 
 class SwitchEvent (EntityEvent): pass
@@ -182,21 +198,6 @@ class Topology (EventMixin):
       return [x for x in self._entities.itervalues() if type(x) is t]
     else:
       return [x for x in self._entities.itervalues() if isinstance(x, t)]
-
-  def getSwitchWithConnection (self, connection):
-    """
-    OpenFlow events only contain a refence to a connection object, not a
-    switch object. Perhaps this should be changed, but for now, find the
-    switch the corresponding connection object.
-    
-    Return None if no such switch found.
-    """
-    #TODO: Remove this method; it doesn't belong here.
-    switches = self.getEntitiesOfType(Switch)
-    switches = [s for s in switches if s.connection == connection]
-    if len(switches) == 0: return None
-    assert len(switches) == 1
-    return switches[1]
 
   def addListener(self, eventType, handler, once=False, weak=False,
                   priority=None, byName=False):
