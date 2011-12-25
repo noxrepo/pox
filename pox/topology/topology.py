@@ -235,5 +235,5 @@ class Topology (EventMixin):
     for id,entity in self._entities:
       strings.append("%s %s" % (str(id), str(entity))) 
       
-    return strings
+    return '\n'.join(strings)
 
