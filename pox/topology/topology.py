@@ -149,18 +149,13 @@ class Topology (EventMixin):
   def __init__ (self):
     EventMixin.__init__(self)
     self._entities = {}
-    
+
     # If a client registers a handler for these events after they have
     # already occurred, we promise to re-issue them to the newly joined
     # client.
     self._event_promises = {
       SwitchJoin : self._fulfill_SwitchJoin_promise
     }
-
-  # TODO: put me back when tests.topology.topology passes
-  #@property
-  #def entity (self, ID):
-  #  return self._entities.get(ID)
 
   def getEntityByID (self, ID, fail=False):
     """
