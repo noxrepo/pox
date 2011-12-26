@@ -468,7 +468,8 @@ def autoBindEvents (sink, source, prefix='', weak=False):
   if len(prefix) > 0 and prefix[0] != '_': prefix = '_' + prefix
   if hasattr(source, '_eventMixin_events') is False:
     # If source does not declare that it raises any events, do nothing
-    print "Warning: source doesn't raise any events!", source.__class__.__name__
+    print "Warning: source class %s doesn't specify any events!" % (
+     source.__class__.__name__,)
     return []
 
   events = {}
