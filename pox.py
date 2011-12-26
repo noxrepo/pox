@@ -322,7 +322,9 @@ def main ():
     import sys
     sys.ps1 = "POX> "
     sys.ps2 = " ... "
-    code.interact('Ready.', local=locals())
+    l = dict(locals())
+    l['core'] = core
+    code.interact('Ready.', local=l)
   else:
     try:
       import time
