@@ -46,10 +46,10 @@ from pox.lib.revent.revent import *
 import time
 
 # Timeout to ping ARP-responding entries that sent no packets
-ARP_AWARE_TIMEOUT = 20 # 60 * 2
+ARP_AWARE_TIMEOUT = 20 # Reasonable for testing, increase later (e.g., 60*2)
 
 # Timeout for ARP-silent entries (those which do not answer to ARP pings)
-ARP_SILENT_TIMEOUT = 60 # 60 * 20
+ARP_SILENT_TIMEOUT = 60 # Reasonable for testing, increase later (e.g., 60*20)
 
 # Timeout to wait for an ARP ping reply (very short)
 ARP_REPLY_TIMEOUT = 1
@@ -57,7 +57,7 @@ ARP_REPLY_TIMEOUT = 1
 # Number of ARP ping attemps before quitting
 ARP_PING_CNT = 2
 
-# Interval that defines the timer period
+# Interval that defines the timer period (timer granularity)
 TIMER_INTERVAL = 5
 
 
@@ -72,8 +72,7 @@ class Entry (object):
   been silent for a while. On the other hand, if a host does not answer ARP
   pings, we wait longer (ARP_SILENT_TIMEOUT) before we remove them.
   """
-  def __init__ (self, connection, dpid, port, mac):
-    self.connection = connection
+  def __init__ (self, dpid, port, mac):
     self.dpid = dpid
     self.port = port
     self.mac = mac
@@ -95,12 +94,12 @@ class Entry (object):
   def __ne__ (self, other):
     return not self.__eq__(other)
 
-  def isExpired (self):
+  def expired (self):
     return time.time() > (self.lastTimeSeen + self.keepAliveTime)
 
   def mustBePinged (self):
     if self.answersPings: 
-      return self.isExpired() and self.pendingPings < ARP_PING_CNT 
+      return self.expired() and self.pendingPings < ARP_PING_CNT 
     else:
       return ( 0 < self.pendingPings < ARP_PING_CNT ) 
 
@@ -116,14 +115,14 @@ class host_tracker (EventMixin):
     self.listenTo(core)
 
   # The following two functions should go to Topology also
-  def getHostByMAC(self, mac):
+  def getEntryByMAC(self, mac):
     try:
       result = self.hostMACTable[mac]
     except KeyError as e:
       result = None
     return result
 
-  def getHostByIP(self, ip):
+  def getEntryByIP(self, ip):
     try:
       result = self.hostIPTable[ip]
     except KeyError as e:
@@ -142,9 +141,13 @@ class host_tracker (EventMixin):
             entry.dpid, entry.port, str(r.hwdst), str(r.protodst))
     msg = of.ofp_packet_out(data = e.pack(),
                            action = of.ofp_action_output(port = entry.port))
-    entry.connection.send(msg.pack())
-    entry.pendingPings += 1
-    entry.pingTimeout = time.time() + ARP_REPLY_TIMEOUT
+    if core.openflow.sendToDPID(entry.dpid, msg.pack()):
+      entry.pendingPings += 1
+      entry.pingTimeout = time.time() + ARP_REPLY_TIMEOUT
+    else:
+      log.debug("%i %i ERROR sending ARP REQ to %s %s",
+                entry.dpid, entry.port, str(r.hwdst), str(r.protodst))
+      # entry is stale, remove it.
     return
 
   def getSrcIP(self, packet):
@@ -175,8 +178,8 @@ class host_tracker (EventMixin):
     Right now, it assumes mappings are all 1:1 - not always the case in
     practice.
     """
-    hostByIP = self.getHostByIP(pckt_srcip)
-    if hostByIP == entry:
+    entryByIP = self.getEntryByIP(pckt_srcip)
+    if entryByIP == entry:
       # The current IP for the entry is already equal to pckt_srcip, we're done
       log.debug("%i %i %s (%s) already has IP %s",
               entry.dpid,entry.port,str(entry.mac),str(entry.ip),str(pckt_srcip) )
@@ -184,15 +187,15 @@ class host_tracker (EventMixin):
     
     # Otherwise, we must update the entry - and possibly the entry HostByIP
 
-    if hostByIP != None:
+    if entryByIP != None:
       # Some other host currently has that IP
       # For now, we remove the information from the previous host
       log.warning("%s was previously %i %i %s (%s)",
                   str(pckt_srcip),
-                  hostByIP.dpid, hostByIP.port, str(hostByIP.mac),
-                  str(hostByIP.ip) )
-      del self.hostIPTable[hostByIP.ip]
-      hostByIP.ip = None
+                  entryByIP.dpid, entryByIP.port, str(entryByIP.mac),
+                  str(entryByIP.ip) )
+      del self.hostIPTable[entryByIP.ip]
+      entryByIP.ip = None
 
     if entry.ip != None:
       # Host had some other previous IP
@@ -243,12 +246,12 @@ class host_tracker (EventMixin):
             dpid, inport, str(packet.src), str(packet.dst))
 
     # Learn or update dpid/port/MAC info
-    entry = self.getHostByMAC(packet.src)
+    entry = self.getEntryByMAC(packet.src)
     if entry == None:
       newEntry = True
-      # there is no previous host by that MAC
+      # there is no known host by that MAC
       # should we raise a NewHostFound event (at the end)?
-      entry = Entry(event.connection,dpid,inport,packet.src)
+      entry = Entry(dpid,inport,packet.src)
       self.hostMACTable[packet.src] = entry
       log.debug("Learned %s is at %i %i",
                str(entry.mac), entry.dpid, entry.port)
@@ -261,11 +264,10 @@ class host_tracker (EventMixin):
         # should we raise a HostMoved event (at the end)?
         log.info("Learned %s (%i %i) moved to %i %i", str(entry.mac),
                 entry.dpid, entry.port, dpid, inport)
-        # update host location
         entry.dpid = dpid
         entry.inport = inport
         # should we create a whole new entry, or keep the previous host info?
-        # for now, we keep it: IP address, answers pings, etc.
+        # for now, we keep it: IP info, answers pings, etc.
 
     pckt_srcip = self.getSrcIP(packet.next)
     if pckt_srcip == None:
@@ -282,23 +284,24 @@ class host_tracker (EventMixin):
       entry.pendingPings = 0
       entry.pingTimeout = 0
     elif newEntry:
-      # If it is a new host and packet was not arp
+      # If it is a new host and packet was not ARP, check if it has ARP
       self.sendPing(entry)
 
     return
 
   def _check_timeouts(self):
     log.debug("Checking timeouts at %i", time.time())
-    for host in self.hostMACTable.values():
+    for entry in self.hostMACTable.values():
       log.debug("Checking %i %i %s %s (scheduled for %i)",
-              host.dpid, host.port,
-              str(host.mac), str(host.ip),
-              host.lastTimeSeen + host.keepAliveTime )
-      if host.mustBePinged():
-        self.sendPing(host)
-      elif host.isExpired():
-        log.info("Entry %i %i %s expired", host.dpid, host.port, str(host.mac))
-        del self.hostMACTable[host.mac]
-        if host.ip != None:
-          del self.hostIPTable[host.ip]
+              entry.dpid, entry.port,
+              str(entry.mac), str(entry.ip),
+              entry.lastTimeSeen + entry.keepAliveTime )
+      if entry.mustBePinged():
+        self.sendPing(entry)
+      elif entry.expired():
+        log.info("Entry %i %i %s expired", entry.dpid, entry.port,
+                str(entry.mac))
+        del self.hostMACTable[entry.mac]
+        if entry.ip != None:
+          del self.hostIPTable[entry.ip]
 
