@@ -57,7 +57,7 @@ class OpenFlowTopology (EventMixin):
   def __init__ (self):
     """ Note that self.topology is initialized in _resolveComponents """
     super(EventMixin, self).__init__()
-    if not core.listenToDependencies(self._wantComponents):
+    if not core.listenToDependencies(self, self._wantComponents):
       self.listenTo(core)
   
   def _handle_openflow_discovery_LinkEvent (self, event):
@@ -84,7 +84,7 @@ class OpenFlowTopology (EventMixin):
     A component was registered with pox.core. If we were dependent on it, 
     check again if all of our dependencies are now satisfied so we can boot.
     """
-    if core.listenToDependencies(self._wantComponents):
+    if core.listenToDependencies(self, self._wantComponents):
       return EventRemove
 
   def _handle_openflow_ConnectionUp (self, event):
