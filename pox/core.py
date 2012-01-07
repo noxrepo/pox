@@ -25,10 +25,7 @@ This includes things like component rendezvous, logging, system status
 
 # Set up initial log state
 import logging
-_default_log_handler = logging.StreamHandler()
-_default_log_handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
-logging.getLogger().addHandler(_default_log_handler)
-logging.getLogger().setLevel(logging.DEBUG)
+import colored_logger
 
 import inspect
 import time
