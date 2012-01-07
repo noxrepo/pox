@@ -305,7 +305,19 @@ class FlowTable (object):
       pass # TODO: do something
      
     self._table.append(entry)
-  
+    
+  def entries_for_port(self, port_no):
+    entries = []
+    for entry in self._table:
+      actions = entry.actions
+      if len(actions) > 0:
+        last_action = actions[-1]
+        if type(last_action) == ofp_action_output:
+          outgoing_port = last_action.port.port_no
+          if outgoing_port == port_no:
+            entries.apend(entry)
+    return entries
+          
   def matching_entries(self, entry):
     return [] # TODO: implement me
 
