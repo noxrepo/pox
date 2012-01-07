@@ -287,6 +287,40 @@ class POXCore (EventMixin):
       log.warn("Warning: Registered '%s' multipled times" % (name,))
     self.components[name] = component
     self.raiseEventNoErrors(ComponentRegistered, name, component)
+    
+  def listenToDependencies(self, sink, components):
+    """
+    If a component depends on having other components
+    registered with core before it can boot, it can use this method to 
+    check for registration, and listen to events on those dependencies.
+    
+    Note that event handlers named with the _handle* pattern in the sink must
+    include the name of the desired source as a prefix. For example, if topology is a
+    dependency, a handler for topology's SwitchJoin event must be labeled:
+       def _handle_topology_SwitchJoin(...)
+    
+    sink - the component waiting on dependencies
+    components - a list of dependent component names
+    
+    Returns whether all of the desired components are registered.
+    """
+    if components == None or len(components) == 0:
+      return True
+  
+    got = set()
+    for c in components:
+      if self.hasComponent(c):
+        setattr(sink, c, getattr(self, c))
+        sink.listenTo(getattr(self, c), prefix=c)
+        got.add(c)
+      else:
+        setattr(sink, c, None)
+    for c in got:
+      components.remove(c)
+    if len(components) == 0:
+      log.debug(sink.__class__.__name__ + " ready")
+      return True
+    return False
 
   def __getattr__ (self, name):
     if name not in self.components:
