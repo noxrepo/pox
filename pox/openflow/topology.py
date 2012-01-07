@@ -54,35 +54,10 @@ class OpenFlowTopology (EventMixin):
   # exception of openflow which usally loads automatically)
   _wantComponents = set(['openflow','topology','openflow_discovery'])
 
-  def _resolveComponents (self):
-    if self._wantComponents == None or len(self._wantComponents) == 0:
-      self._wantComponents = None
-      return True
-  
-    got = set()
-    for c in self._wantComponents:
-      if core.hasComponent(c):
-        # This line initializes self.topology, self.openflow, etc. 
-        setattr(self, c, getattr(core, c))
-        self.listenTo(getattr(core, c), prefix=c)
-        got.add(c)
-      else:
-        # This line also initializes self.topology, self.openflow, if
-        # the corresponding objects are not loaded yet into pox.core
-        setattr(self, c, None)
-    for c in got:
-      self._wantComponents.remove(c)
-    if len(self._wantComponents) == 0:
-      self.wantComponents = None
-      log.debug(self.__class__.__name__ + " ready")
-      return True
-    #log.debug(self.__class__.__name__ + " still wants: " + (', '.join(self._wantComponents)))
-    return False
-
   def __init__ (self):
     """ Note that self.topology is initialized in _resolveComponents """
     super(EventMixin, self).__init__()
-    if not self._resolveComponents():
+    if not core.listenToDependencies(self._wantComponents):
       self.listenTo(core)
   
   def _handle_openflow_discovery_LinkEvent (self, event):
@@ -109,7 +84,7 @@ class OpenFlowTopology (EventMixin):
     A component was registered with pox.core. If we were dependent on it, 
     check again if all of our dependencies are now satisfied so we can boot.
     """
-    if self._resolveComponents():
+    if core.listenToDependencies(self._wantComponents):
       return EventRemove
 
   def _handle_openflow_ConnectionUp (self, event):
