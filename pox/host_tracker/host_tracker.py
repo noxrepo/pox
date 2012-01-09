@@ -1,6 +1,7 @@
 # Copyright 2011 Dorgival Guedes
 #
 # This file is part of POX.
+# Some of the arp/openflow-related code was borrowed from dumb_l3_switch.
 #
 # POX is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,7 +50,7 @@ import time
 ARP_AWARE_TIMEOUT = 20 # Reasonable for testing, increase later (e.g., 60*2)
 
 # Timeout for ARP-silent entries (those which do not answer to ARP pings)
-ARP_SILENT_TIMEOUT = 60 # Reasonable for testing, increase later (e.g., 60*20)
+ARP_SILENT_TIMEOUT = 45 # Reasonable for testing, increase later (e.g., 60*20)
 
 # Timeout to wait for an ARP ping reply (very short)
 ARP_REPLY_TIMEOUT = 1
@@ -74,7 +75,7 @@ class PingInfo (object):
 
   def mustSend (self):
     if self.answeredBefore: 
-      return self.timedOut() and self.pending < ARP_PING_CNT 
+      return ( self.timedOut() and self.pending < ARP_PING_CNT )
     else:
       # if we don't know if it answers, we try a few times at first
       return ( 0 < self.pending < ARP_PING_CNT ) 
@@ -136,6 +137,12 @@ class Entry (object):
 
   def __ne__ (self, other):
     return not self.__eq__(other)
+
+  def lastSeen (self):
+    return self.liveliness.lastTimeSeen
+
+  def expired (self):
+    return self.liveliness.expired()
 
 class host_tracker (EventMixin):
   def __init__ (self):
@@ -245,14 +252,12 @@ class host_tracker (EventMixin):
       log.warning("%i %i ignoring unparsed packet", dpid, inport)
       return
 
+    if packet.type == ethernet.LLDP_TYPE:    # Ignore LLDP packets
+      return
     # This should use Topology later 
     if core.openflow_discovery.isSwitchOnlyPort(dpid, inport):
       # No host should be right behind a switch-only port
       log.debug("%i %i ignoring packetIn at switch-only port", dpid, inport)
-      return
-
-    if packet.type == ethernet.LLDP_TYPE:
-      # Ignore LLDP packets
       return
 
     log.debug("PacketIn: %i %i ETH %s => %s",
@@ -269,54 +274,49 @@ class host_tracker (EventMixin):
                str(entry.macaddr), entry.dpid, entry.port)
     else:
       # there is already an entry of host with that MAC
-      entry.liveliness.refresh()
-      if entry != (dpid, inport, packet.src):
-        # ... but host has moved
+      if entry != (dpid, inport, packet.src):    # ... but host has moved
         # should we raise a HostMoved event (at the end)?
         log.info("Learned %s (%i %i) moved to %i %i", str(entry.macaddr),
                 entry.dpid, entry.port, dpid, inport)
+        # if there has not been long since heard from it...
+        if time.time() - entry.liveliness.timeLastSeen < ARP_AWARE_TIMEOUT:
+          log.warning("Possible duplicate: %s at (%i %i) at time %i, now (%i %i), time %i",
+                      str(entry.macaddr),
+                      entry.dpid, entry.port, entry.lastSeen(),
+                      dipid, inport, time.time()
+                     )
         entry.dpid = dpid
         entry.inport = inport
         # should we create a whole new entry, or keep the previous host info?
         # for now, we keep it: IP info, answers pings, etc.
+      entry.liveliness.refresh()
 
     (pckt_srcip, hasARP) = self.getSrcIPandARP(packet.next)
-
     if pckt_srcip != None:
-      # will update the IP mappings for this entry, if needed
       self.updateIPInfo(pckt_srcip,entry,hasARP)
-
-    if hasARP:
-      # at least one of the IPs for this entry has ARP, so use that
-      # (this is a little agressive, but reasonable)
-      entry.liveliness.interval = ARP_AWARE_TIMEOUT
 
     return
 
   def _check_timeouts(self):
-    log.debug("Checking timeouts at %i", time.time())
     for entry in self.entryByMAC.values():
-      pingsSent = 0
-      log.debug("Checking %i %i %s (scheduled for %i)",
-              entry.dpid, entry.port, str(entry.macaddr), 
-              entry.liveliness.lastTimeSeen + entry.liveliness.interval )
-      for ip_addr, [liveliness, pings] in entry.ipAddrs.items():
-        if liveliness.expired():
-          if pings.failed():
-            del entry.ipAddrs[addr]
+      entryPinged = False
+      for ip_addr, [ip_liveliness, ip_ping] in entry.ipAddrs.items():
+        if ip_liveliness.expired():
+          if ip_ping.failed():
+            del entry.ipAddrs[ip_addr]
             log.info("Entry %i %i %s: IP address %s expired",
                     entry.dpid, entry.port, str(entry.macaddr), str(ip_addr) )
           else: 
             self.sendPing(entry,ip_addr)
-            pings.sent()
-            pingsSent += 1
-      if entry.liveliness.expired() and pingsSent == 0:
+            ip_ping.sent()
+            entryPinged = True
+      if entry.expired() and not entryPinged:
         log.info("Entry %i %i %s expired", entry.dpid, entry.port,
                 str(entry.macaddr))
         # sanity check: there should be no IP addresses left
         if len(entry.ipAddrs) > 0:
           for ip in entry.ipAddrs.keys():
-            log.warning("Entry %i %i %s still had IP address %s",
+            log.warning("Entry %i %i %s expired but still had IP address %s",
                         entry.dpid, entry.port, str(entry.macaddr),
                         str(ip_addr) )
             del entry.ipAddrs[ip_addr]
