@@ -21,8 +21,6 @@ from pox.openflow.of_01 import make_type_to_class_table, deferredSender
 from errno import EAGAIN
 from collections import namedtuple
 
-log = core.getLogger()
-
 class SwitchImpl(object):
   # ports is a list of ofp_phy_ports
   def __init__(self, dpid, sock, name=None, ports=[], miss_send_len=128,
@@ -34,6 +32,7 @@ class SwitchImpl(object):
     self.name = name
     if self.name is None:
       self.name = str(dpid) 
+    self.log = core.getLogger(self.name)
     ##Number of buffers
     self.n_buffers = n_buffers
     ##Number of tables
@@ -73,21 +72,21 @@ class SwitchImpl(object):
   #    Reactive OFP processing           #
   # ==================================== #
   def _receive_hello(self, packet):
-    log.debug("Receive hello %s" % self.name)
+    self.log.debug("Receive hello %s" % self.name)
     # How does the OpenFlow protocol prevent an infinite loop of Hello messages?
     self.send_hello() 
 
   def _receive_echo(self, packet):
     """Reply to echo request
     """
-    log.debug("Reply echo of xid: %s %s" % (str(packet), self.name)) # TODO: packet.xid
+    self.log.debug("Reply echo of xid: %s %s" % (str(packet), self.name)) # TODO: packet.xid
     msg = ofp_echo_request()
     self._connection.send(msg)
     
   def _receive_features_request(self, packet):
     """Reply to feature request
     """
-    log.debug("Reply features request of xid %s %s" % (str(packet), self.name)) # TODO: packet.xid
+    self.log.debug("Reply features request of xid %s %s" % (str(packet), self.name)) # TODO: packet.xid
     msg = ofp_features_reply(datapath_id = self.dpid, n_buffers = self.n_buffers, 
                              n_tables = self.n_tables,
                              capabilities = self.capabilities.get_capabilities(),
@@ -98,7 +97,7 @@ class SwitchImpl(object):
   def _receive_flow_mod(self, packet):
     """Handle flow mod: just print it here
     """
-    log.debug("Flow mod %s: %s" % (self.name, packet.show()))
+    self.log.debug("Flow mod %s: %s" % (self.name, packet.show()))
     self.table.process_flow_mod(packet)
     
   def _receive_packet_out(self, packet):
@@ -107,13 +106,13 @@ class SwitchImpl(object):
     """
     # TODO: There is a packet formatting error somewhere... str(packet) throws
     # an exception... no method "show" for None
-    log.debug("Packet out") # , str(packet)) 
+    self.log.debug("Packet out") # , str(packet)) 
     
   def _receive_echo_reply(self, packet):
-    log.debug("Echo reply: %s %s" % (str(packet), self.name))
+    self.log.debug("Echo reply: %s %s" % (str(packet), self.name))
     
   def _receive_barrier_request(self, packet):
-    log.debug("Barrier request %s %s" % (self.name, str(packet)))
+    self.log.debug("Barrier request %s %s" % (self.name, str(packet)))
     msg = ofp_barrier_reply(xid = packet.xid)
     self._connection.send(msg)
     
@@ -123,7 +122,7 @@ class SwitchImpl(object):
   def send_hello(self):
     """Send hello
     """
-    log.debug("Send hello %s " % self.name)
+    self.log.debug("Send hello %s " % self.name)
     msg = ofp_hello()
     self._connection.send(msg)
 
@@ -132,7 +131,7 @@ class SwitchImpl(object):
     Assume no match as reason, bufferid = 0xFFFFFFFF,
     and empty packet by default
     """
-    log.debug("Send PacketIn %s " % self.name)
+    self.log.debug("Send PacketIn %s " % self.name)
     if (reason == None):
       reason = ofp_packet_in_reason_rev_map['OFPR_NO_MATCH']
     if (bufferid == None):
@@ -145,7 +144,7 @@ class SwitchImpl(object):
   def send_echo(self, xid=0):
     """Send echo request
     """
-    log.debug("Send echo %s" % self.name)
+    self.log.debug("Send echo %s" % self.name)
     msg = ofp_echo_request()
     self._connection.send(msg)
         
@@ -157,14 +156,14 @@ class ControllerConnection (object):
 
   def msg (self, m):
     #print str(self), m
-    log.debug(str(self) + " " + str(m))
+    self.log.debug(str(self) + " " + str(m))
   def err (self, m):
     #print str(self), m
-    log.error(str(self) + " " + str(m))
+    self.log.error(str(self) + " " + str(m))
   def info (self, m):
     pass
     #print str(self), m
-    log.info(str(self) + " " + str(m))
+    self.log.info(str(self) + " " + str(m))
 
   def __init__ (self, sock, ofp_handlers):
     self.sock = sock
@@ -195,7 +194,7 @@ class ControllerConnection (object):
         data = data.pack()
 
     if deferredSender.sending:
-      log.debug("deferred sender is sending!")
+      self.log.debug("deferred sender is sending!")
       deferredSender.send(self, data)
       return
     try:
@@ -228,7 +227,7 @@ class ControllerConnection (object):
     l = len(self.buf)
     while l > 4:
       if ord(self.buf[0]) != OFP_VERSION:
-        log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) +
+        self.log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) +
                     ") on connection " + str(self))
         return False
       # OpenFlow parsing occurs here:
@@ -246,8 +245,8 @@ class ControllerConnection (object):
         h = self.ofp_handlers[ofp_type]
         h(msg)
       except Exception as e:
-        log.exception(e)
-        #log.exception("%s: Exception while handling OpenFlow message:\n%s %s",
+        self.log.exception(e)
+        #self.log.exception("%s: Exception while handling OpenFlow message:\n%s %s",
         #              self,self,("\n" + str(self) + " ").join(str(msg).split('\n')))
         continue
     return True
@@ -306,7 +305,19 @@ class FlowTable (object):
       pass # TODO: do something
      
     self._table.append(entry)
-  
+    
+  def entries_for_port(self, port_no):
+    entries = []
+    for entry in self._table:
+      actions = entry.actions
+      if len(actions) > 0:
+        last_action = actions[-1]
+        if type(last_action) == ofp_action_output:
+          outgoing_port = last_action.port.port_no
+          if outgoing_port == port_no:
+            entries.apend(entry)
+    return entries
+          
   def matching_entries(self, entry):
     return [] # TODO: implement me
 
