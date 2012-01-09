@@ -139,6 +139,17 @@ def launch (entire=False):
 
   from pox.core import core
   log = core.getLogger()
+
+  # Try to work on Windows
+  import sys
+  if sys.platform == "win32":
+    try:
+      from colorama import init
+      init()
+    except:
+      log.info("You need colorama if you want color logging on Windows")
+      return
+
   from pox.core import _default_log_handler as dlf
   if not dlf:
     log.warning("Color logging disabled -- no default logger found")
