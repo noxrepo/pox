@@ -38,9 +38,25 @@ def launch (__INSTANCE__ = None, **kw):
   and the special one --no-default, which turns off the default logging to
   stderr.
 
-  Arguments are pased positionally by default.  A leading * makes them pass
+  Arguments are passed positionally by default.  A leading * makes them pass
   by keyword.
+
+  If a --format="<str>" is specified, it is used as a format string for a
+  logging.Formatter instance for all loggers created with that invocation
+  of the log module.  If no loggers are created with this instantiation,
+  it is used for the default logger.
   """
+
+  if 'format' in kw:
+    formatter = logging.Formatter(kw['format'])
+    del kw['format']
+    if len(kw) == 0:
+      # Use for the default logger...
+      import pox.core
+      pox.core._default_log_handler.setFormatter(formatter)
+  else:
+    formatter = _formatter
+
   def standard (use_kw, v, C):
     # Should use a better function than split, which understands
     # quotes and the like.
@@ -53,7 +69,7 @@ def launch (__INSTANCE__ = None, **kw):
         h = C(**v)
       else:
         h = C(*v)
-    h.setFormatter(_formatter)
+    h.setFormatter(formatter)
     logging.getLogger().addHandler(h)
 
   for _k,v in kw.iteritems():
@@ -65,6 +81,11 @@ def launch (__INSTANCE__ = None, **kw):
       import pox.core
       logging.getLogger().removeHandler(pox.core._default_log_handler)
       logging.getLogger().addHandler(logging.NullHandler())
+    elif k == "stderr":
+      standard(use_kw, v, lambda : logging.StreamHandler())
+    elif k == "stdout":
+      import sys
+      standard(use_kw, v, lambda : logging.StreamHandler(sys.stdout))
     elif k == "file":
       standard(use_kw, v, logging.FileHandler)
     elif k == "watchedfile":
