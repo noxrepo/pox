@@ -17,8 +17,28 @@
 
 # NOTE: Not platform independent -- uses VT escape codes
 
+# Magic sequence used to introduce a command or color
+MAGIC = "@@@"
+
+# Colors for log levels
+LEVEL_COLORS = {
+  'DEBUG': 'CYAN',
+  'INFO': 'GREEN',
+  'WARNING': 'YELLOW',
+  'ERROR': 'red',
+  'CRITICAL': 'blink@@@RED',
+}
+
+# Will get set to True if module is initialized
+enabled = False
+
+# Gets set to True if we should strip special sequences but
+# not actually try to colorize
+_strip_only = False
+
 import logging
 
+# Name to (intensity, base_value) (more colors added later)
 COLORS = {
  'black' : (0,0),
  'red' : (0,1),
@@ -32,6 +52,8 @@ COLORS = {
  'pink' : (1,1),
  'white' : (1,7),
 }
+
+# Add intense/bold colors (names it capitals)
 for _c in [_n for _n,_v in COLORS.items() if _v[0] == 0]:
   COLORS[_c.upper()] = (1,COLORS[_c][1])
 
@@ -55,18 +77,6 @@ COMMANDS = {
 
 # Control Sequence Introducer
 CSI = "\033["
-
-# Magic sequence used for our special escape sequences
-MAGIC = "@@@"
-
-# Colors for log levels
-LEVEL_COLORS = {
-  'DEBUG': 'CYAN',
-  'INFO': 'GREEN',
-  'WARNING': 'YELLOW',
-  'ERROR': 'red',
-  'CRITICAL': 'blink@@@RED',
-}
 
 def _color (color, msg):
   """ Colorizes the given text """
@@ -115,11 +125,12 @@ def _proc (msg):
               brightness = None
               color += 10
           color += 30
-          r += CSI
-          if brightness is not None:
-            r += str(brightness) + ";"
-          r += str(color) + "m"
-        else:
+          if not _strip_only:
+            r += CSI
+            if brightness is not None:
+              r += str(brightness) + ";"
+            r += str(color) + "m"
+        elif not _strip_only:
           # Command
           r += CSI + str(best[1]) + "m"
     cmd = True
@@ -137,6 +148,9 @@ def launch (entire=False):
    log --format="%(levelname)s: @@@bold%(message)s@@@normal" log.color
   """
 
+  global enabled
+  if enabled: return
+
   from pox.core import core
   log = core.getLogger()
 
@@ -148,7 +162,8 @@ def launch (entire=False):
       init()
     except:
       log.info("You need colorama if you want color logging on Windows")
-      return
+      global _strip_only
+      _strip_only = True
 
   from pox.core import _default_log_handler as dlf
   if not dlf:
@@ -177,3 +192,5 @@ def launch (entire=False):
         record.levelname = _color(color, record.levelname)
       return _proc(old_format(record))
   dlf.format = new_format
+
+  enabled = True
