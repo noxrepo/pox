@@ -25,16 +25,18 @@ class LearningSwitch (EventMixin):
   """
   The learning switch "brain" associated with a single OpenFlow switch.
 
-  When we see a packet, we'd like to output it on a port which will eventually
-  lead to the destination.  To accomplish this, we build a table that maps
-  addresses to ports.
+  When we see a packet, we'd like to output it on a port which will
+  eventually lead to the destination.  To accomplish this, we build a
+  table that maps addresses to ports.
 
-  We populate the table by observing traffic.  When we see a packet from some
-  source coming from some port, we know that source is out that port.
+  We populate the table by observing traffic.  When we see a packet
+  from some source coming from some port, we know that source is out
+  that port.
 
-  When we want to forward traffic, we look up the desintation in our table.  If
-  we don't know the port, we simply send the message out all ports except the
-  one it came in on.  (In the presence of loops, this is bad!).
+  When we want to forward traffic, we look up the desintation in our
+  table.  If we don't know the port, we simply send the message out
+  all ports except the one it came in on.  (In the presence of loops,
+  this is bad!).
 
   In short, our algorithm looks like this:
 
@@ -48,8 +50,8 @@ class LearningSwitch (EventMixin):
            No:
              2ba) Flood the packet
           Yes:
-             2bb1) Install flow table entry in the switch so that this flow
-                   goes out the appopriate port
+             2bb1) Install flow table entry in the switch so that this
+                   flow goes out the appopriate port
              2bb2) Send buffered packet out appopriate port
   """
   def __init__ (self, connection):
