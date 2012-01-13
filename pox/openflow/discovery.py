@@ -346,7 +346,7 @@ class Discovery (EventMixin):
       log.error('Loop detected; received our own LLDP event')
       return
 
-    # print 'LLDP packet in from',longlong_to_octstr(chassid),' port',str(portid)
+    # print 'LLDP packet in from',chassid,' port',str(portid)
 
     link = Discovery.Link(originatorDPID, originatorPort, event.dpid,
                           event.port)
