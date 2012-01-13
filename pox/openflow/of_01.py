@@ -72,7 +72,8 @@ def handle_FEATURES_REPLY (con, msg):
   def finish_connecting (event):
     if event.xid != barrier.xid:
       con.dpid = None
-      con.err("Failed connect for " + pox.lib.util.dpidToStr(msg.datapath_id))
+      con.err("Failed connect for " + pox.lib.util.dpidToStr(
+              msg.datapath_id))
       con.disconnect()
     else:
       con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
@@ -84,7 +85,8 @@ def handle_FEATURES_REPLY (con, msg):
   con.addListener(BarrierIn, finish_connecting)
 
   if openflowHub.miss_send_len is not None:
-    con.send(of.ofp_switch_config(miss_send_len = openflowHub.miss_send_len))
+    con.send(of.ofp_switch_config(miss_send_len =
+                                  openflowHub.miss_send_len))
   if openflowHub.clear_flows_on_connect:
     con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
 
@@ -108,7 +110,8 @@ def handle_PACKET_IN (con, msg): #A
 #    openflowHub.raiseEventNoErrors(PacketIn(con, msg, p))
 
 def handle_ERROR_MSG (con, msg): #A
-  log.error(str(con) + " OpenFlow Error:\n" + msg.show(str(con) + " Error: ").strip())
+  log.error(str(con) + " OpenFlow Error:\n" +
+            msg.show(str(con) + " Error: ").strip())
   openflowHub.raiseEventNoErrors(ErrorIn, con, msg)
   con.raiseEventNoErrors(ErrorIn, con, msg)
 
@@ -146,7 +149,8 @@ def handle_OFPST_FLOW (con, parts):
 def handle_OFPST_AGGREGATE (con, parts):
   msg = of.ofp_aggregate_stats_reply()
   msg.unpack(parts[0].body)
-  openflowHub.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
+  openflowHub.raiseEventNoErrors(AggregateFlowStatsReceived, con,
+                                 parts[0], msg)
   con.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
 
 def handle_OFPST_TABLE (con, parts):
@@ -190,10 +194,12 @@ def make_type_to_class_table ():
   return [classes[i] for i in range(0, max)]
 
 
-# A list, where the index is an OFPT, and the value is a libopenflow class for that type
+# A list, where the index is an OFPT, and the value is a libopenflow
+# class for that type
 classes = []
 
-# A list, where the index is an OFPT, and the value is a function to call for that type
+# A list, where the index is an OFPT, and the value is a function to
+# call for that type
 # This is generated automatically based on handlerMap
 handlers = []
 
@@ -219,8 +225,12 @@ statsHandlerMap = {
   of.OFPST_QUEUE : handle_OFPST_QUEUE,
 }
 
-# Deferred sending should be unusual, so don't worry too much about efficiency
+# Deferred sending should be unusual, so don't worry too much about
+# efficiency
 class DeferredSender (threading.Thread):
+  """
+  Class that handles sending when a socket write didn't complete
+  """
   def __init__ (self):
     # Threads, not recoco?
     threading.Thread.__init__(self)
@@ -325,7 +335,8 @@ deferredSender = DeferredSender()
 
 class Connection (EventMixin):
   """
-  A Connection object represents a single TCP session with an openflow-enabled switch.
+  A Connection object represents a single TCP session with an
+  openflow-enabled switch.
   If the switch reconnects, a new connection object is instantiated.
   """
   _eventMixin_events = set([
@@ -374,7 +385,8 @@ class Connection (EventMixin):
 
     self.send(of.ofp_hello())
 
-    #TODO: set a time that makes sure we actually establish a connection by some timeout
+    #TODO: set a time that makes sure we actually establish a connection by
+    #      some timeout
 
   def fileno (self):
     return self.sock.fileno()
@@ -453,7 +465,8 @@ class Connection (EventMixin):
         deferredSender.send(self, data)
     except socket.error as (errno, strerror):
       if errno == EAGAIN:
-        self.msg("Out of send buffer space.  Consider increasing SO_SNDBUF.")
+        self.msg("Out of send buffer space.  " +
+                 "Consider increasing SO_SNDBUF.")
         deferredSender.send(self, data)
       else:
         self.msg("Socket error: " + strerror)
@@ -464,8 +477,7 @@ class Connection (EventMixin):
     Read data from this connection.  Generally this is just called by the
     main OpenFlow loop below.
 
-    Note: if no data is available to read, this method will block. Only invoke
-    after select() has returned this socket.
+    Note: This function will block if data is not available.
     """
     d = self.sock.recv(2048)
     if len(d) == 0:
@@ -489,8 +501,9 @@ class Connection (EventMixin):
         h = handlers[ofp_type]
         h(self, msg)
       except:
-        log.exception("%s: Exception while handling OpenFlow message:\n%s %s",
-                      self,self,("\n" + str(self) + " ").join(str(msg).split('\n')))
+        log.exception("%s: Exception while handling OpenFlow message:\n" +
+                      "%s %s", self,self,
+                      ("\n" + str(self) + " ").join(str(msg).split('\n')))
         continue
     return True
 
@@ -564,7 +577,8 @@ class OpenFlow_01_Task (Task):
     sockets.append(listener)
     wsocks = []
 
-    log.debug("Listening for connections on %s:%s" % (self.address, self.port))
+    log.debug("Listening for connections on %s:%s" %
+              (self.address, self.port))
 
     con = None
     while core.running:
@@ -600,8 +614,8 @@ class OpenFlow_01_Task (Task):
             if con is listener:
               new_sock = listener.accept()[0]
               new_sock.setblocking(0)
-              # Note that instantiating a Connection object fires a ConnectionUp event
-              # (after negotation has completed)
+              # Note that instantiating a Connection object fires a
+              # ConnectionUp event (after negotation has completed)
               newcon = Connection(new_sock)
               sockets.append( newcon )
               #print str(newcon) + " connected"
