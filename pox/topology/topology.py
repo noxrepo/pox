@@ -29,7 +29,6 @@ from pox.lib.revent import *
 from pox.core import core
 from pox.lib.addresses import *
 
-log = core.getLogger()
 
 class EntityEvent (Event):
   def __init__ (self, entity):
@@ -147,10 +146,11 @@ class Topology (EventMixin):
   
   _core_name = "topology" # We want to be core.topology
 
-  def __init__ (self):
+  def __init__ (self, name="topology"):
     EventMixin.__init__(self)
     self._entities = {}
-
+    self.log = core.getLogger(name)
+    
     # If a client registers a handler for these events after they have
     # already occurred, we promise to re-issue them to the newly joined
     # client.
@@ -170,7 +170,7 @@ class Topology (EventMixin):
 
   def removeEntity (self, entity):
     del self._entities[entity.id]
-    log.info(str(entity) + " left")
+    self.log.info(str(entity) + " left")
     if isinstance(entity, Switch):
       self.raiseEvent(SwitchLeave, entity)
     elif isinstance(entity, Host):
@@ -183,7 +183,7 @@ class Topology (EventMixin):
     if entity.id in self._entities:
       raise RuntimeError("Entity exists")
     self._entities[entity.id] = entity
-    log.info(str(entity) + " joined")
+    self.log.info(str(entity) + " joined")
     if isinstance(entity, Switch):
       self.raiseEvent(SwitchJoin, entity)
     elif isinstance(entity, Host):
