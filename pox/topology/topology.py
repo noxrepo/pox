@@ -225,6 +225,9 @@ class Topology (EventMixin):
     """ Trigger the SwitchJoin handler for all pre-existing switches """
     for switch in self.getEntitiesOfType(Switch, True):
       handler(SwitchJoin(switch))
+      
+  def __len__(self):
+    return len(self._entities)
     
   def __str__(self):
     # TODO: display me graphically
