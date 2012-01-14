@@ -252,7 +252,7 @@ class POXCore (EventMixin):
     log.debug("Running on " + py)
 
     self.raiseEvent(GoingUpEvent())
-    log.info("Up...")
+    log.info(self.version_string + " is up.")
     self.raiseEvent(UpEvent())
 
   def hasComponent (self, name):
