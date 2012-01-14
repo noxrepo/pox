@@ -63,10 +63,14 @@ def handle_FLOW_REMOVED (con, msg): #A
   con.raiseEventNoErrors(FlowRemoved, con, msg)
 
 def handle_FEATURES_REPLY (con, msg):
+  connecting = con.connect_time == None
   con.features = msg
   con.dpid = msg.datapath_id
   openflowHub._connections[con.dpid] = con
-  
+
+  if not connecting:
+    return
+
   barrier = of.ofp_barrier_request()
 
   def finish_connecting (event):
@@ -77,6 +81,8 @@ def handle_FEATURES_REPLY (con, msg):
       con.disconnect()
     else:
       con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
+      import time
+      con.connect_time = time.time()
       #for p in msg.ports: print(p.show())
       openflowHub.raiseEventNoErrors(ConnectionUp, con, msg)
       con.raiseEventNoErrors(ConnectionUp, con, msg)
@@ -382,6 +388,7 @@ class Connection (EventMixin):
     self.dpid = None
     self.features = None
     self.disconnected = False
+    self.connect_time = None
 
     self.send(of.ofp_hello())
 
