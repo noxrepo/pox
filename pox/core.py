@@ -35,7 +35,7 @@ import time
 import os
 
 _path = inspect.stack()[0][1]
-_ext_path = _path[0:_path.rindex('/')]
+_ext_path = _path[0:_path.rindex(os.sep)]
 _ext_path = os.path.dirname(_ext_path) + os.sep
 _path = os.path.dirname(_path) + os.sep
 
