@@ -18,8 +18,13 @@
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.revent import *
+from pox.lib.util import dpidToStr
+import time
 
 log = core.getLogger()
+
+# We don't want to flood immediately when a switch connects.
+FLOOD_DELAY = 5
 
 class LearningSwitch (EventMixin):
   """
@@ -42,17 +47,20 @@ class LearningSwitch (EventMixin):
 
   For each new flow:
   1) Use source address and port to update address/port table
-  2) Is destination multicast?
+  2) Is ethertype LLDP?
      Yes:
-        2a) Flood the packet
+        2a) Drop packet -- LLDP is never forwarded
+  3) Is destination multicast?
+     Yes:
+        3a) Flood the packet
      No:
-        2b) Port for destination address in our address/port table?
+        3b) Port for destination address in our address/port table?
            No:
-             2ba) Flood the packet
+             3ba) Flood the packet
           Yes:
-             2bb1) Install flow table entry in the switch so that this
+             3bb1) Install flow table entry in the switch so that this
                    flow goes out the appopriate port
-             2bb2) Send buffered packet out appopriate port
+             3bb2) Send buffered packet out appopriate port
   """
   def __init__ (self, connection):
     # Switch we'll be adding L2 learning switch capabilities to
@@ -68,24 +76,44 @@ class LearningSwitch (EventMixin):
     """
     Handles packet in messages from the switch to implement above algorithm.
     """
+
+    packet = event.parse()
+
     def flood ():
       """ Floods the packet """
       msg = of.ofp_packet_out()
-      msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+      if time.time() - self.connection.connect_time > FLOOD_DELAY:
+        # Only flood if we've been connected for a little while...
+        #log.debug("%i: flood %s -> %s", event.dpid, packet.src, packet.dst)
+        msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+      else:
+        pass
+        #log.info("Holding down flood for %s", dpidToStr(event.dpid))
       msg.buffer_id = event.ofp.buffer_id
       msg.in_port = event.port
       self.connection.send(msg)
 
-    packet = event.parse()
+    def drop ():
+      """ Drops the packet """
+      msg = of.ofp_packet_out()
+      msg.buffer_id = event.ofp.buffer_id
+      msg.in_port = event.port
+      self.connection.send(msg)
+
     self.macToPort[packet.src] = event.port # 1
+
+    if packet.type == packet.LLDP_TYPE:
+      drop()
+      return
+
     if packet.dst.isMulticast():
-      flood() # 2a
+      flood() # 3a
     else:
       if packet.dst not in self.macToPort:
         log.debug("port for %s unknown -- flooding" % (packet.dst,))
-        flood() # 2ba
+        flood() # 3ba
       else:
-        # 2bb
+        # 3bb
         port = self.macToPort[packet.dst]
         log.debug("installing flow for %s.%i -> %s.%i" %
                   (packet.src, event.port, packet.dst, port))
