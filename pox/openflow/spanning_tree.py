@@ -80,13 +80,15 @@ def _calc_spanning_tree ():
       tree[v].add((w,p))
       tree[w].add((v,adj[w][v]))
 
-  """
-  print "*** SPANNING TREE ***"
-  for sw,ports in tree.iteritems():
-    print " ", dpidToStr(sw), ":", sorted(list(ports))
-    #print " ", sw, ":", [l[0] for l in sorted(list(ports))]
-  print "*********************"
-  """
+  if False:
+    log.debug("*** SPANNING TREE ***")
+    for sw,ports in tree.iteritems():
+      #print " ", dpidToStr(sw), ":", sorted(list(ports))
+      #print " ", sw, ":", [l[0] for l in sorted(list(ports))]
+      log.debug((" %i : " % sw) + " ".join([str(l[0]) for l in
+                                           sorted(list(ports))]))
+    log.debug("*********************")
+
   log.debug("Spanning tree updated")
 
   return tree
@@ -96,30 +98,34 @@ _prev = defaultdict(lambda : defaultdict(lambda : None))
 def _handle (event):
   tree = _calc_spanning_tree()
 
-  change_count = 0
-  for sw, ports in tree.iteritems():
-    con = core.openflow.getConnection(sw)
-    tree_ports = [p[1] for p in ports]
-    for p in con.features.ports:
-      if p.port_no < of.OFPP_MAX:
-        flood = p.port_no in tree_ports
-        if not flood:
-          if not core.openflow_discovery.isSwitchOnlyPort(sw, p.port_no):
-            flood = True
-        if _prev[sw][p.port_no] is flood:
-          continue # Skip
-        change_count += 1
-        _prev[sw][p.port_no] = flood
-        #print sw,p.port_no,flood
-        #TODO: Check results
+  try:
+    change_count = 0
+    for sw, ports in tree.iteritems():
+      con = core.openflow.getConnection(sw)
+      tree_ports = [p[1] for p in ports]
+      for p in con.features.ports:
+        if p.port_no < of.OFPP_MAX:
+          flood = p.port_no in tree_ports
+          if not flood:
+            if not core.openflow_discovery.isSwitchOnlyPort(sw, p.port_no):
+              flood = True
+          if _prev[sw][p.port_no] is flood:
+            continue # Skip
+          change_count += 1
+          _prev[sw][p.port_no] = flood
+          #print sw,p.port_no,flood
+          #TODO: Check results
 
-        pm = of.ofp_port_mod( port_no=p.port_no,
-                             hw_addr=p.hw_addr,
-                             config = 0 if flood else of.OFPPC_NO_FLOOD,
-                             mask = of.OFPPC_NO_FLOOD )
-        con.send(pm)
-  if change_count:
-    log.info("%i ports changed", change_count)
+          pm = of.ofp_port_mod( port_no=p.port_no,
+                               hw_addr=p.hw_addr,
+                               config = 0 if flood else of.OFPPC_NO_FLOOD,
+                               mask = of.OFPPC_NO_FLOOD )
+          con.send(pm)
+    if change_count:
+      log.info("%i ports changed", change_count)
+  except:
+    _prev.clear()
+    log.exception("Couldn't push spanning tree")
 
 def launch ():
   handler = lambda event : _calc_spanning_tree()
