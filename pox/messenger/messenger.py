@@ -311,7 +311,7 @@ class TCPMessengerSource (Task):
     listener.bind(self._addr)
     listener.listen(0)
 
-    log.debug("Listening for connections")
+    log.debug("Listening for connections on %s:%i" % (self._addr))
 
     con = None
     while core.running:
