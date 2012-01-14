@@ -229,7 +229,7 @@ class Topology (EventMixin):
     # TODO: display me graphically
     strings = []
     strings.append("topology (%d total entities)" % len(self._entities))
-    for id,entity in self._entities:
+    for id,entity in self._entities.iteritems():
       strings.append("%s %s" % (str(id), str(entity))) 
       
     return '\n'.join(strings)
