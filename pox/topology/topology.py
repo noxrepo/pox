@@ -103,11 +103,19 @@ class Entity (object):
   # Some entities don't need this because they have more meaningful
   # identifiers.
   _next_id = 0
+  _all_ids = set()
   
   def __init__ (self):
-    Entity._next_id += 1
-    self.id = Entity._next_id
-
+    if id and id in Entity._all_ids:
+      raise Exception("ID %s already taken" % str(id))
+    else:
+      while Entity._next_id in Entity._all_ids:
+        Entity._next_id += 1
+      id = Entity._next_id
+    
+    Entity._all_ids.add(id)
+    self.id = id
+ 
 class Host (Entity):
   """
   A generic Host entity.
@@ -123,7 +131,7 @@ class Switch (Entity):
   def __init__(self, id):
     # Switches often have something more meaningful to use as an ID
     # (e.g., a DPID or MAC address), so they take it as a parameter.
-    self.id = id
+    Entity.__init__(id)
 
 class Port (Entity):
   def __init__ (self, num, hwAddr, name):
