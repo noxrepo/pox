@@ -493,11 +493,9 @@ def autoBindEvents (sink, source, prefix='', weak=False):
           # append the listener
           listeners.append(source.addListener(events[event], a, weak))
           #print "autoBind: ",source,m,"to",sink
-        else:
-          print("Warning: %s found in %s, but %s not raised by %s" %
-                 (m, sink.__class__.__name__, event, source.__class__.__name__))
 
   return listeners
+
 
 class CallProxy (object):
   """
