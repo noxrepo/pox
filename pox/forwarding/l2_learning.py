@@ -15,6 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+This is an L2 learning switch written directly against the OpenFlow library.
+It is derived from one written live for an SDN crash course.
+"""
+
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.revent import *
@@ -25,6 +30,7 @@ log = core.getLogger()
 
 # We don't want to flood immediately when a switch connects.
 FLOOD_DELAY = 5
+
 
 class LearningSwitch (EventMixin):
   """
@@ -150,7 +156,7 @@ class LearningSwitch (EventMixin):
         self.connection.send(msg)
 
 
-class dumb_l2_switch (EventMixin):
+class l2_learning (EventMixin):
   """
   Waits for OpenFlow switches to connect and makes them learning switches.
   """
@@ -161,3 +167,9 @@ class dumb_l2_switch (EventMixin):
     log.debug("Connection %s" % (event.connection,))
     LearningSwitch(event.connection)
 
+
+def launch ():
+  """
+  Starts an L2 learning switch.
+  """
+  core.registerNew(l2_learning)

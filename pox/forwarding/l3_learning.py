@@ -75,7 +75,7 @@ class Entry (object):
     return time.time() > self.timeout
 
 
-class dumb_l3_switch (EventMixin):
+class l3_switch (EventMixin):
   def __init__ (self):
     # For each switch, we map IP addresses to Entries
     self.arpTable = {}
@@ -194,4 +194,8 @@ class dumb_l3_switch (EventMixin):
       event.connection.send(msg.pack())
 
     return
+
+
+def launch ():
+  core.registerNew(l3_switch)
 
