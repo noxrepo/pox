@@ -50,17 +50,21 @@ class LearningSwitch (EventMixin):
   2) Is ethertype LLDP?
      Yes:
         2a) Drop packet -- LLDP is never forwarded
+            DONE
   3) Is destination multicast?
      Yes:
         3a) Flood the packet
+            DONE
+  4) Port for destination address in our address/port table?
      No:
-        3b) Port for destination address in our address/port table?
-           No:
-             3ba) Flood the packet
-          Yes:
-             3bb1) Install flow table entry in the switch so that this
-                   flow goes out the appopriate port
-             3bb2) Send buffered packet out appopriate port
+        4a) Flood the packet
+            DONE
+  5) Is output port the same as input port?
+     Yes:
+        5a) Drop packet and similar ones for a while
+  6) Install flow table entry in the switch so that this
+     flow goes out the appopriate port
+     6a) Send buffered packet out appopriate port
   """
   def __init__ (self, connection):
     # Switch we'll be adding L2 learning switch capabilities to
@@ -93,28 +97,48 @@ class LearningSwitch (EventMixin):
       msg.in_port = event.port
       self.connection.send(msg)
 
-    def drop ():
-      """ Drops the packet """
-      msg = of.ofp_packet_out()
-      msg.buffer_id = event.ofp.buffer_id
-      msg.in_port = event.port
-      self.connection.send(msg)
+    def drop (duration = None):
+      """
+      Drops this packet and optionally installs a flow to continue
+      dropping similar ones for a while
+      """
+      if duration is not None:
+        if not isinstance(duration, tuple):
+          duration = (duration,duration)
+        msg = of.ofp_flow_mod()
+        msg.match = of.ofp_match.from_packet(packet)
+        msg.idle_timeout = duration[0]
+        msg.hard_timeout = duration[1]
+        msg.actions.append(of.ofp_action_output(port = port))
+        msg.buffer_id = event.ofp.buffer_id
+        self.connection.send(msg)
+      else:
+        msg = of.ofp_packet_out()
+        msg.buffer_id = event.ofp.buffer_id
+        msg.in_port = event.port
+        self.connection.send(msg)
 
     self.macToPort[packet.src] = event.port # 1
 
-    if packet.type == packet.LLDP_TYPE:
+    if packet.type == packet.LLDP_TYPE: # 2
       drop()
       return
 
     if packet.dst.isMulticast():
       flood() # 3a
     else:
-      if packet.dst not in self.macToPort:
-        log.debug("port for %s unknown -- flooding" % (packet.dst,))
-        flood() # 3ba
+      if packet.dst not in self.macToPort: # 4
+        log.debug("Port for %s unknown -- flooding" % (packet.dst,))
+        flood() # 4a
       else:
-        # 3bb
         port = self.macToPort[packet.dst]
+        if port == event.port: # 5
+          # 5a
+          log.warning("Same port for packet from %s -> %s on %s.  Drop." %
+                      (packet.src, packet.dst, port), dpidToStr(event.dpid))
+          drop(10)
+          return
+        # 6
         log.debug("installing flow for %s.%i -> %s.%i" %
                   (packet.src, event.port, packet.dst, port))
         msg = of.ofp_flow_mod()
@@ -122,7 +146,7 @@ class LearningSwitch (EventMixin):
         msg.idle_timeout = 10
         msg.hard_timeout = 30
         msg.actions.append(of.ofp_action_output(port = port))
-        msg.buffer_id = event.ofp.buffer_id
+        msg.buffer_id = event.ofp.buffer_id # 6a
         self.connection.send(msg)
 
 
