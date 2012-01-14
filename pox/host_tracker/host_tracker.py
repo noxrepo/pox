@@ -279,7 +279,7 @@ class host_tracker (EventMixin):
         log.info("Learned %s (%i %i) moved to %i %i", str(entry.macaddr),
                 entry.dpid, entry.port, dpid, inport)
         # if there has not been long since heard from it...
-        if time.time() - entry.liveliness.timeLastSeen < ARP_AWARE_TIMEOUT:
+        if time.time() - entry.liveliness.lastTimeSeen < ARP_AWARE_TIMEOUT:
           log.warning("Possible duplicate: %s at (%i %i) at time %i, now (%i %i), time %i",
                       str(entry.macaddr),
                       entry.dpid, entry.port, entry.lastSeen(),
