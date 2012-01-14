@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -16,15 +16,20 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Fires up topology, discovery, and a l2 learning switch controller
+Demonstrates the spanning tree module so that the L2 switch
+works decently on topologies with loops.
 """
 
-def launch ():
-  import pox.topology
-  pox.topology.launch()
+def launch (l3 = False):
+  import pox.log.color
+  pox.log.color.launch()
   import pox.openflow.discovery
   pox.openflow.discovery.launch()
-  import pox.openflow.topology
-  pox.openflow.topology.launch()
-  import pox.forwarding.l2_learning
-  pox.forwarding.l2_learning.launch()
+  import pox.openflow.spanning_tree
+  pox.openflow.spanning_tree.launch()
+  if l3:
+    import pox.forwarding.l3_learning
+    pox.forwarding.l3_learning.launch()
+  else:
+    import pox.forwarding.l2_learning
+    pox.forwarding.l2_learning.launch()
