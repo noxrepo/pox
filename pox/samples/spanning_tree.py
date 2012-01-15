@@ -23,10 +23,15 @@ works decently on topologies with loops.
 def launch (l3 = False):
   import pox.log.color
   pox.log.color.launch()
+  import pox.log
+  pox.log.launch(format="[@@@bold@@@level%(name)-22s@@@reset] " +
+                        "@@@bold%(message)s@@@normal")
   import pox.openflow.discovery
   pox.openflow.discovery.launch()
   import pox.openflow.spanning_tree
   pox.openflow.spanning_tree.launch()
+  from pox.core import core
+  core.getLogger("openflow.spanning_tree").setLevel("INFO")
   if l3:
     import pox.forwarding.l3_learning
     pox.forwarding.l3_learning.launch()
