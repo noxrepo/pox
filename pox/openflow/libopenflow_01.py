@@ -412,12 +412,11 @@ class ofp_match (object):
 
     return match
 
-  def __init__ (self, wildcards=None, **kw):
+  def __init__ (self, **kw):
     for k,v in ofp_match_data.iteritems():
       setattr(self, '_' + k, v[0])
 
-    if wildcards == None: wildcards = OFPFW_ALL
-    self.wildcards = self._normalize_wildcards(wildcards)
+    self.wildcards = self._normalize_wildcards(OFPFW_ALL)
 
     # This is basically initHelper(), but tweaked slightly since this
     # class does some magic of its own.
