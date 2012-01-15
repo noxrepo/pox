@@ -361,6 +361,7 @@ class CallBlocking (BlockingOperation):
 
     #NOTE: It might be nice to use a pool here
     self.t = threading.Thread(target=self._proc)
+    #pool.add(self._proc)
 
     self.t.daemon = True
     self.t.start()
