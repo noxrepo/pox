@@ -17,6 +17,7 @@ Created by ykk
 from pox.core import core
 from pox.openflow.libopenflow_01 import *
 from pox.openflow.of_01 import make_type_to_class_table, deferredSender
+from pox.openflow.flow_table import TableEntry, SwitchFlowTable
 
 from errno import EAGAIN
 from collections import namedtuple
@@ -31,14 +32,14 @@ class SwitchImpl(object):
     ## Human-readable name of the switch
     self.name = name
     if self.name is None:
-      self.name = str(dpid) 
+      self.name = str(dpid)
     self.log = core.getLogger(self.name)
     ##Number of buffers
     self.n_buffers = n_buffers
     ##Number of tables
     self.n_tables= n_tables
     # TODO: don't assume a single table
-    self.table = FlowTable()
+    self.table = SwitchFlowTable()
     ## Hash of port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
     for port in ports:
@@ -255,72 +256,6 @@ class ControllerConnection (object):
     return "[Con " + str(self.ID) + "]"
         
         
-# FlowTable Entries (immutable):
-#   match - ofp_match (13-tuple)
-#   counters - hash from name -> count. May be stale
-#   actions - ordered list of ofp_action_*s to apply for matching packets
-class TableEntry (namedtuple('TableEntry', 'match counters actions')):
-  @staticmethod
-  def from_flow_mod(flow_mod):
-    match = flow_mod.match
-    counters = {
-      "idle_timout" : flow_mod.idle_timeout,
-      "hard_timout" : flow_mod.hard_timeout,
-      # TODO: more counters!
-    }
-    
-    actions = flow_mod.actions
-    # TODO: More metadata? e.g., out_port, priority, flags
-    return TableEntry(match, counters, actions)
-    
-class FlowTable (object):
-  """
-  Field of OpenFlowSwitch representing the flow table on the physical switch
-  """
-  def __init__(self):
-    # For now we represent the table as a multidimensional array.
-    #
-    # [ (match, counters, actions),
-    #   (match, counters, actions),
-    #    ...                        ]
-    # 
-    # Implies O(N) lookup for now. TODO: fix
-    self._table = []
-    
-  def process_flow_mod(self, flow_mod):
-    if flow_mod.command == OFPFC_ADD:
-      entry = TableEntry.from_flow_mod(flow_mod) 
-      self.addEntry(entry)
-    
-    # TODO: implement section 4.6 of OpenFlow 1.0 specification:
-    #  elif flow_mod.command == OFPC_DELETE, etc.
-    #       alternatively, define a handler hash
-    
-  def addEntry(self, entry):
-    if not isinstance(entry, TableEntry):
-      raise "Not an Entry type"
-   
-    matching_entries = self.matching_entries(entry)
-    if matching_entries:
-      pass # TODO: do something
-     
-    self._table.append(entry)
-    
-  def entries_for_port(self, port_no):
-    entries = []
-    for entry in self._table:
-      actions = entry.actions
-      if len(actions) > 0:
-        last_action = actions[-1]
-        if type(last_action) == ofp_action_output:
-          outgoing_port = last_action.port.port_no
-          if outgoing_port == port_no:
-            entries.apend(entry)
-    return entries
-          
-  def matching_entries(self, entry):
-    return [] # TODO: implement me
-
 class SwitchCapabilities:
     """
     Class to hold switch capabilities
