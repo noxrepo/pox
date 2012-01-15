@@ -486,13 +486,18 @@ def autoBindEvents (sink, source, prefix='', weak=False):
     a = getattr(sink, m)
     if callable(a):
       # if it has the revent prefix signature, 
-      if m.startswith("_handle" + prefix):
+      if m.startswith("_handle" + prefix + "_"):
         event = m[8+len(prefix):]
         # and it is one of the events our source triggers
         if event in events:
           # append the listener
           listeners.append(source.addListener(events[event], a, weak))
           #print "autoBind: ",source,m,"to",sink
+        elif len(prefix) > 0 and "_" not in event:
+          print("Warning: %s found in %s, but %s not raised by %s" %
+                (m, sink.__class__.__name__, event, source.__class__.__name__))
+
+
 
   return listeners
 
