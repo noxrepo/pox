@@ -129,12 +129,14 @@ def handle_BARRIER (con, msg):
 
 
 def _processStatsBody (body, obj):
-  l = len(obj)
-  t = obj.__class__
   r = []
-  for i in range(len(body) // l):
+  t = obj.__class__
+  remaining = len(body)
+  while remaining:
     if i != 0: obj = t()
-    obj.unpack(body[i * l: i * l + l])
+    body = obj.unpack(body)
+    assert len(body) < remaining # Should have read something
+    remaining = len(body)
     r.append(obj)
   return r
 
