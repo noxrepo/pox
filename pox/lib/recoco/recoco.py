@@ -121,7 +121,7 @@ class Task (BaseTask):
     BaseTask.__init__(self)
 
   def run (self):
-    g = self.target(*self.args, **self.kwargs):
+    g = self.target(*self.args, **self.kwargs)
     g.next()
     while True:
       g.send((yield))
@@ -325,6 +325,45 @@ class BlockingOperation (object):
   def execute (self, task, scheduler):
     """ Scheduler calls this to actually execute the syscall """
     pass
+
+
+class CallBlocking (BlockingOperation):
+  """
+  Syscall that calls an actual blocking operation (like a real .recv()).
+  In order to keep from blocking, it calls it on another thread.
+  The return value is (ret_val, exc_info), one of which is always None.
+  """
+  @classmethod
+  def new (_cls, _func, *_args, **_kw):
+    return _cls(_func, *_args, **_kw)
+
+  def __init__ (self, func, args=(), kw={}):
+    self.t = None
+    self.scheduler = None
+    self.task = None
+
+    self.func = func
+    self.args = args
+    self.kw = kw
+
+  def _proc (self):
+    try:
+      self.task.rv = (self.func(*self.args, **self.kw), None)
+    except:
+      import sys
+      self.task.rv = (None, sys.exc_info())
+
+    self.scheduler.fast_schedule(self.task)
+
+  def execute (self, task, scheduler):
+    self.task = task
+    self.scheduler = scheduler
+
+    #NOTE: It might be nice to use a pool here
+    self.t = threading.Thread(target=self._proc)
+
+    self.t.daemon = True
+    self.t.start()
 
 
 class Exit (BlockingOperation):
@@ -733,6 +772,39 @@ class CallLaterTask (BaseTask):
             logging.getLogger("recoco").exception("Exception calling %s", e[0])
       except:
         pass
+
+
+class BlockingTask (BaseTask):
+  @classmethod
+  def new (_cls, _func, _cb=None, *_args, **_kw):
+    return _cls(_func, _cb, *_args, **_kw)
+
+  def __init__ (self, func, callback=None, args=(), kw={}):
+    """
+    callback takes two parameters: rv and exc. One is always None.
+    if callback is actually a tuple, the first one is called with
+    the return value on normal exit, the second is called with
+    exc_info on an exception.
+    """
+    BaseTask.__init__(self)
+    self.func = func
+    self.callback = callback
+    self.args = args
+    self.kw = kw
+
+  def run (self):
+    rv,exc = (yield CallBlocking(self.func, args=self.args, kw=self.kw))
+    if self.callback is None:
+      pass
+    elif isinstance(self.callback, tuple):
+      if exc is not None:
+        if self.callback[1] is not None:
+          self.callback[1](exc)
+      else:
+        if self.callback[0] is not None:
+          self.callback[0](rv)
+    else:
+      self.callback(rv,exc)
 
 
 # Sanity tests
