@@ -120,9 +120,11 @@ class Task (BaseTask):
 
     BaseTask.__init__(self)
 
-
   def run (self):
-    return self.target(*self.args, **self.kwargs)
+    g = self.target(*self.args, **self.kwargs):
+    g.next()
+    while True:
+      g.send((yield))
 
   def __str__ (self):
     return "<" + self.__class__.__name__ + "/tid" + str(self.name) + ">"
