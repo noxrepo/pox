@@ -24,6 +24,7 @@ from pox.core import core
 log = core.getLogger()
 import time
 import traceback
+import pox.lib.recoco
 
 _frames = []
 
@@ -59,23 +60,41 @@ def _trace_thread_proc ():
       c = len(_frames)
       if c == 0: continue
       f = _frames[-1]
-      f = " / ".join([s.strip() for s in
-                      traceback.format_stack(f,1)[0].strip().split("\n")])
+      stopAt = None
+      count = 0
+      sf = f
+      while sf is not None:
+        if sf.f_code == pox.lib.recoco.Scheduler.cycle.im_func.func_code:
+          stopAt = sf
+          break
+        count += 1
+        sf = sf.f_back
+      #if stopAt == None: continue
+
+      f = "\n".join([s.strip() for s in
+                      traceback.format_stack(f,count)])
+      #f = " / ".join([s.strip() for s in
+      #                traceback.format_stack(f,1)[0].strip().split("\n")])
+      #f = "\n".join([s.strip() for s in
+      #                traceback.format_stack(f)])
+
       if f != last:
-        if warned != last:
-          log.warning("recoco running again")
+        if warned:
+          log.warning("Running again")
         warned = None
         last = f
         last_time = time.time()
       elif f != warned:
         if time.time() - last_time > 3:
-          warned = f
-          log.warning(f)
+          if stopAt is not None:
+            warned = f
+            log.warning("Stuck at:\n" + f)
 
       #from pox.core import core
       #core.f = f
 
     except:
+      traceback.print_exc()
       pass
 
 
