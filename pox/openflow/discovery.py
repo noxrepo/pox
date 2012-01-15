@@ -180,7 +180,10 @@ class Discovery (EventMixin):
 
   Link = namedtuple("Link",("dpid1","port1","dpid2","port2"))
 
-  def __init__ (self):
+  def __init__ (self, install_flow = True, explicit_drop = True):
+    self.explicit_drop = explicit_drop
+    self.install_flow = install_flow
+
     self._dps = set()
     self.adjacency = {} # From Link to time.time() stamp
     self._sender = LLDPSender()
@@ -200,6 +203,13 @@ class Discovery (EventMixin):
   def _handle_ConnectionUp (self, event):
     """ On datapath join, create a new LLDP packet per port """
     assert event.dpid not in self._dps
+
+    if self.install_flow:
+      log.debug("Installing flow for %s", dpidToStr(event.dpid))
+      msg = of.ofp_flow_mod(match = of.ofp_match(dl_type = ethernet.LLDP_TYPE,
+                                                 dl_dst = NDP_MULTICAST))
+      msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
+      event.connection.send(msg)
 
     self._dps.add(event.dpid)
     self._sender.addSwitch(event.dpid, [(p.port_no, p.hw_addr)
@@ -254,7 +264,7 @@ class Discovery (EventMixin):
   def _handle_PacketIn (self, event):
     """ Handle incoming lldp packets.  Use to maintain link state """
 
-    packet = event.parse()
+    packet = event.parsed
 
     if packet.type != ethernet.LLDP_TYPE: return
     if packet.dst != NDP_MULTICAST: return
@@ -264,6 +274,14 @@ class Discovery (EventMixin):
       return
 
     assert isinstance(packet.next, lldp)
+
+    if self.explicit_drop:
+      if event.ofp.buffer_id != -1:
+        log.debug("Dropping LLDP packet %i", event.ofp.buffer_id)
+        msg = of.ofp_packet_out()
+        msg.buffer_id = event.ofp.buffer_id
+        msg.in_port = event.port
+        event.connection.send(msg)
 
     lldph = packet.next
     if  len(lldph.tlvs) < 3 or \
@@ -379,5 +397,8 @@ class Discovery (EventMixin):
         return True
     return False
 
-def launch ():
-  core.registerNew(Discovery)
+def launch (explicit_drop = False, install_flow = True):
+  explicit_drop = str(explicit_drop).lower() == "true"
+  install_flow = str(install_flow).lower() == "true"
+  core.registerNew(Discovery, explicit_drop=explicit_drop,
+                   install_flow=install_flow)
