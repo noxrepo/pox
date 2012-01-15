@@ -80,7 +80,7 @@ class ofp_header (object):
     return binaryString[8:]
 
   def __len__ (self):
-    return 8
+    return self.length
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -350,8 +350,7 @@ class ofp_queue_prop_min_rate (object):
     return binaryString[16:]
 
   def __len__ (self):
-    l = 16
-    return l
+    return 16
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -683,18 +682,22 @@ class ofp_match (object):
       return s
     outstr = ''
     outstr += prefix + 'wildcards: ' + binstr(self.wildcards) + ' (0x' + hex(self.wildcards) + ')\n'
-    outstr += prefix + 'in_port: ' + str(self.in_port) + '\n'
-    outstr += prefix + 'dl_src: ' + str(self.dl_src) + '\n'
-    outstr += prefix + 'dl_dst: ' + str(self.dl_dst) + '\n'
-    outstr += prefix + 'dl_vlan: ' + str(self.dl_vlan) + '\n'
-    outstr += prefix + 'dl_vlan_pcp: ' + str(self.dl_vlan_pcp) + '\n'
-    outstr += prefix + 'dl_type: ' + hex(self.dl_type) + '\n'
-    outstr += prefix + 'nw_tos: ' + str(self.nw_tos) + '\n'
-    outstr += prefix + 'nw_proto: ' + str(self.nw_proto) + '\n'
-    outstr += prefix + 'nw_src: ' + str(self.nw_src) + '\n'
-    outstr += prefix + 'nw_dst: ' + str(self.nw_dst) + '\n'
-    outstr += prefix + 'tp_src: ' + str(self.tp_src) + '\n'
-    outstr += prefix + 'tp_dst: ' + str(self.tp_dst) + '\n'
+    def append (f, formatter=str):
+      v = self.__getattr__(f)
+      if v is None: return ''
+      return prefix + f + ": " + formatter(v) + "\n"
+    outstr += append('in_port')
+    outstr += append('dl_src')
+    outstr += append('dl_dst')
+    outstr += append('dl_vlan')
+    outstr += append('dl_vlan_pcp')
+    outstr += append('dl_type', hex)
+    outstr += append('nw_tos')
+    outstr += append('nw_proto')
+    outstr += append('nw_src')
+    outstr += append('nw_dst')
+    outstr += append('tp_src')
+    outstr += append('tp_dst')
     return outstr
 
 ofp_flow_wildcards_rev_map = {
@@ -740,7 +743,7 @@ class ofp_action_header (object):
   def __init__ (self):
     self.type = 0
     self.length = 8
-    self._pad = b'\x00' * 4
+    self.data = b''
 
   def _assert (self):
     if(len(self._pad) != 4):
@@ -751,25 +754,25 @@ class ofp_action_header (object):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
-    packed = ""
+    packed = b""
     packed += struct.pack("!HH", self.type, self.length)
-    packed += self._pad
+    packed += b'\x00\x00\x00\x00'
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
+    if len(binaryString) < 8: return binaryString
     (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
-    return binaryString[8:]
+    if len(binaryString) < self.length: return binaryString
+    self.data = binaryString[8:8+self.length]
+    return binaryString[self.length:]
 
   def __len__ (self):
-    return 8
+    return self.length
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type !=  other.type: return False
     if self.length !=  other.length: return False
-    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -989,7 +992,7 @@ class ofp_action_dl_addr (object):
   def set_src (cls, dl_addr = None):
     return cls(OFPAT_SET_DL_SRC, dl_addr)
 
-  def __init__ (self, dl_addr = None, type = None):
+  def __init__ (self, type = None, dl_addr = None):
     """
     'type' should be OFPAT_SET_DL_SRC or OFPAT_SET_DL_DST.
     """
@@ -1468,20 +1471,9 @@ class ofp_flow_mod (ofp_header):
     (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 48)
     if self.buffer_id == 0xffffffff:
       self.buffer_id = -1
-    
-    actions_binary = binaryString[72:]
-    while len(actions_binary) >= 8:
-      # Action "Header" is a misnomer. It's more like Action "BluePrint". It's a common set of
-      # fields for all Action structs. There is /no/ separate header.
-      action_header = ofp_action_header()
-      action_header.unpack(actions_binary[0:8])
-      action = ofp_action_classes[action_header.type]()
-      # NOTE: same bytes as we read for the header
-      action.unpack(actions_binary[0:action_header.length])
-      self.actions.append(action)
-      actions_binary = actions_binary[action_header.length:] 
-      
-    return binaryString[72:]
+    self.actions, offset = _unpack_actions(binaryString, self.length-72, 72)
+    assert offset == self.length
+    return binaryString[offset:]
 
   def __len__ (self):
     l = 72
@@ -1511,7 +1503,7 @@ class ofp_flow_mod (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'match: \n'
-    self.match.show(prefix + '  ')
+    outstr += self.match.show(prefix + '  ')
     outstr += prefix + 'cookie: ' + str(self.cookie) + '\n'
     outstr += prefix + 'command: ' + str(self.command) + '\n'
     outstr += prefix + 'idle_timeout: ' + str(self.idle_timeout) + '\n'
@@ -2014,7 +2006,9 @@ class ofp_flow_stats (object):
     self.match.unpack(binaryString[4:])
     (self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout) = struct.unpack_from("!LLHHH", binaryString, 44)
     (self.cookie, self.packet_count, self.byte_count) = struct.unpack_from("!QQQ", binaryString, 64)
-    return binaryString[88:]
+    self.actions,offset = _unpack_actions(binaryString, self.length - 88, 88)
+    assert offset == self.length
+    return binaryString[offset:]
 
   def __len__ (self):
     l = 88
@@ -2502,8 +2496,9 @@ class ofp_packet_out (ofp_header):
     (self.buffer_id, self.in_port, actions_len) = struct.unpack_from("!LHH", binaryString, 8)
     if self.buffer_id == 0xffFFffFF:
       self.buffer_id = -1
-    self.actions = [None] * actions_len #TODO: unpack actions for real!
-    return binaryString[16:]
+    self.actions,offset = _unpack_actions(binaryString, self.length - 16, 16)
+    assert offset == self.length
+    return binaryString[offset:]
 
   def __len__ (self):
     return 16 + reduce(operator.add, (a.length for a in self.actions))
@@ -3407,6 +3402,35 @@ ofp_type_rev_map = {
   'OFPT_QUEUE_GET_CONFIG_REPLY'   : 21,
 }
 
+# Table that maps an action type to a callable that creates that type
+# (This is filled in by _init after the globals have been created)
+_action_map = {}
+
+def _unpack_actions (b, length, offset=0):
+  """
+  Parses actions from a buffer
+  b is a buffer (bytes)
+  offset, if specified is where in b to start decoding
+  returns ([Actions], next_offset)
+  """
+  if (len(b) - offset) < length: return (actions, offset)
+  actions = []
+  end = length + offset
+  while offset < end:
+    (t,l) = struct.unpack_from("!HH", b, offset)
+    if (len(b) - offset) < l: return (actions, offset) #TODO: exception?
+    a = _action_map.get(t)
+    if a is None:
+      # Use generic action header for unknown type
+      a = ofp_action_header()
+    else:
+      a = a()
+    a.unpack(b[offset:offset+l])
+    assert len(a) == l
+    actions.append(a)
+    offset += l
+  return (actions, offset)
+
 def _init ():
   def formatMap (name, m):
     o = name + " = {\n"
@@ -3457,7 +3481,26 @@ def _init ():
     # Generate gobals
     for k,v in m.iteritems():
       globals()[k] = v
+
+
 _init()
+
+# Fill in the action-to-class table
+#TODO: Use the factory functions?
+_action_map.update({
+  #TODO: special type for OFPAT_STRIP_VLAN?
+  OFPAT_OUTPUT                   : ofp_action_output,
+  OFPAT_SET_VLAN_VID             : ofp_action_vlan_vid,
+  OFPAT_SET_VLAN_PCP             : ofp_action_vlan_pcp,
+  OFPAT_SET_DL_SRC               : ofp_action_dl_addr,
+  OFPAT_SET_DL_DST               : ofp_action_dl_addr,
+  OFPAT_SET_NW_SRC               : ofp_action_nw_addr,
+  OFPAT_SET_NW_DST               : ofp_action_nw_addr,
+  OFPAT_SET_NW_TOS               : ofp_action_nw_tos,
+  OFPAT_SET_TP_SRC               : ofp_action_tp_port,
+  OFPAT_SET_TP_DST               : ofp_action_tp_port,
+  OFPAT_ENQUEUE                  : ofp_action_enqueue,
+})
 
 # Values from macro definitions
 OFP_FLOW_PERMANENT = 0
@@ -3541,20 +3584,3 @@ ofp_match_data = {
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
 }
-
-ofp_action_classes = {
-  OFPAT_OUTPUT : ofp_action_output,
-  OFPAT_SET_VLAN_VID : ofp_action_vlan_vid,
-  OFPAT_SET_VLAN_PCP : ofp_action_vlan_pcp,
-  OFPAT_STRIP_VLAN  : None, # TODO: is the class defined?
-  OFPAT_SET_DL_SRC : ofp_action_dl_addr,
-  OFPAT_SET_DL_DST : ofp_action_dl_addr,
-  OFPAT_SET_NW_SRC : ofp_action_nw_addr,
-  OFPAT_SET_NW_DST : ofp_action_nw_addr,
-  OFPAT_SET_NW_TOS : ofp_action_nw_tos,
-  OFPAT_SET_TP_SRC : ofp_action_tp_port,
-  OFPAT_SET_TP_DST : ofp_action_tp_port,
-  OFPAT_ENQUEUE : ofp_action_enqueue,
-  OFPAT_VENDOR : ofp_action_vendor_header,
-}
-
