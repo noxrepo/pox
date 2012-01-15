@@ -283,7 +283,7 @@ class host_tracker (EventMixin):
           log.warning("Possible duplicate: %s at (%i %i) at time %i, now (%i %i), time %i",
                       str(entry.macaddr),
                       entry.dpid, entry.port, entry.lastSeen(),
-                      dipid, inport, time.time()
+                      dpid, inport, time.time()
                      )
         entry.dpid = dpid
         entry.inport = inport
