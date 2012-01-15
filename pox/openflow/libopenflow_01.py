@@ -680,8 +680,23 @@ class ofp_match (object):
         n >>= 1
         if n == 0: break
       return s
+    def safehex(n):
+      if n == None:
+        return "(None)"
+      else:
+        return hex(n)
+
+    def show_wildcards(w):
+      parts = [ k.lower()[len("OFPFW_"):] for (k,v) in ofp_flow_wildcards_rev_map.iteritems() if v & w == v ]
+      nw_src_bits = (w & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT
+      if(nw_src_bits > 0): parts.append("nw_src(/%d)" % (32 - nw_src_bits))
+
+      nw_dst_bits = (w & OFPFW_NW_DST_MASK) >> OFPFW_NW_DST_SHIFT
+      if(nw_dst_bits > 0): parts.append("nw_dst(/%d)" % (32 - nw_dst_bits))
+      return "|".join(parts)
+
     outstr = ''
-    outstr += prefix + 'wildcards: ' + binstr(self.wildcards) + ' (0x' + hex(self.wildcards) + ')\n'
+    outstr += prefix + 'wildcards: ' + show_wildcards(self.wildcards) + ' (' + binstr(self.wildcards) + ' = ' + hex(self.wildcards) + ')\n'
     def append (f, formatter=str):
       v = self.__getattr__(f)
       if v is None: return ''
@@ -691,7 +706,7 @@ class ofp_match (object):
     outstr += append('dl_dst')
     outstr += append('dl_vlan')
     outstr += append('dl_vlan_pcp')
-    outstr += append('dl_type', hex)
+    outstr += append('dl_type', safehex)
     outstr += append('nw_tos')
     outstr += append('nw_proto')
     outstr += append('nw_src')
