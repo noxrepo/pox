@@ -418,10 +418,12 @@ class ofp_match (object):
 
     return match
 
-  def __init__ (self, **kw):
+  def __init__ (self, wildcards=None, **kw):
     for k,v in ofp_match_data.iteritems():
       setattr(self, '_' + k, v[0])
-    self.wildcards = self._normalize_wildcards(OFPFW_ALL)
+
+    if wildcards == None: wildcards = OFPFW_ALL
+    self.wildcards = self._normalize_wildcards(wildcards)
 
     # This is basically initHelper(), but tweaked slightly since this
     # class does some magic of its own.
@@ -494,8 +496,9 @@ class ofp_match (object):
     return (ip, b)
 
   def __setattr__ (self, name, value):
-    self.__dict__[name] = value
-    if name not in ofp_match_data: return
+    if name not in ofp_match_data:
+      self.__dict__[name] = value
+      return
 
     if name == 'nw_dst' or name == 'nw_src':
       # Special handling
@@ -520,7 +523,7 @@ class ofp_match (object):
         # Special handling
         return getattr(self, 'get_' + name)()[0]
       return self.__dict__['_' + name]
-    raise AttributeError
+    raise AttributeError("attribute not found: "+name)
 
   def _assert (self):
     #if not isinstance(self._dl_src, list):
@@ -615,6 +618,42 @@ class ofp_match (object):
         h ^= v
 
     return int(h & 0x7fFFffFF)
+
+  def matches_with_wildcards (self, other):
+    """ 
+       Test whether /this/ match completely encompasses the other match. Important for non-strict modify flow_mods etc.
+    """
+    if not isinstance(other, ofp_match): raise "other not an instance of ofp_match: %s" % other
+    # short cut for equal matches
+    if(self == other): return True
+    # only candidate if all wildcard bits in the *other* match are also set in this match (i.e., a submatch)
+
+    # first compare the bitmask part
+    self_bits  = self.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
+    other_bits = other.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
+    if( self_bits | other_bits != self_bits): return False
+
+    def match_fail(mine, others):
+      return mine != None and mine != others
+
+    if match_fail(self.in_port, other.in_port): return False
+    if match_fail(self.dl_vlan, other.dl_vlan): return False
+    if match_fail(self.dl_src, other.dl_src): return False
+    if match_fail(self.dl_dst, other.dl_dst): return False
+    if match_fail(self.dl_type, other.dl_type): return False
+    if match_fail(self.nw_proto, other.nw_proto): return False
+    if match_fail(self.tp_src, other.tp_src): return False
+    if match_fail(self.tp_dst, other.tp_dst): return False
+    if match_fail(self.dl_vlan_pcp, other.dl_vlan_pcp): return False
+    if match_fail(self.nw_tos, other.nw_tos): return False
+
+    self_nw_src = self.get_nw_src()
+    other_nw_src = other.get_nw_src()
+    if self_nw_src[1] > other_nw_src[1] or not IPAddr(other_nw_src[0]).inNetwork((self_nw_src[0], 32-self_nw_src[1])): return False
+    self_nw_dst = self.get_nw_dst()
+    other_nw_dst = other.get_nw_dst()
+    if self_nw_dst[1] > other_nw_dst[1] or not IPAddr(other_nw_dst[0]).inNetwork((self_nw_dst[0], 32-self_nw_dst[1])): return False
+    return True
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
