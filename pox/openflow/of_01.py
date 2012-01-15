@@ -54,7 +54,7 @@ def handle_HELLO (con, msg): #S
 
 def handle_ECHO_REQUEST (con, msg): #S
   reply = msg
-  # Ha ha, just change the type and send it back
+  
   reply.header_type = of.OFPT_ECHO_REPLY
   con.send(reply.pack())
 

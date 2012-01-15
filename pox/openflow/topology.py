@@ -191,6 +191,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     EventMixin.__init__(self)
     self.dpid = dpid
     self.ports = {}
+    self.flow_table = FlowTable()
     self.capabilities = 0
     self._connection = None
     self._listeners = []
@@ -263,6 +264,7 @@ class OpenFlowSwitch (EventMixin, Switch):
 
   def _handle_con_FlowRemoved (self, event):
     self.raiseEvent(event)
+    self.flowTable.removeFlow(event)
     event.halt = False
 
   def findPortForEntity (self, entity):
