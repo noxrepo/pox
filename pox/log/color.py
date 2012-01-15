@@ -69,6 +69,7 @@ COMMANDS = {
   'BLINK' : 6,
   'invert' : 7,
   'bg:' : -1, # Special
+  'level' : -2, # Special -- color of current level
   'normal' : 22,
   'underline' : 4,
   'nounderline' : 24,
@@ -82,7 +83,7 @@ def _color (color, msg):
   """ Colorizes the given text """
   return _proc(MAGIC + color) + msg + _proc(MAGIC + 'reset').lower()
 
-def _proc (msg):
+def _proc (msg, level_color = "DEBUG"):
   """
   Do some replacements on the text
   """
@@ -132,7 +133,10 @@ def _proc (msg):
             r += str(color) + "m"
         elif not _strip_only:
           # Command
-          r += CSI + str(best[1]) + "m"
+          if best[1] == -2:
+            r += _proc(MAGIC + LEVEL_COLORS.get(level_color, ""), level_color)
+          else:
+            r += CSI + str(best[1]) + "m"
     cmd = True
     r += m
   return r
@@ -180,7 +184,7 @@ def launch (entire=False):
   old_format = dlf.format
   if entire:
     def new_format (record):
-      msg = _proc(old_format(record))
+      msg = _proc(old_format(record), record.levelname)
       color = LEVEL_COLORS.get(record.levelname)
       if color is None:
         return msg
@@ -188,9 +192,10 @@ def launch (entire=False):
   else:
     def new_format (record):
       color = LEVEL_COLORS.get(record.levelname)
+      oldlevelname = record.levelname
       if color is not None:
         record.levelname = _color(color, record.levelname)
-      return _proc(old_format(record))
+      return _proc(old_format(record), oldlevelname)
   dlf.format = new_format
 
   enabled = True
