@@ -102,6 +102,7 @@ def _handle (event):
     change_count = 0
     for sw, ports in tree.iteritems():
       con = core.openflow.getConnection(sw)
+      if con is None: continue # Must have disconnected
       tree_ports = [p[1] for p in ports]
       for p in con.features.ports:
         if p.port_no < of.OFPP_MAX:
