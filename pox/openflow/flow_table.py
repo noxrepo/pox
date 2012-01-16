@@ -10,21 +10,31 @@ from libopenflow_01 import *
 
 import time
 
-# FlowTable Entries (immutable):
+# FlowTable Entries:
 #   match - ofp_match (13-tuple)
 #   counters - hash from name -> count. May be stale
 #   actions - ordered list of ofp_action_*s to apply for matching packets
-class TableEntry (namedtuple('TableEntry', 'priority cookie idle_timeout hard_timeout match counters actions')):
-  def __new__(cls, priority=OFP_DEFAULT_PRIORITY, cookie = 0, idle_timeout=0, hard_timeout=0, match=ofp_match(), actions=[], now=None):
+class TableEntry (object):
+  """
+  Models a flow table entry, with a match, actions, and options/flags/counters.
+  Note: the current time can either be specified explicitely with the optional 'now' parameter or is taken from time.time()
+  """
+
+  def __init__(self,priority=OFP_DEFAULT_PRIORITY, cookie = 0, idle_timeout=0, hard_timeout=0, match=ofp_match(), actions=[], now=None):
     # overriding __new__ instead of init to make fields optional. There's probably a better way to do this.
     if now==None: now = time.time()
-    counters = {
+    self.counters = {
         'created': now,
         'last_touched': now,
         'bytes': 0,
         'packets': 0
     }
-    return super(TableEntry,cls).__new__(cls, priority, cookie, idle_timeout, hard_timeout, match, counters, actions)
+    self.priority = priority
+    self.cookie = cookie
+    self.idle_timeout = idle_timeout
+    self.hard_timeout = hard_timeout
+    self.match = match
+    self.actions = actions
 
   @staticmethod
   def from_flow_mod(flow_mod):
@@ -41,25 +51,28 @@ class TableEntry (namedtuple('TableEntry', 'priority cookie idle_timeout hard_ti
                           actions = self.actions, **kw)
 
   def is_matched_by(self, match, priority = None, strict = False):
+    """ return whether /this/ entry is matched by some other entry (e.g., for FLOW_MOD updates) """
     if(strict):
       return (self.match == match and self.priority == priority)
     else:
       return match.matches_with_wildcards(self.match)
 
   def touch_packet(self, byte_count, now=None):
+    """ update the counters and expiry timer of this entry for a packet with a given byte count"""
     if now==None: now = time.time()
     self.counters["bytes"] += byte_count
     self.counters["packets"] += 1
     self.counters["last_touched"] = now
 
   def is_expired(self, now=None):
+    """" return whether this flow entry is expired due to its idle timeout or hard timeout"""
     if now==None: now = time.time()
     return (self.hard_timeout > 0 and now - self.counters["created"] > self.hard_timeout) or (self.idle_timeout > 0 and now - self.counters["last_touched"] > self.idle_timeout)
 
 class FlowTable (object):
   """
   General model of a flow table. Maintains an ordered list of flow entries, and finds
-  matching entries for packets and other entries.
+  matching entries for packets and other entries. Supports expiration of flows.
   """
   def __init__(self):
     # For now we represent the table as a multidimensional array.
@@ -115,10 +128,8 @@ class FlowTable (object):
     return remove_flows
 
   def entry_for_packet(packet, in_port=None):
-    """ 
-    return the highest priority flow table entry that matches the given packet on the given inport.
-    @return the highest priority matching entry, None if none is found
-    """
+    """ return the highest priority flow table entry that matches the given packet 
+    on the given in_port, or None if no matching entry is found. """
     packet_match = opf_match.from_packet(packet, in_port)
     for entry in self._table:
       if entry.match.matches_with_wildcards(packet_match):
@@ -317,7 +328,7 @@ if __name__ == '__main__':
         self.assertEqual([e.cookie for e in t.entries ], remaining)
 
   class SwitchFlowTableTest(unittest.TestCase):
-    def test_process_flow_mod(self):
+    def test_process_flow_mod_add(self):
       """ test that simple insertion of a flow works"""
       t = SwitchFlowTable()
       t.process_flow_mod(ofp_flow_mod(priority=5, cookie=0x31415926, actions=[ofp_action_output(port=5)]))
@@ -326,6 +337,51 @@ if __name__ == '__main__':
       self.assertEqual(e.priority, 5)
       self.assertEqual(e.cookie, 0x31415926)
       self.assertEqual(e.actions, [ ofp_action_output(port=5)])
+
+    def test_process_flow_mod_modify(self):
+      """ test that simple removal of a flow works"""
+      def table():
+        t = SwitchFlowTable()
+        t.add_entry(TableEntry(priority=6, cookie=0x1, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:01"),nw_src="1.2.3.4"), actions=[ofp_action_output(port=5)]))
+        t.add_entry(TableEntry(priority=5, cookie=0x2, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:02"), nw_src="1.2.3.0/24"), actions=[ofp_action_output(port=6)]))
+        t.add_entry(TableEntry(priority=1, cookie=0x3, match=ofp_match(), actions=[]))
+        return t
+
+      t = table()
+      t.process_flow_mod(ofp_flow_mod(command = OFPFC_MODIFY, match=ofp_match(), actions = [ofp_action_output(port=1)]))
+      self.assertEquals([e.cookie for e in t.entries if e.actions == [ofp_action_output(port=1)] ], [1,2,3])
+      self.assertEquals(len(t.entries), 3)
+
+      t = table()
+      t.process_flow_mod(ofp_flow_mod(command = OFPFC_MODIFY, match=ofp_match(nw_src="1.2.0.0/16"), actions = [ofp_action_output(port=8)]))
+      self.assertEquals([e.cookie for e in t.entries if e.actions == [ofp_action_output(port=8)] ], [1,2])
+      self.assertEquals(len(t.entries), 3)
+
+      # non-matching OFPFC_MODIFY acts as add
+      t = table()
+      t.process_flow_mod(ofp_flow_mod(cookie=5, command = OFPFC_MODIFY, match=ofp_match(nw_src="2.2.0.0/16"), actions = [ofp_action_output(port=8)]))
+      self.assertEquals(len(t.entries), 4)
+      self.assertEquals([e.cookie for e in t.entries if e.actions == [ofp_action_output(port=8)] ], [5])
+
+    def test_process_flow_mod_modify_strict(self):
+      """ test that simple removal of a flow works"""
+      def table():
+        t = SwitchFlowTable()
+        t.add_entry(TableEntry(priority=6, cookie=0x1, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:01"),nw_src="1.2.3.4"), actions=[ofp_action_output(port=5)]))
+        t.add_entry(TableEntry(priority=5, cookie=0x2, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:02"), nw_src="1.2.3.0/24"), actions=[ofp_action_output(port=6)]))
+        t.add_entry(TableEntry(priority=1, cookie=0x3, match=ofp_match(), actions=[]))
+        return t
+
+      t = table()
+      t.process_flow_mod(ofp_flow_mod(command = OFPFC_MODIFY_STRICT, priority=1, match=ofp_match(), actions = [ofp_action_output(port=1)]))
+      self.assertEquals([e.cookie for e in t.entries if e.actions == [ofp_action_output(port=1)] ], [3])
+      self.assertEquals(len(t.entries), 3)
+
+      t = table()
+      t.process_flow_mod(ofp_flow_mod(command = OFPFC_MODIFY_STRICT, priority=5, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:02"), nw_src="1.2.3.0/24"), actions = [ofp_action_output(port=8)]))
+      self.assertEquals([e.cookie for e in t.entries if e.actions == [ofp_action_output(port=8)] ], [2])
+      self.assertEquals(len(t.entries), 3)
+
 
   class NOMFlowTableTest(unittest.TestCase):
     def test_process_flow_removed(self):
