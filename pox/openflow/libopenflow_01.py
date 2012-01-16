@@ -577,6 +577,9 @@ class ofp_match (object):
       wildcards |= (32 << OFPFW_NW_DST_SHIFT)
     return wildcards
 
+  def is_wildcarded (self):
+    return self.wildcards & OFPFW_ALL != 0
+
   def unpack (self, binaryString):
     if (len(binaryString) < 40):
       return binaryString
@@ -640,11 +643,14 @@ class ofp_match (object):
     if match_fail(self.nw_tos, other.nw_tos): return False
 
     self_nw_src = self.get_nw_src()
-    other_nw_src = other.get_nw_src()
-    if self_nw_src[1] > other_nw_src[1] or not IPAddr(other_nw_src[0]).inNetwork((self_nw_src[0], 32-self_nw_src[1])): return False
+    if(self_nw_src[0] != None):
+      other_nw_src = other.get_nw_src()
+      if self_nw_src[1] > other_nw_src[1] or not IPAddr(other_nw_src[0]).inNetwork((self_nw_src[0], 32-self_nw_src[1])): return False
+
     self_nw_dst = self.get_nw_dst()
-    other_nw_dst = other.get_nw_dst()
-    if self_nw_dst[1] > other_nw_dst[1] or not IPAddr(other_nw_dst[0]).inNetwork((self_nw_dst[0], 32-self_nw_dst[1])): return False
+    if(self_nw_dst[0] != None):
+      other_nw_dst = other.get_nw_dst()
+      if self_nw_dst[1] > other_nw_dst[1] or not IPAddr(other_nw_dst[0]).inNetwork((self_nw_dst[0], 32-self_nw_dst[1])): return False
     return True
 
   def __eq__ (self, other):
