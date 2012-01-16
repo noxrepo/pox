@@ -256,10 +256,13 @@ class Switch (EventMixin):
           log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
       elif packet.dst.isMulticast() == False:
         # New place is a switch-to-switch port!
-        log.warning("Packet from %s arrived at %s.%i without flow -- dropping",
+        #TODO: This should be a flood.  It'd be nice if we knew.  We could
+        #      check if the port is in the spanning tree if it's available.
+        #      Or maybe we should flood more carefully?
+        log.warning("Packet from %s arrived at %s.%i without flow",# -- dropping",
                     packet.src, dpidToStr(self.dpid), event.port)
-        drop()
-        return
+        #drop()
+        #return
 
 
 
