@@ -133,7 +133,7 @@ def _processStatsBody (body, obj):
   t = obj.__class__
   remaining = len(body)
   while remaining:
-    if i != 0: obj = t()
+    obj = t()
     body = obj.unpack(body)
     assert len(body) < remaining # Should have read something
     remaining = len(body)
