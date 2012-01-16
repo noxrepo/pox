@@ -999,7 +999,6 @@ class ofp_action_dl_addr (object):
     self.type = type
     self.length = 16
     self.dl_addr = EMPTY_ETH
-    self._pad = b'\x00' * 6
 
     if dl_addr is not None:
       self.dl_addr = EthAddr(dl_addr)
@@ -1009,8 +1008,6 @@ class ofp_action_dl_addr (object):
       return (False, "dl_addr is not string or EthAddr")
     if isinstance(self.dl_addr, bytes) and len(self.dl_addr) != 6:
       return (False, "dl_addr is not of size 6")
-    if len(self._pad) != 6:
-      return (False, "pad is not of size 6")
     return (True, None)
 
   def pack (self, assertstruct=True):
@@ -1023,14 +1020,14 @@ class ofp_action_dl_addr (object):
       packed += self.dl_addr.toRaw()
     else:
       packed += self.dl_addr
-    packed += self._pad
+    packed += b'\x00' * 6
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 16):
       return binaryString
     (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
-    (self.dl_addr[0], self.dl_addr[1], self.dl_addr[2], self.dl_addr[3], self.dl_addr[4], self.dl_addr[5]) = struct.unpack_from("!BBBBBB", binaryString, 4)
+    self.dl_addr = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 4))
     return binaryString[16:]
 
   def __len__ (self):
@@ -1041,7 +1038,6 @@ class ofp_action_dl_addr (object):
     if self.type !=  other.type: return False
     if self.length !=  other.length: return False
     if self.dl_addr !=  other.dl_addr: return False
-    if self._pad !=  other._pad: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3413,8 +3409,8 @@ def _unpack_actions (b, length, offset=0):
   offset, if specified is where in b to start decoding
   returns ([Actions], next_offset)
   """
-  if (len(b) - offset) < length: return (actions, offset)
   actions = []
+  if (len(b) - offset) < length: return (actions, offset)
   end = length + offset
   while offset < end:
     (t,l) = struct.unpack_from("!HH", b, offset)
