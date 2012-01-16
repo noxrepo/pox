@@ -24,14 +24,19 @@
 # We fall back to just "python" and hope that works.
 
 ''''echo -n
+export OPT="-O"
+if [[ "$(basename $0)" == "debug-pox.py" ]]; then
+  export OPT=""
+fi
+
 if [ -x pypy/bin/pypy ]; then
-  exec pypy/bin/pypy -O "$0" "$@"
+  exec pypy/bin/pypy $OPT "$0" "$@"
 fi
 
 if [ "$(type -P python2.7)" != "" ]; then
-  exec python2.7 -O "$0" "$@"
+  exec python2.7 $OPT "$0" "$@"
 fi
-exec python -O "$0" "$@"
+exec python $OPT "$0" "$@"
 '''
 
 from pox.core import core
