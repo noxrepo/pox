@@ -20,21 +20,25 @@ Demonstrates the spanning tree module so that the L2 switch
 works decently on topologies with loops.
 """
 
-def launch (l3 = False):
+def launch (forwarding = "l2"):
   import pox.log.color
   pox.log.color.launch()
   import pox.log
   pox.log.launch(format="[@@@bold@@@level%(name)-22s@@@reset] " +
                         "@@@bold%(message)s@@@normal")
+  from pox.core import core
   import pox.openflow.discovery
   pox.openflow.discovery.launch()
+
+  core.getLogger("openflow.spanning_tree").setLevel("INFO")
+  if forwarding.lower() == "l3":
+    import pox.forwarding.l3_learning as fw
+  elif forwarding.lower() == "l2_multi":
+    import pox.forwarding.l2_multi_learning as fw
+  else:
+    import pox.forwarding.l2_learning as fw
+  core.getLogger().debug("Using forwarding: %s", fw.__name__)
+  fw.launch()
+
   import pox.openflow.spanning_tree
   pox.openflow.spanning_tree.launch()
-  from pox.core import core
-  core.getLogger("openflow.spanning_tree").setLevel("INFO")
-  if l3:
-    import pox.forwarding.l3_learning
-    pox.forwarding.l3_learning.launch()
-  else:
-    import pox.forwarding.l2_learning
-    pox.forwarding.l2_learning.launch()
