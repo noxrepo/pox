@@ -33,6 +33,7 @@ log = core.getLogger()
 
 class EntityEvent (Event):
   def __init__ (self, entity):
+    Event.__init__(self)
     self.entity = entity
     
 class EntityJoin (EntityEvent):
