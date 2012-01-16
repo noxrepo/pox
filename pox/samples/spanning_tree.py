@@ -34,7 +34,7 @@ def launch (forwarding = "l2"):
   if forwarding.lower() == "l3":
     import pox.forwarding.l3_learning as fw
   elif forwarding.lower() == "l2_multi":
-    import pox.forwarding.l2_multi_learning as fw
+    import pox.forwarding.l2_multi as fw
   else:
     import pox.forwarding.l2_learning as fw
   core.getLogger().debug("Using forwarding: %s", fw.__name__)
