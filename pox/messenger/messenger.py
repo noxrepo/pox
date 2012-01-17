@@ -81,6 +81,8 @@ log = pox.core.getLogger()
 # JSON decoder used by default
 defaultDecoder = json.JSONDecoder()
 
+class MessengerListening(Event):
+  pass
 
 class ConnectionClosed (Event):
   def __init__ (self, connection):
@@ -140,7 +142,7 @@ class MessengerConnection (EventMixin):
 
   ID = "INVALID ID"
 
-  def __init__ (self, source, ID = None):
+  def __init__ (self, source=None, ID = None):
     EventMixin.__init__(self)
     self._isConnected = True
     self._buf = bytes()
@@ -163,7 +165,8 @@ class MessengerConnection (EventMixin):
   def _close (self):
     # Called internally
     if self._isConnected is False: return
-    self._source._forget(self)
+    if self._source:
+      self._source._forget(self)
     self._isConnected = False
     self.raiseEventNoErrors(ConnectionClosed, self)
     self.raiseEventNoErrors(MessageReceived, self, None)
@@ -242,7 +245,7 @@ class MessengerConnection (EventMixin):
 
 
 class TCPMessengerConnection (MessengerConnection, Task):
-  def __init__ (self, source, socket):
+  def __init__ (self, source=None, socket=None):
     self._socket = socket
     MessengerConnection.__init__(self, source, ID=str(id(self))) #TODO: better ID
     Task.__init__(self)
@@ -285,6 +288,7 @@ class MessengerHub (EventMixin):
     ConnectionStarted,  # Immediately when a connection goes up
     ConnectionClosed,   # When a connection goes down
     MessageReceived,    # For unclaimed messages
+    MessengerListening, # The TCP listening port is up
   ])
   def __init__ (self):
     EventMixin.__init__(self)
@@ -312,6 +316,7 @@ class TCPMessengerSource (Task):
     listener.listen(0)
 
     log.debug("Listening for connections on %s:%i" % (self._addr))
+    core.messenger.raiseEventNoErrors(MessengerListening())
 
     con = None
     while core.running:
