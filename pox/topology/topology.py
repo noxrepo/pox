@@ -67,6 +67,7 @@ class SwitchJoin (SwitchEvent):
   (e.g. an administrator physically moving a switch).
   """
   def __init__ (self, switch):
+    Event.__init__(self)
     self.switch = switch
     
 class SwitchLeave (SwitchEvent):
