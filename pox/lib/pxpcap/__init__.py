@@ -19,6 +19,7 @@ import pxpcap as pcapc
 from pox.lib.addresses import IPAddr, EthAddr
 from threading import Thread
 import pox.lib.packet as pkt
+import copy
 
 class PCap (object):
   @staticmethod
@@ -200,7 +201,7 @@ class Filter (object):
 
 
 _link_type_names = {}
-for k,v in pcapc.__dict__.iteritems():
+for k,v in copy.copy(pcapc.__dict__).iteritems():
   if k.startswith("DLT_"):
     _link_type_names[v] = k
 
