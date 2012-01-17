@@ -88,6 +88,9 @@ class FlowTable (object):
   def entries(self):
     return self._table
 
+  def __len__(self):
+    return len(self._table)
+
   def add_entry(self, entry):
     if not isinstance(entry, TableEntry):
       raise "Not an Entry type"
@@ -127,10 +130,10 @@ class FlowTable (object):
         self._table.remove(entry)
     return remove_flows
 
-  def entry_for_packet(packet, in_port=None):
+  def entry_for_packet(self, packet, in_port=None):
     """ return the highest priority flow table entry that matches the given packet 
     on the given in_port, or None if no matching entry is found. """
-    packet_match = opf_match.from_packet(packet, in_port)
+    packet_match = ofp_match.from_packet(packet, in_port)
     for entry in self._table:
       if entry.match.matches_with_wildcards(packet_match):
         return entry
