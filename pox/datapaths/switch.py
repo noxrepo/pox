@@ -14,6 +14,7 @@ Created by ykk
 # OF_01 like task that listens for socket connections, creates a new socket, 
 # wraps it in a ControllerConnection object, and calls SwitchImpl._handle_ConnectionUp
 
+from pox.lib.revent import Event, EventMixin
 from pox.core import core
 from pox.openflow.libopenflow_01 import *
 from pox.openflow.of_01 import make_type_to_class_table, deferredSender
@@ -21,11 +22,25 @@ from pox.openflow.flow_table import TableEntry, SwitchFlowTable
 
 from errno import EAGAIN
 from collections import namedtuple
+import itertools
 
-class SwitchImpl(object):
+class SwitchDpPacketOut (Event):
+  """ Event raised by SwitchImpl when a dataplane packet is sent out a port """
+  def __init__ (self, switch, packet, port):
+     Event.__init__(self)
+     self.switch = switch
+     self.packet = packet
+     self.port = port
+
+def _default_port_list(num_ports=4, prefix=0):
+  return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x" % (prefix % 255, i))) for i in range(1, num_ports+1)]
+
+class SwitchImpl(EventMixin):
+  _eventMixin_events = set([SwitchDpPacketOut])
+
   # ports is a list of ofp_phy_ports
-  def __init__(self, dpid, sock, name=None, ports=[], miss_send_len=128,
-               n_buffers=100, n_tables=1, capabilities=None):
+  def __init__(self, dpid, socket=None, name=None, ports=4, miss_send_len=128,
+      n_buffers=100, n_tables=1, capabilities=None, connection=None):
     """Initialize switch"""
     ##Datapath id of switch
     self.dpid = dpid
@@ -39,7 +54,15 @@ class SwitchImpl(object):
     ##Number of tables
     self.n_tables= n_tables
     # TODO: don't assume a single table
+    # Well it's OF1.0 so there /is/ only one switch table in the OpenFlow world
     self.table = SwitchFlowTable()
+    # buffer for packets during packet_in
+    self.packet_buffer = []
+    if(ports == None or isinstance(ports, int)):
+      ports=_default_port_list(num_ports=ports, prefix=dpid)
+
+    self.xid_count = itertools.count(1)
+
     ## Hash of port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
     for port in ports:
@@ -58,8 +81,15 @@ class SwitchImpl(object):
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
        # TODO: many more packet types to process
     }
-    ##Reference to connection with controller
-    self._connection = ControllerConnection(sock, ofp_handlers)
+    if not (connection != None) ^ (socket != None):
+      raise AttributeError("Must give /either/ connection or socket (not none, not both)")
+    if socket != None:
+      ##Reference to connection with controller
+      self._connection = ControllerConnection(sock, ofp_handlers)
+    else:
+      connection.ofp_handlers = ofp_handlers
+      self._connection = connection
+
     ##Capabilities
     if (isinstance(capabilities, SwitchCapabilities)):
         self.capabilities = capabilities
@@ -81,7 +111,7 @@ class SwitchImpl(object):
     """Reply to echo request
     """
     self.log.debug("Reply echo of xid: %s %s" % (str(packet), self.name)) # TODO: packet.xid
-    msg = ofp_echo_request()
+    msg = ofp_echo_reply(xid=packet.xid)
     self._connection.send(msg)
     
   def _receive_features_request(self, packet):
@@ -100,15 +130,24 @@ class SwitchImpl(object):
     """
     self.log.debug("Flow mod %s: %s" % (self.name, packet.show()))
     self.table.process_flow_mod(packet)
-    
-  def _receive_packet_out(self, packet):
+    if(packet.buffer_id >=0 ):
+      self._process_actions_for_packet_from_buffer(packet.actions, packet.buffer_id)
+
+  def _receive_packet_out(self, packet_out):
     """
     Send the packet out the given port
     """
     # TODO: There is a packet formatting error somewhere... str(packet) throws
     # an exception... no method "show" for None
     self.log.debug("Packet out") # , str(packet)) 
-    
+
+    if(packet_out.data != None):
+      self._process_actions_for_packet(packet_out.actions, packet_out.data, packet_out.in_port)
+    elif(packet_out.buffer_id > 0):
+      self._process_actions_for_packet_from_buffer(packet_out.actions, packet_out.buffer_id)
+    else:
+      self.log.warn("packet_out: No data and no buffer_id -- don't know what to send")
+
   def _receive_echo_reply(self, packet):
     self.log.debug("Echo reply: %s %s" % (str(packet), self.name))
     
@@ -127,28 +166,146 @@ class SwitchImpl(object):
     msg = ofp_hello()
     self._connection.send(msg)
 
-  def send_packet_in(self, inport, bufferid=None, packet="", xid=0, reason=None):
+  def send_packet_in(self, in_port, buffer_id=None, packet="", xid=None, reason=None):
     """Send PacketIn
-    Assume no match as reason, bufferid = 0xFFFFFFFF,
+    Assume no match as reason, buffer_id = 0xFFFFFFFF,
     and empty packet by default
     """
     self.log.debug("Send PacketIn %s " % self.name)
     if (reason == None):
       reason = ofp_packet_in_reason_rev_map['OFPR_NO_MATCH']
-    if (bufferid == None):
-      bufferid = int("0xFFFFFFFF",16)
-    
-    msg = ofp_packet_in(inport = inport, bufferid = bufferid, reason = reason, 
+    if (buffer_id == None):
+      buffer_id = int("0xFFFFFFFF",16)
+
+    if xid == None: xid = xid_count.next()
+    msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
                         data = packet)
     self._connection.send(msg)
-    
+
   def send_echo(self, xid=0):
     """Send echo request
     """
     self.log.debug("Send echo %s" % self.name)
     msg = ofp_echo_request()
     self._connection.send(msg)
-        
+
+  def process_packet(self, packet, in_port):
+     """ process a packet the way a real OpenFlow switch would.
+         in_port: the integer port number
+     """
+     entry = self.table.entry_for_packet(packet, in_port)
+     if(entry != None):
+       entry.touch_packet(len(packet))
+       self._process_actions_for_packet(entry.actions, packet, in_port)
+     else:
+       # no matching entry
+       buffer_id = self._buffer_packet(packet, in_port)
+       self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_NO_MATCH)
+
+  # ==================================== #
+  #    Helper Methods                    #
+  # ==================================== #
+
+  def _output_packet(self, packet, out_port, in_port):
+    """ send a packet out some port. 
+        out_port, in_port: the integer port number """
+    def real_send(port_no):
+      if port_no not in self.ports:
+        raise RuntimeError("Invalid physical output port: %x" % port_no)
+      self.raiseEvent(SwitchDpPacketOut(self, packet, self.ports[port_no]))
+
+    if out_port < OFPP_MAX:
+      real_send(out_port)
+    elif out_port == OFPP_IN_PORT:
+      real_send(in_port)
+    elif out_port == OFPP_FLOOD or out_port == OFPP_ALL:
+      # no support for spanning tree yet -> flood=all
+      for (no,port) in self.ports.iteritems():
+        if no != in_port:
+          real_send(port)
+    elif out_port == OFPP_CONTROLLER:
+      buffer_id = self._buffer_packet(packet, in_port)
+      self.send_packet_in(in_port, buffer_id, packet, self.xid_iter.next(), reason=OFPR_ACTION)
+    else:
+      raise("Unsupported virtual output port: %x" % out_port)
+
+
+  def _buffer_packet(self, packet, in_port=None):
+    """ Find a free buffer slot to buffer the packet in. """
+    for (i, value) in enumerate(self.packet_buffer):
+      if(value==None):
+        self.packet_buffer[i] = (packet, in_port)
+        return i + 1
+    self.packet_buffer.append( (packet, in_port) )
+    return len(self.packet_buffer)
+
+  def _process_actions_for_packet_from_buffer(self, actions, buffer_id):
+    """ output and release a packet from the buffer """
+    buffer_id = buffer_id - 1
+    if(buffer_id > len(self.packet_buffer) or self.packet_buffer[buffer_id] == None):
+      self.log.warn("Invalid output buffer id: %x" % buffer_id)
+      return
+    (packet, in_port) = self.packet_buffer[buffer_id]
+    self._process_actions_for_packet(actions, packet, in_port)
+    self.packet_buffer[buffer_id] = None
+
+  def _process_actions_for_packet(self, actions, packet, in_port):
+    """ process the output actions for a packet """
+    assert(isinstance(packet, ethernet))
+
+    def output_packet(action, packet):
+      self._output_packet(packet, action.port, in_port)
+    def set_vlan_id(action, packet):
+      if not isinstance(packet, vlan): packet = vlan(packet)
+      packet.id = action.vlan_id
+    def set_vlan_pcp(action, packet):
+      if not isinstance(packet, vlan): packet = vlan(packet)
+      packet.pcp = action.vlan_pcp
+    def strip_vlan(action, packet):
+      if not isinstance(packet, vlan): packet = vlan(packet)
+      packet.pcp = action.vlan_pcp
+    def set_dl_src(action, packet):
+      packet.src = action.dl_addr
+    def set_dl_dst(action, packet):
+      packet.dst = action.dl_addr
+    def set_nw_src(action, packet):
+      if(isinstance(packet, ipv4)):
+        packet.nw_src = action.nw_addr
+    def set_nw_dst(action, packet):
+      if(isinstance(packet, ipv4)):
+        packet.nw_dst = action.nw_addr
+    def set_nw_tos(action, packet):
+      if(isinstance(packet, ipv4)):
+        packet.tos = action.nw_tos
+    def set_tp_src(action, packet):
+      if(isinstance(packet, udp) or isinstance(packet, tcp)):
+        packet.srcport = action.tp_port
+    def set_tp_dst(action, packet):
+      if(isinstance(packet, udp) or isinstance(packet, tcp)):
+        packet.dstport = action.tp_port
+    def enqueue(action, packet):
+      self.log.warn("output_enqueue not supported yet. Performing regular output")
+      output_packet(port, packet)
+
+    handler_map = {
+        OFPAT_OUTPUT: output_packet,
+        OFPAT_SET_VLAN_VID: set_vlan_id,
+        OFPAT_SET_VLAN_PCP: set_vlan_pcp,
+        OFPAT_STRIP_VLAN: strip_vlan,
+        OFPAT_SET_DL_SRC: set_dl_src,
+        OFPAT_SET_DL_DST: set_dl_dst,
+        OFPAT_SET_NW_SRC: set_nw_src,
+        OFPAT_SET_NW_DST: set_nw_dst,
+        OFPAT_SET_NW_TOS: set_nw_tos,
+        OFPAT_SET_TP_SRC: set_tp_src,
+        OFPAT_SET_TP_DST: set_tp_dst,
+        OFPAT_ENQUEUE: enqueue
+    }
+    for action in actions:
+      if(action.type not in handler_map):
+        raise NotImplementedError("Unknown action type: %x " % type)
+      handler_map[action.type](action, packet)
+
 class ControllerConnection (object):
   # Unlike of_01.Connection, this is persistent (at least until we implement a proper
   # recoco Connection Listener loop)
@@ -242,7 +399,7 @@ class ControllerConnection (object):
       try:
         if ofp_type not in self.ofp_handlers:
           raise RuntimeError("No handler for ofp_type %d" % ofp_type)
-       
+
         h = self.ofp_handlers[ofp_type]
         h(msg)
       except Exception as e:
@@ -251,11 +408,10 @@ class ControllerConnection (object):
         #              self,self,("\n" + str(self) + " ").join(str(msg).split('\n')))
         continue
     return True
-  
+
   def __str__ (self):
     return "[Con " + str(self.ID) + "]"
-        
-        
+
 class SwitchCapabilities:
     """
     Class to hold switch capabilities
@@ -334,4 +490,3 @@ class SwitchCapabilities:
         if (self.act_set_tp_dst):
             value += (1 << (ofp_action_type_rev_map['OFPAT_SET_TP_DST']+1))
         return value
-      
