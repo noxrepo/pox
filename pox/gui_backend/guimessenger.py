@@ -34,7 +34,9 @@ from pox.messenger.log_service import LogMessenger
 log = core.getLogger()
 
 class GuiMessengerService (EventMixin):
+  _wantComponents = set(['topology', 'openflow_discovery'])
   def __init__ (self, connection, params):
+    core.listenToDependencies(self, self._wantComponents)
     self.connection = connection
     connection._newlines = params.get("newlines", True) == True #HACK
 
@@ -44,8 +46,34 @@ class GuiMessengerService (EventMixin):
     # Unhook its message received listener (we will pass it those events
     # manually ourselves...)
     connection.removeListener(dict(self._logService._listeners)[MessageReceived])
-
+    
     self.listenTo(connection)
+    
+  def _handle_topology_SwitchJoin(self, event):
+    msg = {}
+    msg["type"] = "topology"
+    msg["command"] = "add"
+    msg["node_id"] = [str(event.switch.id)]
+    msg["node_type"] = "switch"
+    self.connection.send(msg)
+    
+  def _handle_topology_HostJoin(self, event):
+    msg = {}
+    msg["type"] = "topology"
+    msg["command"] = "add"
+    msg["node_id"] = [str(event.host.id)]
+    msg["node_type"] = "host"
+    self.connection.send(msg)
+    
+  def _handle_openflow_discovery_LinkEvent (self, event):
+    msg = {}
+    msg["type"] = "topology"
+    msg["command"] = "add"
+    msg["links"] = [{"src id":str(event.link.dpid1), "src port":event.link.port1,\
+                    "dst id":str(event.link.dpid2), "dst port":event.link.port2,\
+                    "src type":None, "dst type":None}]
+    msg["node_type"] = "host"
+    self.connection.send(msg)
 
   def _handle_MessageReceived (self, event, msg):
     if event.con.isReadable():
