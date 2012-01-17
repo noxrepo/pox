@@ -105,7 +105,7 @@ class Entity (object):
   _next_id = 0
   _all_ids = set()
   
-  def __init__ (self):
+  def __init__ (self, id=None):
     if id and id in Entity._all_ids:
       raise Exception("ID %s already taken" % str(id))
     else:
