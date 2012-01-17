@@ -87,7 +87,7 @@ class Communication(QtCore.QThread, QtGui.QWidget):
         
         
     def retry_connection(self):
-        print "Retrying connection to NOX...(is 'monitoring' component running?)"
+        print "Retrying connection to POX...(is 'messenger' running?)"
         sleep(2)
         try:
             self.sock.connect((self.backend_ip,self.backend_port))
@@ -97,7 +97,7 @@ class Communication(QtCore.QThread, QtGui.QWidget):
     
     def send(self, msg):
         if not self.connected:
-            print "Not connected to NOX"
+            print "Not connected to POX"
             return
         #if not "xid" in msg:
         #    msg["xid"] = self.xid_counter
@@ -142,9 +142,9 @@ class Listener(QtCore.QThread):
                 self._buf = self._buf[l:]
                 if len(self._buf) != 0 and self._buf[0].isspace():
                     self._buf = self._buf.lstrip()
-                    
+                print "Recieved :", msg
                 if msg["type"] == "topology":
-                    self.p.topology_received_signal.emit(msg)
+                    self.p.topology_received_signal.emit(json.dumps(msg))
                 elif msg["type"] == "monitoring":
                     self.p.monitoring_received_signal.emit(msg)
                 elif msg["type"] == "spanning_tree":
