@@ -37,6 +37,7 @@ enabled = False
 _strip_only = False
 
 import logging
+import sys
 
 # Name to (intensity, base_value) (more colors added later)
 COLORS = {
@@ -158,11 +159,13 @@ def launch (entire=False):
   from pox.core import core
   log = core.getLogger()
 
+  windows_hack = False
+
   # Try to work on Windows
-  import sys
   if sys.platform == "win32":
     try:
       from colorama import init
+      windows_hack = True
       init()
     except:
       log.info("You need colorama if you want color logging on Windows")
@@ -198,4 +201,10 @@ def launch (entire=False):
       return _proc(old_format(record), oldlevelname)
   dlf.format = new_format
 
-  enabled = True
+  if windows_hack:
+    if hasattr(dlf, "stream"):
+      if dlf.stream is sys.__stderr__:
+        dlf.stream = sys.stderr
+        enabled = True
+  else:
+    enabled = True
