@@ -98,6 +98,9 @@ class Entity (object):
   is to prevent protocol specific details from being leaked into this
   module... but this design decision does /not/ imply that pox.toplogy
   serves to define a generic interface to abstract entity types.
+
+  NOTE: /all/ subclasses must call this superconstructor, since
+        the unique self.id is field is used by Topology
   """
   # This is a counter used so that we can get unique IDs for entities.
   # Some entities don't need this because they have more meaningful
