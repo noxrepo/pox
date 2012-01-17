@@ -128,10 +128,10 @@ class Switch (Entity):
   Subclassed by protocol-specific switch classes,
   e.g. pox.openflow.topology.OpenFlowSwitch
   """
-  def __init__(self, id):
+  def __init__(self, id=None):
     # Switches often have something more meaningful to use as an ID
     # (e.g., a DPID or MAC address), so they take it as a parameter.
-    Entity.__init__(id)
+    Entity.__init__(self, id)
 
 class Port (Entity):
   def __init__ (self, num, hwAddr, name):
