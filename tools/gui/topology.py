@@ -719,7 +719,6 @@ class TopologyView(QtGui.QGraphicsView):
         '''
         msg = {}
         msg["hello"] = "gui"
-        #msg = json.dumps(msg)
         self.topologyInterface.send(msg)
         
     def subscribe_to_topo_changes(self):
@@ -821,8 +820,8 @@ class TopologyView(QtGui.QGraphicsView):
                     while len(srcid) < 12 :
                         srcid = "0"+srcid
                     dstid = link["dst id"]
-                    while len(srcid) < 12 :
-                        srcid = "0"+dstid
+                    while len(dstid) < 12 :
+                        dstid = "0"+dstid
                     
                     minend = str(min(srcid,dstid))
                     maxend = str(max(srcid,dstid))
@@ -844,8 +843,7 @@ class TopologyView(QtGui.QGraphicsView):
                         link["src port"] = 1
                     linkid = linkid+1
                     
-                    # Create new linkItem
-                    
+                    # Create new linkItem                    
                     linkItem = Link(self, self.nodes[srcid], self.nodes[dstid],\
                         link["src port"], link["dst port"], link["src type"],\
                         link["dst type"], linkid) 
