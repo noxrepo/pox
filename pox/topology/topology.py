@@ -77,6 +77,14 @@ class SwitchLeave (SwitchEvent):
   """
   pass
 
+class SwitchConnectionUp(SwitchEvent):
+  def __init__(self, switch, connection):
+    SwitchEvent.__init__(self, switch)
+    self.switch = switch
+    self.connection = connection
+
+class SwitchConnectionDown(SwitchEvent): pass
+
 class HostEvent (EntityEvent): pass
 class HostJoin (HostEvent): pass
 class HostLeave (HostEvent): pass
