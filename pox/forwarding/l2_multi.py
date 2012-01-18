@@ -145,6 +145,7 @@ class Switch (EventMixin):
     self.connection = None
     self.ports = None
     self.dpid = None
+    self._listeners = None
 
   def __repr__ (self):
     return dpidToStr(self.dpid)
