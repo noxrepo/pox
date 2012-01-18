@@ -218,6 +218,31 @@ class BarrierIn (Event):
     self.dpid = connection.dpid
     self.xid = ofp.xid
 
+class ConnectionIn (Event):
+  def __init__ (self, dpid):
+    self.dpid = dpid
+    self.hub = None
+
+class OpenFlowSwitchArbiter (EventMixin):
+  """
+  Determines which OpenFlowHub gets the switch.
+  Default implementation always just gives it to core.openflow
+  """
+  _eventMixin_evens = set([
+    ConnectionIn,
+  ])
+  def __init__ (self, default = False):
+    """ default as False causes it to always use core.openflow """
+    self._default = default
+
+  def getHub (self, dpid):
+    e = ConnectionIn(dpid)
+    self.raiseEventNoErrors(e)
+    if e.hub is None:
+      e.hub = self._default
+    if e.hub is False:
+      e.hub = core.openflow
+    return e.hub
 
 class OpenFlowHub (EventMixin):
   """
@@ -270,7 +295,14 @@ class OpenFlowHub (EventMixin):
       print "Couldn't send to", dpid, "because we're not connected to it!"
       return False
 
-def launch ():
+  def _connect (self, con):
+    self._connections[con.dpid] = con
+  def _disconnect (self, dpid):
+    del self._connections[dpid]
+
+def launch (default_arbiter=True):
   if core.hasComponent("openflow"):
     return
+  if default_arbiter:
+    core.registerNew(OpenFlowSwitchArbiter)
   core.register("openflow", OpenFlowHub())
