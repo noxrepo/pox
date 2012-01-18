@@ -220,6 +220,7 @@ class BarrierIn (Event):
 
 class ConnectionIn (Event):
   def __init__ (self, dpid):
+    super(ConnectionIn,self).__init__()
     self.dpid = dpid
     self.hub = None
 
@@ -228,7 +229,7 @@ class OpenFlowSwitchArbiter (EventMixin):
   Determines which OpenFlowHub gets the switch.
   Default implementation always just gives it to core.openflow
   """
-  _eventMixin_evens = set([
+  _eventMixin_events = set([
     ConnectionIn,
   ])
   def __init__ (self, default = False):
