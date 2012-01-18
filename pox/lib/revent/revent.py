@@ -196,12 +196,18 @@ class EventMixin (object):
   # to True, all events are acceptable.
   _eventMixin_events = set()
 
+  def _eventMixin_addEvents (self, events):
+    for e in events:
+      self._eventMixin_addEvent(e)
   def _eventMixin_addEvent (self, eventType):
     self._eventMixin_init()
-    if self._eventMixin_events == True:
-      # Do nothing, all events already accepted!
-      # print warning?
-      return
+    assert self._eventMixin_events is not True
+    if False:
+      pass
+    #if self._eventMixin_events == True:
+    #  # Do nothing, all events already accepted!
+    #  # print warning?
+    #  return
     elif self._eventMixin_events == None:
       self._eventMixin_events = set()
     self._eventMixin_events.add(eventType)
