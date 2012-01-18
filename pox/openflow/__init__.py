@@ -176,35 +176,37 @@ class ErrorIn (Event):
     self.ofp = ofp
 
   def asString (self):
-    def lookup (m, v):
-      if v in m:
-        return m[v]
-      else:
-        return "Unknown/" + str(v)
+    return self.ofp.show()
 
-    #TODO: The show() or something in ofp_error actually does some clever
-    #      stuff now to stringize error messages.  Refactor that and the
-    #      (less clever) code below.
-    s = 'Type: ' + lookup(of.ofp_error_type_map, self.ofp.type)
-    s += ' Code: '
-
-    responses = {
-      of.OFPET_HELLO_FAILED    : of.ofp_hello_failed_code,
-      of.OFPET_BAD_REQUEST     : of.ofp_bad_request_code,
-      of.OFPET_BAD_ACTION      : of.ofp_bad_action_code,
-      of.OFPET_FLOW_MOD_FAILED : of.ofp_flow_mod_failed_code,
-      of.OFPET_PORT_MOD_FAILED : of.ofp_port_mod_failed_code,
-      of.OFPET_QUEUE_OP_FAILED : of.ofp_queue_op_failed_code,
-    }
-
-    if self.ofp.type in responses:
-      s += lookup(responses[self.ofp.type],self.ofp.code)
-    else:
-      s += "Unknown/" + str(self.ofp.code)
-    if self.ofp.type == of.OFPET_HELLO_FAILED:
-      s += lookup(of.ofp_hello_failed_code, self.ofp.type)
-
-    return s
+#    def lookup (m, v):
+#      if v in m:
+#        return str(m[v])
+#      else:
+#        return "Unknown/" + str(v)
+#
+#    #TODO: The show() in ofp_error actually does some clever
+#    #      stuff now to stringize error messages.  Refactor that and the
+#    #      (less clever) code below.
+#    s = 'Type: ' + lookup(of.ofp_error_type_map, self.ofp.type)
+#    s += ' Code: '
+#
+#    responses = {
+#      of.OFPET_HELLO_FAILED    : of.ofp_hello_failed_code,
+#      of.OFPET_BAD_REQUEST     : of.ofp_bad_request_code,
+#      of.OFPET_BAD_ACTION      : of.ofp_bad_action_code,
+#      of.OFPET_FLOW_MOD_FAILED : of.ofp_flow_mod_failed_code,
+#      of.OFPET_PORT_MOD_FAILED : of.ofp_port_mod_failed_code,
+#      of.OFPET_QUEUE_OP_FAILED : of.ofp_queue_op_failed_code,
+#    }
+#
+#    if self.ofp.type in responses:
+#      s += lookup(responses[self.ofp.type],self.ofp.code)
+#    else:
+#      s += "Unknown/" + str(self.ofp.code)
+#    if self.ofp.type == of.OFPET_HELLO_FAILED:
+#      s += lookup(of.ofp_hello_failed_code, self.ofp.type)
+#
+#    return s
 
 class BarrierIn (Event):
   """
