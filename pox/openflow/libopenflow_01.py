@@ -577,8 +577,13 @@ class ofp_match (object):
       wildcards |= (32 << OFPFW_NW_DST_SHIFT)
     return wildcards
 
+  @property
   def is_wildcarded (self):
     return self.wildcards & OFPFW_ALL != 0
+
+  @property
+  def is_exact (self):
+    return not self.is_wildcarded
 
   def unpack (self, binaryString):
     if (len(binaryString) < 40):
