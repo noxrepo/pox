@@ -112,11 +112,35 @@ class EthAddr (object):
     #elif isinstance(addr, int) or isinstance(addr, long):
     #  addr = long(addr)
 
+  def isGlobal (self):
+    """
+    Returns True if this is a globally unique (OUI enforced) address.
+    """
+    return not self.isLocal()
+
+  def isLocal (self):
+    """
+    Returns True if this is a locally-administered (non-global) address.
+    """
+    return True if (ord(self._value[0]) & 2) else False
+
+  @property
+  def is_local (self):
+    return self.isLocal()
+
+  @property
+  def is_global (self):
+    return self.isGlobal()
+
   def isMulticast (self):
     """
     Returns True if this is a multicast address.
     """
     return True if (ord(self._value[0]) & 1) else False
+
+  @property
+  def is_multicast (self):
+    return self.isMulticast()
 
   def toRaw (self):
     """
