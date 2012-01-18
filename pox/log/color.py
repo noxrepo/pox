@@ -25,7 +25,7 @@ LEVEL_COLORS = {
   'DEBUG': 'CYAN',
   'INFO': 'GREEN',
   'WARNING': 'YELLOW',
-  'ERROR': 'red',
+  'ERROR': 'RED',
   'CRITICAL': 'blink@@@RED',
 }
 
