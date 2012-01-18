@@ -195,6 +195,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     self._connection = None
     self._listeners = []
     self._reconnectTimeout = None # Timer for reconnection
+    self.xid_generator = count.count( (dpid & 0xFFFF) << 16 + 1)
 
   def _setConnection (self, connection, ofp=None):
     ''' ofp - a FeaturesReply message '''
@@ -223,6 +224,10 @@ class OpenFlowSwitch (EventMixin, Switch):
         del self.ports[p]
     if connection is not None:
       self._listeners = self.listenTo(connection, prefix="con")
+      self.raiseEvent(SwitchConnectionUp(switch=self, connection = connection))
+    else:
+      self.raiseEvent(SwitchConnectionDown(switch=self))
+
 
   def _timer_ReconnectTimeout (self):
     """ Called if we've been disconnected for RECONNECT_TIMEOUT seconds """
@@ -274,7 +279,10 @@ class OpenFlowSwitch (EventMixin, Switch):
 
   def __repr__ (self):
     return "<%s %s>" % (self.__class__.__name__, dpidToStr(self.dpid))
-  
+
+  @property
+  def connected(self):
+    return self._connection != None
 
 def launch ():
   if not core.hasComponent("openflow_topology"):
