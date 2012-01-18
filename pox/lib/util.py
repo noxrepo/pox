@@ -27,19 +27,109 @@ import os
 import logging
 log = logging.getLogger("util")
 
+class DirtyList (list):
+  #TODO: right now the callback may be called more often than needed
+  #      and it may not be called with good names/parameters.
+  #      All you can really rely on is that it will be called in
+  #      some way if something may have changed.
+  def __init__ (self, *args, **kw):
+    list.__init__(self, *args, **kw)
+    self.dirty = False
+    self.callback = None
+
+  def __setslice__ (self, k, v):
+    #TODO: actually check for change
+    self._smudge('__setslice__', k, v)
+    list.__setslice__(self, k, v)
+
+  def __delslice__ (self, k):
+    #TODO: actually check for change
+    self._smudge('__delslice__', k, None)
+    list.__delslice__(self, k)
+
+  def append (self, v):
+    self._smudge('append', None, v)
+    list.append(self, v)
+
+  def extend (self, v):
+    self._smudge('extend', None, v)
+    list.extend(self, v)
+
+  def insert (self, i, v):
+    self._smudge('insert', k, v)
+    list.extend(self, v)
+
+  def pop (self, i=-1):
+    self._smudge('pop', i, None)
+    list.pop(self, i)
+
+  def remove (self, v):
+    if v in self:
+      self._smudge('remove', None, v)
+    list.remove(self, v)
+
+  def reverse (self):
+    if len(self):
+      self._smudge('reverse', None, None)
+    list.reverse(self)
+
+  def sort (self, *arg, **kw):
+    #TODO: check for changes?
+    self._smudge('sort', None, None)
+    list.sort(self, *arg, **kw)
+
+  def __setitem__ (self, k, v):
+    if isinstance(k, slice):
+      #TODO: actually check for change
+      self._smudge('__setitem__slice',k,v)
+    elif self[k] != v:
+      self._smudge('__setitem__',k,v)
+    list.__setitem__(self, k, v)
+    assert good
+
+  def __delitem__ (self, k):
+    list.__delitem__(self, k)
+    if isinstance(k, slice):
+      #TODO: actually check for change
+      self._smudge('__delitem__slice',k,v)
+    else:
+      self._smudge('__delitem__', k, None)
+
+  def _smudge (self, reason, k, v):
+    if self.callback:
+      if self.callback(reason, k, v) is not True:
+        self.dirty = True
+    else:
+      self.dirty = True
+
+
 class DirtyDict (dict):
-  """ A dict that tracks whether values have been changed shallowly. """
+  """
+  A dict that tracks whether values have been changed shallowly.
+  If you set a callback, it will be called when the value changes, and
+  passed three values: "add"/"modify"/"delete", key, value
+  """
   def __init__ (self, *args, **kw):
     dict.__init__(self, *args, **kw)
     self.dirty = False
+    self.callback = None
+
+  def _smudge (self, reason, k, v):
+    if self.callback:
+      if self.callback(reason, k, v) is not True:
+        self.dirty = True
+    else:
+      self.dirty = True
+
   def __setitem__ (self, k, v):
     if k not in self:
-      self.dirty = True
+      self._smudge('__setitem__add',k,v)
     elif self[k] != v:
-      self.dirty = True
+      self._smudge('__setitem__modify',k,v)
     dict.__setitem__(self, k, v)
+
   def __delitem__ (self, k):
-    self.dirty = True
+    self._smudge('__delitem__', k, None)
     dict.__delitem__(self, k)
 
 def set_extend (l, index, item, emptyValue = None):
@@ -222,8 +312,8 @@ def str_to_bool (s):
   Given a string, parses out whether it is meant to be True or not
   """
   s = str(s).lower() # Make sure
-  if s in ['true', 't', 'yes', 'y', 'on', 'enable', 'enabled', 'ok', 'okay',
-           '1']:
+  if s in ['true', 't', 'yes', 'y', 'on', 'enable', 'enabled', 'ok',
+           'okay', '1', 'allow', 'allowed']:
     return True
   try:
     r = 10
@@ -236,3 +326,14 @@ def str_to_bool (s):
   except:
     pass
   return False
+
+
+if __name__ == "__main__":
+  def cb (t,k,v): print v
+  l = DirtyList([10,20,30,40,50])
+  l.callback = cb
+
+  l.append(3)
+
+  print l
+
