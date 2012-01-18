@@ -207,6 +207,7 @@ class NOMFlowTable(EventMixin):
   ADD = OFPFC_ADD
   REMOVE = OFPFC_DELETE
   REMOVE_STRICT = OFPFC_DELETE_STRICT
+  TIME_OUT = 2
 
   def __init__(self, switch):
     EventMixin.__init__(self)
@@ -279,7 +280,7 @@ class NOMFlowTable(EventMixin):
       todo = map(lambda(e): (NOMFlowTable.ADD, e), self.flow_table.entries) + self.pending
     else:
       todo = [ op for op in self.pending
-          if op not in self.pending_op_to_barrier or self.pending_op_to_barrier[op][1] + TIME_OUT < time.time ]
+          if op not in self.pending_op_to_barrier or (self.pending_op_to_barrier[op][1] + NOMFlowTable.TIME_OUT) < time.time ]
 
     for op in todo:
       fmod_xid = self.switch.xid_generator.next()
@@ -299,7 +300,7 @@ class NOMFlowTable(EventMixin):
     self._sync_pending(clear=True)
 
   def _handle_SwitchConnectionDown(self, event):
-    # connection down. to bad for our unconfirmed entries
+    # connection down. too bad for our unconfirmed entries
     self.pending_barrier_to_ops = {}
     self.pending_op_to_barrier = {}
 
