@@ -2985,9 +2985,10 @@ ofp_queue_op_failed_code_rev_map = {
 #5. Symmetric Messages
 class ofp_hello (ofp_header):
   def __init__ (self, **kw):
-    ofp_header.__init__(self, **kw)
+    ofp_header.__init__(self)
     self.header_type = OFPT_HELLO
     self.length = len(self)
+    initHelper(self, kw)
 
   def _assert (self):
     return (True, None)
@@ -3024,9 +3025,10 @@ class ofp_hello (ofp_header):
 
 class ofp_echo_request (ofp_header):
   def __init__ (self, **kw):
-    ofp_header.__init__(self, **kw)
+    ofp_header.__init__(self)
     self.header_type = OFPT_ECHO_REQUEST
-    self.body = []
+    self.body = b''
+    initHelper(self, kw)
 
   def _assert (self):
     return (True, None)
@@ -3035,10 +3037,9 @@ class ofp_echo_request (ofp_header):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
-    for i in self.body:
-      packed += struct.pack("!B",i)
+    packed += self.body
     return packed
 
   def unpack (self, binaryString):
@@ -3049,14 +3050,11 @@ class ofp_echo_request (ofp_header):
     if len(binaryString) < self.length:
       return binaryString
     l = self.length - 8
-    # Must be a better way to do this (array?)...
-    self.body = list(struct.unpack_from(str(l) + "B", binaryString, 8))
+    self.body = binaryString[8:8+l]
     return binaryString[8 + l:]
 
   def __len__ (self):
-    l = 8
-    l += len(self.body)*1
-    return l
+    return 8 + len(self.body)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3075,9 +3073,10 @@ class ofp_echo_request (ofp_header):
 
 class ofp_echo_reply (ofp_header):
   def __init__ (self, **kw):
-    ofp_header.__init__(self, **kw)
+    ofp_header.__init__(self)
     self.header_type = OFPT_ECHO_REPLY
-    self.body = []
+    self.body = b''
+    initHelper(self, kw)
 
   def _assert (self):
     return (True, None)
@@ -3086,10 +3085,9 @@ class ofp_echo_reply (ofp_header):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
-    for i in self.body:
-      packed += struct.pack("!B",i)
+    packed += self.body
     return packed
 
   def unpack (self, binaryString):
@@ -3100,14 +3098,11 @@ class ofp_echo_reply (ofp_header):
     if len(binaryString) < self.length:
       return binaryString
     l = self.length - 8
-    # Must be a better way to do this (array?)...
-    self.body = list(struct.unpack_from(str(l) + "B", binaryString, 8))
+    self.body = binaryString[8:8+l]
     return binaryString[8 + l:]
 
   def __len__ (self):
-    l = 8
-    l += len(self.body)*1
-    return l
+    return 8 + len(self.body)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
