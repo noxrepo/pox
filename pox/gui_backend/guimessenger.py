@@ -28,9 +28,9 @@ from pox.core import core
 from pox.messenger.messenger import *
 from pox.lib.revent import *
 import traceback
-
+"""
 from pox.messenger.log_service import LogMessenger
-
+"""
 log = core.getLogger()
 
 class GuiMessengerService (EventMixin):
@@ -38,15 +38,16 @@ class GuiMessengerService (EventMixin):
   def __init__ (self, connection, params):
     core.listenToDependencies(self, self._wantComponents)
     self.connection = connection
+    """
     connection._newlines = params.get("newlines", True) == True #HACK
-
+    
     # Make LogMessenger always send back "source":"logger"
     params['opaque'] = {'type':'log'}
     self._logService = LogMessenger(connection, params) # Aggregate
     # Unhook its message received listener (we will pass it those events
     # manually ourselves...)
     connection.removeListener(dict(self._logService._listeners)[MessageReceived])
-    
+    """
     self.listenTo(connection)
     
   def _handle_topology_SwitchJoin(self, event):
@@ -95,7 +96,8 @@ class GuiMessengerService (EventMixin):
             elif r["type"] == "flowtracer":
               pass
             elif r["type"] == "log":
-              self._logService._processParameters(r)
+              pass
+              #self._logService._processParameters(r)
             else:
               log.warn("Unknown type for message: %s", r)
           else:
