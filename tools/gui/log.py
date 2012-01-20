@@ -152,7 +152,7 @@ class LogDisplay(QtGui.QTableView):
         #self.setFont(QtGui.QFont("Arial", 10))
         
         self.setModel(self.parent.dbWrapper.model)
-        self.setSortingEnabled(True)
+        #self.setSortingEnabled(True)
         
         self.verticalHeader().setVisible(False)
         
