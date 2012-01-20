@@ -95,7 +95,7 @@ class OpenFlowTopology (EventMixin):
       sw = OpenFlowSwitch(event.dpid)
       add = True
     else:
-      if sw.connection is not None:
+      if sw._connection is not None:
         log.warn("Switch %s connected, but... it's already connected!" %
                  (dpidToStr(event.dpid),))
     #sw._setConnection(event.connection, event.ofp)
@@ -110,10 +110,10 @@ class OpenFlowTopology (EventMixin):
       log.warn("Switch %s disconnected, but... it doesn't exist!" %
                (dpidToStr(event.dpid),))
     else:
-      if sw.connection is None:
+      if sw._connection is None:
         log.warn("Switch %s disconnected, but... it's wasn't connected!" %
                  (dpidToStr(event.dpid),))
-      sw.connection = None
+      sw._connection = None
       log.info("Switch " + str(event.dpid) + " disconnected")
 
 
@@ -277,8 +277,8 @@ class OpenFlowSwitch (EventMixin, Switch):
   def send(self, *args, **kw):
     return self._connection.send(*args, **kw)
 
-  def read(self):
-   return self._connection.read()
+  def read(self, *args, *kw):
+   return self._connection.read(*args, **kw)
 
   def __repr__ (self):
     return "<%s %s>" % (self.__class__.__name__, dpidToStr(self.dpid))
