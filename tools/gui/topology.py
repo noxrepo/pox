@@ -362,7 +362,7 @@ class Link(QtGui.QGraphicsItem):
         self.isUp = True        # up/down state  
         self.showLink = True    # Draw link
         self.showID = False     # Draw link ID   
-        self.showPorts = False  # Draw connecting ports  
+        self.showPorts = True   # Draw connecting ports  
         
         # Link details menu
         self.linkDetails = QtGui.QMenu('&Link Details')
