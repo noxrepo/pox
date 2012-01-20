@@ -717,8 +717,9 @@ class TopologyView(QtGui.QGraphicsView):
         '''
         Initialize communication with backend messenger
         '''
-        msg = {}
-        msg["hello"] = "gui"
+        msg = {"hello":"mux"}
+        self.topologyInterface.send(msg)
+        msg = {"_mux":"gui", "hello":"gui"}
         self.topologyInterface.send(msg)
         
     def subscribe_to_topo_changes(self):
@@ -726,6 +727,7 @@ class TopologyView(QtGui.QGraphicsView):
         Subscribe to topology backend for topology changes
         '''
         msg = {}
+        msg["_mux"] = "gui"
         msg["type"] = "topology"
         msg["command"] = "subscribe"
         msg["node_type"] = "all"
@@ -733,10 +735,10 @@ class TopologyView(QtGui.QGraphicsView):
         self.topologyInterface.send(msg)
         
         msg = {}
+        msg["_mux"] = "gui"
         msg["type"] = "topology"
         msg["command"] = "subscribe"
         msg["link_type"] = "all"
-        #msg = json.dumps(msg)
         self.topologyInterface.send(msg)
         
     def get_nodes(self):
@@ -744,6 +746,7 @@ class TopologyView(QtGui.QGraphicsView):
         Ask topology for an updated nodes set
         '''
         msg = {}
+        msg["_mux"] = "gui"
         msg["type"] = "topology"
         msg["command"] = "request"
         msg["node_type"] = "all"
@@ -755,6 +758,7 @@ class TopologyView(QtGui.QGraphicsView):
         Ask topology for an updated links set
         '''
         msg = {}
+        msg["_mux"] = "gui"
         msg["type"] = "topology"
         msg["command"] = "request"
         msg["link_type"] = "all"
