@@ -277,7 +277,7 @@ class OpenFlowSwitch (EventMixin, Switch):
   def send(self, *args, **kw):
     return self._connection.send(*args, **kw)
 
-  def read(self, *args, *kw):
+  def read(self, *args, **kw):
    return self._connection.read(*args, **kw)
 
   def __repr__ (self):
