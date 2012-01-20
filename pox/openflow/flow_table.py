@@ -196,7 +196,7 @@ class SwitchFlowTable(FlowTable):
       is_strict = (flow_mod.command == OFPFC_DELETE_STRICT)
       return ("removed", self.remove_matching_entries(flow_mod.match, flow_mod.priority, strict=True))
     else:
-      raise AttributeError("Command not yet implemented: %s" % command)
+      raise AttributeError("Command not yet implemented: %s" % flow_mod.command)
 
 class NOMFlowTable(EventMixin):
   _eventMixin_events = set([FlowTableModification])
