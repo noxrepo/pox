@@ -289,11 +289,15 @@ class LogWidget(QtGui.QWidget):
         '''
         Initialize communication with backend messenger
         '''
-        msg = {}
-        msg['hello'] = 'logger'
+        #msg = {"hello":"mux"}
+        #self.parent.topoWidget.topologyView.topologyInterface.send(msg)
+        msg = {"_mux":"log", "hello":"log"}
+        self.parent.topoWidget.topologyView.topologyInterface.send(msg)
+        msg = {"_mux":"log"}
         msg['type']  = 'log'
         msg['json']  = True
         msg['newlines'] = False
+        self.parent.topoWidget.topologyView.topologyInterface.send(msg)
         self.parent.topoWidget.topologyView.topologyInterface.send(msg)
         
     def __del__(self):

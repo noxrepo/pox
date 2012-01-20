@@ -138,7 +138,7 @@ class Listener(QtCore.QThread):
                     # Need more data before it's a valid message
                     # (.. or the stream is corrupt and things will never be okay ever again)
                     return
-  
+                        
                 self._buf = self._buf[l:]
                 if len(self._buf) != 0 and self._buf[0].isspace():
                     self._buf = self._buf.lstrip()
