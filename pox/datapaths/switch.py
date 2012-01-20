@@ -27,10 +27,10 @@ import itertools
 class SwitchDpPacketOut (Event):
   """ Event raised by SwitchImpl when a dataplane packet is sent out a port """
   def __init__ (self, switch, packet, port):
-     Event.__init__(self)
-     self.switch = switch
-     self.packet = packet
-     self.port = port
+    Event.__init__(self)
+    self.switch = switch
+    self.packet = packet
+    self.port = port
 
 def _default_port_list(num_ports=4, prefix=0):
   return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x" % (prefix % 255, i))) for i in range(1, num_ports+1)]
@@ -85,7 +85,7 @@ class SwitchImpl(EventMixin):
       raise AttributeError("Must give /either/ connection or socket (not none, not both)")
     if socket != None:
       ##Reference to connection with controller
-      self._connection = ControllerConnection(sock, ofp_handlers)
+      self._connection = ControllerConnection(socket, ofp_handlers)
     else:
       connection.ofp_handlers = ofp_handlers
       self._connection = connection
@@ -177,7 +177,7 @@ class SwitchImpl(EventMixin):
     if (buffer_id == None):
       buffer_id = int("0xFFFFFFFF",16)
 
-    if xid == None: xid = xid_count.next()
+    if xid == None: xid = self.xid_count.next()
     msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
                         data = packet)
     self._connection.send(msg)
@@ -190,17 +190,17 @@ class SwitchImpl(EventMixin):
     self._connection.send(msg)
 
   def process_packet(self, packet, in_port):
-     """ process a packet the way a real OpenFlow switch would.
-         in_port: the integer port number
-     """
-     entry = self.table.entry_for_packet(packet, in_port)
-     if(entry != None):
-       entry.touch_packet(len(packet))
-       self._process_actions_for_packet(entry.actions, packet, in_port)
-     else:
-       # no matching entry
-       buffer_id = self._buffer_packet(packet, in_port)
-       self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_NO_MATCH)
+    """ process a packet the way a real OpenFlow switch would.
+        in_port: the integer port number
+    """
+    entry = self.table.entry_for_packet(packet, in_port)
+    if(entry != None):
+      entry.touch_packet(len(packet))
+      self._process_actions_for_packet(entry.actions, packet, in_port)
+    else:
+      # no matching entry
+      buffer_id = self._buffer_packet(packet, in_port)
+      self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_NO_MATCH)
 
   # ==================================== #
   #    Helper Methods                    #
@@ -285,7 +285,7 @@ class SwitchImpl(EventMixin):
         packet.dstport = action.tp_port
     def enqueue(action, packet):
       self.log.warn("output_enqueue not supported yet. Performing regular output")
-      output_packet(port, packet)
+      output_packet(action.tp_port, packet)
 
     handler_map = {
         OFPAT_OUTPUT: output_packet,
