@@ -107,15 +107,15 @@ class LogMessenger (logging.Handler):
                          str(record.exc_info[1]),
                          traceback.format_tb(record.exc_info[2],1)]
         o['exc'] = traceback.format_exception(*record.exc_info)
+    o['type'] = 'log'
     self.connection.send(o, default=str)
-
 
 class LogMessengerListener (object):
   """
   Takes care of spawning individual LogMessengers
 
   Hello message is like:
-  {"hello":"logger"}
+  {"hello":"log"}
   You can also include any of the config parameters for LogMessenger
   (like "level").
   """
@@ -125,7 +125,7 @@ class LogMessengerListener (object):
   def _handle_global_MessageReceived (self, event, msg):
     try:
       json = False
-      if msg['hello'] == 'logger':
+      if msg['hello'] == 'log':
         # It's for me!
         try:
           LogMessenger(event.con, msg)
@@ -142,11 +142,11 @@ def launch ():
     if not core.hasComponent("messenger"):
       if event is None:
         # Only do this the first time
-        log.warning("Deferring firing up LogMessenger because Messenger isn't up yet")
-      core.addListenerByName("ComponentRegistered", realStart, once=True)
+        log.warning("Deferring firing up LogMessengerListener because Messenger isn't up yet")
+        core.addListenerByName("ComponentRegistered", realStart, once=True)
       return
-    global logMessengerListener
-    logMessengerListener = LogMessengerListener()
-    log.info("Up...")
+    if not core.hasComponent(LogMessengerListener.__name__):
+      core.registerNew(LogMessengerListener)
+      log.info("Up...")
 
   realStart()
