@@ -27,9 +27,10 @@ class Flow_Tracer_View(View):
         
         # Subscribe to messages from backend 
         msg = {}
-        msg ["type"] = "flowtracer"
-        msg ["command"] = "subscribe"
-        msg ["msg_type"] = "highlight"
+        msg["_mux"] = "gui"
+        msg["type"] = "flowtracer"
+        msg["command"] = "subscribe"
+        msg["msg_type"] = "highlight"
         self.topologyInterface.send( msg ) 
         
         self.highlighted_path = []

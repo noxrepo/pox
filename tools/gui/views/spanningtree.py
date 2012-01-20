@@ -26,9 +26,10 @@ class STP_View(View):
             
         # Subscribe for stp_ports 
         msg = {}
-        msg ["type"] = "spanning_tree"
-        msg ["command"] = "subscribe"
-        msg ["msg_type"] = "stp_ports"
+        msg["_mux"] = "gui"
+        msg["type"] = "spanning_tree"
+        msg["command"] = "subscribe"
+        msg["msg_type"] = "stp_ports"
         self.topologyInterface.send( msg )     
         
         # Holds ST state (enabled links, root)    

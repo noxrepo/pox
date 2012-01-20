@@ -30,9 +30,10 @@ class Sample_Routing_View(View):
             
         # Subscribe to messages from backend 
         msg = {}
-        msg ["type"] = "sample_routing"
-        msg ["command"] = "subscribe"
-        msg ["msg_type"] = "highlight"
+        msg["_mux"] = "gui"
+        msg["type"] = "sample_routing"
+        msg["command"] = "subscribe"
+        msg["msg_type"] = "highlight"
         self.topologyInterface.send( msg )     
         
         # throw paths that we want to highlight in this queue and remove them

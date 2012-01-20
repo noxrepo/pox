@@ -32,6 +32,7 @@ class Monitoring_View(View):
             
         # Subscribe for linkutils
         msg = {}
+        msg["_mux"] = "gui"
         msg ["type"] = "monitoring"
         msg ["command"] = "subscribe"
         msg ["msg_type"] = "linkutils"
@@ -39,6 +40,7 @@ class Monitoring_View(View):
             
     def get_stats(self, dpid, command):
         queryMsg = {}
+        msg["_mux"] = "gui"
         queryMsg["type"] = "monitoring"
         queryMsg["dpid"] = dpid
         queryMsg["command"] = command
