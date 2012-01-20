@@ -69,6 +69,7 @@ class MuxConnection (MessengerConnection):
   def send (self, whatever, **kw):
     whatever = dict(whatever)
     whatever['_mux'] = self.channelName
+    print "***MUX SENDING*** to", self.channelName, whatever 
     MessengerConnection.send(self, whatever, **kw)
 
   def sendRaw (self, data):
@@ -94,6 +95,7 @@ class MuxSource (EventMixin):
         if channelName is not None:
           del r['_mux']
           if channelName not in self.channels:
+            print self.__class__.__name__, "- creating channel", channelName
             # New channel
             channel = MuxConnection(self, channelName, event.con)
             self.channels[channelName] = channel
