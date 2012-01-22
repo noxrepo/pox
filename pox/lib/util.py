@@ -328,6 +328,28 @@ def str_to_bool (s):
   return False
 
 
+def hexdump (data):
+  if isinstance(data, str):
+    data = [ord(c) for c in data]
+  o = ""
+  def chunks (data, length):
+    return (data[i:i+length] for i in xrange(0, len(data), length))
+  def filt (c):
+    if c >= 32 and c <= 126: return chr(c)
+    return '.'
+
+  for i,chunk in enumerate(chunks(data,16)):
+    if i > 0: o += "\n"
+    o += "%04x: " % (i * 16,)
+    l = ' '.join("%02x" % (c,) for  c in chunk)
+    l = "%-48s" % (l,)
+    l = l[:3*8-1] + "  " + l[3*8:]
+    t = ''.join([filt(x) for x in chunk])
+    l += '  %-16s' % (t,)
+    o += l
+  return o
+
+
 if __name__ == "__main__":
   def cb (t,k,v): print v
   l = DirtyList([10,20,30,40,50])
