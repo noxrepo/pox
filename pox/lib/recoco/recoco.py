@@ -756,6 +756,7 @@ class CallLaterTask (BaseTask):
     self._calls = deque()
 
   def callLater (self, func, *args, **kw):
+    assert callable(func)
     self._calls.append((func,args,kw))
     self._pinger.ping()
 
