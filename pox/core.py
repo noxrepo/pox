@@ -191,6 +191,15 @@ class POXCore (EventMixin):
   def version_string (self):
     return "POX " + '.'.join(map(str, self.version))
 
+  def callDelayed (_self, _seconds, _func, *args, **kw):
+    """
+    Calls the function at a later time.
+    This is just a wrapper around a recoco timer.
+    """
+    t = recoco.Timer(_seconds, _func, args=args, kw=kw,
+                     scheduler = _self.scheduler)
+    return t
+
   def callLater (_self, _func, *args, **kw):
     # first arg is `_self` rather than `self` in case the user wants
     # to specify self as a keyword argument
