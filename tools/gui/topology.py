@@ -334,8 +334,7 @@ class Link(QtGui.QGraphicsItem):
     
     Type = QtGui.QGraphicsItem.UserType + 2
 
-    def __init__(self, graphWidget, sourceNode, destNode, sport, dport,\
-                        stype, dtype, uid):
+    def __init__(self, graphWidget, sourceNode, destNode, sport, dport, uid):
         QtGui.QGraphicsItem.__init__(self)
         
         self.graph = graphWidget
@@ -351,8 +350,6 @@ class Link(QtGui.QGraphicsItem):
         self.dest = destNode
         self.sport = sport
         self.dport = dport
-        self.stype = stype
-        self.dtype = dtype
         self.drawArrow = False
         self.source.addLink(self)
         self.dest.addLink(self)
@@ -695,7 +692,7 @@ class TopologyView(QtGui.QGraphicsView):
         self.setCursor(QtCore.Qt.ArrowCursor)        
         
         # Connect signals to slots
-        self.topologyInterface.topology_received_signal[str].connect \
+        self.topologyInterface.topology_received_signal[object].connect \
                 (self.got_topo_msg)
         self.updateAllSignal.connect(self.updateAll)
         
@@ -776,10 +773,9 @@ class TopologyView(QtGui.QGraphicsView):
         '''
         Handle received links/nodes message 
         '''
-        jsonmsg = json.loads(str(msg))
-        if "node_id" in jsonmsg:
-            if jsonmsg["command"] == "add":
-                nodes = jsonmsg["node_id"]
+        if "node_id" in msg:
+            if msg["command"] == "add":
+                nodes = msg["node_id"]
                 new_nodes = []
                 # Populate nodes
                 for nodeID in nodes:
@@ -788,16 +784,16 @@ class TopologyView(QtGui.QGraphicsView):
                         nodeID = "0"+nodeID
                     # If nodeItem doesn't already exist
                     if nodeID not in self.nodes.keys():
-                        nodeItem = Node(self, nodeID, jsonmsg["node_type"])
+                        nodeItem = Node(self, nodeID, msg["node_type"])
                         self.nodes[nodeID] = nodeItem
                         new_nodes.append(nodeItem)  
                 self.addNodes(new_nodes)
                 self.positionNodes(new_nodes)
                 
-            elif jsonmsg["command"] == "delete":
-                nodes = jsonmsg["node_id"]
+            elif msg["command"] == "delete":
+                nodes = msg["node_id"]
                 for nodeID in nodes:
-                    if not jsonmsg["node_type"] == "host":
+                    if not msg["node_type"] == "host":
                         # prepend 0s until len = 12
                         while len(nodeID) < 12 :
                             nodeID = "0"+nodeID
@@ -810,8 +806,8 @@ class TopologyView(QtGui.QGraphicsView):
                         del self.nodes[nodeID]
                         
         elif "links" in msg:
-            if jsonmsg["command"] == "add":
-                links = jsonmsg["links"]
+            if msg["command"] == "add":
+                links = msg["links"]
                 new_links = []
                 # Populate Links
                 linkid = len(self.links)
@@ -831,14 +827,6 @@ class TopologyView(QtGui.QGraphicsView):
                     maxend = str(max(srcid,dstid))
                     key = minend+'-'+maxend
                     
-                    '''
-                    if key in self.links:
-                        # re-draw link (assuming it has been removed)
-                        l = self.links[key]
-                        self.topoScene.addItem(l)
-                        l.update()
-                    ''' 
-                    
                     if key in self.links:
                         continue
                        
@@ -847,13 +835,12 @@ class TopologyView(QtGui.QGraphicsView):
                         link["src port"] = 1
                     linkid = linkid+1
                     
-                    # Create new linkItem                    
+                    # Create new linkItem
                     linkItem = Link(self, self.nodes[srcid], self.nodes[dstid],\
-                        link["src port"], link["dst port"], link["src type"],\
-                        link["dst type"], linkid) 
-                    self.links[key]=linkItem
-                    
+                        link["src port"], link["dst port"], linkid) 
+                    self.links[key]=linkItem                    
                     new_links.append(linkItem)
+                    
                 self.addLinks(new_links)
                 
             elif jsonmsg["command"] == "delete":
