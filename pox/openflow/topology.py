@@ -44,6 +44,8 @@ RECONNECT_TIMEOUT = 30
 
 log = core.getLogger()
 
+import itertools
+
 
 class OpenFlowTopology (EventMixin):
   """

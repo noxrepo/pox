@@ -44,19 +44,19 @@ class Communication(QtCore.QThread, QtGui.QWidget):
     #switch_query_reply_received_signal = QtCore.pyqtSignal()# SwitchQueryReply )
     
     # Signal used to notify monitoring view of new msg 
-    monitoring_received_signal = QtCore.pyqtSignal(str)
+    monitoring_received_signal = QtCore.pyqtSignal(object)
     
     # Define a new signal that takes a Topology type as an argument
-    topology_received_signal = QtCore.pyqtSignal(str)
+    topology_received_signal = QtCore.pyqtSignal(object)
    
     # Signal used to notify STP view of new msg 
-    spanning_tree_received_signal = QtCore.pyqtSignal(str)
+    spanning_tree_received_signal = QtCore.pyqtSignal(object)
     
     # Signal used to notify routing view of new msg 
-    routing_received_signal = QtCore.pyqtSignal(str)
+    routing_received_signal = QtCore.pyqtSignal(object)
     
     # Signal used to notify FlowTracer view of new msg 
-    flowtracer_received_signal = QtCore.pyqtSignal(str)
+    flowtracer_received_signal = QtCore.pyqtSignal(object)
     
     # Signal used to notify Log of new msg 
     log_received_signal = QtCore.pyqtSignal(object)
@@ -142,9 +142,9 @@ class Listener(QtCore.QThread):
                 self._buf = self._buf[l:]
                 if len(self._buf) != 0 and self._buf[0].isspace():
                     self._buf = self._buf.lstrip()
-                print "Recieved :", msg
                 if msg["type"] == "topology":
-                    self.p.topology_received_signal.emit(json.dumps(msg))
+                    print "Recieved :", msg
+                    self.p.topology_received_signal.emit(msg)
                 elif msg["type"] == "monitoring":
                     self.p.monitoring_received_signal.emit(msg)
                 elif msg["type"] == "spanning_tree":
