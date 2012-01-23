@@ -71,8 +71,7 @@ class GuiMessengerService (EventMixin):
     msg["type"] = "topology"
     msg["command"] = "add"
     msg["links"] = [{"src id":str(event.link.dpid1), "src port":event.link.port1,\
-                    "dst id":str(event.link.dpid2), "dst port":event.link.port2,\
-                    "src type":None, "dst type":None}]
+                    "dst id":str(event.link.dpid2), "dst port":event.link.port2 }]
     msg["node_type"] = "host"
     self.connection.send(msg)
 
