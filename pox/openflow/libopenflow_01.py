@@ -3451,7 +3451,7 @@ def _unpack_actions (b, length, offset=0):
   end = length + offset
   while offset < end:
     (t,l) = struct.unpack_from("!HH", b, offset)
-    if (len(b) - offset) < l: return (actions, offset) #TODO: exception?
+    if (len(b) - offset) < l: return ([], offset)
     a = _action_map.get(t)
     if a is None:
       # Use generic action header for unknown type
