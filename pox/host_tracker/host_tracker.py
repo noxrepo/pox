@@ -46,63 +46,28 @@ from pox.lib.revent.revent import *
 
 import time
 
-# Timeout to ping ARP-responding entries that sent no packets
-ARP_AWARE_TIMEOUT = 20 # Reasonable for testing, increase later (e.g., 60*2)
+import string
 
-# Timeout for ARP-silent entries (those which do not answer to ARP pings)
-ARP_SILENT_TIMEOUT = 45 # Reasonable for testing, increase later (e.g., 60*20)
-
-# Timeout to wait for an ARP ping reply (very short)
-ARP_REPLY_TIMEOUT = 1
-
-# Number of ARP ping attemps before quitting
-ARP_PING_CNT = 2
-
-# Interval that defines the timer period (timer granularity)
-TIMER_INTERVAL = 5
-
-class PingInfo (object):
-  """ Holds information for handling ARP pings for hosts
-  """
-  def __init__ (self):
-    self.answeredBefore = False
-    self.pending = 0
-    self.expireTime = 0 # to be set when a ping is sent
-    self.waitTime = ARP_SILENT_TIMEOUT
-
-  def timedOut (self):
-    return self.expireTime > 0 and time.time() > self.expireTime
-
-  def mustSend (self):
-    if self.answeredBefore: 
-      return ( self.timedOut() and self.pending < ARP_PING_CNT )
-    else:
-      # if we don't know if it answers, we try a few times at first
-      return ( 0 < self.pending < ARP_PING_CNT ) 
-
-  def sent (self):
-    self.pending += 1
-    self.expireTime = time.time() + self.waitTime
-
-  def failed (self):
-    return self.pending > ARP_PING_CNT
-
-  def received (self):
-    # Clear any pending timeouts related to ARP pings
-    self.answeredBefore = True
-    self.pending = 0
-    self.waitTime = ARP_AWARE_TIMEOUT
-    self.expireTime = 0 # to be set when a ping is sent
+# Times (in seconds) to use for differente timouts:
+timeoutSec = dict(
+  arpAware=15,   # Quiet ARP-responding entries are pinged after this
+  arpSilent=45, # This is for uiet entries not known to answer ARP
+  arpReply=1,      # Time to wait for an ARP reply before retrial
+  timerInterval=5, # Seconds between timer routine activations
+  entryMovement=4 # Minimum expected time to move a physical entry
+#  arpAware=60*2,   # Quiet ARP-responding entries are pinged after this
+#  arpSilent=60*20, # This is for uiet entries not known to answer ARP
+#  arpReply=1,      # Time to wait for an ARP reply before retrial
+#  timerInterval=5, # Seconds between timer routine activations
+#  entryMovement=60 # Minimum expected time to move a physical entry
+  )
 
 class Alive (object):
-  """ Holds liveliness information for entries and IP info
+  """ Holds liveliness information for MAC and IP entries
   """
-  def __init__ (self, hasARP):
+  def __init__ (self, livelinessInterval=timeoutSec['arpAware']):
     self.lastTimeSeen = time.time()
-    if hasARP:
-      self.interval = ARP_AWARE_TIMEOUT
-    else: 
-      self.interval = ARP_SILENT_TIMEOUT
+    self.interval=livelinessInterval
   
   def expired (self):
     return time.time() > self.lastTimeSeen + self.interval
@@ -110,22 +75,70 @@ class Alive (object):
   def refresh (self):
     self.lastTimeSeen = time.time()
 
-class Entry (object):
+
+class PingCtrl (Alive):
+  """ Holds information for handling ARP pings for hosts
+  """
+  # Number of ARP ping attemps before deciding it failed
+  pingCnt=2
+
+  def __init__ (self):
+    Alive.__init__(self, timeoutSec['arpReply'])
+    self.pending = 0
+
+  def sent (self):
+    self.refresh()
+    self.pending += 1
+
+  def failed (self):
+    return self.pending > PingCtrl.pingCnt
+
+  def received (self):
+    # Clear any pending timeouts related to ARP pings
+    self.pending = 0
+
+
+class IpEntry (Alive):
+  """
+  This entry keeps track of IP addresses seen from each MAC entry and will
+  be kept in the macEntry object's ipAddrs dictionary. At least for now,
+  there is no need to refer to the original macEntry as the code is organized.
+  """
+  def __init__ (self, hasARP):
+    if hasARP:
+      Alive.__init__(self,timeoutSec['arpAware'])
+    else:
+      Alive.__init__(self,timeoutSec['arpSilent'])
+    self.hasARP = hasARP
+    self.pings = PingCtrl()
+
+  def setHasARP (self):
+    if not self.hasARP:
+      self.hasARP = True
+      self.interval = timeoutSec['arpAware']
+
+
+class MacEntry (Alive):
   """
   Not strictly an ARP entry.
   When it gets moved to Topology, may include other host info, like
   services, and it may replace dpid by a general switch object reference
   We use the port to determine which port to forward traffic out of.
-  We use the ARP_AWARE_TIMEOUT to query hosts that answer pings and that have
-  been silent for a while. On the other hand, if a host does not answer ARP
-  pings, we wait longer (ARP_SILENT_TIMEOUT) before we remove them.
   """
   def __init__ (self, dpid, port, macaddr):
+    Alive.__init__(self)
     self.dpid = dpid
     self.port = port
     self.macaddr = macaddr
     self.ipAddrs = {}
-    self.liveliness = Alive(hasARP=False)
+
+  def __str__(self):
+    #str_list = []
+    #str_list.apend(str(self.dpid))
+    #str_list.apend(str(self.port))
+    #str_list.apend(str(self.macaddr))
+    #return string.join(str_list,' ')
+    return string.join([str(self.dpid), str(self.port), str(self.macaddr)],' ')
 
   def __eq__ (self, other):
     if type(other) == type(None):
@@ -133,56 +146,50 @@ class Entry (object):
     elif type(other) == tuple:
       return (self.dpid,self.port,self.macaddr)==other
     else:
-      return (self.dpid,self.port,self.macaddr)==(other.dpid,other.port,other.macaddr)
+      return (self.dpid,self.port,self.macaddr)     \
+             ==(other.dpid,other.port,other.macaddr)
 
   def __ne__ (self, other):
     return not self.__eq__(other)
 
-  def lastSeen (self):
-    return self.liveliness.lastTimeSeen
-
-  def expired (self):
-    return self.liveliness.expired()
 
 class host_tracker (EventMixin):
   def __init__ (self):
     
     # The following tables should go to Topology later
     self.entryByMAC = {}
-    self.entryByIP = {}
-
-    self._t = Timer(TIMER_INTERVAL, self._check_timeouts, recurring=True)
-
+    self._t = Timer(timeoutSec['timerInterval'],
+                   self._check_timeouts, recurring=True)
     self.listenTo(core)
 
   # The following two functions should go to Topology also
-  def getEntryByMAC(self, macaddr):
+  def getMacEntry(self, macaddr):
     try:
       result = self.entryByMAC[macaddr]
     except KeyError as e:
       result = None
     return result
 
-  def sendPing(self, entry, ipAddr):
+  def sendPing(self, macEntry, ipAddr):
     r = arp() # Builds an "ETH/IP any-to-any ARP packet
     r.opcode = arp.REQUEST
-    r.hwdst = entry.macaddr
+    r.hwdst = macEntry.macaddr
     r.protodst = ipAddr
     # src is ETHER_ANY, IP_ANY
     e = ethernet(type=ethernet.ARP_TYPE, src=r.hwsrc, dst=r.hwdst)
     e.set_payload(r)
     log.debug("%i %i sending ARP REQ to %s %s",
-            entry.dpid, entry.port, str(r.hwdst), str(r.protodst))
+            macEntry.dpid, macEntry.port, str(r.hwdst), str(r.protodst))
     msg = of.ofp_packet_out(data = e.pack(),
-                           action = of.ofp_action_output(port = entry.port))
-    if core.openflow.sendToDPID(entry.dpid, msg.pack()):
-      liveliness, pings = entry.ipAddrs[ipAddr]
-      pings.sent()
+                           action = of.ofp_action_output(port = macEntry.port))
+    if core.openflow.sendToDPID(macEntry.dpid, msg.pack()):
+      ipEntry = macEntry.ipAddrs[ipAddr]
+      ipEntry.pings.sent()
     else:
-      # entry is stale, remove it.
+      # macEntry is stale, remove it.
       log.debug("%i %i ERROR sending ARP REQ to %s %s",
-                entry.dpid, entry.port, str(r.hwdst), str(r.protodst))
-      del entry.ipAddrs[ipAddr]
+                macEntry.dpid, macEntry.port, str(r.hwdst), str(r.protodst))
+      del macEntry.ipAddrs[ipAddr]
     return
 
   def getSrcIPandARP(self, packet):
@@ -193,13 +200,11 @@ class host_tracker (EventMixin):
     if isinstance(packet, ipv4):
       log.debug("IP %s => %s",str(packet.srcip),str(packet.dstip))
       return ( packet.srcip, False )
-
     elif isinstance(packet, arp):
       log.debug("ARP %s %s => %s", 
                {arp.REQUEST:"request",arp.REPLY:"reply"}.get(packet.opcode,
                    'op:%i' % (packet.opcode,)),
                str(packet.protosrc), str(packet.protodst))
-
       if packet.hwtype == arp.HW_TYPE_ETHERNET and \
          packet.prototype == arp.PROTO_TYPE_IP and \
          packet.protosrc != 0:
@@ -207,29 +212,25 @@ class host_tracker (EventMixin):
 
     return ( None, False )
 
-  def updateIPInfo(self, pckt_srcip, entry, hasARP):
-    """ If there is IP info in the incoming packet, update the entry
+  def updateIPInfo(self, pckt_srcip, macEntry, hasARP):
+    """ If there is IP info in the incoming packet, update the macEntry
     accordingly. In the past we assumed a 1:1 mapping between MAC and IP
     addresses, but removed that restriction later to accomodate cases 
     like virtual interfaces (1:n) and distributed packet rewriting (n:1)
     """
-
-    if pckt_srcip in entry.ipAddrs:
+    if pckt_srcip in macEntry.ipAddrs:
       # that entry already has that IP
-      (liveliness, pings) = entry.ipAddrs[pckt_srcip]
-      liveliness.refresh()
-      log.debug("%i %i %s already has IP %s, refreshing",
-              entry.dpid,entry.port,str(entry.macaddr),str(pckt_srcip) )
+      ipEntry = macEntry.ipAddrs[pckt_srcip]
+      ipEntry.refresh()
+      log.debug("%s already has IP %s, refreshing",
+              str(macEntry), str(pckt_srcip) )
     else:
       # new mapping
-      pings = PingInfo();
-      liveliness = Alive(hasARP)
-      entry.ipAddrs[pckt_srcip] = (liveliness, pings) 
-      log.debug("%i %i %s got IP %s",
-              entry.dpid,entry.port,str(entry.macaddr),str(pckt_srcip) )
-
+      ipEntry = IpEntry(hasARP)
+      macEntry.ipAddrs[pckt_srcip] = ipEntry
+      log.debug("%s got IP %s", str(macEntry), str(pckt_srcip) )
     if hasARP:
-      pings.received()
+      ipEntry.pings.received()
 
   def _handle_GoingUpEvent (self, event):
     self.listenTo(core.openflow)
@@ -241,7 +242,7 @@ class host_tracker (EventMixin):
     Handles only packets from ports identified as not switch-only.
     If a MAC was not seen before, insert it in the MAC table;
     otherwise, update table and enry.
-    If packet has a source IP, update that info for the entry (may require
+    If packet has a source IP, update that info for the macEntry (may require
     removing the info from antoher entry previously with that IP address).
     It does not forward any packets, just extract info from them.
     """
@@ -264,60 +265,54 @@ class host_tracker (EventMixin):
             dpid, inport, str(packet.src), str(packet.dst))
 
     # Learn or update dpid/port/MAC info
-    entry = self.getEntryByMAC(packet.src)
-    if entry == None:
+    macEntry = self.getMacEntry(packet.src)
+    if macEntry == None:
       # there is no known host by that MAC
       # should we raise a NewHostFound event (at the end)?
-      entry = Entry(dpid,inport,packet.src)
-      self.entryByMAC[packet.src] = entry
-      log.debug("Learned %s is at %i %i",
-               str(entry.macaddr), entry.dpid, entry.port)
-    else:
-      # there is already an entry of host with that MAC
-      if entry != (dpid, inport, packet.src):    # ... but host has moved
-        # should we raise a HostMoved event (at the end)?
-        log.info("Learned %s (%i %i) moved to %i %i", str(entry.macaddr),
-                entry.dpid, entry.port, dpid, inport)
-        # if there has not been long since heard from it...
-        if time.time() - entry.liveliness.lastTimeSeen < ARP_AWARE_TIMEOUT:
-          log.warning("Possible duplicate: %s at (%i %i) at time %i, now (%i %i), time %i",
-                      str(entry.macaddr),
-                      entry.dpid, entry.port, entry.lastSeen(),
-                      dpid, inport, time.time()
-                     )
-        entry.dpid = dpid
-        entry.inport = inport
-        # should we create a whole new entry, or keep the previous host info?
-        # for now, we keep it: IP info, answers pings, etc.
-      entry.liveliness.refresh()
+      macEntry = MacEntry(dpid,inport,packet.src)
+      self.entryByMAC[packet.src] = macEntry
+      log.debug("Learned %s", str(macEntry))
+    elif macEntry != (dpid, inport, packet.src):    
+      # there is already an entry of host with that MAC, but host has moved
+      # should we raise a HostMoved event (at the end)?
+      log.info("Learned %s moved to %i %i", str(macEntry), dpid, inport)
+      # if there has not been long since heard from it...
+      if time.time() - macEntry.lastTimeSeen < timeoutSec['entryMovement']:
+        log.warning("Possible duplicate: %s at time %i, now (%i %i), time %i",
+                    str(macEntry), macEntry.lastTimeSeen(),
+                    dpid, inport, time.time())
+      # should we create a whole new entry, or keep the previous host info?
+      # for now, we keep it: IP info, answers pings, etc.
+      macEntry.dpid = dpid
+      macEntry.inport = inport
+
+    macEntry.refresh()
 
     (pckt_srcip, hasARP) = self.getSrcIPandARP(packet.next)
     if pckt_srcip != None:
-      self.updateIPInfo(pckt_srcip,entry,hasARP)
+      self.updateIPInfo(pckt_srcip,macEntry,hasARP)
 
     return
 
   def _check_timeouts(self):
-    for entry in self.entryByMAC.values():
+    for macEntry in self.entryByMAC.values():
       entryPinged = False
-      for ip_addr, [ip_liveliness, ip_ping] in entry.ipAddrs.items():
-        if ip_liveliness.expired():
-          if ip_ping.failed():
-            del entry.ipAddrs[ip_addr]
-            log.info("Entry %i %i %s: IP address %s expired",
-                    entry.dpid, entry.port, str(entry.macaddr), str(ip_addr) )
+      for ip_addr, ipEntry in macEntry.ipAddrs.items():
+        if ipEntry.expired():
+          if ipEntry.pings.failed():
+            del macEntry.ipAddrs[ip_addr]
+            log.info("Entry %s: IP address %s expired",
+                    str(macEntry), str(ip_addr) )
           else: 
-            self.sendPing(entry,ip_addr)
-            ip_ping.sent()
+            self.sendPing(macEntry,ip_addr)
+            ipEntry.pings.sent()
             entryPinged = True
-      if entry.expired() and not entryPinged:
-        log.info("Entry %i %i %s expired", entry.dpid, entry.port,
-                str(entry.macaddr))
+      if macEntry.expired() and not entryPinged:
+        log.info("Entry %s expired", str(macEntry))
         # sanity check: there should be no IP addresses left
-        if len(entry.ipAddrs) > 0:
-          for ip in entry.ipAddrs.keys():
-            log.warning("Entry %i %i %s expired but still had IP address %s",
-                        entry.dpid, entry.port, str(entry.macaddr),
-                        str(ip_addr) )
-            del entry.ipAddrs[ip_addr]
-        del self.entryByMAC[entry.macaddr]
+        if len(macEntry.ipAddrs) > 0:
+          for ip in macEntry.ipAddrs.keys():
+            log.warning("Entry %s expired but still had IP address %s",
+                        str(macEntry), str(ip_addr) )
+            del macEntry.ipAddrs[ip_addr]
+        del self.entryByMAC[macEntry.macaddr]
