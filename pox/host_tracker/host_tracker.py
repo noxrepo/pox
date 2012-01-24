@@ -23,14 +23,17 @@ configured (at least MAC/IP addresses)
 For the time being, it keeps tables with the information; later, it should
 transfer that information to Topology and handle just the actual
 discovery/update of host information.
+
+Timer configuration can be changed when needed (e.g., for debugging) using
+the launch facility (check timeoutSec dict and PingCtrl.pingLim).
 """
 
 from pox.core import core
 import pox
 log = core.getLogger()
 
-import logging
-log.setLevel(logging.DEBUG)
+#import logging
+#log.setLevel(logging.WARN)
 
 from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.ipv4 import ipv4
@@ -50,17 +53,16 @@ import string
 
 # Times (in seconds) to use for differente timouts:
 timeoutSec = dict(
-  arpAware=15,   # Quiet ARP-responding entries are pinged after this
-  arpSilent=45, # This is for uiet entries not known to answer ARP
-  arpReply=1,      # Time to wait for an ARP reply before retrial
+  arpAware=60*2,   # Quiet ARP-responding entries are pinged after this
+  arpSilent=60*20, # This is for uiet entries not known to answer ARP
+  arpReply=4,      # Time to wait for an ARP reply before retrial
   timerInterval=5, # Seconds between timer routine activations
-  entryMovement=4 # Minimum expected time to move a physical entry
-#  arpAware=60*2,   # Quiet ARP-responding entries are pinged after this
-#  arpSilent=60*20, # This is for uiet entries not known to answer ARP
-#  arpReply=1,      # Time to wait for an ARP reply before retrial
-#  timerInterval=5, # Seconds between timer routine activations
-#  entryMovement=60 # Minimum expected time to move a physical entry
+  entryMove=60     # Minimum expected time to move a physical entry
   )
+# Good values for testing:
+#  --arpAware=15 --arpSilent=45 --arpReply=1 --entryMove=4
+# Another parameter that may be used:
+# --pingLim=2
 
 class Alive (object):
   """ Holds liveliness information for MAC and IP entries
@@ -80,7 +82,7 @@ class PingCtrl (Alive):
   """ Holds information for handling ARP pings for hosts
   """
   # Number of ARP ping attemps before deciding it failed
-  pingCnt=2
+  pingLim=3
 
   def __init__ (self):
     Alive.__init__(self, timeoutSec['arpReply'])
@@ -91,7 +93,7 @@ class PingCtrl (Alive):
     self.pending += 1
 
   def failed (self):
-    return self.pending > PingCtrl.pingCnt
+    return self.pending > PingCtrl.pingLim
 
   def received (self):
     # Clear any pending timeouts related to ARP pings
@@ -133,11 +135,6 @@ class MacEntry (Alive):
     self.ipAddrs = {}
 
   def __str__(self):
-    #str_list = []
-    #str_list.apend(str(self.dpid))
-    #str_list.apend(str(self.port))
-    #str_list.apend(str(self.macaddr))
-    #return string.join(str_list,' ')
     return string.join([str(self.dpid), str(self.port), str(self.macaddr)],' ')
 
   def __eq__ (self, other):
@@ -161,6 +158,7 @@ class host_tracker (EventMixin):
     self._t = Timer(timeoutSec['timerInterval'],
                    self._check_timeouts, recurring=True)
     self.listenTo(core)
+    log.info("host_tracker ready")
 
   # The following two functions should go to Topology also
   def getMacEntry(self, macaddr):
@@ -228,7 +226,7 @@ class host_tracker (EventMixin):
       # new mapping
       ipEntry = IpEntry(hasARP)
       macEntry.ipAddrs[pckt_srcip] = ipEntry
-      log.debug("%s got IP %s", str(macEntry), str(pckt_srcip) )
+      log.info("Learned %s got IP %s", str(macEntry), str(pckt_srcip) )
     if hasARP:
       ipEntry.pings.received()
 
@@ -271,13 +269,13 @@ class host_tracker (EventMixin):
       # should we raise a NewHostFound event (at the end)?
       macEntry = MacEntry(dpid,inport,packet.src)
       self.entryByMAC[packet.src] = macEntry
-      log.debug("Learned %s", str(macEntry))
+      log.info("Learned %s", str(macEntry))
     elif macEntry != (dpid, inport, packet.src):    
       # there is already an entry of host with that MAC, but host has moved
       # should we raise a HostMoved event (at the end)?
       log.info("Learned %s moved to %i %i", str(macEntry), dpid, inport)
       # if there has not been long since heard from it...
-      if time.time() - macEntry.lastTimeSeen < timeoutSec['entryMovement']:
+      if time.time() - macEntry.lastTimeSeen < timeoutSec['entryMove']:
         log.warning("Possible duplicate: %s at time %i, now (%i %i), time %i",
                     str(macEntry), macEntry.lastTimeSeen(),
                     dpid, inport, time.time())

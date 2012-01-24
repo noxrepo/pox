@@ -15,8 +15,24 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
-def launch ():
-  import host_tracker
-  from pox.core import core
+from pox.core import core
+import pox
+import host_tracker
+log = core.getLogger()
+import logging
+log.setLevel(logging.INFO)
+
+def launch (**kw):
   core.registerNew(host_tracker.host_tracker)
+  for k, v in kw.iteritems():
+    if k in host_tracker.timeoutSec:
+      host_tracker.timeoutSec[k] = int(v)
+      log.warn("Changing timer parameter: %s = %s",k,v)
+    elif k == 'pingLim':
+      host_tracker.PingCtrl.pingLim = int(v)
+      log.warn("Changing ping limit to %s",v)
+    else:
+      log.warn("Unknown option: %s(=%s)",k,v)
+      
+     
 
