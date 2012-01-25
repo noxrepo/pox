@@ -191,7 +191,7 @@ class OpenFlowSwitch (EventMixin, Switch):
   ])
 
   def __init__ (self, dpid):
-    Switch.__init__(self)
+    Switch.__init__(self, id=dpid)
     EventMixin.__init__(self)
     self.dpid = dpid
     self.ports = {}
