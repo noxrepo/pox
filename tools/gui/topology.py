@@ -843,8 +843,8 @@ class TopologyView(QtGui.QGraphicsView):
                     
                 self.addLinks(new_links)
                 
-            elif jsonmsg["command"] == "delete":
-                links = jsonmsg["links"]
+            elif msg["command"] == "delete":
+                links = msg["links"]
                 for link in links:
                     # Only do this once (for both directions)
                     if link["src id"] > link["dst id"]:
