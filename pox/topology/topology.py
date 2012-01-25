@@ -114,7 +114,7 @@ class Entity (object):
   # This is a counter used so that we can get unique IDs for entities.
   # Some entities don't need this because they have more meaningful
   # identifiers.
-  _next_id = 1
+  _next_id = 101
   _all_ids = set()
   
   def __init__ (self, id=None):
