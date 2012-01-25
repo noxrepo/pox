@@ -118,8 +118,9 @@ class Entity (object):
   _all_ids = set()
   
   def __init__ (self, id=None):
-    if id and id in Entity._all_ids:
-      raise Exception("ID %s already taken" % str(id))
+    if id:
+      if id in Entity._all_ids:
+        raise Exception("ID %s already taken" % str(id))
     else:
       while Entity._next_id in Entity._all_ids:
         Entity._next_id += 1
