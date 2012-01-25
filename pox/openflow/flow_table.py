@@ -79,8 +79,8 @@ class TableEntry (object):
     return "TableEntry("+self.show() + ")"
 
   def show(self):
-       return "priority=%s, cookie=%x, idle_timeoout=%d, hard_timeout=%d, match=%s, actions=%s buffer_id=%d" % (
-          self.priority, self.cookie, self.idle_timeout, self.hard_timeout, self.match, repr(self.actions), self.buffer_id)
+       return "priority=%s, cookie=%x, idle_timeoout=%d, hard_timeout=%d, match=%s, actions=%s buffer_id=%s" % (
+          self.priority, self.cookie, self.idle_timeout, self.hard_timeout, self.match, repr(self.actions), str(self.buffer_id))
 
 class FlowTableModification (Event):
   def __init__(self, added=[], removed=[]):
