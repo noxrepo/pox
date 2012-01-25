@@ -10,8 +10,8 @@ Date November 2009
 Created by ykk
 """
 
-# TODO: Don't have SwitchImpl take a socket object... Should really have a 
-# OF_01 like task that listens for socket connections, creates a new socket, 
+# TODO: Don't have SwitchImpl take a socket object... Should really have a
+# OF_01 like task that listens for socket connections, creates a new socket,
 # wraps it in a ControllerConnection object, and calls SwitchImpl._handle_ConnectionUp
 
 from pox.lib.revent import Event, EventMixin
@@ -76,7 +76,7 @@ class SwitchImpl(EventMixin):
        ofp_type_rev_map['OFPT_FLOW_MOD'] : self._receive_flow_mod,
        ofp_type_rev_map['OFPT_PACKET_OUT'] : self._receive_packet_out,
        ofp_type_rev_map['OFPT_BARRIER_REQUEST'] : self._receive_barrier_request,
-       
+
        # Proactive responses
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
        # TODO: many more packet types to process
@@ -92,20 +92,20 @@ class SwitchImpl(EventMixin):
 
     ##Capabilities
     if (isinstance(capabilities, SwitchCapabilities)):
-        self.capabilities = capabilities
+      self.capabilities = capabilities
     else:
-        self.capabilities = SwitchCapabilities(miss_send_len)
+      self.capabilities = SwitchCapabilities(miss_send_len)
 
   def demux_openflow(self, raw_bytes):
     pass
-    
+
   # ==================================== #
   #    Reactive OFP processing           #
   # ==================================== #
   def _receive_hello(self, packet):
     self.log.debug("Receive hello %s" % self.name)
     # How does the OpenFlow protocol prevent an infinite loop of Hello messages?
-    self.send_hello() 
+    self.send_hello()
 
   def _receive_echo(self, packet):
     """Reply to echo request
@@ -113,18 +113,18 @@ class SwitchImpl(EventMixin):
     self.log.debug("Reply echo of xid: %s %s" % (str(packet), self.name)) # TODO: packet.xid
     msg = ofp_echo_reply(xid=packet.xid)
     self._connection.send(msg)
-    
+
   def _receive_features_request(self, packet):
     """Reply to feature request
     """
     self.log.debug("Reply features request of xid %s %s" % (str(packet), self.name)) # TODO: packet.xid
-    msg = ofp_features_reply(datapath_id = self.dpid, n_buffers = self.n_buffers, 
+    msg = ofp_features_reply(datapath_id = self.dpid, n_buffers = self.n_buffers,
                              n_tables = self.n_tables,
                              capabilities = self.capabilities.get_capabilities(),
-                             actions = self.capabilities.get_actions(), 
+                             actions = self.capabilities.get_actions(),
                              ports = self.ports.values())
     self._connection.send(msg)
-                               
+
   def _receive_flow_mod(self, packet):
     """Handle flow mod: just print it here
     """
@@ -139,7 +139,7 @@ class SwitchImpl(EventMixin):
     """
     # TODO: There is a packet formatting error somewhere... str(packet) throws
     # an exception... no method "show" for None
-    self.log.debug("Packet out") # , str(packet)) 
+    self.log.debug("Packet out") # , str(packet))
 
     if(packet_out.data != None):
       self._process_actions_for_packet(packet_out.actions, packet_out.data, packet_out.in_port)
@@ -150,12 +150,12 @@ class SwitchImpl(EventMixin):
 
   def _receive_echo_reply(self, packet):
     self.log.debug("Echo reply: %s %s" % (str(packet), self.name))
-    
+
   def _receive_barrier_request(self, packet):
     self.log.debug("Barrier request %s %s" % (self.name, str(packet)))
     msg = ofp_barrier_reply(xid = packet.xid)
     self._connection.send(msg)
-    
+
   # ==================================== #
   #    Proactive OFP processing          #
   # ==================================== #
@@ -207,7 +207,7 @@ class SwitchImpl(EventMixin):
   # ==================================== #
 
   def _output_packet(self, packet, out_port, in_port):
-    """ send a packet out some port. 
+    """ send a packet out some port.
         out_port, in_port: the integer port number """
     def real_send(port_no):
       if port_no not in self.ports:
@@ -332,7 +332,7 @@ class ControllerConnection (object):
     self.ofp_msgs = make_type_to_class_table()
     ## Hash from ofp_type -> handler(packet)
     self.ofp_handlers = ofp_handlers
-    
+
   def fileno (self):
     return self.sock.fileno()
 
@@ -376,7 +376,7 @@ class ControllerConnection (object):
     Note: if no data is available to read, this method will block. Only invoke
     after select() has returned this socket.
     """
-    # TODO: this is taken directly from of_01.Connection. The only difference is the 
+    # TODO: this is taken directly from of_01.Connection. The only difference is the
     # event handlers. Refactor to reduce redundancy.
     d = self.sock.recv(2048)
     if len(d) == 0:
@@ -413,80 +413,80 @@ class ControllerConnection (object):
     return "[Con " + str(self.ID) + "]"
 
 class SwitchCapabilities:
+  """
+  Class to hold switch capabilities
+  """
+  def __init__(self, miss_send_len=128):
+    """Initialize
+
+    Copyright(C) 2009, Stanford University
+    Date October 2009
+    Created by ykk
     """
-    Class to hold switch capabilities
+    ##Capabilities support by datapath
+    self.flow_stats = True
+    self.table_stats = True
+    self.port_stats = True
+    self.stp = True
+    self.multi_phy_tx = False
+    self.ip_resam = False
+    ##Switch config
+    self.send_exp = None
+    self.ip_frag = 0
+    self.miss_send_len = miss_send_len
+    ##Valid actions
+    self.act_output = True
+    self.act_set_vlan_vid = True
+    self.act_set_vlan_pcp = True
+    self.act_strip_vlan = True
+    self.act_set_dl_src = True
+    self.act_set_dl_dst = True
+    self.act_set_nw_src = True
+    self.act_set_nw_dst = True
+    self.act_set_tp_src = True
+    self.act_set_tp_dst = True
+    self.act_vendor = False
+
+  def get_capabilities(self):
+    """Return value for uint32_t capability field
     """
-    def __init__(self, miss_send_len=128):
-        """Initialize
+    value = 0
+    if (self.flow_stats):
+      value += ofp_capabilities_rev_map['OFPC_FLOW_STATS']
+    if (self.table_stats):
+      value += ofp_capabilities_rev_map['OFPC_TABLE_STATS']
+    if (self.port_stats):
+      value += ofp_capabilities_rev_map['OFPC_PORT_STATS']
+    if (self.stp):
+      value += ofp_capabilities_rev_map['OFPC_STP']
+    if (self.multi_phy_tx):
+      value += ofp_capabilities_rev_map['OFPC_MULTI_PHY_TX']
+    if (self.ip_resam):
+      value += ofp_capabilities_rev_map['OFPC_IP_REASM']
+    return value
 
-        Copyright(C) 2009, Stanford University
-        Date October 2009
-        Created by ykk
-        """
-        ##Capabilities support by datapath
-        self.flow_stats = True
-        self.table_stats = True
-        self.port_stats = True
-        self.stp = True
-        self.multi_phy_tx = False
-        self.ip_resam = False
-        ##Switch config
-        self.send_exp = None
-        self.ip_frag = 0
-        self.miss_send_len = miss_send_len
-        ##Valid actions
-        self.act_output = True
-        self.act_set_vlan_vid = True
-        self.act_set_vlan_pcp = True
-        self.act_strip_vlan = True
-        self.act_set_dl_src = True
-        self.act_set_dl_dst = True
-        self.act_set_nw_src = True
-        self.act_set_nw_dst = True
-        self.act_set_tp_src = True
-        self.act_set_tp_dst = True
-        self.act_vendor = False
-
-    def get_capabilities(self):
-        """Return value for uint32_t capability field
-        """
-        value = 0
-        if (self.flow_stats):
-            value += ofp_capabilities_rev_map['OFPC_FLOW_STATS']
-        if (self.table_stats):
-            value += ofp_capabilities_rev_map['OFPC_TABLE_STATS']
-        if (self.port_stats):
-            value += ofp_capabilities_rev_map['OFPC_PORT_STATS']
-        if (self.stp):
-            value += ofp_capabilities_rev_map['OFPC_STP']
-        if (self.multi_phy_tx):
-            value += ofp_capabilities_rev_map['OFPC_MULTI_PHY_TX']
-        if (self.ip_resam):
-            value += ofp_capabilities_rev_map['OFPC_IP_REASM']
-        return value
-
-    def get_actions(self):
-        """Return value for uint32_t action field
-        """
-        value = 0
-        if (self.act_output):
-            value += (1 << (ofp_action_type_rev_map['OFPAT_OUTPUT']+1))
-        if (self.act_set_vlan_vid):
-            value += (1 << (ofp_action_type_rev_map['OFPAT_SET_VLAN_VID']+1))
-        if (self.act_set_vlan_pcp):
-            value += (1 << (ofp_action_type_rev_map['OFPAT_SET_VLAN_PCP']+1))
-        if (self.act_strip_vlan):
-            value += (1 << (ofp_action_type_rev_map['OFPAT_STRIP_VLAN']+1))
-        if (self.act_set_dl_src):
-            value += (1 << (ofp_action_type_rev_map['OFPAT_SET_DL_SRC']+1))
-        if (self.act_set_dl_dst):
-            value += (1 << (ofp_action_type_rev_map['OFPAT_SET_DL_DST']+1))
-        if (self.act_set_nw_src):
-            value += (1 << (ofp_action_type_rev_map['OFPAT_SET_NW_SRC']+1))
-        if (self.act_set_nw_dst):
-            value += (1 << (ofp_action_type_rev_map['OFPAT_SET_NW_DST']+1))
-        if (self.act_set_tp_src):
-            value += (1 << (ofp_action_type_rev_map['OFPAT_SET_TP_SRC']+1))
-        if (self.act_set_tp_dst):
-            value += (1 << (ofp_action_type_rev_map['OFPAT_SET_TP_DST']+1))
-        return value
+  def get_actions(self):
+    """Return value for uint32_t action field
+    """
+    value = 0
+    if (self.act_output):
+      value += (1 << (ofp_action_type_rev_map['OFPAT_OUTPUT']+1))
+    if (self.act_set_vlan_vid):
+      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_VLAN_VID']+1))
+    if (self.act_set_vlan_pcp):
+      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_VLAN_PCP']+1))
+    if (self.act_strip_vlan):
+      value += (1 << (ofp_action_type_rev_map['OFPAT_STRIP_VLAN']+1))
+    if (self.act_set_dl_src):
+      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_DL_SRC']+1))
+    if (self.act_set_dl_dst):
+      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_DL_DST']+1))
+    if (self.act_set_nw_src):
+      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_NW_SRC']+1))
+    if (self.act_set_nw_dst):
+      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_NW_DST']+1))
+    if (self.act_set_tp_src):
+      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_TP_SRC']+1))
+    if (self.act_set_tp_dst):
+      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_TP_DST']+1))
+    return value
