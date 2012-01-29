@@ -21,6 +21,8 @@ import pox.lib.packet as pkt
 from struct import pack
 import time
 
+from struct import pack
+import time
 
 class SocketWedge (object):
   def __init__ (self, socket):
@@ -41,12 +43,24 @@ class SocketWedge (object):
 
 
 class CaptureSocket (SocketWedge):
-  from struct import pack
-  import time
-  def __init__ (self, socket, outstream):
+  """
+  Wraps a TCP socket and writes a faked PCAP format trace
+  """
+  def __init__ (self, socket, outstream, close = True,
+                local_addrs = (None,None,None),
+                remote_addrs = (None,None,None)):
+    """
+    socket is the socket to be wrapped.
+    outstream is the stream to write the PCAP trace to.
+    Ethernet addresses have to be faked, and it can be convenient to
+    fake IP and TCP addresses as well.  Thus, you can specify local_addrs
+    or remote_addrs.  These are tuples of (EthAddr, IPAddr, TCPPort).
+    Any item that is None gets a default value.
+    """
     super(CaptureSocket, self).__init__(socket)
     remote = socket.getpeername()
     local = socket.getsockname()
+    self._close = close
 
     def create_packet (e1,e2,i1,i2,t1,t2):
       e = pkt.ethernet(
@@ -69,20 +83,22 @@ class CaptureSocket (SocketWedge):
 
 
     self._c_to_s = create_packet(
-      EthAddr("\x02" + "\x00" * 5),
-      EthAddr("\x02" + "\x11" * 5),
-      IPAddr(local[0]),
-      IPAddr(remote[0]),
-      6633, # Always use this to make sure Wireshark gets it
-      remote[1])
+      local_addrs[0] or EthAddr("\x02" + "\x00" * 5),
+      remote_addrs[0] or EthAddr("\x02" + "\x11" * 5),
+      local_addrs[1] or IPAddr(local[0]),
+      remote_addrs[1] or IPAddr(remote[0]),
+      local_addrs[2] or local[1],
+      remote_addrs[2] or remote[1],
+      )
 
     self._s_to_c = create_packet(
-      EthAddr("\x02" + "\x11" * 5),
-      EthAddr("\x02" + "\x00" * 5),
-      IPAddr(remote[0]),
-      IPAddr(local[0]),
-      remote[1],
-      6633) # Always use this to make sure Wireshark gets it
+      remote_addrs[0] or EthAddr("\x02" + "\x11" * 5),
+      local_addrs[0] or EthAddr("\x02" + "\x00" * 5),
+      remote_addrs[1] or IPAddr(remote[0]),
+      local_addrs[1] or IPAddr(local[0]),
+      remote_addrs[2] or remote[1],
+      local_addrs[2] or local[1],
+      )
 
     self._out = outstream
     outstream.write(pack("IHHiIII",
@@ -124,7 +140,13 @@ class CaptureSocket (SocketWedge):
   def _send_out (self, buf, r):
     self._write(True, buf[:r])
 
-
+  def close (self, *args, **kw):
+    if self._close:
+      try:
+        self._out.close()
+      except Exception:
+        pass
+    return self._socket.close(*args, **kw)
 
 
 if __name__ == "__main__":

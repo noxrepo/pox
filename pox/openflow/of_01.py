@@ -26,6 +26,9 @@ from pox.core import core
 import pox
 import pox.lib.util
 from pox.lib.revent.revent import EventMixin
+import datetime
+from pox.lib.socketcapture import CaptureSocket
+import pox.openflow.debug
 
 from pox.openflow import *
 
@@ -363,6 +366,7 @@ class DummyOFHub (object):
 
 _dummyOFHub = DummyOFHub()
 
+
 class Connection (EventMixin):
   """
   A Connection object represents a single TCP session with an
@@ -644,6 +648,16 @@ class OpenFlow_01_Task (Task):
           for con in rlist:
             if con is listener:
               new_sock = listener.accept()[0]
+              if pox.openflow.debug.pcap_traces:
+                fname = datetime.datetime.now().strftime("%Y-%m-%d-%I%M%p")
+                fname += "_" + new_sock.getpeername()[0].replace(".", "_")
+                fname += "_" + `new_sock.getpeername()[1]` + ".pcap"
+                pcapfile = file(fname, "w")
+                try:
+                  new_sock = CaptureSocket(new_sock, pcapfile,
+                                           local_addrs=(None,None,6633))
+                except Exception:
+                  pass
               new_sock.setblocking(0)
               # Note that instantiating a Connection object fires a
               # ConnectionUp event (after negotation has completed)
