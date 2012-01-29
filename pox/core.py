@@ -179,6 +179,7 @@ class POXCore (EventMixin):
   ])
 
   def __init__ (self):
+    self.debug = False
     self.running = True
     self.components = {}
 

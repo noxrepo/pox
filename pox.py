@@ -25,18 +25,20 @@
 
 ''''echo -n
 export OPT="-O"
+export FLG=""
 if [[ "$(basename $0)" == "debug-pox.py" ]]; then
   export OPT=""
+  export FLG="--debug"
 fi
 
 if [ -x pypy/bin/pypy ]; then
-  exec pypy/bin/pypy $OPT "$0" "$@"
+  exec pypy/bin/pypy $OPT "$0" $FLG "$@"
 fi
 
 if [ "$(type -P python2.7)" != "" ]; then
-  exec python2.7 $OPT "$0" "$@"
+  exec python2.7 $OPT "$0" $FLG "$@"
 fi
-exec python $OPT "$0" "$@"
+exec python $OPT "$0" $FLG "$@"
 '''
 
 from pox.core import core
@@ -223,14 +225,18 @@ def doLaunch ():
 
   return True
 
-# TODOC: why is cli in globals(), but the rest are in globals()['options']) ?
 cli = True
 verbose = False
 enable_openflow = True
+debug = False
 
 def _opt_no_openflow (v):
   global enable_openflow
   enable_openflow = str(v).lower() != "true"
+
+def _opt_debug (v):
+  global debug
+  debug = str(v).lower() == "true"
 
 def _opt_no_cli (v):
   if str(v).lower() == "true":
@@ -258,6 +264,7 @@ def pre_startup ():
   _done_pre_startup = True
 
   process_options()
+  core.debug = debug
 
   if enable_openflow:
     pox.openflow.launch() # Default OpenFlow launch
