@@ -512,7 +512,7 @@ class SelectHub (object):
   def _threadProc (self):
     tasks = {}
     timeouts = []
-    expired = []
+    rets = {}
 
     while self._scheduler._hasQuit == False:
       #print("SelectHub cycle")
@@ -581,13 +581,13 @@ class SelectHub (object):
             task = stuff[0]
             assert task not in tasks
             tasks[task] = stuff
+            self._incoming.task_done()
           if len(ro) == 1 and len(wo) == 0 and len(xo) == 0:
             # Just recycle
             continue
           ro.remove(self._pinger)
 
         # At least one thread is going to be resumed
-        rets = {}
         for i in ro:
           task = rl[i]
           if task not in rets: rets[task] = ([],[],[])
@@ -604,6 +604,7 @@ class SelectHub (object):
         for t,v in rets.iteritems():
           del tasks[t]
           self._return(t, v)
+        rets.clear()
 
   def registerSelect (self, task, rlist = None, wlist = None, xlist = None,
                       timeout = None, timeIsAbsolute = False):
@@ -820,7 +821,7 @@ if __name__ == "__main__":
       while n <= b:
         print(n)
         n+=inc
-        yield sleep
+        yield Select([],[],[],sleep)
 
   s = Scheduler(daemon=True)
 
