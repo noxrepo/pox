@@ -367,6 +367,77 @@ class DummyOFHub (object):
 _dummyOFHub = DummyOFHub()
 
 
+"""
+class FileCloser (object):
+  def __init__ (self):
+    from weakref import WeakSet
+    self.items = WeakSet()
+    core.addListeners(self)
+    import atexit
+    atexit.register(self._handle_DownEvent, None)
+
+  def _handle_DownEvent (self, event):
+    for item in self.items:
+      try:
+        item.close()
+      except Exception:
+        log.exception("Couldn't close a file while shutting down")
+    self.items.clear()
+
+_itemcloser = FileCloser()
+"""
+
+
+class OFCaptureSocket (CaptureSocket):
+  """
+  Captures OpenFlow data to a pcap file
+  """
+  def __init__ (self, *args, **kw):
+    super(OFCaptureSocket,self).__init__(*args, **kw)
+    self._rbuf = bytes()
+    self._sbuf = bytes()
+    self._enabled = True
+    #_itemcloser.items.add(self)
+
+  def _recv_out (self, buf):
+    if not self._enabled: return
+    self._rbuf += buf
+    l = len(self._rbuf)
+    while l > 4:
+      if ord(self._rbuf[0]) != of.OFP_VERSION:
+        log.error("Bad OpenFlow version while trying to capture trace")
+        self._enabled = False
+        break
+      packet_length = ord(self._rbuf[2]) << 8 | ord(self._rbuf[3])
+      if packet_length > l: break
+      try:
+        self._writer.write(False, self._rbuf[:packet_length])
+      except Exception:
+        log.exception("Exception while writing controller trace")
+        self._enabled = False
+      self._rbuf = self._rbuf[packet_length:]
+      l = len(self._rbuf)
+
+  def _send_out (self, buf, r):
+    if not self._enabled: return
+    self._sbuf += buf
+    l = len(self._sbuf)
+    while l > 4:
+      if ord(self._sbuf[0]) != of.OFP_VERSION:
+        log.error("Bad OpenFlow version while trying to capture trace")
+        self._enabled = False
+        break
+      packet_length = ord(self._sbuf[2]) << 8 | ord(self._sbuf[3])
+      if packet_length > l: break
+      try:
+        self._writer.write(True, self._sbuf[:packet_length])
+      except Exception:
+        log.exception("Exception while writing controller trace")
+        self._enabled = False
+      self._sbuf = self._sbuf[packet_length:]
+      l = len(self._sbuf)
+
+
 class Connection (EventMixin):
   """
   A Connection object represents a single TCP session with an
@@ -465,9 +536,10 @@ class Connection (EventMixin):
       pass
     try:
       if hard:
+        self.sock.shutdown(socket.SHUT_RDWR)
         self.sock.close()
       else:
-        self.sock.shutdown(socket.SHUT_RDWR)
+        self.sock.close()
       pass
     except:
       pass
@@ -585,6 +657,21 @@ class Connection (EventMixin):
     return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
 
 
+def wrap_socket (new_sock):
+  fname = datetime.datetime.now().strftime("%Y-%m-%d-%I%M%p")
+  fname += "_" + new_sock.getpeername()[0].replace(".", "_")
+  fname += "_" + `new_sock.getpeername()[1]` + ".pcap"
+  pcapfile = file(fname, "w")
+  try:
+    new_sock = OFCaptureSocket(new_sock, pcapfile,
+                               local_addrs=(None,None,6633))
+  except Exception:
+    import traceback
+    traceback.print_exc()
+    pass
+  return new_sock
+
+
 from pox.lib.recoco.recoco import *
 
 class OpenFlow_01_Task (Task):
@@ -610,7 +697,6 @@ class OpenFlow_01_Task (Task):
     listener.bind((self.address, self.port))
     listener.listen(16)
     sockets.append(listener)
-    wsocks = []
 
     log.debug("Listening for connections on %s:%s" %
               (self.address, self.port))
@@ -649,15 +735,7 @@ class OpenFlow_01_Task (Task):
             if con is listener:
               new_sock = listener.accept()[0]
               if pox.openflow.debug.pcap_traces:
-                fname = datetime.datetime.now().strftime("%Y-%m-%d-%I%M%p")
-                fname += "_" + new_sock.getpeername()[0].replace(".", "_")
-                fname += "_" + `new_sock.getpeername()[1]` + ".pcap"
-                pcapfile = file(fname, "w")
-                try:
-                  new_sock = CaptureSocket(new_sock, pcapfile,
-                                           local_addrs=(None,None,6633))
-                except Exception:
-                  pass
+                new_sock = wrap_socket(new_sock)
               new_sock.setblocking(0)
               # Note that instantiating a Connection object fires a
               # ConnectionUp event (after negotation has completed)
