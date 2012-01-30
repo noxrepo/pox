@@ -280,6 +280,7 @@ class OpenFlowHub (EventMixin):
 
   def __init__ (self):
     self._connections = {}#weakref.WeakValueDictionary() # DPID -> Connection
+    self.listenTo(core)
 
   def getConnection (self, dpid):
     """
@@ -297,6 +298,13 @@ class OpenFlowHub (EventMixin):
     else:
       print "Couldn't send to", dpid, "because we're not connected to it!"
       return False
+
+  def _handle_DownEvent (self, event):
+    for c in self._connections.values():
+      try:
+        c.disconnect()
+      except:
+        pass
 
   def _connect (self, con):
     self._connections[con.dpid] = con
