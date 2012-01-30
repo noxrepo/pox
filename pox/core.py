@@ -246,10 +246,13 @@ class POXCore (EventMixin):
     if self.running:
       self.running = False
       log.info("Quitting...")
+      import gc
+      gc.collect()
       self.raiseEvent(GoingDownEvent())
       self.callLater(self.scheduler.quit)
       for i in range(50):
         if self.scheduler._hasQuit: break
+        gc.collect()
         time.sleep(.1)
       if not self.scheduler._allDone:
         log.warning("Scheduler didn't quit in time")
