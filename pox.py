@@ -347,7 +347,7 @@ def main ():
     #core.scheduler._thread.join() # Sleazy
 
   try:
-    pox.core.core.quit()
+    core.quit()
   except:
     pass
 
