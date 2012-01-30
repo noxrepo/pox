@@ -42,25 +42,26 @@ class SocketWedge (object):
     return getattr(self._socket, n)
 
 
-class CaptureSocket (SocketWedge):
-  """
-  Wraps a TCP socket and writes a faked PCAP format trace
-  """
-  def __init__ (self, socket, outstream, close = True,
+class PCapWriter (object):
+  def __init__ (self, outstream, socket = None, flush = False,
                 local_addrs = (None,None,None),
                 remote_addrs = (None,None,None)):
     """
-    socket is the socket to be wrapped.
     outstream is the stream to write the PCAP trace to.
     Ethernet addresses have to be faked, and it can be convenient to
     fake IP and TCP addresses as well.  Thus, you can specify local_addrs
     or remote_addrs.  These are tuples of (EthAddr, IPAddr, TCPPort).
     Any item that is None gets a default value.
     """
-    super(CaptureSocket, self).__init__(socket)
-    remote = socket.getpeername()
-    local = socket.getsockname()
-    self._close = close
+    self._out = outstream
+    self._flush = flush
+
+    if socket is not None:
+      remote = socket.getpeername()
+      local = socket.getsockname()
+    else:
+      remote = ("1.1.1.1",1)
+      local = ("0.0.0.0",0)
 
     def create_packet (e1,e2,i1,i2,t1,t2):
       e = pkt.ethernet(
@@ -81,7 +82,6 @@ class CaptureSocket (SocketWedge):
       e.payload = i
       return e
 
-
     self._c_to_s = create_packet(
       local_addrs[0] or EthAddr("\x02" + "\x00" * 5),
       remote_addrs[0] or EthAddr("\x02" + "\x11" * 5),
@@ -100,7 +100,6 @@ class CaptureSocket (SocketWedge):
       local_addrs[2] or local[1],
       )
 
-    self._out = outstream
     outstream.write(pack("IHHiIII",
       0xa1b2c3d4,    # Magic
       2,4,           # Version
@@ -110,7 +109,7 @@ class CaptureSocket (SocketWedge):
       1              # Ethernet
       ))
 
-  def _write (self, outgoing, buf):
+  def write (self, outgoing, buf):
     if len(buf) == 0: return
     e = self._c_to_s if outgoing else self._s_to_c
     e2 = self._c_to_s if not outgoing else self._s_to_c
@@ -129,21 +128,50 @@ class CaptureSocket (SocketWedge):
       ))
 
     self._out.write(buf)
-    self._out.flush()
+    if self._flush: self._out.flush()
 
     e.next.next.seq += l
     e2.next.next.ack += l
 
+
+class CaptureSocket (SocketWedge):
+  """
+  Wraps a TCP socket and writes a faked PCAP format trace
+  """
+  def __init__ (self, socket, outstream, close = True,
+                local_addrs = (None,None,None),
+                remote_addrs = (None,None,None)):
+    """
+    socket is the socket to be wrapped.
+    outstream is the stream to write the PCAP trace to.
+    Ethernet addresses have to be faked, and it can be convenient to
+    fake IP and TCP addresses as well.  Thus, you can specify local_addrs
+    or remote_addrs.  These are tuples of (EthAddr, IPAddr, TCPPort).
+    Any item that is None gets a default value.
+    """
+    super(CaptureSocket, self).__init__(socket)
+    self._close = close
+    self._writer = PCapWriter(outstream, socket=socket,
+                              local_addrs=local_addrs,
+                              remote_addrs=remote_addrs)
+
+
   def _recv_out (self, buf):
-    self._write(False, buf)
+    try:
+      self._writer.write(False, buf)
+    except Exception:
+      pass
 
   def _send_out (self, buf, r):
-    self._write(True, buf[:r])
+    try:
+      self._writer.write(True, buf[:r])
+    except Exception:
+      pass
 
   def close (self, *args, **kw):
     if self._close:
       try:
-        self._out.close()
+        self._writer._out.close()
       except Exception:
         pass
     return self._socket.close(*args, **kw)
