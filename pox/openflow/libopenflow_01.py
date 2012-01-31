@@ -22,6 +22,7 @@
 import struct
 import operator
 import sys
+from pox.lib.packet.packet_base import packet_base
 from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.vlan import vlan
 from pox.lib.packet.ipv4 import ipv4
@@ -31,6 +32,7 @@ from pox.lib.packet.icmp import icmp
 from pox.lib.packet.arp import arp
 
 from pox.lib.addresses import *
+from pox.lib.util import assert_type
 from pox.lib.util import initHelper
 from pox.lib.util import hexdump
 
@@ -384,8 +386,10 @@ class ofp_queue_prop_min_rate (object):
 class ofp_match (object):
   @classmethod
   def from_packet (cls, packet, in_port = None):
-    #NOTE: this may not belong here and may be moved
-    assert(isinstance(packet, ethernet))
+    """ get a match that matches this packet, asuming it came in on in_port in_port
+    @param packet an instance of 'ethernet'
+    """
+    assert_type("packet", packet, ethernet, none_ok=False)
 
     match = cls()
 
@@ -668,7 +672,7 @@ class ofp_match (object):
     """
     Test whether /this/ match completely encompasses the other match. Important for non-strict modify flow_mods etc.
     """
-    if not isinstance(other, ofp_match): raise "other not an instance of ofp_match: %s" % other
+    assert_type("other", other, ofp_match, none_ok=False)
     # short cut for equal matches
     if(self == other): return True
     # only candidate if all wildcard bits in the *other* match are also set in this match (i.e., a submatch)
@@ -2491,7 +2495,6 @@ class ofp_packet_out (ofp_header):
     if 'action' in kw and 'actions' not in kw:
       kw['actions'] = kw['action']
       del kw['action']
-
     initHelper(self, kw)
 
     # Allow use of actions=<a single action> for kw args.
@@ -2648,30 +2651,45 @@ class ofp_barrier_request (ofp_header):
 class ofp_packet_in (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    
+
     self.in_port = OFPP_NONE
-    # If self.buffer_id != -1, self.data must only contain the packet header
     self.buffer_id = -1
     self.reason = 0
     self.data = None
-    
+
     initHelper(self, kw)
-    
+
     self.header_type = OFPT_PACKET_IN
     self._total_len = 0
 
+  def _set_data(self, data):
+    assert_type("data", data, (packet_base, str))
+    if data is None:
+      self._data = None
+    elif isinstance(data, packet_base):
+      self._data = data.pack()
+    else:
+      self._data = data
+  def _get_data(self):
+    return self._data
+  data = property(_get_data, _set_data)
+
   def _assert (self):
+    if self.data and not not isinstance(self.data, str):
+      return (False,
+          "ofp_packet_in: data should be raw byte string, not %s" % str(type(self.data)))
     return (True, None)
 
   def pack (self, assertstruct=True):
     if(assertstruct):
       if(not self._assert()[0]):
-        return None
+        raise AssertionError(self._assert()[1])
     packed = ""
     self._total_len = len(self) # TODO: Is this correct?
     packed += ofp_header.pack(self)
     packed += struct.pack("!LHHBB", self.buffer_id & 0xffFFffFF, self._total_len, self.in_port, self.reason, 0)
-    packed += self.data
+    if(self.data):
+        packet += self.data
     return packed
 
   def unpack (self, binaryString):
