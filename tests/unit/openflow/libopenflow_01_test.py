@@ -8,6 +8,7 @@ from copy import copy
 sys.path.append(os.path.dirname(__file__) + "/../../..")
 
 from pox.openflow.libopenflow_01 import *
+from pox.openflow.switch_impl import *
 
 class ofp_match_test(unittest.TestCase):
   def test_bit_wildcards(self):
@@ -109,6 +110,43 @@ class ofp_match_test(unittest.TestCase):
     assertNoMatch(create(nw_src="10.0.0.0/25"), create(nw_src="10.0.0.0/24"))
     assertMatch(create(nw_src="10.0.0.0/25"), create(nw_src="10.0.0.127"))
     assertNoMatch(create(nw_src="10.0.0.0/25"), create(nw_src="10.0.0.128"))
+
+class ofp_command_test(unittest.TestCase):
+  def assert_header(self, pack, ofp_type, length, xid):
+    def num(start, length):
+      val = 0
+      for i in range(start, start+length):
+        val <<= 8
+        val += ord(pack[i])
+      return val
+
+    self.assertEquals(num(0,1), 1)
+    self.assertEquals(num(1,1), ofp_type)
+    self.assertEquals(num(2,2), length)
+    self.assertEquals(num(4,4), xid)
+
+  def pack_unpack(self, o, xid, ofp_type):
+    pack = o.pack()
+    self.assertEqual(len(o), len(pack))
+    unpacked = type(o)()
+    unpacked.unpack(pack)
+    self.assertEqual(o, unpacked)
+    self.assert_header(pack, OFPT_PACKET_OUT, len(o), xid)
+
+
+out = ofp_action_output
+class ofp_packet_out_test(ofp_command_test):
+  def test_pack_unpack(self):
+    xid_gen = itertools.count()
+    packet = ethernet(src=EthAddr("00:00:00:00:00:01"), dst=EthAddr("00:00:00:00:00:02"),
+            payload=ipv4(srcip=IPAddr("1.2.3.4"), dstip=IPAddr("1.2.3.5"),
+                payload=udp(srcport=1234, dstport=53, payload="haha"))).pack()
+
+    for actions in ([], [out(port=2)], [out(port=2), out(port=3)], [ out(port=OFPP_FLOOD) ] ):
+      for attrs in ( { 'data': packet }, { 'buffer_id': 5 } ):
+        xid = xid_gen.next()
+        o = ofp_packet_out(xid=xid, actions=actions, **attrs)
+        self.pack_unpack(o, xid, OFPT_PACKET_OUT)
 
 if __name__ == '__main__':
   unittest.main()

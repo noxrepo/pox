@@ -2532,12 +2532,13 @@ class ofp_packet_out (ofp_header):
     (self.buffer_id, self.in_port, actions_len) = struct.unpack_from("!LHH", binaryString, 8)
     if self.buffer_id == 0xffFFffFF:
       self.buffer_id = -1
-    self.actions,offset = _unpack_actions(binaryString, self.length - 16, 16)
-    assert offset == self.length
-    return binaryString[offset:]
+    self.actions,offset = _unpack_actions(binaryString, actions_len, 16)
+
+    self.data = binaryString[offset:self.length] if offset < self.length else None
+    return binaryString[self.length:]
 
   def __len__ (self):
-    return 16 + reduce(operator.add, (a.length for a in self.actions))
+    return 16 + reduce(operator.add, (a.length for a in self.actions), 0) + (len(self.data) if self.data else 0)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
