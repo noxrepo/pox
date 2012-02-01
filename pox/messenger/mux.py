@@ -70,7 +70,7 @@ class MuxConnection (MessengerConnection):
     whatever = dict(whatever)
     whatever['_mux'] = self.channelName
     #print "***MUX SENDING*** to", self.channelName, whatever
-    print whatever
+    #print whatever
     MessengerConnection.send(self, whatever, **kw)
 
   def sendRaw (self, data):
