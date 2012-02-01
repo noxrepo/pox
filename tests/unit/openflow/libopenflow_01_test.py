@@ -10,6 +10,15 @@ sys.path.append(os.path.dirname(__file__) + "/../../..")
 from pox.openflow.libopenflow_01 import *
 from pox.openflow.switch_impl import *
 
+def extract_num(buf, start, length):
+  """ extracts a number from a raw byte string. Assumes network byteorder  """
+  # note: purposefully does /not/ use struct.unpack, because that is used by the code we validate 
+  val = 0
+  for i in range(start, start+length):
+    val <<= 8
+    val += ord(buf[i])
+  return val
+
 class ofp_match_test(unittest.TestCase):
   def test_bit_wildcards(self):
     """ some checking of the bit-level wildcard magic in ofp_match"""
@@ -141,16 +150,8 @@ class ofp_command_test(unittest.TestCase):
 
   def assert_packed_header(self, pack, ofp_type, length, xid):
     """ check openflow header fields in packed byte array """
-    def num(start, length):
-      # note: purposefully does /not/ use struct.unpack, because that is used by the code we validate 
-      val = 0
-      for i in range(start, start+length):
-        val <<= 8
-        val += ord(pack[i])
-      return val
-
     def assert_num(name, start, length, expected):
-      val = num(start, length)
+      val = extract_num(pack, start, length)
       self.assertEquals(val, expected, "packed header check: %s for ofp type %s should be %d (is %d)" % (name, ofp_type_map[ofp_type], expected, val))
 
     assert_num("OpenFlow version", 0, 1, 1)
@@ -250,6 +251,34 @@ class ofp_command_test(unittest.TestCase):
             for (check_attr,val) in attrs.iteritems():
               self.assertEqual(getattr(unpacked, check_attr), val)
 
+class ofp_action_test(unittest.TestCase):
+  def assert_packed_action(self, cls, packed, a_type, length):
+    self.assertEqual(extract_num(packed, 0,2), a_type, "Action %s: expected type %d (but is %d)" % (cls, a_type, extract_num(packed, 0,2)))
+    self.assertEqual(extract_num(packed, 2,2), length, "Action %s: expected length %d (but is %d)" % (cls, length, extract_num(packed, 2,2)))
+
+  def test_pack_all_actions_simple(self):
+    for (cls, a_type, kw, length) in (
+        (ofp_action_output, OFPAT_OUTPUT, { 'port': 23 }, 8 ),
+        (ofp_action_enqueue, OFPAT_ENQUEUE, { 'port': 23, 'queue_id': 1 }, 16 ),
+        (ofp_action_vlan_vid, OFPAT_SET_VLAN_VID, { 'vlan_vid' : 123}, 8 ),
+        (ofp_action_vlan_pcp, OFPAT_SET_VLAN_PCP, { 'vlan_pcp' : 123}, 8 ),
+        (ofp_action_dl_addr.set_dst, OFPAT_SET_DL_DST, { 'dl_addr' : EthAddr("00:"*5 + "01").toRaw() }, 16 ),
+        (ofp_action_dl_addr.set_src, OFPAT_SET_DL_SRC, { 'dl_addr' : EthAddr("00:"*5 + "01").toRaw() }, 16 ),
+        (ofp_action_nw_addr.set_dst, OFPAT_SET_NW_DST, { 'nw_addr' : IPAddr("1.2.3.4") }, 8 ),
+        (ofp_action_nw_addr.set_src, OFPAT_SET_NW_SRC, { 'nw_addr' : IPAddr("1.2.3.4") }, 8 ),
+        (ofp_action_nw_tos, OFPAT_SET_NW_TOS, { 'nw_tos' : 4 }, 8),
+        (ofp_action_tp_port.set_dst, OFPAT_SET_TP_DST, { 'tp_port' : 80 }, 8),
+        (ofp_action_tp_port.set_src, OFPAT_SET_TP_SRC, { 'tp_port' : 80 }, 8)
+        ):
+      action = cls(**kw)
+      packed = action.pack()
+      self.assertEqual(len(action), len(packed))
+      self.assert_packed_action(cls, packed, a_type, length)
+      unpacked = cls()
+      unpacked.unpack(packed)
+      self.assertEqual(action, unpacked)
+      for (k, v) in kw.iteritems():
+        self.assertEqual(getattr(unpacked, k), v)
 
 if __name__ == '__main__':
   unittest.main()
