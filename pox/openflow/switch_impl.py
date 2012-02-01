@@ -14,6 +14,7 @@ Created by ykk
 # OF_01 like task that listens for socket connections, creates a new socket,
 # wraps it in a ControllerConnection object, and calls SwitchImpl._handle_ConnectionUp
 
+from pox.lib.util import assert_type
 from pox.lib.revent import Event, EventMixin
 from pox.core import core
 from pox.openflow.libopenflow_01 import *
@@ -27,6 +28,9 @@ import itertools
 class SwitchDpPacketOut (Event):
   """ Event raised by SwitchImpl when a dataplane packet is sent out a port """
   def __init__ (self, switch, packet, port):
+    assert_type("switch", switch, SwitchImpl, none_ok=False)
+    assert_type("packet", packet, ethernet, none_ok=False)
+    assert_type("port", port, ofp_phy_port, none_ok=False)
     Event.__init__(self)
     self.switch = switch
     self.packet = packet
@@ -61,7 +65,7 @@ class SwitchImpl(EventMixin):
     if(ports == None or isinstance(ports, int)):
       ports=_default_port_list(num_ports=ports, prefix=dpid)
 
-    self.xid_count = itertools.count(1)
+    self.xid_count = xid_generator(1)
 
     ## Hash of port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
@@ -102,43 +106,41 @@ class SwitchImpl(EventMixin):
   # ==================================== #
   #    Reactive OFP processing           #
   # ==================================== #
-  def _receive_hello(self, packet):
+  def _receive_hello(self, ofp):
     self.log.debug("Receive hello %s" % self.name)
     # How does the OpenFlow protocol prevent an infinite loop of Hello messages?
     self.send_hello()
 
-  def _receive_echo(self, packet):
+  def _receive_echo(self, ofp):
     """Reply to echo request
     """
-    self.log.debug("Reply echo of xid: %s %s" % (str(packet), self.name)) # TODO: packet.xid
-    msg = ofp_echo_reply(xid=packet.xid)
+    self.log.debug("Reply echo of xid: %s %s" % (str(ofp), self.name))
+    msg = ofp_echo_reply(xid=ofp.xid)
     self._connection.send(msg)
 
-  def _receive_features_request(self, packet):
+  def _receive_features_request(self, ofp):
     """Reply to feature request
     """
-    self.log.debug("Reply features request of xid %s %s" % (str(packet), self.name)) # TODO: packet.xid
-    msg = ofp_features_reply(datapath_id = self.dpid, n_buffers = self.n_buffers,
+    self.log.debug("Reply features request of xid %s %s" % (str(ofp), self.name))
+    msg = ofp_features_reply(datapath_id = self.dpid, xid = ofp.xid, n_buffers = self.n_buffers,
                              n_tables = self.n_tables,
                              capabilities = self.capabilities.get_capabilities(),
                              actions = self.capabilities.get_actions(),
                              ports = self.ports.values())
     self._connection.send(msg)
 
-  def _receive_flow_mod(self, packet):
+  def _receive_flow_mod(self, ofp):
     """Handle flow mod: just print it here
     """
-    self.log.debug("Flow mod %s: %s" % (self.name, packet.show()))
-    self.table.process_flow_mod(packet)
-    if(packet.buffer_id >=0 ):
-      self._process_actions_for_packet_from_buffer(packet.actions, packet.buffer_id)
+    self.log.debug("Flow mod %s: %s" % (self.name, ofp.show()))
+    self.table.process_flow_mod(ofp)
+    if(ofp.buffer_id >=0 ):
+      self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id)
 
   def _receive_packet_out(self, packet_out):
     """
     Send the packet out the given port
     """
-    # TODO: There is a packet formatting error somewhere... str(packet) throws
-    # an exception... no method "show" for None
     self.log.debug("Packet out") # , str(packet))
 
     if(packet_out.data != None):
@@ -148,12 +150,12 @@ class SwitchImpl(EventMixin):
     else:
       self.log.warn("packet_out: No data and no buffer_id -- don't know what to send")
 
-  def _receive_echo_reply(self, packet):
-    self.log.debug("Echo reply: %s %s" % (str(packet), self.name))
+  def _receive_echo_reply(self, ofp):
+    self.log.debug("Echo reply: %s %s" % (str(ofp), self.name))
 
-  def _receive_barrier_request(self, packet):
-    self.log.debug("Barrier request %s %s" % (self.name, str(packet)))
-    msg = ofp_barrier_reply(xid = packet.xid)
+  def _receive_barrier_request(self, ofp):
+    self.log.debug("Barrier request %s %s" % (self.name, str(ofp)))
+    msg = ofp_barrier_reply(xid = ofp.xid)
     self._connection.send(msg)
 
   # ==================================== #
@@ -171,6 +173,7 @@ class SwitchImpl(EventMixin):
     Assume no match as reason, buffer_id = 0xFFFFFFFF,
     and empty packet by default
     """
+    assert_type("packet", packet, ethernet)
     self.log.debug("Send PacketIn %s " % self.name)
     if (reason == None):
       reason = ofp_packet_in_reason_rev_map['OFPR_NO_MATCH']
@@ -179,7 +182,7 @@ class SwitchImpl(EventMixin):
 
     if xid == None: xid = self.xid_count.next()
     msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
-                        data = packet)
+                        data = packet.pack())
     self._connection.send(msg)
 
   def send_echo(self, xid=0):
@@ -191,8 +194,11 @@ class SwitchImpl(EventMixin):
 
   def process_packet(self, packet, in_port):
     """ process a packet the way a real OpenFlow switch would.
+        packet: an instance of ethernet
         in_port: the integer port number
     """
+    assert_type("packet", packet, ethernet, none_ok=False)
+
     entry = self.table.entry_for_packet(packet, in_port)
     if(entry != None):
       entry.touch_packet(len(packet))
@@ -208,7 +214,9 @@ class SwitchImpl(EventMixin):
 
   def _output_packet(self, packet, out_port, in_port):
     """ send a packet out some port.
+        packet: instance of ethernet
         out_port, in_port: the integer port number """
+    assert_type("packet", packet, ethernet, none_ok=False)
     def real_send(port_no):
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
@@ -251,7 +259,7 @@ class SwitchImpl(EventMixin):
 
   def _process_actions_for_packet(self, actions, packet, in_port):
     """ process the output actions for a packet """
-    assert(isinstance(packet, ethernet))
+    assert_type("packet", packet, ethernet, none_ok=False)
 
     def output_packet(action, packet):
       self._output_packet(packet, action.port, in_port)
