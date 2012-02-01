@@ -257,19 +257,7 @@ class ofp_action_test(unittest.TestCase):
     self.assertEqual(extract_num(packed, 2,2), length, "Action %s: expected length %d (but is %d)" % (cls, length, extract_num(packed, 2,2)))
 
   def test_pack_all_actions_simple(self):
-    for (cls, a_type, kw, length) in (
-        (ofp_action_output, OFPAT_OUTPUT, { 'port': 23 }, 8 ),
-        (ofp_action_enqueue, OFPAT_ENQUEUE, { 'port': 23, 'queue_id': 1 }, 16 ),
-        (ofp_action_vlan_vid, OFPAT_SET_VLAN_VID, { 'vlan_vid' : 123}, 8 ),
-        (ofp_action_vlan_pcp, OFPAT_SET_VLAN_PCP, { 'vlan_pcp' : 123}, 8 ),
-        (ofp_action_dl_addr.set_dst, OFPAT_SET_DL_DST, { 'dl_addr' : EthAddr("00:"*5 + "01").toRaw() }, 16 ),
-        (ofp_action_dl_addr.set_src, OFPAT_SET_DL_SRC, { 'dl_addr' : EthAddr("00:"*5 + "01").toRaw() }, 16 ),
-        (ofp_action_nw_addr.set_dst, OFPAT_SET_NW_DST, { 'nw_addr' : IPAddr("1.2.3.4") }, 8 ),
-        (ofp_action_nw_addr.set_src, OFPAT_SET_NW_SRC, { 'nw_addr' : IPAddr("1.2.3.4") }, 8 ),
-        (ofp_action_nw_tos, OFPAT_SET_NW_TOS, { 'nw_tos' : 4 }, 8),
-        (ofp_action_tp_port.set_dst, OFPAT_SET_TP_DST, { 'tp_port' : 80 }, 8),
-        (ofp_action_tp_port.set_src, OFPAT_SET_TP_SRC, { 'tp_port' : 80 }, 8)
-        ):
+    def c(cls, a_type, kw, length):
       action = cls(**kw)
       packed = action.pack()
       self.assertEqual(len(action), len(packed))
@@ -279,6 +267,26 @@ class ofp_action_test(unittest.TestCase):
       self.assertEqual(action, unpacked)
       for (k, v) in kw.iteritems():
         self.assertEqual(getattr(unpacked, k), v)
+      return packed
+
+
+    c(ofp_action_output, OFPAT_OUTPUT, { 'port': 23 }, 8 )
+    c(ofp_action_enqueue, OFPAT_ENQUEUE, { 'port': 23, 'queue_id': 1 }, 16 )
+    c(ofp_action_vlan_vid, OFPAT_SET_VLAN_VID, { 'vlan_vid' : 123}, 8 )
+    c(ofp_action_vlan_pcp, OFPAT_SET_VLAN_PCP, { 'vlan_pcp' : 123}, 8 )
+    p = c(ofp_action_dl_addr.set_dst, OFPAT_SET_DL_DST, { 'dl_addr' : EthAddr("01:02:03:04:05:06").toRaw() }, 16 )
+    self.assertEquals(extract_num(p, 4,6), 0x010203040506)
+    p = c(ofp_action_dl_addr.set_src, OFPAT_SET_DL_SRC, { 'dl_addr' : EthAddr("ff:ee:dd:cc:bb:aa").toRaw() }, 16 )
+    self.assertEquals(extract_num(p, 4,6), 0xffeeddccbbaa, "Ethernet in packed is %x, but should be ff:ee:dd:cc:bb:aa" % extract_num(p, 4, 6))
+    p = c(ofp_action_nw_addr.set_dst, OFPAT_SET_NW_DST, { 'nw_addr' : IPAddr("1.2.3.4") }, 8 )
+    self.assertEquals(extract_num(p, 4,4), 0x01020304)
+    p = c(ofp_action_nw_addr.set_src, OFPAT_SET_NW_SRC, { 'nw_addr' : IPAddr("127.0.0.1") }, 8 )
+    self.assertEquals(extract_num(p, 4,4), 0x7f000001)
+    c(ofp_action_nw_tos, OFPAT_SET_NW_TOS, { 'nw_tos' : 4 }, 8)
+    p = c(ofp_action_tp_port.set_dst, OFPAT_SET_TP_DST, { 'tp_port' : 80 }, 8)
+    self.assertEquals(extract_num(p, 4,2), 80)
+    p = c(ofp_action_tp_port.set_src, OFPAT_SET_TP_SRC, { 'tp_port' : 22987 }, 8)
+    self.assertEquals(extract_num(p, 4,2), 22987)
 
 if __name__ == '__main__':
   unittest.main()
