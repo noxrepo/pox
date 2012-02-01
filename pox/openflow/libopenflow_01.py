@@ -55,6 +55,12 @@ def generateXID ():
   _nextXID = (_nextXID + 1) % (MAX_XID + 1)
   return r
 
+def xid_generator(start=1):
+  """ generate a xid sequence. Wraps at 2**31-1 """
+  n = start % (MAX_XID + 1)
+  while True:
+    yield n
+    n  = ( n + 1 )  % (MAX_XID + 1)
 
 def _format_body (body, prefix):
   if hasattr(body, 'show'):
