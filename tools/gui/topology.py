@@ -1077,8 +1077,9 @@ class TopologyView(QtGui.QGraphicsView):
                 popup = QtGui.QMenu()
                 popup.addAction("Load Layout", self.load_layout)
                 popup.addAction("Save Layout", self.save_layout)
-                popup.addAction("Add Switch", self.add_switch)
-                popup.addAction("Add Host", self.add_host)
+                m = popup.addMenu("mininet")
+                m.addAction("Add Switch", self.add_switch)
+                m.addAction("Add Host", self.add_host)
                 popup.exec_(event.globalPos())
         QtGui.QGraphicsView.mouseReleaseEvent(self, event)
     
