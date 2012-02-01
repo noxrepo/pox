@@ -10,6 +10,7 @@ from random import randint
 from communication import Communication
 from views.default import Default_View
 import json
+import jsonrpc
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 ### Add custom topology views here  (add them in topoWidget.__init__() below)
@@ -670,6 +671,9 @@ class TopologyView(QtGui.QGraphicsView):
         #self.topologyInterface = TopologyInterface(self)
         self.topologyInterface = self.parent.parent.communication
         #self.topologyInterface.start()
+        self.mininet = jsonrpc.ServerProxy(jsonrpc.JsonRpc20(),
+            jsonrpc.TransportTcpIp(addr=("192.168.56.101", 31415)))
+
     
         self.setStyleSheet("background: black")
     
@@ -1073,6 +1077,8 @@ class TopologyView(QtGui.QGraphicsView):
                 popup = QtGui.QMenu()
                 popup.addAction("Load Layout", self.load_layout)
                 popup.addAction("Save Layout", self.save_layout)
+                popup.addAction("Add Switch", self.add_switch)
+                popup.addAction("Add Host", self.add_host)
                 popup.exec_(event.globalPos())
         QtGui.QGraphicsView.mouseReleaseEvent(self, event)
     
@@ -1119,3 +1125,10 @@ class TopologyView(QtGui.QGraphicsView):
         self.parent.parent.settings.set_current_topo_layout(layout)
         
         self.updateAll()
+        
+    def add_switch(self):
+        self.mininet.addNextSwitch()
+        
+    
+    def add_host(self):
+        self.mininet.addNextHost()
