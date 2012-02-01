@@ -112,31 +112,107 @@ class ofp_match_test(unittest.TestCase):
     assertNoMatch(create(nw_src="10.0.0.0/25"), create(nw_src="10.0.0.128"))
 
 class ofp_command_test(unittest.TestCase):
-  def assert_header(self, pack, ofp_type, length, xid):
+  # custom map of POX class to header type, for validation
+  ofp_type = {
+    ofp_features_reply: OFPT_FEATURES_REPLY,
+    ofp_switch_config: OFPT_SET_CONFIG,
+    ofp_flow_mod: OFPT_FLOW_MOD,
+    ofp_port_mod: OFPT_PORT_MOD,
+    ofp_queue_get_config_request: OFPT_QUEUE_GET_CONFIG_REQUEST,
+    ofp_queue_get_config_reply: OFPT_QUEUE_GET_CONFIG_REPLY,
+    ofp_stats_request: OFPT_STATS_REQUEST,
+    ofp_stats_reply: OFPT_STATS_REPLY,
+    ofp_packet_out: OFPT_PACKET_OUT,
+    ofp_barrier_reply: OFPT_BARRIER_REPLY,
+    ofp_barrier_request: OFPT_BARRIER_REQUEST,
+    ofp_packet_in: OFPT_PACKET_IN,
+    ofp_flow_removed: OFPT_FLOW_REMOVED,
+    ofp_port_status: OFPT_PORT_STATUS,
+    ofp_error: OFPT_ERROR,
+    ofp_hello: OFPT_HELLO,
+    ofp_echo_request: OFPT_ECHO_REQUEST,
+    ofp_echo_reply: OFPT_ECHO_REPLY,
+    ofp_vendor: OFPT_VENDOR,
+    ofp_features_request: OFPT_FEATURES_REQUEST,
+    ofp_get_config_request: OFPT_GET_CONFIG_REQUEST,
+    ofp_get_config_reply: OFPT_GET_CONFIG_REPLY,
+    ofp_set_config: OFPT_SET_CONFIG
+    }
+
+  def assert_packed_header(self, pack, ofp_type, length, xid):
+    """ check openflow header fields in packed byte array """
     def num(start, length):
+      # note: purposefully does /not/ use struct.unpack, because that is used by the code we validate 
       val = 0
       for i in range(start, start+length):
         val <<= 8
         val += ord(pack[i])
       return val
 
-    self.assertEquals(num(0,1), 1)
-    self.assertEquals(num(1,1), ofp_type)
-    self.assertEquals(num(2,2), length)
-    self.assertEquals(num(4,4), xid)
+    def assert_num(name, start, length, expected):
+      val = num(start, length)
+      self.assertEquals(val, expected, "packed header check: %s for ofp type %s should be %d (is %d)" % (name, ofp_type_map[ofp_type], expected, val))
 
-  def pack_unpack(self, o, xid, ofp_type):
+    assert_num("OpenFlow version", 0, 1, 1)
+    assert_num("header_type", 1, 1, ofp_type)
+    assert_num("length in header", 2, 2, length)
+    assert_num("xid", 4, 4, xid)
+
+  def _test_pack_unpack(self, o, xid, ofp_type=None):
+    """ check that packing and unpacking an ofp object works, and that lengths etc. are correct """
+    show = lambda(o): o.show() if hasattr(o, "show") else str(show)
+
+    if not ofp_type:
+      ofp_type = self.ofp_type[type(o)]
+
+    self.assertTrue(o._assert(), "pack_unpack for %s -- original object should _assert to true"%show(o))
+    # pack object
     pack = o.pack()
-    self.assertEqual(len(o), len(pack))
+    # byte array length should equal calculated length
+    self.assertEqual(len(o), len(pack), "pack_unpack for %s -- len(object)=%d != len(packed)=%d" % (type(o), len(o), len(pack)))
+    # check header fields in packed byte array
+    self.assert_packed_header(pack, ofp_type, len(o), xid)
+    # now unpack
     unpacked = type(o)()
     unpacked.unpack(pack)
-    self.assertEqual(o, unpacked)
-    self.assert_header(pack, OFPT_PACKET_OUT, len(o), xid)
+    self.assertEqual(o, unpacked, "pack_unpacked -- original != unpacked\n===Original:\n%s\n===Repacked:%s\n" % (show(o), show(unpacked)))
 
+  def test_header_pack_unpack(self):
+    for kw in ( { "header_type": OFPT_PACKET_OUT, "xid": 1 },
+                { "header_type": OFPT_FLOW_MOD, "xid": 2 }):
+      o = ofp_header(**kw)
+      self._test_pack_unpack(o, kw["xid"], kw["header_type"])
 
-out = ofp_action_output
-class ofp_packet_out_test(ofp_command_test):
-  def test_pack_unpack(self):
+  def test_pack_all_comands_simple(self):
+    xid_gen = itertools.count()
+    for cls in ( ofp_features_reply,
+                   ofp_switch_config,
+                   ofp_flow_mod,
+                   ofp_port_mod,
+                   ofp_queue_get_config_request,
+                   ofp_queue_get_config_reply,
+                   ofp_stats_request,
+                   ofp_stats_reply,
+                   ofp_packet_out,
+                   ofp_barrier_reply,
+                   ofp_barrier_request,
+                   ofp_packet_in,
+                   ofp_flow_removed,
+                   ofp_port_status,
+                   ofp_error,
+                   ofp_hello,
+                   ofp_echo_request,
+                   ofp_echo_reply,
+                   ofp_features_request,
+                   ofp_get_config_request,
+                   ofp_get_config_reply,
+                   ofp_set_config ):
+      xid = xid_gen.next()
+      o = cls(xid=xid)
+      self._test_pack_unpack(o, xid)
+
+  def test_pack_custom_packet_out(self):
+    out = ofp_action_output
     xid_gen = itertools.count()
     packet = ethernet(src=EthAddr("00:00:00:00:00:01"), dst=EthAddr("00:00:00:00:00:02"),
             payload=ipv4(srcip=IPAddr("1.2.3.4"), dstip=IPAddr("1.2.3.5"),
@@ -146,7 +222,7 @@ class ofp_packet_out_test(ofp_command_test):
       for attrs in ( { 'data': packet }, { 'buffer_id': 5 } ):
         xid = xid_gen.next()
         o = ofp_packet_out(xid=xid, actions=actions, **attrs)
-        self.pack_unpack(o, xid, OFPT_PACKET_OUT)
+        self._test_pack_unpack(o, xid, OFPT_PACKET_OUT)
 
 if __name__ == '__main__':
   unittest.main()

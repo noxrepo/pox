@@ -1651,8 +1651,9 @@ class ofp_port_mod (ofp_header):
 class ofp_queue_get_config_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
+    self.header_type = OFPT_QUEUE_GET_CONFIG_REQUEST
     self.port = 0
-
+    self.length = 12
     initHelper(self, kw)
 
   def _assert (self):
@@ -1696,6 +1697,8 @@ class ofp_queue_get_config_request (ofp_header):
 class ofp_queue_get_config_reply (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
+    self.header_type = OFPT_QUEUE_GET_CONFIG_REPLY
+    self.length = 16
     self.port = 0
     self.queues = []
 
@@ -2665,7 +2668,7 @@ class ofp_packet_in (ofp_header):
   def _set_data(self, data):
     assert_type("data", data, (packet_base, str))
     if data is None:
-      self._data = None
+      self._data = ''
     elif isinstance(data, packet_base):
       self._data = data.pack()
     else:
@@ -2675,7 +2678,7 @@ class ofp_packet_in (ofp_header):
   data = property(_get_data, _set_data)
 
   def _assert (self):
-    if self.data and not not isinstance(self.data, str):
+    if not isinstance(self.data, str):
       return (False,
           "ofp_packet_in: data should be raw byte string, not %s" % str(type(self.data)))
     return (True, None)
@@ -2685,11 +2688,13 @@ class ofp_packet_in (ofp_header):
       if(not self._assert()[0]):
         raise AssertionError(self._assert()[1])
     packed = ""
+    # need to update the self.length field for ofp_header.pack to put the correct value in the packed
+    # array. this sucks.
+    self.length = len(self)
     self._total_len = len(self) # TODO: Is this correct?
     packed += ofp_header.pack(self)
     packed += struct.pack("!LHHBB", self.buffer_id & 0xffFFffFF, self._total_len, self.in_port, self.reason, 0)
-    if(self.data):
-        packet += self.data
+    packed += self.data
     return packed
 
   def unpack (self, binaryString):
@@ -2750,7 +2755,7 @@ class ofp_flow_removed (ofp_header):
     self.idle_timeout = 0
     self.packet_count = 0
     self.byte_count = 0
-    
+    self.length = 88
     initHelper(self, kw)
 
   def _assert (self):
@@ -2829,6 +2834,7 @@ class ofp_port_status (ofp_header):
     self.header_type = OFPT_PORT_STATUS
     self.reason = 0
     self.desc = ofp_phy_port()
+    self.length = 64
 
     initHelper(self, kw)
 
@@ -2900,6 +2906,7 @@ class ofp_error (ofp_header):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
+    self.length = len(self)
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.code)
@@ -3215,7 +3222,7 @@ class ofp_vendor (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.vendor,) = struct.unpack_from("!L", binaryString, 8)
-    if len(binaryString < self.length):
+    if len(binaryString) < self.length:
       return binaryString
     self.data = binaryString[12:self.length]
     return binaryString[self.length:]
@@ -3327,6 +3334,7 @@ class ofp_get_config_reply (ofp_header):
     self.header_type = OFPT_GET_CONFIG_REPLY
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
+    self.length = 12
 
     initHelper(self, kw)
 
@@ -3375,6 +3383,7 @@ class ofp_set_config (ofp_header):
     self.header_type = OFPT_SET_CONFIG
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
+    self.length = 12
 
     initHelper(self, kw)
 
