@@ -166,6 +166,8 @@ class ofp_command_test(unittest.TestCase):
       ofp_type = self.ofp_type[type(o)]
 
     self.assertTrue(o._assert(), "pack_unpack for %s -- original object should _assert to true"%show(o))
+    # show the object to make sure that works
+    o.show()
     # pack object
     pack = o.pack()
     # byte array length should equal calculated length
@@ -176,6 +178,7 @@ class ofp_command_test(unittest.TestCase):
     unpacked = type(o)()
     unpacked.unpack(pack)
     self.assertEqual(o, unpacked, "pack_unpacked -- original != unpacked\n===Original:\n%s\n===Repacked:%s\n" % (show(o), show(unpacked)))
+    return unpacked
 
   def test_header_pack_unpack(self):
     for kw in ( { "header_type": OFPT_PACKET_OUT, "xid": 1 },
@@ -211,18 +214,42 @@ class ofp_command_test(unittest.TestCase):
       o = cls(xid=xid)
       self._test_pack_unpack(o, xid)
 
+  out = ofp_action_output
+  dl_addr = ofp_action_dl_addr
+  some_actions = ([], [out(port=2)], [out(port=2), out(port=3)], [ out(port=OFPP_FLOOD) ], [ dl_addr.set_dst(EthAddr("00:"*5 + "01")), out(port=1) ])
+
+
   def test_pack_custom_packet_out(self):
-    out = ofp_action_output
-    xid_gen = itertools.count()
+    xid_gen = xid_generator()
     packet = ethernet(src=EthAddr("00:00:00:00:00:01"), dst=EthAddr("00:00:00:00:00:02"),
             payload=ipv4(srcip=IPAddr("1.2.3.4"), dstip=IPAddr("1.2.3.5"),
                 payload=udp(srcport=1234, dstport=53, payload="haha"))).pack()
 
-    for actions in ([], [out(port=2)], [out(port=2), out(port=3)], [ out(port=OFPP_FLOOD) ] ):
+    for actions in self.some_actions:
       for attrs in ( { 'data': packet }, { 'buffer_id': 5 } ):
         xid = xid_gen.next()
         o = ofp_packet_out(xid=xid, actions=actions, **attrs)
         self._test_pack_unpack(o, xid, OFPT_PACKET_OUT)
+
+  def test_pack_custom_flow_mod(self):
+    out = ofp_action_output
+    xid_gen = xid_generator()
+
+    for match in ( ofp_match(),
+        ofp_match(in_port=1, dl_type=0, dl_src=EthAddr("00:00:00:00:00:01"), dl_dst=EthAddr("00:00:00:00:00:02"), dl_vlan=5, nw_proto=6, nw_src="10.0.0.1", nw_dst="11.0.0.1", tp_src = 12345, tp_dst=80)):
+      for actions in self.some_actions:
+        for command in ( OFPFC_ADD, OFPFC_DELETE, OFPFC_DELETE_STRICT, OFPFC_MODIFY_STRICT, OFPFC_MODIFY_STRICT ):
+          for attrs in ( {}, { 'buffer_id' : 123 }, { 'idle_timeout': 5, 'hard_timeout': 10 } ):
+            xid = xid_gen.next()
+            o = ofp_flow_mod(xid=xid, command=command, match = match, actions=actions, **attrs)
+            unpacked = self._test_pack_unpack(o, xid, OFPT_FLOW_MOD)
+
+            self.assertEqual(unpacked.match, match)
+            self.assertEqual(unpacked.command, command)
+            self.assertEqual(unpacked.actions, actions)
+            for (check_attr,val) in attrs.iteritems():
+              self.assertEqual(getattr(unpacked, check_attr), val)
+
 
 if __name__ == '__main__':
   unittest.main()
