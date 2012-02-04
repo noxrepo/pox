@@ -31,18 +31,18 @@ class MainWindow(QtGui.QMainWindow):
     def usage(self):
         """Print usage information
         """
-        print "Usage "+sys.argv[0]+" <options> [IP address | default to localhost]"
+        print "Usage: "+sys.argv[0]+" <options> [IP address | default to localhost]"
         print  "Options:"
-        print "-h/--help\n\tPrint this usage guide"
-        print "-p/--port\n\tPort to connect to"
+        print "-h / --help \tPrint this usage guide"
+        print "-p / --port \tPort to connect to"
+        print "-m / --mininet \tMininet IP address"
 
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self, parent)
 
         #Parse options and commandline arguments
         try:
-            opts, args = getopt.getopt(sys.argv[1:], "hp:",
-                                       ["help","port="])
+            opts, args = getopt.getopt(sys.argv[1:], "hp:m:", ["help","port=","mininet="])
         except getopt.GetoptError:
             print "Option error!"
             self.usage()
@@ -56,6 +56,8 @@ class MainWindow(QtGui.QMainWindow):
                 sys.exit(0)
             elif (opt in ("-p","--port")):
                 self.backend_port = int(arg)
+            elif (opt in ("-m","--mininet")):
+                self.mininet_address = arg
             else:
                 print "Unhandled option :"+opt
                 sys.exit(2)
