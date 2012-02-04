@@ -16,27 +16,53 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
-from pox.core import core as core
-from pox.messenger.messenger import MessageReceived
-#import weakref
-import json
+"""
+This is the communication interface between POX and the GUI.
+The gui backend component acts as a proxy between other components and the GUI.
 
-log = core.getLogger()
+GUI --> POX component:
+If we want to trigger component functionality through the GUI, the component
+must exposes that functionality through its API. The "backend" should just call
+that API when ith gets input from the GUI (for example, think monitoring).
 
+POX component --> GUI
+If the component wants to send something to the GUI, it just raises events.
+The backend listens to those events and packs them up and sends them to the GUI.
+
+Note: log messages are treated separately, and use their own communication
+channel
+"""
 
 from pox.core import core
 from pox.messenger.messenger import *
 from pox.lib.revent import *
+from pox.messenger.messenger import MessageReceived
+import json
 import traceback
+
+log = core.getLogger()
+
 """
 from pox.messenger.log_service import LogMessenger
 """
-log = core.getLogger()
+
+class MonitoringEvent (Event):
+  def __init__ (self, msg):
+    Event.__init__(self)
+    self.msg = msg
 
 class GuiMessengerService (EventMixin):
+  
+  _eventMixin_events = set([
+    MonitoringEvent
+    ])
+  
+  _core_name = "guimessenger"
+  
   _wantComponents = set(['topology', 'openflow_discovery'])
   def __init__ (self, connection, params):
     core.listenToDependencies(self, self._wantComponents)
+    self.addListeners(core.monitoring, prefix = "guimessenger")
     self.connection = connection
     """
     connection._newlines = params.get("newlines", True) == True #HACK
@@ -54,7 +80,7 @@ class GuiMessengerService (EventMixin):
     msg = {}
     msg["type"] = "topology"
     msg["command"] = "add"
-    msg["node_id"] = [str(event.switch.id)]
+    msg["node_id"] = [event.switch.id]
     msg["node_type"] = "switch"
     self.connection.send(msg)
     
@@ -62,7 +88,7 @@ class GuiMessengerService (EventMixin):
     msg = {}
     msg["type"] = "topology"
     msg["command"] = "add"
-    msg["node_id"] = [str(event.host.id)]
+    msg["node_id"] = [event.host.id]
     msg["node_type"] = "host"
     self.connection.send(msg)
     
@@ -70,8 +96,8 @@ class GuiMessengerService (EventMixin):
     msg = {}
     msg["type"] = "topology"
     msg["command"] = "add"
-    msg["links"] = [{"src id":str(event.link.dpid1), "src port":event.link.port1,\
-                    "dst id":str(event.link.dpid2), "dst port":event.link.port2 }]
+    msg["links"] = [{"src id":event.link.dpid1, "src port":event.link.port1,\
+                    "dst id":event.link.dpid2, "dst port":event.link.port2 }]
     msg["node_type"] = "host"
     self.connection.send(msg)
 
@@ -87,7 +113,7 @@ class GuiMessengerService (EventMixin):
             if r["type"] == "topology":
               pass
             elif r["type"] == "monitoring":
-              pass
+              self.raiseEvent(MonitoringEvent(msg))
             elif r["type"] == "spanning_tree":
               pass
             elif r["type"] == "sample_routing":
