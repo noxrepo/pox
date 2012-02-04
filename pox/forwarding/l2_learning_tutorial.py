@@ -20,7 +20,6 @@ This is the world's simplest OpenFlow learning switch.
 """
 
 from pox.core import core
-from pox.lib.addresses import EthAddr
 import pox.openflow.libopenflow_01 as of
 
 log = core.getLogger()
@@ -49,18 +48,7 @@ def _handle_PacketIn (event):
   event.connection.send(msg)
 
 
-def _handle_ConnectionUp (event):
-  # Install rule so that broadcast packets just get flooded
-  msg = of.ofp_flow_mod()
-  msg.match.dl_dst = EthAddr("ff:ff:ff:ff:ff:ff") # Broadcast
-  msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-                                                  # FLOOD means all ports
-  event.connection.send(msg)
-  log.info("Switch connected.")
-
-
 def launch ():
-  core.openflow.addListenerByName("ConnectionUp", _handle_ConnectionUp)
   core.openflow.addListenerByName("PacketIn", _handle_PacketIn)
 
   log.info("Learning switch running.")
