@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2012 James McCauley
 #
 # This file is part of POX.
 #
