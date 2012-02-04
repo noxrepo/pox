@@ -33,7 +33,8 @@ class Node(QtGui.QGraphicsItem):
         self.graph = graphWidget
         self.topoWidget = self.graph.parent
         self.infoDisplay = self.topoWidget.parent.infoWidget
-        self.id = str(_id)
+        #self._id = _id
+        self.id = _id
         self.type = _type
         self.linkList = []
         self.neighbors = {}  # "str(port) : str(neigh.ID)"
@@ -72,7 +73,7 @@ class Node(QtGui.QGraphicsItem):
 
     def query_flow_stats(self):
         self.infoDisplay.grab()
-        self.infoDisplay.append('Querying flow stats for switch: 0x%s'%self.id)
+        self.infoDisplay.append('Querying flow stats for switch: %s'%self.id)
         self.topoWidget.monitoring_view.get_flow_stats( self.id )
         self.infoDisplay.grab()
 
@@ -165,7 +166,7 @@ class Node(QtGui.QGraphicsItem):
         if self.showID:
             # Text.
             textRect = self.boundingRect()
-            message = self.id
+            message = str(self.id)
 
             font = painter.font()
             font.setBold(True)
@@ -232,6 +233,10 @@ class Node(QtGui.QGraphicsItem):
                 popup.addSeparator()
                 activeView = self.graph.parent.views[self.graph.drawAccess]
                 popup.addMenu(activeView.nodeMenu)
+                mininetMenu = QtGui.QMenu( '&Mininet' )
+                mininetMenu.addAction('Link from here', self.linkFrom)
+                mininetMenu.addAction('Link to here', self.linkTo)
+                popup.addMenu(mininetMenu)
             # Host Details Menu
             if self.type == "host":
                 popup.addMenu(self.nodeDetails)
@@ -239,7 +244,13 @@ class Node(QtGui.QGraphicsItem):
             popup.exec_(event.lastScreenPos())
         self.update()
         QtGui.QGraphicsItem.mouseReleaseEvent(self, event)
-
+        
+    def linkFrom(self):
+        self.graph.mininetLinkFrom(self.id)
+        
+    def linkTo(self):
+        self.graph.mininetLinkTo(self.id)
+        
     def alertSwitchDown(self):
         ''' when user turns switch off from GUI, sends message
         to dispatch server '''
@@ -364,9 +375,9 @@ class Link(QtGui.QGraphicsItem):
         
         # Link details menu
         self.linkDetails = QtGui.QMenu('&Link Details')
-        self.linkDetails.addAction('Link ID: '+ str(self.uid))
-        self.linkDetails.addAction('Ends: '+self.source.id+':'+str(self.sport)\
-                        +"-"+self.dest.id+':'+str(self.dport))
+        self.linkDetails.addAction('Link ID: %s'%self.uid)
+        self.linkDetails.addAction("Ends: %i:%i - %i:%i"%(self.source.id,
+                                   self.sport, self.dest.id, self.dport))
         self.linkDetails.addAction('Capacity: ')
 
     def type(self):
@@ -508,45 +519,30 @@ class Link(QtGui.QGraphicsItem):
             popup = QtGui.QMenu()
             popup.addMenu(self.linkDetails)
             popup.addSeparator()
-            popup.addAction("Bring link &up", self.alertLinkUp)
-            popup.addAction("Bring link &down", self.alertLinkDown)
+            m = popup.addMenu("Mininet")
+            m.addAction("Bring link &up", self.bringLinkUp)
+            m.addAction("Bring link &down", self.bringLinkDown)
             popup.exec_(event.lastScreenPos())
         self.update()
         QtGui.QGraphicsItem.mouseReleaseEvent(self, event)
 
-    def alertLinkUp(self):
+    def bringLinkUp(self):
         ''' when user turns link on from GUI, sends message
         to dispatch server '''
-        mainWindow = self.topoWidget.parent
-        sendMsg = LinkAdminStatus()
-        sendMsg.dpid1 = self.source.dpid
-        sendMsg.dpid2 = self.dest.dpid
-        sendMsg.port1 = self.sport
-        sendMsg.port2 = self.dport
-        sendMsg.admin_up = True
-        self.topoWidget.topologyView.topologyInterface.send(sendMsg)
-        mainWindow.setStatusTip("Brought up link (" + hex(sendMsg.dpid1) \
-                + ", " + hex(sendMsg.dpid2) + ")")
+        self.graph.mininetLinkDown(self.source.id, self.dest.id)
 
-    def alertLinkDown(self):
+    def bringLinkDown(self):
         ''' when user turns link off from GUI, sends message
         to dispatch server '''
-        mainWindow = self.topoWidget.parent
-        sendMsg = LinkAdminStatus()
-        sendMsg.dpid1 = self.source.dpid
-        sendMsg.dpid2 = self.dest.dpid
-        sendMsg.port1 = self.sport
-        sendMsg.port2 = self.dport
-        sendMsg.admin_up = False
-        self.topoWidget.topologyView.topologyInterface.send(sendMsg)
-        mainWindow.setStatusTip("Brought down link (" + hex(sendMsg.dpid1) \
-                + ", " + hex(sendMsg.dpid2) + ")")
+        self.graph.mininetLinkDown(self.source.id, self.dest.id)
+        #self.sport
+        #self.dport
 
-    def bringLinkUp(self):
+    def setLinkUp(self):
         self.isUp = True
         self.update()
 
-    def bringLinkDown(self):
+    def setLinkDown(self):
         self.isUp = False
         self.update()
 
@@ -672,7 +668,7 @@ class TopologyView(QtGui.QGraphicsView):
         self.topologyInterface = self.parent.parent.communication
         #self.topologyInterface.start()
         self.mininet = jsonrpc.ServerProxy(jsonrpc.JsonRpc20(),
-            jsonrpc.TransportTcpIp(addr=("192.168.56.101", 31415)))
+            jsonrpc.TransportTcpIp(addr=(self.parent.parent.mininet_address, 31415)))
 
     
         self.setStyleSheet("background: black")
@@ -783,9 +779,11 @@ class TopologyView(QtGui.QGraphicsView):
                 new_nodes = []
                 # Populate nodes
                 for nodeID in nodes:
+                    """
                     # prepend 0s until len = 12
                     while len(nodeID) < 12 :
                         nodeID = "0"+nodeID
+                    """
                     # If nodeItem doesn't already exist
                     if nodeID not in self.nodes.keys():
                         nodeItem = Node(self, nodeID, msg["node_type"])
@@ -798,9 +796,11 @@ class TopologyView(QtGui.QGraphicsView):
                 nodes = msg["node_id"]
                 for nodeID in nodes:
                     if not msg["node_type"] == "host":
+                        """
                         # prepend 0s until len = 12
                         while len(nodeID) < 12 :
                             nodeID = "0"+nodeID
+                        """
                     if nodeID in self.nodes.keys():
                         #un-draw node
                         n = self.nodes[nodeID]
@@ -821,11 +821,15 @@ class TopologyView(QtGui.QGraphicsView):
                     # We'll add a single object for a biderectional link
                     # We'll always use 'minend-maxend' as the key
                     srcid = link["src id"]
+                    """
                     while len(srcid) < 12 :
                         srcid = "0"+srcid
+                    """
                     dstid = link["dst id"]
+                    """
                     while len(dstid) < 12 :
                         dstid = "0"+dstid
+                    """
                     
                     minend = str(min(srcid,dstid))
                     maxend = str(max(srcid,dstid))
@@ -922,12 +926,12 @@ class TopologyView(QtGui.QGraphicsView):
     
     def disableAllLinks(self):
         for e in self.links.values():
-            e.bringLinkDown()
+            e.setLinkDown()
             e.update()
 
     def enableAllLinks(self):
         for e in self.links.values():
-            e.bringLinkUp()
+            e.setLinkUp()
             e.update()
 
     def disableAllNodes(self):
@@ -1075,15 +1079,15 @@ class TopologyView(QtGui.QGraphicsView):
         if not self.itemAt(event.pos()):
             if event.button() == QtCore.Qt.RightButton:
                 popup = QtGui.QMenu()
-                popup.addAction("Load Layout", self.load_layout)
-                popup.addAction("Save Layout", self.save_layout)
-                m = popup.addMenu("mininet")
-                m.addAction("Add Switch", self.add_switch)
-                m.addAction("Add Host", self.add_host)
+                popup.addAction("Load Layout", self.loadLayout)
+                popup.addAction("Save Layout", self.saveLayout)
+                m = popup.addMenu("Mininet")
+                m.addAction("Add Switch", self.addSwitch)
+                m.addAction("Add Host", self.addHost)
                 popup.exec_(event.globalPos())
         QtGui.QGraphicsView.mouseReleaseEvent(self, event)
     
-    def save_layout(self):
+    def saveLayout(self):
         '''
         Saves the current node positioning
         '''
@@ -1102,7 +1106,7 @@ class TopologyView(QtGui.QGraphicsView):
         layout = layout[len(layout)-1]
         self.parent.parent.settings.set_current_topo_layout(layout)
         
-    def load_layout(self):
+    def loadLayout(self):
         '''
         Loads a custom node positioning for this topology
         '''
@@ -1127,9 +1131,42 @@ class TopologyView(QtGui.QGraphicsView):
         
         self.updateAll()
         
-    def add_switch(self):
+    def addSwitch(self):
         self.mininet.addNextSwitch()
         
-    
-    def add_host(self):
+    def addHost(self):
         self.mininet.addNextHost()
+        
+    def mininetLinkFrom(self, id):
+        self.linkfrom = id
+        self.linkto = getattr(self, "linkto", None)
+        if not self.linkto:
+            self.parent.setStatusTip("Adding link from %s" % id)
+        else:
+            self.parent.setStatusTip("Adding link %s <-> %s"
+                                     %(self.linkto, self.linkfrom))
+            self.mininet.addLink(self.linkfrom, self.linkto )
+            self.linkfrom = None
+            self.linkto = None
+        
+    def mininetLinkTo(self, id):
+        self.linkto = id
+        self.linkfrom = getattr(self, "linkfrom", None)
+        if not self.linkfrom:
+            self.parent.setStatusTip("Adding link to %s" % id)
+        else:
+            self.parent.setStatusTip("Adding link %s <-> %s"
+                                     %(self.linkto, self.linkfrom))
+            self.mininet.addLink(self.linkfrom, self.linkto )
+            self.linkfrom = None
+            self.linkto = None
+                
+    def mininetLinkUp(self, src, dst):
+        self.mininet.linkUp(src, dst)
+        self.parent.setStatusTip("Brought up link %s <-> %s"
+                                     %(src, dst))
+    
+    def mininetLinkDown(self, src, dst):
+        self.mininet.linkDown(src, dst)
+        self.parent.setStatusTip("Brought down link %s <-> %s"
+                                     %(src, dst))
