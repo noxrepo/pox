@@ -62,7 +62,7 @@ def handle_ECHO_REQUEST (con, msg): #S
   con.send(reply.pack())
 
 def handle_FLOW_REMOVED (con, msg): #A
-  con.ofhub.raiseEventNoErrors(FlowRemoved, con, msg)
+  con.ofnexus.raiseEventNoErrors(FlowRemoved, con, msg)
   con.raiseEventNoErrors(FlowRemoved, con, msg)
 
 def handle_FEATURES_REPLY (con, msg):
@@ -71,18 +71,18 @@ def handle_FEATURES_REPLY (con, msg):
   con.dpid = msg.datapath_id
 
   if not connecting:
-    con.ofhub._connect(con)
+    con.ofnexus._connect(con)
     return
 
-  hub = core.OpenFlowSwitchArbiter.getHub(con.dpid)
-  if hub is None:
+  nexus = core.OpenFlowSwitchArbiter.getNexus(con.dpid)
+  if nexus is None:
     # Cancel connection
-    con.info("No OpenFlow hub for " +
+    con.info("No OpenFlow nexus for " +
              pox.lib.util.dpidToStr(msg.datapath_id))
     con.disconnect()
     return
-  con.ofhub = hub
-  con.ofhub._connect(con)
+  con.ofnexus = nexus
+  con.ofnexus._connect(con)
   #connections[con.dpid] = con
 
   barrier = of.ofp_barrier_request()
@@ -98,45 +98,45 @@ def handle_FEATURES_REPLY (con, msg):
       import time
       con.connect_time = time.time()
       #for p in msg.ports: print(p.show())
-      con.ofhub.raiseEventNoErrors(ConnectionUp, con, msg)
+      con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
       con.raiseEventNoErrors(ConnectionUp, con, msg)
     return EventHaltAndRemove
 
   con.addListener(BarrierIn, finish_connecting)
 
-  if con.ofhub.miss_send_len is not None:
+  if con.ofnexus.miss_send_len is not None:
     con.send(of.ofp_switch_config(miss_send_len =
-                                  con.ofhub.miss_send_len))
-  if con.ofhub.clear_flows_on_connect:
+                                  con.ofnexus.miss_send_len))
+  if con.ofnexus.clear_flows_on_connect:
     con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
 
   con.send(barrier)
 
 
 def handle_STATS_REPLY (con, msg):
-  con.ofhub.raiseEventNoErrors(RawStatsReply, con, msg)
+  con.ofnexus.raiseEventNoErrors(RawStatsReply, con, msg)
   con.raiseEventNoErrors(RawStatsReply, con, msg)
   con._incoming_stats_reply(msg)
 
 def handle_PORT_STATUS (con, msg): #A
-  con.ofhub.raiseEventNoErrors(PortStatus, con, msg)
+  con.ofnexus.raiseEventNoErrors(PortStatus, con, msg)
   con.raiseEventNoErrors(PortStatus, con, msg)
 
 def handle_PACKET_IN (con, msg): #A
-  con.ofhub.raiseEventNoErrors(PacketIn, con, msg)
+  con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
   con.raiseEventNoErrors(PacketIn, con, msg)
-#  if PacketIn in con.ofhub._eventMixin_handlers:
+#  if PacketIn in con.ofnexus._eventMixin_handlers:
 #    p = ethernet(msg.data)
-#    con.ofhub.raiseEventNoErrors(PacketIn(con, msg, p))
+#    con.ofnexus.raiseEventNoErrors(PacketIn(con, msg, p))
 
 def handle_ERROR_MSG (con, msg): #A
   log.error(str(con) + " OpenFlow Error:\n" +
             msg.show(str(con) + " Error: ").strip())
-  con.ofhub.raiseEventNoErrors(ErrorIn, con, msg)
+  con.ofnexus.raiseEventNoErrors(ErrorIn, con, msg)
   con.raiseEventNoErrors(ErrorIn, con, msg)
 
 def handle_BARRIER (con, msg):
-  con.ofhub.raiseEventNoErrors(BarrierIn, con, msg)
+  con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)
   con.raiseEventNoErrors(BarrierIn, con, msg)
 
 #TODO: def handle_VENDOR (con, msg): #S
@@ -158,20 +158,20 @@ def _processStatsBody (body, obj):
 def handle_OFPST_DESC (con, parts):
   msg = of.ofp_desc_stats()
   msg.unpack(parts[0].body)
-  con.ofhub.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
+  con.ofnexus.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
   con.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
 
 def handle_OFPST_FLOW (con, parts):
   msg = []
   for part in parts:
     msg += _processStatsBody(part.body, of.ofp_flow_stats())
-  con.ofhub.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
+  con.ofnexus.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
   con.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
 
 def handle_OFPST_AGGREGATE (con, parts):
   msg = of.ofp_aggregate_stats_reply()
   msg.unpack(parts[0].body)
-  con.ofhub.raiseEventNoErrors(AggregateFlowStatsReceived, con,
+  con.ofnexus.raiseEventNoErrors(AggregateFlowStatsReceived, con,
                                  parts[0], msg)
   con.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
 
@@ -179,21 +179,21 @@ def handle_OFPST_TABLE (con, parts):
   msg = []
   for part in parts:
     msg += _processStatsBody(part.body, of.ofp_table_stats())
-  con.ofhub.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
+  con.ofnexus.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
   con.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
 
 def handle_OFPST_PORT (con, parts):
   msg = []
   for part in parts:
     msg += _processStatsBody(part.body, of.ofp_port_stats())
-  con.ofhub.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
+  con.ofnexus.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
   con.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
 
 def handle_OFPST_QUEUE (con, parts):
   msg = []
   for part in parts:
     msg += _processStatsBody(part.body, of.ofp_queue_stats())
-  con.ofhub.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
+  con.ofnexus.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
   con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
 
 
@@ -355,16 +355,16 @@ class DeferredSender (threading.Thread):
 # Used by the Connection class below
 deferredSender = DeferredSender()
 
-class DummyOFHub (object):
+class DummyOFNexus (object):
   def raiseEventNoErrors (self, event, *args, **kw):
-    log.warning("%s raised on dummy OpenFlow hub")
+    log.warning("%s raised on dummy OpenFlow nexus")
   def raiseEvent (self, event, *args, **kw):
-    log.warning("%s raised on dummy OpenFlow hub")
+    log.warning("%s raised on dummy OpenFlow nexus")
   def _disconnect (self, dpid):
-    log.warning("%s disconnected on dummy OpenFlow hub",
+    log.warning("%s disconnected on dummy OpenFlow nexus",
                 pox.lib.util.dpidToStr(dpid))
 
-_dummyOFHub = DummyOFHub()
+_dummyOFNexus = DummyOFNexus()
 
 
 """
@@ -479,7 +479,7 @@ class Connection (EventMixin):
   def __init__ (self, sock):
     self._previous_stats = []
 
-    self.ofhub = _dummyOFHub
+    self.ofnexus = _dummyOFNexus
     self.sock = sock
     self.buf = ''
     Connection.ID += 1
@@ -515,19 +515,19 @@ class Connection (EventMixin):
       self.msg("disconnecting")
     self.disconnected = True
     try:
-      self.ofhub._disconnect(self.dpid)
-      #del self.ofhub._connections[self.dpid]
+      self.ofnexus._disconnect(self.dpid)
+      #del self.ofnexus._connections[self.dpid]
     except:
       pass
     """
     try:
       if self.dpid != None:
-        self.ofhub.raiseEvent(ConnectionDown(self))
+        self.ofnexus.raiseEvent(ConnectionDown(self))
     except:
       self.err("ConnectionDown event caused exception")
     """
     if self.dpid != None:
-      self.ofhub.raiseEventNoErrors(ConnectionDown(self))
+      self.ofnexus.raiseEventNoErrors(ConnectionDown(self))
 
     try:
       #deferredSender.kill(self)

@@ -224,11 +224,11 @@ class ConnectionIn (Event):
   def __init__ (self, dpid):
     super(ConnectionIn,self).__init__()
     self.dpid = dpid
-    self.hub = None
+    self.nexus = None
 
 class OpenFlowSwitchArbiter (EventMixin):
   """
-  Determines which OpenFlowHub gets the switch.
+  Determines which OpenFlowNexus gets the switch.
   Default implementation always just gives it to core.openflow
   """
   _eventMixin_events = set([
@@ -238,16 +238,16 @@ class OpenFlowSwitchArbiter (EventMixin):
     """ default as False causes it to always use core.openflow """
     self._default = default
 
-  def getHub (self, dpid):
+  def getNexus (self, dpid):
     e = ConnectionIn(dpid)
     self.raiseEventNoErrors(e)
-    if e.hub is None:
-      e.hub = self._default
-    if e.hub is False:
-      e.hub = core.openflow
-    return e.hub
+    if e.nexus is None:
+      e.nexus = self._default
+    if e.nexus is False:
+      e.nexus = core.openflow
+    return e.nexus
 
-class OpenFlowHub (EventMixin):
+class OpenFlowNexus (EventMixin):
   """
   Main point of OpenFlow interaction.
 
@@ -316,4 +316,4 @@ def launch (default_arbiter=True):
     return
   if default_arbiter:
     core.registerNew(OpenFlowSwitchArbiter)
-  core.register("openflow", OpenFlowHub())
+  core.register("openflow", OpenFlowNexus())
