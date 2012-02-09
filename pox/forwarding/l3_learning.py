@@ -89,7 +89,7 @@ class l3_switch (EventMixin):
   def _handle_PacketIn (self, event):
     dpid = event.connection.dpid
     inport = event.port
-    packet = event.packet
+    packet = event.parsed
     if not packet.parsed:
       log.warning("%i %i ignoring unparsed packet", dpid, inport)
       return
