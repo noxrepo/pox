@@ -221,12 +221,13 @@ class BarrierIn (Event):
     self.xid = ofp.xid
 
 class ConnectionIn (Event):
-  def __init__ (self, dpid):
+  def __init__ (self, connection):
     super(ConnectionIn,self).__init__()
-    self.dpid = dpid
+    self.connection = connection
+    self.dpid = connection.dpid
     self.nexus = None
 
-class OpenFlowSwitchArbiter (EventMixin):
+class OpenFlowConnectionArbiter (EventMixin):
   """
   Determines which OpenFlowNexus gets the switch.
   Default implementation always just gives it to core.openflow
@@ -238,8 +239,8 @@ class OpenFlowSwitchArbiter (EventMixin):
     """ default as False causes it to always use core.openflow """
     self._default = default
 
-  def getNexus (self, dpid):
-    e = ConnectionIn(dpid)
+  def getNexus (self, connection):
+    e = ConnectionIn(connection)
     self.raiseEventNoErrors(e)
     if e.nexus is None:
       e.nexus = self._default
@@ -315,5 +316,5 @@ def launch (default_arbiter=True):
   if core.hasComponent("openflow"):
     return
   if default_arbiter:
-    core.registerNew(OpenFlowSwitchArbiter)
+    core.registerNew(OpenFlowConnectionArbiter)
   core.register("openflow", OpenFlowNexus())

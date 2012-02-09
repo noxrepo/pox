@@ -74,7 +74,7 @@ def handle_FEATURES_REPLY (con, msg):
     con.ofnexus._connect(con)
     return
 
-  nexus = core.OpenFlowSwitchArbiter.getNexus(con.dpid)
+  nexus = core.OpenFlowConnectionArbiter.getNexus(con)
   if nexus is None:
     # Cancel connection
     con.info("No OpenFlow nexus for " +
