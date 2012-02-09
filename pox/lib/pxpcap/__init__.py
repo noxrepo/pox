@@ -153,7 +153,7 @@ class PCap (object):
     self.close()
 
   def inject (self, data):
-    if isinstance(data, pkt.ethernet.ethernet):
+    if isinstance(data, pkt.ethernet):
       data = data.pack()
     if not isinstance(data, bytes):
       data = bytes(data) # Give it a try...
@@ -233,7 +233,7 @@ def launch (interface = "en1"):
     if d > drop:
       drop = d
       print d, "dropped"
-    p = pkt.ethernet.ethernet(data)
+    p = pkt.ethernet(data)
     ip = p.find('ipv4')
     if ip:
       print ip.srcip,"\t",ip.dstip, p
@@ -251,16 +251,16 @@ def launch (interface = "en1"):
            #filter = "ip host 74.125.224.148")
 
   def ping (eth='00:18:02:6e:ce:55', ip='192.168.0.1'):
-    e = pkt.ethernet.ethernet()
+    e = pkt.ethernet()
     e.src = p.addresses['ethernet']['addr']
     e.dst = EthAddr(eth)
     e.type = e.IP_TYPE
-    ipp = pkt.ipv4.ipv4()
+    ipp = pkt.ipv4()
     ipp.protocol = ipp.ICMP_PROTOCOL
     ipp.srcip = p.addresses['AF_INET']['addr']
     ipp.dstip = IPAddr(ip)
-    icmp = pkt.icmp.icmp()
-    icmp.type = pkt.icmp.TYPE_ECHO_REQUEST
+    icmp = pkt.icmp()
+    icmp.type = pkt.ICMP.TYPE_ECHO_REQUEST
     icmp.payload = "PingPing" * 6
     ipp.payload = icmp
     e.payload = ipp
