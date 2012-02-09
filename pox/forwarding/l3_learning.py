@@ -89,7 +89,7 @@ class l3_switch (EventMixin):
   def _handle_PacketIn (self, event):
     dpid = event.connection.dpid
     inport = event.port
-    packet = event.parse()
+    packet = event.packet
     if not packet.parsed:
       log.warning("%i %i ignoring unparsed packet", dpid, inport)
       return
@@ -175,9 +175,12 @@ class l3_switch (EventMixin):
                   e.set_payload(r)
                   log.debug("%i %i answering ARP for %s" % (dpid, inport,
                    str(r.protosrc)))
-                  msg = of.ofp_packet_out(data = e.pack(),
-                                          action = of.ofp_action_output(port = inport))
-                  event.connection.send(msg.pack())
+                  msg = of.ofp_packet_out()
+                  msg.data = e.pack()
+                  msg.actions.append(of.ofp_action_output(port =
+                                                          of.OFPP_IN_PORT))
+                  msg.in_port = inport
+                  event.connection.send(msg)
                   return
 
       # Didn't know how to answer or otherwise handle this ARP, so just flood it
@@ -188,7 +191,7 @@ class l3_switch (EventMixin):
       msg = of.ofp_packet_out(in_port = inport, action = of.ofp_action_output(port = of.OFPP_FLOOD))
       if event.ofp.buffer_id is of.NO_BUFFER:
         # Try sending the (probably incomplete) raw data
-        msg.data = packet.arr
+        msg.data = event.data
       else:
         msg.buffer_id = event.ofp.buffer_id
       event.connection.send(msg.pack())
