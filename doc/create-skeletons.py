@@ -11,6 +11,12 @@ packages = {}
 
 os.chdir(DOC)
 
+if len(sys.argv) >= 2:
+  force = sys.argv[1] == "-f"
+else:
+  force = False
+
+
 for root, dirs, files in os.walk(ROOT):
   assert root.startswith(ROOT)
   root = root[len(ROOT)+1:]
@@ -25,41 +31,100 @@ for root, dirs, files in os.walk(ROOT):
     packages[packagename][1].append(f[:-3])
 
 
+def suck_file (filename):
+  f = open(filename, "r")
+  s = f.read()
+  f.close()
+  return s
 
+def is_clean (filename):
+  f = suck_file(filename).rstrip("\n")
+  f,lastline = f.rsplit("\n",1)
+  if lastline.startswith(".. md5 "):
+    check = lastline[7:].strip().lower()
+  else:
+    return False
+  c = md5(f)
+  return c == check
 
-def skeleton_module (filename, package, module):
-  print " ",package + "." + module
+def md5 (s):
+  import hashlib
+  return hashlib.md5(s).hexdigest()
+
+def maybe_write (filename, s):
+  assert s[-1] == "\n"
+  s += "\n"
+  s = s + ".. md5 " + md5(s) + "\n"
+
+  if path.exists(filename):
+    if not is_clean(filename):
+      old = suck_file(filename)
+      if old == s:
+        # It's the same as we'd write if we could
+        return True
+      print "!",filename,"differs"
+      if not force: return False
+  print "  write",filename
   f = open(filename, "w")
+  f.write(s)
+  f.close()
 
+
+
+def skeleton_module_base (filename, other_filename, package, module):
+  o = ""
   title = module
   if title == "__init__":
     title = package
   else:
     title = package + "." + title
-  f.write("=" * len(title) + "\n")
-  f.write(title + "\n")
-  f.write("=" * len(title) + "\n\n")
+  o += "=" * len(title) + "\n"
+  o += title + "\n"
+  o += "=" * len(title) + "\n\n"
 
-  f.write(".. automodule:: " + package + "." + module + "\n")
-  f.write("    :members:\n")
-  f.close()
+  o += ".. include :: _" + module + ".rst\n"
+  maybe_write(filename, o)
+
+def skeleton_module (filename, package, module):
+  #print " ",package + "." + module,filename
+  o = ""
+
+  """
+  title = module
+  if title == "__init__":
+    title = package
+  else:
+    title = package + "." + title
+  
+  o += "=" * len(title) + "\n"
+  o += title + "\n"
+  o += "=" * len(title) + "\n\n"
+  """
+
+  o += ".. automodule:: " + package + "." + module + "\n"
+  o += "    :members:\n"
+  o += "    :undoc-members:\n"
+  o += "    :special-members:\n"
+  o += "    :show-inheritance:\n"
+  maybe_write(filename, o)
 
 def skeleton_index (filename, package):
-  print " index",package
-  f = open(filename, "w")
-  f.write(".. include:: __init__.rst\n")
-  f.write(".. include:: _toc.rst\n")
+  #print " index",package
+  o = ""
+  o += ".. include :: __init__.rst\n"
+  o += ".. include :: _toc.rst\n"
+  maybe_write(filename, o)
 
 def skeleton_toc (filename, package, modules):
-  print " TOC"
-  f = open(filename, "w")
-  f.write(".. toctree::\n")
-#  f.write("   :maxdepth: 2\n\n")
+  #print " TOC"
+  o = ""
+  o += ".. toctree::\n"
+#  o += "   :maxdepth: 2\n\n"
   for m in modules:
-    f.write("   ")
-    f.write(m)
-    f.write("\n")
-  f.close()
+    if m == "__init__": continue
+
+    o += "   " + m + "\n"
+  maybe_write(filename, o)
 
 for package,(dirname,modules) in packages.iteritems():
   if not path.isdir(dirname):
@@ -73,37 +138,32 @@ for package,(dirname,modules) in packages.iteritems():
     continue
 
   f = path.join(dirname,"_index.rst")
-  if not path.exists(f):
-    skeleton_index(f,package)
+  skeleton_index(f,package)
 
   f = path.join(dirname,"_toc.rst")
-  if not path.exists(f):
-    skeleton_toc(f,package, modules)
+  skeleton_toc(f,package, modules)
 
   for module in modules:
-    f = path.join(dirname,module+".rst")
-    if not path.exists(f):
-      skeleton_module(f,package,module)
+    real = path.join(dirname,module+".rst")
+    f = path.join(dirname,"_"+module+".rst")
+    skeleton_module(f,package,module)
+    skeleton_module_base(real,f,package,module)
+    #skeleton_module(real,package,module)
 
-f = file("index.rst", "w")
-f.write(".. toctree::\n")
-f.write("   :maxdepth: 2\n\n")
+o = ""
+o += ".. toctree::\n"
+o += "   :maxdepth: 2\n\n"
 keys = sorted(packages.keys())
 for package in keys:
   (dirname,modules) = packages[package]
   if not path.isdir(dirname):
     continue
-  f.write("   ")
-  f.write(package)
-  f.write(" <")
-  f.write(dirname + "/_index")
-  f.write(">\n")
-  """
-  for m in modules:
-    f.write("   ")
-    f.write(package + "." + m)
-    f.write(" <")
-    f.write(dirname + "/" + m)
-    f.write(">\n")
-  """
-f.close()
+  o += "   "
+  o += package
+  o += " <"
+  o += dirname + "/_index"
+  o += ">\n"
+
+maybe_write("_index.rst", o)
+
+maybe_write("index.rst", ".. include :: _index.rst\n")
