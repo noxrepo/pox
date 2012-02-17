@@ -18,7 +18,11 @@
 
 #import networkx as nx
 import pox.lib.graph.minigraph as nx
-from weakref import WeakSet
+try:
+  from weakref import WeakSet
+except:
+  # python 2.6 compatibility
+  from weakrefset import WeakSet
 from collections import defaultdict
 from copy import copy
 
