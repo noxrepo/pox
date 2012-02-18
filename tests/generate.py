@@ -14,8 +14,16 @@ SCRIPT_DIR=path.dirname(path.abspath(sys.modules['__main__'].__file__))
 ROOT=path.abspath(path.join(SCRIPT_DIR,".."))
 UNIT_TEST=path.join(ROOT, "tests/unit")
 
-parser = OptionParser()
+parser = OptionParser(usage="usage: %prog [--force] <module_glob> [<module_glob>...]",
+    description="Generates skeleton unit tests for pox modules",
+    epilog="Arguments:\nmodule_glob: fully qualified python module name, e.g., pox.openflow.topology. Supports shell-type globs, e.g., pox.openflow.*\n")
+parser.add_option("-f", "--force", help="force overwriting existing unit tests, even when no valid autogeneration signature is found", action="store_true", dest="force", default=False)
+
 (options, args) = parser.parse_args()
+
+if len(args) == 0:
+  parser.print_usage()
+  exit(10)
 
 modules=[]
 
@@ -87,7 +95,7 @@ def generate_test(module):
       f.close()
     os.chmod(test_file, stat.S_IWUSR|stat.S_IRUSR|stat.S_IXUSR|stat.S_IXGRP|stat.S_IRGRP|stat.S_IXOTH|stat.S_IROTH)
 
-  if not os.path.exists(test_file):
+  if not os.path.exists(test_file) or options.force:
     print "Creating test %s in %s" % (test_class_name, test_file)
     write_test()
   else:
@@ -98,7 +106,7 @@ def generate_test(module):
     match = re.match(r'### auto generate sha1: ([a-f0-9]+)', genline)
     if match:
       read_sha1 =  match.group(1)
-      existing_non_hashed = re.sub(r'\n[^\n]*\n', '\n', existing,1)
+      existing_non_hashed = re.sub(r'\n[^\n]*\n', '\n', existing, 1)
       calculated_sha1 = sha1(existing_non_hashed)
       if read_sha1 == calculated_sha1:
         print "Updating test %s in %s" % (test_class_name, test_file)
