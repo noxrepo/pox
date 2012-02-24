@@ -40,6 +40,7 @@ if [ "$(type -P python2.7)" != "" ]; then
 fi
 exec python $OPT "$0" $FLG "$@"
 '''
+import logging
 
 from pox.core import core
 import pox.openflow
@@ -108,6 +109,9 @@ def doLaunch ():
       arg = arg[2:].split("=", 1)
       if len(arg) == 1: arg.append(True)
       curargs[arg[0]] = arg[1]
+
+  if options.get("verbose"):
+    logging.getLogger().setLevel(logging.DEBUG)
 
   inst = {}
   for name in component_order:
