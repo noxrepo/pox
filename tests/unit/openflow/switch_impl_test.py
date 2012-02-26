@@ -30,11 +30,11 @@ class SwitchImplTest(unittest.TestCase):
 
   def setUp(self):
     self.conn = MockConnection()
-    self.switch = SwitchImpl(1, name="sw1", connection=self.conn)
+    self.switch = SwitchImpl(1, name="sw1")
+    self.switch.set_connection(self.conn)
     self.packet = ethernet(src=EthAddr("00:00:00:00:00:01"), dst=EthAddr("00:00:00:00:00:02"),
             payload=ipv4(srcip=IPAddr("1.2.3.4"), dstip=IPAddr("1.2.3.5"),
                 payload=udp(srcport=1234, dstport=53, payload="haha")))
-
   def test_hello(self):
     c = self.conn
     c.to_switch(ofp_hello(xid=123))

@@ -43,8 +43,8 @@ class SwitchImpl(EventMixin):
   _eventMixin_events = set([SwitchDpPacketOut])
 
   # ports is a list of ofp_phy_ports
-  def __init__(self, dpid, socket=None, name=None, ports=4, miss_send_len=128,
-      n_buffers=100, n_tables=1, capabilities=None, connection=None):
+  def __init__(self, dpid, name=None, ports=4, miss_send_len=128,
+      n_buffers=100, n_tables=1, capabilities=None):
     """Initialize switch"""
     ##Datapath id of switch
     self.dpid = dpid
@@ -57,8 +57,7 @@ class SwitchImpl(EventMixin):
     self.n_buffers = n_buffers
     ##Number of tables
     self.n_tables= n_tables
-    # TODO: don't assume a single table
-    # Well it's OF1.0 so there /is/ only one switch table in the OpenFlow world
+    # Note that there is one switch table in the OpenFlow 1.0 world
     self.table = SwitchFlowTable()
     # buffer for packets during packet_in
     self.packet_buffer = []
@@ -72,7 +71,7 @@ class SwitchImpl(EventMixin):
     for port in ports:
       self.ports[port.port_no] = port
     ## (OpenFlow Handler map)
-    ofp_handlers = {
+    self.ofp_handlers = {
        # Reactive handlers
        ofp_type_rev_map['OFPT_HELLO'] : self._receive_hello,
        ofp_type_rev_map['OFPT_ECHO_REQUEST'] : self._receive_echo,
@@ -80,25 +79,27 @@ class SwitchImpl(EventMixin):
        ofp_type_rev_map['OFPT_FLOW_MOD'] : self._receive_flow_mod,
        ofp_type_rev_map['OFPT_PACKET_OUT'] : self._receive_packet_out,
        ofp_type_rev_map['OFPT_BARRIER_REQUEST'] : self._receive_barrier_request,
+       ofp_type_rev_map['OFPT_SET_CONFIG'] : self._receive_set_config,
 
        # Proactive responses
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
        # TODO: many more packet types to process
     }
-    if not (connection != None) ^ (socket != None):
-      raise AttributeError("Must give /either/ connection or socket (not none, not both)")
-    if socket != None:
-      ##Reference to connection with controller
-      self._connection = ControllerConnection(socket, ofp_handlers)
-    else:
-      connection.ofp_handlers = ofp_handlers
-      self._connection = connection
+    self._connection = None
 
     ##Capabilities
     if (isinstance(capabilities, SwitchCapabilities)):
       self.capabilities = capabilities
     else:
       self.capabilities = SwitchCapabilities(miss_send_len)
+
+  def set_socket(self, socket):
+    self._connection = ControllerConnection(socket, self.ofp_handlers)
+    return self._connection
+
+  def set_connection(self, connection):
+    connection.ofp_handlers = self.ofp_handlers
+    self._connection = connection
 
   def demux_openflow(self, raw_bytes):
     pass
@@ -157,6 +158,9 @@ class SwitchImpl(EventMixin):
     self.log.debug("Barrier request %s %s" % (self.name, str(ofp)))
     msg = ofp_barrier_reply(xid = ofp.xid)
     self._connection.send(msg)
+
+  def _receive_set_config(self, config):
+    self.log.debug("Set  config %s %s" % (self.name, str(config)))
 
   # ==================================== #
   #    Proactive OFP processing          #
@@ -314,6 +318,9 @@ class SwitchImpl(EventMixin):
         raise NotImplementedError("Unknown action type: %x " % type)
       handler_map[action.type](action, packet)
 
+  def __repr__(self):
+    return "SwitchImpl(dpid=%d, num_ports=%d)" % (self.dpid, len(self.ports))
+
 class ControllerConnection (object):
   # Unlike of_01.Connection, this is persistent (at least until we implement a proper
   # recoco Connection Listener loop)
@@ -336,6 +343,7 @@ class ControllerConnection (object):
     self.buf = ''
     ControllerConnection.ID += 1
     self.ID = ControllerConnection.ID
+    self.log = core.getLogger("ControllerConnection(id=%d)" % self.ID)
     ## OpenFlow Message map
     self.ofp_msgs = make_type_to_class_table()
     ## Hash from ofp_type -> handler(packet)
@@ -416,6 +424,10 @@ class ControllerConnection (object):
         #              self,self,("\n" + str(self) + " ").join(str(msg).split('\n')))
         continue
     return True
+
+  def disconnect(self):
+    # not yet implemented
+    pass
 
   def __str__ (self):
     return "[Con " + str(self.ID) + "]"
