@@ -73,7 +73,12 @@ from pox.lib.revent import *
 from pox.lib.recoco import *
 import pox.core
 from pox.core import core as core
-import weakref
+
+try:
+  from weakref import WeakSet
+except:
+  # python 2.6 compatibility
+  from weakrefset import WeakSet
 import json
 
 log = pox.core.getLogger()
@@ -292,7 +297,7 @@ class MessengerHub (EventMixin):
   ])
   def __init__ (self):
     EventMixin.__init__(self)
-    self.connections = weakref.WeakSet()
+    self.connections = WeakSet()
 
 
 #TODO: make a superclass source
