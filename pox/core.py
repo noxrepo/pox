@@ -25,10 +25,6 @@ This includes things like component rendezvous, logging, system status
 
 # Set up initial log state
 import logging
-_default_log_handler = logging.StreamHandler()
-_default_log_handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
-logging.getLogger().addHandler(_default_log_handler)
-logging.getLogger().setLevel(logging.DEBUG)
 
 import inspect
 import time
@@ -138,6 +134,10 @@ class UpEvent (Event):
   """ Fired when system is up. """
   pass
 
+class DownEvent (Event):
+  """ Fired when system is down. """
+  pass
+
 class ComponentRegistered (Event):
   """
   This is raised by core whenever a new component is registered.
@@ -173,12 +173,14 @@ class POXCore (EventMixin):
   """
   _eventMixin_events = set([
     UpEvent,
+    DownEvent,
     GoingUpEvent,
     GoingDownEvent,
     ComponentRegistered
   ])
 
   def __init__ (self):
+    self.debug = False
     self.running = True
     self.components = {}
 
@@ -244,14 +246,19 @@ class POXCore (EventMixin):
     """
     if self.running:
       self.running = False
-      log.info("Quitting...")
+      log.info("Going down...")
+      import gc
+      gc.collect()
       self.raiseEvent(GoingDownEvent())
       self.callLater(self.scheduler.quit)
       for i in range(50):
         if self.scheduler._hasQuit: break
+        gc.collect()
         time.sleep(.1)
       if not self.scheduler._allDone:
         log.warning("Scheduler didn't quit in time")
+      self.raiseEvent(DownEvent())
+      log.info("Down.")
 
   def goUp (self):
     log.debug(self.version_string + " going up...")

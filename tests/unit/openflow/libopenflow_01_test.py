@@ -8,6 +8,16 @@ from copy import copy
 sys.path.append(os.path.dirname(__file__) + "/../../..")
 
 from pox.openflow.libopenflow_01 import *
+from pox.openflow.switch_impl import *
+
+def extract_num(buf, start, length):
+  """ extracts a number from a raw byte string. Assumes network byteorder  """
+  # note: purposefully does /not/ use struct.unpack, because that is used by the code we validate 
+  val = 0
+  for i in range(start, start+length):
+    val <<= 8
+    val += ord(buf[i])
+  return val
 
 class ofp_match_test(unittest.TestCase):
   def test_bit_wildcards(self):
@@ -109,6 +119,174 @@ class ofp_match_test(unittest.TestCase):
     assertNoMatch(create(nw_src="10.0.0.0/25"), create(nw_src="10.0.0.0/24"))
     assertMatch(create(nw_src="10.0.0.0/25"), create(nw_src="10.0.0.127"))
     assertNoMatch(create(nw_src="10.0.0.0/25"), create(nw_src="10.0.0.128"))
+
+class ofp_command_test(unittest.TestCase):
+  # custom map of POX class to header type, for validation
+  ofp_type = {
+    ofp_features_reply: OFPT_FEATURES_REPLY,
+    ofp_switch_config: OFPT_SET_CONFIG,
+    ofp_flow_mod: OFPT_FLOW_MOD,
+    ofp_port_mod: OFPT_PORT_MOD,
+    ofp_queue_get_config_request: OFPT_QUEUE_GET_CONFIG_REQUEST,
+    ofp_queue_get_config_reply: OFPT_QUEUE_GET_CONFIG_REPLY,
+    ofp_stats_request: OFPT_STATS_REQUEST,
+    ofp_stats_reply: OFPT_STATS_REPLY,
+    ofp_packet_out: OFPT_PACKET_OUT,
+    ofp_barrier_reply: OFPT_BARRIER_REPLY,
+    ofp_barrier_request: OFPT_BARRIER_REQUEST,
+    ofp_packet_in: OFPT_PACKET_IN,
+    ofp_flow_removed: OFPT_FLOW_REMOVED,
+    ofp_port_status: OFPT_PORT_STATUS,
+    ofp_error: OFPT_ERROR,
+    ofp_hello: OFPT_HELLO,
+    ofp_echo_request: OFPT_ECHO_REQUEST,
+    ofp_echo_reply: OFPT_ECHO_REPLY,
+    ofp_vendor: OFPT_VENDOR,
+    ofp_features_request: OFPT_FEATURES_REQUEST,
+    ofp_get_config_request: OFPT_GET_CONFIG_REQUEST,
+    ofp_get_config_reply: OFPT_GET_CONFIG_REPLY,
+    ofp_set_config: OFPT_SET_CONFIG
+    }
+
+  def assert_packed_header(self, pack, ofp_type, length, xid):
+    """ check openflow header fields in packed byte array """
+    def assert_num(name, start, length, expected):
+      val = extract_num(pack, start, length)
+      self.assertEquals(val, expected, "packed header check: %s for ofp type %s should be %d (is %d)" % (name, ofp_type_map[ofp_type], expected, val))
+
+    assert_num("OpenFlow version", 0, 1, 1)
+    assert_num("header_type", 1, 1, ofp_type)
+    assert_num("length in header", 2, 2, length)
+    assert_num("xid", 4, 4, xid)
+
+  def _test_pack_unpack(self, o, xid, ofp_type=None):
+    """ check that packing and unpacking an ofp object works, and that lengths etc. are correct """
+    show = lambda(o): o.show() if hasattr(o, "show") else str(show)
+
+    if not ofp_type:
+      ofp_type = self.ofp_type[type(o)]
+
+    self.assertTrue(o._assert(), "pack_unpack for %s -- original object should _assert to true"%show(o))
+    # show the object to make sure that works
+    o.show()
+    # pack object
+    pack = o.pack()
+    # byte array length should equal calculated length
+    self.assertEqual(len(o), len(pack), "pack_unpack for %s -- len(object)=%d != len(packed)=%d" % (type(o), len(o), len(pack)))
+    # check header fields in packed byte array
+    self.assert_packed_header(pack, ofp_type, len(o), xid)
+    # now unpack
+    unpacked = type(o)()
+    unpacked.unpack(pack)
+    self.assertEqual(o, unpacked, "pack_unpacked -- original != unpacked\n===Original:\n%s\n===Repacked:%s\n" % (show(o), show(unpacked)))
+    return unpacked
+
+  def test_header_pack_unpack(self):
+    for kw in ( { "header_type": OFPT_PACKET_OUT, "xid": 1 },
+                { "header_type": OFPT_FLOW_MOD, "xid": 2 }):
+      o = ofp_header(**kw)
+      self._test_pack_unpack(o, kw["xid"], kw["header_type"])
+
+  def test_pack_all_comands_simple(self):
+    xid_gen = itertools.count()
+    for cls in ( ofp_features_reply,
+                   ofp_switch_config,
+                   ofp_flow_mod,
+                   ofp_port_mod,
+                   ofp_queue_get_config_request,
+                   ofp_queue_get_config_reply,
+                   ofp_stats_request,
+                   ofp_stats_reply,
+                   ofp_packet_out,
+                   ofp_barrier_reply,
+                   ofp_barrier_request,
+                   ofp_packet_in,
+                   ofp_flow_removed,
+                   ofp_port_status,
+                   ofp_error,
+                   ofp_hello,
+                   ofp_echo_request,
+                   ofp_echo_reply,
+                   ofp_features_request,
+                   ofp_get_config_request,
+                   ofp_get_config_reply,
+                   ofp_set_config ):
+      xid = xid_gen.next()
+      o = cls(xid=xid)
+      self._test_pack_unpack(o, xid)
+
+  out = ofp_action_output
+  dl_addr = ofp_action_dl_addr
+  some_actions = ([], [out(port=2)], [out(port=2), out(port=3)], [ out(port=OFPP_FLOOD) ], [ dl_addr.set_dst(EthAddr("00:"*5 + "01")), out(port=1) ])
+
+
+  def test_pack_custom_packet_out(self):
+    xid_gen = xid_generator()
+    packet = ethernet(src=EthAddr("00:00:00:00:00:01"), dst=EthAddr("00:00:00:00:00:02"),
+            payload=ipv4(srcip=IPAddr("1.2.3.4"), dstip=IPAddr("1.2.3.5"),
+                payload=udp(srcport=1234, dstport=53, payload="haha"))).pack()
+
+    for actions in self.some_actions:
+      for attrs in ( { 'data': packet }, { 'buffer_id': 5 } ):
+        xid = xid_gen.next()
+        o = ofp_packet_out(xid=xid, actions=actions, **attrs)
+        self._test_pack_unpack(o, xid, OFPT_PACKET_OUT)
+
+  def test_pack_custom_flow_mod(self):
+    out = ofp_action_output
+    xid_gen = xid_generator()
+
+    for match in ( ofp_match(),
+        ofp_match(in_port=1, dl_type=0, dl_src=EthAddr("00:00:00:00:00:01"), dl_dst=EthAddr("00:00:00:00:00:02"), dl_vlan=5, nw_proto=6, nw_src="10.0.0.1", nw_dst="11.0.0.1", tp_src = 12345, tp_dst=80)):
+      for actions in self.some_actions:
+        for command in ( OFPFC_ADD, OFPFC_DELETE, OFPFC_DELETE_STRICT, OFPFC_MODIFY_STRICT, OFPFC_MODIFY_STRICT ):
+          for attrs in ( {}, { 'buffer_id' : 123 }, { 'idle_timeout': 5, 'hard_timeout': 10 } ):
+            xid = xid_gen.next()
+            o = ofp_flow_mod(xid=xid, command=command, match = match, actions=actions, **attrs)
+            unpacked = self._test_pack_unpack(o, xid, OFPT_FLOW_MOD)
+
+            self.assertEqual(unpacked.match, match)
+            self.assertEqual(unpacked.command, command)
+            self.assertEqual(unpacked.actions, actions)
+            for (check_attr,val) in attrs.iteritems():
+              self.assertEqual(getattr(unpacked, check_attr), val)
+
+class ofp_action_test(unittest.TestCase):
+  def assert_packed_action(self, cls, packed, a_type, length):
+    self.assertEqual(extract_num(packed, 0,2), a_type, "Action %s: expected type %d (but is %d)" % (cls, a_type, extract_num(packed, 0,2)))
+    self.assertEqual(extract_num(packed, 2,2), length, "Action %s: expected length %d (but is %d)" % (cls, length, extract_num(packed, 2,2)))
+
+  def test_pack_all_actions_simple(self):
+    def c(cls, a_type, kw, length):
+      action = cls(**kw)
+      packed = action.pack()
+      self.assertEqual(len(action), len(packed))
+      self.assert_packed_action(cls, packed, a_type, length)
+      unpacked = cls()
+      unpacked.unpack(packed)
+      self.assertEqual(action, unpacked)
+      for (k, v) in kw.iteritems():
+        self.assertEqual(getattr(unpacked, k), v)
+      return packed
+
+
+    c(ofp_action_output, OFPAT_OUTPUT, { 'port': 23 }, 8 )
+    c(ofp_action_enqueue, OFPAT_ENQUEUE, { 'port': 23, 'queue_id': 1 }, 16 )
+    c(ofp_action_vlan_vid, OFPAT_SET_VLAN_VID, { 'vlan_vid' : 123}, 8 )
+    c(ofp_action_vlan_pcp, OFPAT_SET_VLAN_PCP, { 'vlan_pcp' : 123}, 8 )
+    p = c(ofp_action_dl_addr.set_dst, OFPAT_SET_DL_DST, { 'dl_addr' : EthAddr("01:02:03:04:05:06").toRaw() }, 16 )
+    self.assertEquals(extract_num(p, 4,6), 0x010203040506)
+    p = c(ofp_action_dl_addr.set_src, OFPAT_SET_DL_SRC, { 'dl_addr' : EthAddr("ff:ee:dd:cc:bb:aa").toRaw() }, 16 )
+    self.assertEquals(extract_num(p, 4,6), 0xffeeddccbbaa, "Ethernet in packed is %x, but should be ff:ee:dd:cc:bb:aa" % extract_num(p, 4, 6))
+    p = c(ofp_action_nw_addr.set_dst, OFPAT_SET_NW_DST, { 'nw_addr' : IPAddr("1.2.3.4") }, 8 )
+    self.assertEquals(extract_num(p, 4,4), 0x01020304)
+    p = c(ofp_action_nw_addr.set_src, OFPAT_SET_NW_SRC, { 'nw_addr' : IPAddr("127.0.0.1") }, 8 )
+    self.assertEquals(extract_num(p, 4,4), 0x7f000001)
+    c(ofp_action_nw_tos, OFPAT_SET_NW_TOS, { 'nw_tos' : 4 }, 8)
+    p = c(ofp_action_tp_port.set_dst, OFPAT_SET_TP_DST, { 'tp_port' : 80 }, 8)
+    self.assertEquals(extract_num(p, 4,2), 80)
+    p = c(ofp_action_tp_port.set_src, OFPAT_SET_TP_SRC, { 'tp_port' : 22987 }, 8)
+    self.assertEquals(extract_num(p, 4,2), 22987)
 
 if __name__ == '__main__':
   unittest.main()

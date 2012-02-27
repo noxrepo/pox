@@ -22,6 +22,7 @@
 import struct
 import operator
 import sys
+from pox.lib.packet.packet_base import packet_base
 from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.vlan import vlan
 from pox.lib.packet.ipv4 import ipv4
@@ -31,6 +32,7 @@ from pox.lib.packet.icmp import icmp
 from pox.lib.packet.arp import arp
 
 from pox.lib.addresses import *
+from pox.lib.util import assert_type
 from pox.lib.util import initHelper
 from pox.lib.util import hexdump
 
@@ -53,6 +55,12 @@ def generateXID ():
   _nextXID = (_nextXID + 1) % (MAX_XID + 1)
   return r
 
+def xid_generator(start=1):
+  """ generate a xid sequence. Wraps at 2**31-1 """
+  n = start % (MAX_XID + 1)
+  while True:
+    yield n
+    n  = ( n + 1 )  % (MAX_XID + 1)
 
 def _format_body (body, prefix):
   if hasattr(body, 'show'):
@@ -384,8 +392,10 @@ class ofp_queue_prop_min_rate (object):
 class ofp_match (object):
   @classmethod
   def from_packet (cls, packet, in_port = None):
-    #NOTE: this may not belong here and may be moved
-    assert(isinstance(packet, ethernet))
+    """ get a match that matches this packet, asuming it came in on in_port in_port
+    @param packet an instance of 'ethernet'
+    """
+    assert_type("packet", packet, ethernet, none_ok=False)
 
     match = cls()
 
@@ -668,7 +678,7 @@ class ofp_match (object):
     """
     Test whether /this/ match completely encompasses the other match. Important for non-strict modify flow_mods etc.
     """
-    if not isinstance(other, ofp_match): raise "other not an instance of ofp_match: %s" % other
+    assert_type("other", other, ofp_match, none_ok=False)
     # short cut for equal matches
     if(self == other): return True
     # only candidate if all wildcard bits in the *other* match are also set in this match (i.e., a submatch)
@@ -1113,7 +1123,7 @@ class ofp_action_nw_addr (object):
   def set_src (cls, nw_addr = None):
     return cls(OFPAT_SET_NW_SRC, nw_addr)
 
-  def __init__ (self, nw_addr = None, type = None):
+  def __init__ (self, type = None, nw_addr = None):
     """
     'type' should be OFPAT_SET_NW_SRC or OFPAT_SET_NW_DST
     """
@@ -1213,7 +1223,7 @@ class ofp_action_tp_port (object):
   def set_src (cls, tp_port = None):
     return cls(OFPAT_SET_TP_SRC, tp_port)
 
-  def __init__ (self, tp_port = 0, type = None):
+  def __init__ (self, type=None, tp_port = 0):
     """
     'type' is OFPAT_SET_TP_SRC/DST
     """
@@ -1647,8 +1657,9 @@ class ofp_port_mod (ofp_header):
 class ofp_queue_get_config_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
+    self.header_type = OFPT_QUEUE_GET_CONFIG_REQUEST
     self.port = 0
-
+    self.length = 12
     initHelper(self, kw)
 
   def _assert (self):
@@ -1692,6 +1703,8 @@ class ofp_queue_get_config_request (ofp_header):
 class ofp_queue_get_config_reply (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
+    self.header_type = OFPT_QUEUE_GET_CONFIG_REPLY
+    self.length = 16
     self.port = 0
     self.queues = []
 
@@ -2491,7 +2504,6 @@ class ofp_packet_out (ofp_header):
     if 'action' in kw and 'actions' not in kw:
       kw['actions'] = kw['action']
       del kw['action']
-
     initHelper(self, kw)
 
     # Allow use of actions=<a single action> for kw args.
@@ -2532,12 +2544,13 @@ class ofp_packet_out (ofp_header):
     (self.buffer_id, self.in_port, actions_len) = struct.unpack_from("!LHH", binaryString, 8)
     if self.buffer_id == 0xffFFffFF:
       self.buffer_id = -1
-    self.actions,offset = _unpack_actions(binaryString, self.length - 16, 16)
-    assert offset == self.length
-    return binaryString[offset:]
+    self.actions,offset = _unpack_actions(binaryString, actions_len, 16)
+
+    self.data = binaryString[offset:self.length] if offset < self.length else None
+    return binaryString[self.length:]
 
   def __len__ (self):
-    return 16 + reduce(operator.add, (a.length for a in self.actions))
+    return 16 + reduce(operator.add, (a.length for a in self.actions), 0) + (len(self.data) if self.data else 0)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2647,26 +2660,43 @@ class ofp_barrier_request (ofp_header):
 class ofp_packet_in (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    
+
     self.in_port = OFPP_NONE
-    # If self.buffer_id != -1, self.data must only contain the packet header
     self.buffer_id = -1
     self.reason = 0
     self.data = None
-    
+
     initHelper(self, kw)
-    
+
     self.header_type = OFPT_PACKET_IN
     self._total_len = 0
 
+  def _set_data(self, data):
+    assert_type("data", data, (packet_base, str))
+    if data is None:
+      self._data = ''
+    elif isinstance(data, packet_base):
+      self._data = data.pack()
+    else:
+      self._data = data
+  def _get_data(self):
+    return self._data
+  data = property(_get_data, _set_data)
+
   def _assert (self):
+    if not isinstance(self.data, str):
+      return (False,
+          "ofp_packet_in: data should be raw byte string, not %s" % str(type(self.data)))
     return (True, None)
 
   def pack (self, assertstruct=True):
     if(assertstruct):
       if(not self._assert()[0]):
-        return None
+        raise AssertionError(self._assert()[1])
     packed = ""
+    # need to update the self.length field for ofp_header.pack to put the correct value in the packed
+    # array. this sucks.
+    self.length = len(self)
     self._total_len = len(self) # TODO: Is this correct?
     packed += ofp_header.pack(self)
     packed += struct.pack("!LHHBB", self.buffer_id & 0xffFFffFF, self._total_len, self.in_port, self.reason, 0)
@@ -2731,7 +2761,7 @@ class ofp_flow_removed (ofp_header):
     self.idle_timeout = 0
     self.packet_count = 0
     self.byte_count = 0
-    
+    self.length = 88
     initHelper(self, kw)
 
   def _assert (self):
@@ -2810,6 +2840,7 @@ class ofp_port_status (ofp_header):
     self.header_type = OFPT_PORT_STATUS
     self.reason = 0
     self.desc = ofp_phy_port()
+    self.length = 64
 
     initHelper(self, kw)
 
@@ -2881,6 +2912,7 @@ class ofp_error (ofp_header):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
+    self.length = len(self)
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.code)
@@ -3196,7 +3228,7 @@ class ofp_vendor (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.vendor,) = struct.unpack_from("!L", binaryString, 8)
-    if len(binaryString < self.length):
+    if len(binaryString) < self.length:
       return binaryString
     self.data = binaryString[12:self.length]
     return binaryString[self.length:]
@@ -3308,6 +3340,7 @@ class ofp_get_config_reply (ofp_header):
     self.header_type = OFPT_GET_CONFIG_REPLY
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
+    self.length = 12
 
     initHelper(self, kw)
 
@@ -3356,6 +3389,7 @@ class ofp_set_config (ofp_header):
     self.header_type = OFPT_SET_CONFIG
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
+    self.length = 12
 
     initHelper(self, kw)
 

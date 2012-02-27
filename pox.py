@@ -25,18 +25,20 @@
 
 ''''echo -n
 export OPT="-O"
+export FLG=""
 if [[ "$(basename $0)" == "debug-pox.py" ]]; then
   export OPT=""
+  export FLG="--debug"
 fi
 
 if [ -x pypy/bin/pypy ]; then
-  exec pypy/bin/pypy $OPT "$0" "$@"
+  exec pypy/bin/pypy $OPT "$0" $FLG "$@"
 fi
 
 if [ "$(type -P python2.7)" != "" ]; then
-  exec python2.7 $OPT "$0" "$@"
+  exec python2.7 $OPT "$0" $FLG "$@"
 fi
-exec python $OPT "$0" "$@"
+exec python $OPT "$0" $FLG "$@"
 '''
 
 from pox.core import core
@@ -46,6 +48,9 @@ import pox.openflow.of_01
 # Turn on extra info for event exceptions
 import pox.lib.revent as revent
 
+import logging
+import logging.config
+import os
 import sys
 
 options = None
@@ -223,14 +228,19 @@ def doLaunch ():
 
   return True
 
-# TODOC: why is cli in globals(), but the rest are in globals()['options']) ?
 cli = True
 verbose = False
 enable_openflow = True
+debug = False
+custom_log_config = None
 
 def _opt_no_openflow (v):
   global enable_openflow
   enable_openflow = str(v).lower() != "true"
+
+def _opt_debug (v):
+  global debug
+  debug = str(v).lower() == "true"
 
 def _opt_no_cli (v):
   if str(v).lower() == "true":
@@ -240,6 +250,10 @@ def _opt_no_cli (v):
 def _opt_verbose (v):
   global verbose
   verbose = str(v).lower() == "true"
+
+def _opt_log_config (v):
+  global custom_log_config
+  custom_log_config = str(v)
 
 def process_options ():
   for k,v in options.iteritems():
@@ -258,9 +272,13 @@ def pre_startup ():
   _done_pre_startup = True
 
   process_options()
+  core.debug = debug
 
   if enable_openflow:
     pox.openflow.launch() # Default OpenFlow launch
+
+  if custom_log_config:
+    setup_logging(custom_log_config, True)
 
   return True
 
@@ -299,7 +317,20 @@ def _monkeypatch_console ():
   except:
     pass
 
+def setup_logging(log_config="logging.cfg", fail_if_non_existent=False):
+  if os.path.exists(log_config):
+    logging.config.fileConfig(log_config)
+  else:
+    if fail_if_non_existent:
+      raise IOError("Could not find logging config file: %s" % log_config)
+
+    _default_log_handler = logging.StreamHandler()
+    _default_log_handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
+    logging.getLogger().addHandler(_default_log_handler)
+    logging.getLogger().setLevel(logging.DEBUG)
+
 def main ():
+  setup_logging()
   _monkeypatch_console()
   try:
     if doLaunch():
@@ -340,7 +371,7 @@ def main ():
     #core.scheduler._thread.join() # Sleazy
 
   try:
-    pox.core.core.quit()
+    core.quit()
   except:
     pass
 

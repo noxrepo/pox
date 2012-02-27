@@ -221,14 +221,15 @@ class BarrierIn (Event):
     self.xid = ofp.xid
 
 class ConnectionIn (Event):
-  def __init__ (self, dpid):
+  def __init__ (self, connection):
     super(ConnectionIn,self).__init__()
-    self.dpid = dpid
-    self.hub = None
+    self.connection = connection
+    self.dpid = connection.dpid
+    self.nexus = None
 
-class OpenFlowSwitchArbiter (EventMixin):
+class OpenFlowConnectionArbiter (EventMixin):
   """
-  Determines which OpenFlowHub gets the switch.
+  Determines which OpenFlowNexus gets the switch.
   Default implementation always just gives it to core.openflow
   """
   _eventMixin_events = set([
@@ -238,16 +239,16 @@ class OpenFlowSwitchArbiter (EventMixin):
     """ default as False causes it to always use core.openflow """
     self._default = default
 
-  def getHub (self, dpid):
-    e = ConnectionIn(dpid)
+  def getNexus (self, connection):
+    e = ConnectionIn(connection)
     self.raiseEventNoErrors(e)
-    if e.hub is None:
-      e.hub = self._default
-    if e.hub is False:
-      e.hub = core.openflow
-    return e.hub
+    if e.nexus is None:
+      e.nexus = self._default
+    if e.nexus is False:
+      e.nexus = core.openflow
+    return e.nexus
 
-class OpenFlowHub (EventMixin):
+class OpenFlowNexus (EventMixin):
   """
   Main point of OpenFlow interaction.
 
@@ -280,6 +281,7 @@ class OpenFlowHub (EventMixin):
 
   def __init__ (self):
     self._connections = {}#weakref.WeakValueDictionary() # DPID -> Connection
+    self.listenTo(core)
 
   def getConnection (self, dpid):
     """
@@ -298,6 +300,13 @@ class OpenFlowHub (EventMixin):
       print "Couldn't send to", dpid, "because we're not connected to it!"
       return False
 
+  def _handle_DownEvent (self, event):
+    for c in self._connections.values():
+      try:
+        c.disconnect()
+      except:
+        pass
+
   def _connect (self, con):
     self._connections[con.dpid] = con
   def _disconnect (self, dpid):
@@ -307,5 +316,5 @@ def launch (default_arbiter=True):
   if core.hasComponent("openflow"):
     return
   if default_arbiter:
-    core.registerNew(OpenFlowSwitchArbiter)
-  core.register("openflow", OpenFlowHub())
+    core.registerNew(OpenFlowConnectionArbiter)
+  core.register("openflow", OpenFlowNexus())

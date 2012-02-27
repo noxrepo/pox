@@ -40,7 +40,7 @@ class Monitoring_View(View):
             
     def get_stats(self, dpid, command):
         queryMsg = {}
-        msg["_mux"] = "gui"
+        queryMsg["_mux"] = "gui"
         queryMsg["type"] = "monitoring"
         queryMsg["dpid"] = dpid
         queryMsg["command"] = command

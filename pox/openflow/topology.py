@@ -33,6 +33,7 @@ from pox.openflow import *
 from pox.core import core
 from pox.topology.topology import *
 from pox.openflow.discovery import *
+from pox.openflow.libopenflow_01 import xid_generator
 from pox.openflow.flow_table import NOMFlowTable
 from pox.lib.util import dpidToStr
 from pox.lib.addresses import *
@@ -200,7 +201,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     self._connection = None
     self._listeners = []
     self._reconnectTimeout = None # Timer for reconnection
-    self.xid_generator = itertools.count( (dpid & 0xFFFF) << 16 + 1)
+    self.xid_generator = xid_generator( ((dpid & 0x7FFF) << 16) + 1)
 
   def _setConnection (self, connection, ofp=None):
     ''' ofp - a FeaturesReply message '''

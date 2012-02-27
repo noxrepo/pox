@@ -1,0 +1,38 @@
+#!/bin/bash
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ] ; do SOURCE="$(readlink "$SOURCE")"; done
+DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+cd $DIR
+
+DIRS=$(find . -type d)
+IFS=$'\x0a'
+
+TARGET=".."
+DOCS=$DIR
+
+for d in $DIRS; do
+  d="$d/"
+  d=${d/#.\//}
+  if [ -d "$TARGET/$d" ]; then
+    echo "$d:"
+    FILES=$(ls "$d"*.rst 2> /dev/null)
+    for f in $FILES; do
+      if [ -L "$TARGET/$f" -o ! -e "$TARGET/$f" ]; then
+        if [ -L "$TARGET/$f" ]; then
+          if [ $(readlink "$TARGET/$f") == "$DOCS/$f" ]; then
+            continue
+          fi
+          echo "  Re-linking $f"
+        else
+          echo "  Linking $f"
+        fi
+        ln -f -s "$DOCS/$f" "$TARGET/$f"
+      else
+        echo "  $f EXISTS AND IS NOT A LINK"
+      fi
+    done
+  fi
+done
+

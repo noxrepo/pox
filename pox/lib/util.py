@@ -19,6 +19,7 @@
 Various utility functions
 """
 
+import traceback
 import struct
 import sys
 import os
@@ -170,6 +171,35 @@ def dpidToStr (dpid, alwaysLong = False):
     r += '|' + str(struct.unpack('!H', dpid[0:2])[0])
 
   return r
+
+def assert_type(name, obj, types, none_ok=True):
+  """
+  Assert that a parameter is of a given type.
+  Raise an Assertion Error with a descriptive error msg if not.
+
+  name: name of the parameter for error messages
+  obj: parameter value to be checked
+  types: type or list or tuple of types that is acceptable
+  none_ok: whether 'None' is an ok value
+  """
+  if obj is None:
+    if none_ok:
+      return True
+    else:
+      raise AssertionError("%s may not be None" % name)
+
+  if not isinstance(types, (tuple, list)):
+    types = [ types ]
+
+  for cls in types:
+    if isinstance(obj, cls):
+      return True
+  allowed_types = "|".join(map(lambda x: str(x), types))
+  stack = traceback.extract_stack()
+  stack_msg = "Function call %s() in %s:%d" % (stack[-2][2], stack[-3][0], stack[-3][1])
+  type_msg = "%s must be instance of %s (but is %s)" % (name, allowed_types , str(type(obj)))
+
+  raise AssertionError(stack_msg + ": " + type_msg)
 
 def initHelper (obj, kw):
   """
