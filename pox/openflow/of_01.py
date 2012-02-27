@@ -604,6 +604,8 @@ class Connection (EventMixin):
       packet_length = ord(self.buf[2]) << 8 | ord(self.buf[3])
       if packet_length > l: break
       msg = classes[ofp_type]()
+      # msg.unpack implicitly only examines its own bytes, and not trailing
+      # bytes 
       msg.unpack(self.buf)
       self.buf = self.buf[packet_length:]
       l = len(self.buf)
