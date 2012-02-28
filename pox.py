@@ -279,7 +279,7 @@ def pre_startup ():
   core.debug = debug
 
   if enable_openflow:
-    pox.openflow.launch() # Default OpenFlow launch
+    pox.openflow.connection_arbiter.launch() # Default OpenFlow launch
 
   if custom_log_config:
     setup_logging(custom_log_config, True)
