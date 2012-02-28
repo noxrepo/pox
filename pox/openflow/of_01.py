@@ -21,7 +21,6 @@ In charge of OpenFlow 1.0 switches.
 NOTE: This module is loaded automatically on startup unless POX is run
       with --no-openflow .
 """
-
 from pox.core import core
 import pox
 import pox.lib.util
@@ -29,6 +28,8 @@ from pox.lib.revent.revent import EventMixin
 import datetime
 from pox.lib.socketcapture import CaptureSocket
 import pox.openflow.debug
+from pox.openflow.util import make_type_to_class_table
+from pox.openflow.connection_arbiter import *
 
 from pox.openflow import *
 
@@ -195,25 +196,6 @@ def handle_OFPST_QUEUE (con, parts):
     msg += _processStatsBody(part.body, of.ofp_queue_stats())
   con.ofnexus.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
   con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
-
-
-# See "classes"
-def make_type_to_class_table ():
-  classes = {}
-  max = -1
-  d = of.__dict__
-  for k in d.keys():
-    if k.startswith('OFPT_'):
-      c = 'ofp' + k[4:].lower()
-      cls = (d[c])
-      num = d[k]
-      classes[num] = cls
-      if num > max: max = num
-
-  if len(classes) != max + 1:
-    raise "Bad protocol to class mapping"
-
-  return [classes[i] for i in range(0, max)]
 
 
 # A list, where the index is an OFPT, and the value is a libopenflow
