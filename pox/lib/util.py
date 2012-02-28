@@ -390,11 +390,11 @@ def connect_socket_with_backoff(address, port, max_backoff=32):
   return the connected socket, or raise an exception if the connection was unsuccessful
   '''
   backoff_seconds = 1
-  socket = None
+  sock = None
   while True:
     try:
-      socket = socket.socket()
-      socket.connect( (address, port) )
+      sock = socket.socket()
+      sock.connect( (address, port) )
       break
     except socket.error as e:
       print >>sys.stderr, "%s. Backing off %d seconds ..." % (str(e), backoff_seconds)
@@ -403,7 +403,7 @@ def connect_socket_with_backoff(address, port, max_backoff=32):
       else:
         time.sleep(backoff_seconds)
       backoff_seconds <<= 1
-  return socket
+  return sock
 
 if __name__ == "__main__":
   def cb (t,k,v): print v
