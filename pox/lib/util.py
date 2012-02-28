@@ -23,6 +23,8 @@ import traceback
 import struct
 import sys
 import os
+import time
+import socket
 
 #FIXME: ugh, why can't I make importing pox.core work here?
 import logging
@@ -379,6 +381,29 @@ def hexdump (data):
     o += l
   return o
 
+
+def connect_socket_with_backoff(address, port, max_backoff=32):
+  '''
+  Connect to the given address and port. If the connection attempt fails, 
+  exponentially back off, up to the max backoff
+  
+  return the connected socket, or raise an exception if the connection was unsuccessful
+  '''
+  backoff_seconds = 1
+  socket = None
+  while True:
+    try:
+      socket = socket.socket()
+      socket.connect( (address, port) )
+      break
+    except socket.error as e:
+      print >>sys.stderr, "%s. Backing off %d seconds ..." % (str(e), backoff_seconds)
+      if backoff_seconds >= 64:
+        raise RuntimeError("Could not connect to controller %s:%d" % (address, port))
+      else:
+        time.sleep(backoff_seconds)
+      backoff_seconds <<= 1
+  return socket
 
 if __name__ == "__main__":
   def cb (t,k,v): print v
