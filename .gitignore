@@ -8,6 +8,7 @@ old.*
 *.diff
 *.orig
 *.swp
+.*.sw[a-z]
 ext/*
 pox/lib/pxpcap/pxpcap_c/build
 pox/lib/pxpcap/pxpcap_c/WpdPack
