@@ -53,7 +53,7 @@ from packet_base import packet_base
 from pox.lib.addresses import IPAddr
 
 IP_ANY = IPAddr("0.0.0.0")
-IP_BROADCAST = IPAddr("255.255.25.255")
+IP_BROADCAST = IPAddr("255.255.255.255")
 
 class ipv4(packet_base):
     "IP packet struct"
