@@ -5,6 +5,7 @@
 old.*
 .*
 *.patch
+*.rej
 *.diff
 *.orig
 *.swp
