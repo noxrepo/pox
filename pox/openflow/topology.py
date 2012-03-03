@@ -290,6 +290,8 @@ class OpenFlowSwitch (EventMixin, Switch):
   @property
   def connected(self):
     return self._connection != None
+  def name(self):
+    return repr(self)
 
 def launch ():
   if not core.hasComponent("openflow_topology"):
