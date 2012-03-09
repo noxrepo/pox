@@ -263,7 +263,9 @@ class SwitchImpl(EventMixin):
 
   def _process_actions_for_packet(self, actions, packet, in_port):
     """ process the output actions for a packet """
-    assert_type("packet", packet, ethernet, none_ok=False)
+    assert_type("packet", packet, [ethernet, str], none_ok=False)
+    if not isinstance(packet, ethernet):
+      packet = ethernet.unpack(packet)
 
     def output_packet(action, packet):
       self._output_packet(packet, action.port, in_port)
