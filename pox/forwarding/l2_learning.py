@@ -91,6 +91,9 @@ class LearningSwitch (EventMixin):
 
     def flood ():
       """ Floods the packet """
+      # Should there be a layer below this to build this packet?
+      # I guess I would have expected something like:
+      # msg = of.ofp_packet_out(actions = [foo],  buffer_id = event.ofp.buffer_id, in_port = event.port)
       msg = of.ofp_packet_out()
       if time.time() - self.connection.connect_time > FLOOD_DELAY:
         # Only flood if we've been connected for a little while...
@@ -148,13 +151,14 @@ class LearningSwitch (EventMixin):
         log.debug("installing flow for %s.%i -> %s.%i" %
                   (packet.src, event.port, packet.dst, port))
         msg = of.ofp_flow_mod()
+        # TODO: ofp_match.from_packet matches the entire packet, not just l2.
+        #       Don't we want to be wildcarding everything but L2?
         msg.match = of.ofp_match.from_packet(packet)
         msg.idle_timeout = 10
         msg.hard_timeout = 30
         msg.actions.append(of.ofp_action_output(port = port))
         msg.buffer_id = event.ofp.buffer_id # 6a
         self.connection.send(msg)
-
 
 class l2_learning (EventMixin):
   """
