@@ -38,6 +38,9 @@ from pox.openflow.flow_table import NOMFlowTable
 from pox.lib.util import dpidToStr
 from pox.lib.addresses import *
 
+import pickle
+import itertools
+
 # After a switch disconnects, it has this many seconds to reconnect in
 # order to reactivate the same OpenFlowSwitch object.  After this, if
 # it reconnects, it will be a new switch object.
@@ -192,6 +195,9 @@ class OpenFlowSwitch (EventMixin, Switch):
   ])
 
   def __init__ (self, dpid):
+    if not dpid:
+      raise AssertionError("OpenFlowSwitch should have dpid")
+
     Switch.__init__(self, id=dpid)
     EventMixin.__init__(self)
     self.dpid = dpid
@@ -278,6 +284,19 @@ class OpenFlowSwitch (EventMixin, Switch):
         return p
     return None
 
+  @property
+  def connected(self):
+    return self._connection != None
+
+  def installFlow(self, **kw):
+    """ install a flow in the local flow table as well as into the associated switch """
+    self.flow_table.install(TableEntry(**kw))
+
+  def serialize (self):
+    # Skip over non-serializable data, e.g. sockets
+    serializable = OpenFlowSwitch(self.dpid)
+    return pickle.dumps(serializable, protocol = 0)
+
   def send(self, *args, **kw):
     return self._connection.send(*args, **kw)
 
@@ -288,10 +307,9 @@ class OpenFlowSwitch (EventMixin, Switch):
     return "<%s %s>" % (self.__class__.__name__, dpidToStr(self.dpid))
 
   @property
-  def connected(self):
-    return self._connection != None
   def name(self):
     return repr(self)
+
 
 def launch ():
   if not core.hasComponent("openflow_topology"):
