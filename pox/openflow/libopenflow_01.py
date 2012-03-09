@@ -207,6 +207,9 @@ class ofp_phy_port (object):
     outstr += prefix + 'peer: ' + str(self.peer) + '\n'
     return outstr
 
+  def __repr__(self):
+    return self.show()
+
 ofp_port_config_rev_map = {
   'OFPPC_PORT_DOWN'    : 1,
   'OFPPC_NO_STP'       : 2,
@@ -838,7 +841,8 @@ class ofp_action_header (object):
     return packed
 
   def unpack (self, binaryString):
-    if len(binaryString) < 8: return binaryString
+    if (len(binaryString) < 8):
+      return binaryString
     (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
     if len(binaryString) < self.length: return binaryString
     self.data = binaryString[8:8+self.length]
@@ -3480,8 +3484,8 @@ def _unpack_actions (b, length, offset=0):
   offset, if specified is where in b to start decoding
   returns ([Actions], next_offset)
   """
+  if (len(b) - offset) < length: return ([], offset)
   actions = []
-  if (len(b) - offset) < length: return (actions, offset)
   end = length + offset
   while offset < end:
     (t,l) = struct.unpack_from("!HH", b, offset)

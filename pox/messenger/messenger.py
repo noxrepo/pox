@@ -68,7 +68,6 @@ the messages it receives, and it can be polled later.
 """
 
 
-
 from pox.lib.revent import *
 from pox.lib.recoco import *
 import pox.core
@@ -94,6 +93,8 @@ class ConnectionClosed (Event):
     Event.__init__(self)
     self.con = connection
 
+class MessengerListening(Event):
+  pass
 
 class ConnectionStarted (Event):
   def __init__ (self, connection):
