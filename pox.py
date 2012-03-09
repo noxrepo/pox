@@ -53,7 +53,6 @@ import logging
 import logging.config
 import os
 import sys
-
 options = None
 
 def doImport (name):
@@ -232,19 +231,21 @@ def doLaunch ():
 
   return True
 
+# TODOC: why is cli in globals(), but the rest are in globals()['options']) ?
 cli = True
 verbose = False
 enable_openflow = True
 debug = False
+deadlock = False
 custom_log_config = None
+
+def _opt_deadlock(v):
+  global deadlock
+  deadlock = str(v).lower() != "true"
 
 def _opt_no_openflow (v):
   global enable_openflow
   enable_openflow = str(v).lower() != "true"
-
-def _opt_debug (v):
-  global debug
-  debug = str(v).lower() == "true"
 
 def _opt_no_cli (v):
   if str(v).lower() == "true":
@@ -254,6 +255,14 @@ def _opt_no_cli (v):
 def _opt_verbose (v):
   global verbose
   verbose = str(v).lower() == "true"
+
+def _opt_debug (v):
+  global debug
+  debug = str(v).lower() == "true"
+  if debug:
+    # debug implies no openflow 
+    _opt_no_openflow(True)
+    _opt_no_cli(True)
 
 def _opt_log_config (v):
   global custom_log_config
@@ -276,7 +285,6 @@ def pre_startup ():
   _done_pre_startup = True
 
   process_options()
-  core.debug = debug
 
   if enable_openflow:
     pox.openflow.connection_arbiter.launch() # Default OpenFlow launch
@@ -367,15 +375,29 @@ def main ():
     code.interact('Ready.', local=l)
   else:
     try:
+      import traceback
       import time
+      import sys
+      import inspect
+      
       while True:
+        if 'deadlock' in globals()['options'] and globals()['options']['deadlock']:
+          frames = sys._current_frames()
+          for key in frames:
+            frame = frames[key]
+            print inspect.getframeinfo(frame)
+            outer_frames = inspect.getouterframes(frame)
+            for i in range(0, len(outer_frames)): 
+              print "     " + str(inspect.getframeinfo(outer_frames[i][0]))
+
         time.sleep(5)
     except:
-      pass
+      if 'deadlock' in globals()['options'] and globals()['options']['deadlock']:
+        traceback.print_exc(file=sys.stdout)
     #core.scheduler._thread.join() # Sleazy
 
   try:
-    core.quit()
+    pox.core.core.quit()
   except:
     pass
 
