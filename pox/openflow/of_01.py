@@ -339,9 +339,9 @@ deferredSender = DeferredSender()
 
 class DummyOFNexus (object):
   def raiseEventNoErrors (self, event, *args, **kw):
-    log.warning("%s raised on dummy OpenFlow nexus")
+    log.warning("%s raised on dummy OpenFlow nexus" % event)
   def raiseEvent (self, event, *args, **kw):
-    log.warning("%s raised on dummy OpenFlow nexus")
+    log.warning("%s raised on dummy OpenFlow nexus" % event)
   def _disconnect (self, dpid):
     log.warning("%s disconnected on dummy OpenFlow nexus",
                 pox.lib.util.dpidToStr(dpid))
@@ -498,7 +498,6 @@ class Connection (EventMixin):
     self.disconnected = True
     try:
       self.ofnexus._disconnect(self.dpid)
-      #del self.ofnexus._connections[self.dpid]
     except:
       pass
     """
