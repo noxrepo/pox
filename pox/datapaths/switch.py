@@ -239,7 +239,7 @@ class SwitchImpl(EventMixin):
           real_send(port)
     elif out_port == OFPP_CONTROLLER:
       buffer_id = self._buffer_packet(packet, in_port)
-      self.send_packet_in(in_port, buffer_id, packet, self.xid_iter.next(), reason=OFPR_ACTION)
+      self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_ACTION)
     else:
       raise("Unsupported virtual output port: %x" % out_port)
 
