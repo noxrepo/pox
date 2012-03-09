@@ -79,7 +79,7 @@ class SwitchImplTest(unittest.TestCase):
     self.assertEqual(len(received), 1)
     event = received[0]
     self.assertEqual(event.port.port_no,2)
-    self.assertEqual(event.packet, packet)
+    self.assertEqual(event.packet.pack(), packet.pack())
 
   def test_send_packet_in(self):
     c = self.conn

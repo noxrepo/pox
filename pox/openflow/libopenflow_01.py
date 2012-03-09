@@ -2500,7 +2500,7 @@ class ofp_packet_out (ofp_header):
     self.buffer_id = -1
     self.in_port = OFPP_NONE
     self.actions = []
-    self.data = None
+    self._data = ''
 
     # ofp_flow_mod and ofp_packet_out do some special handling of 'actions'...
 
@@ -2514,8 +2514,20 @@ class ofp_packet_out (ofp_header):
     if not hasattr(self.actions, '__getitem__'):
       self.actions = [self.actions]
 
+  def _set_data(self, data):
+    assert_type("data", data, (packet_base, str))
+    if data is None:
+      self._data = ''
+    elif isinstance(data, packet_base):
+      self._data = data.pack()
+    else:
+      self._data = data
+  def _get_data(self):
+    return self._data
+  data = property(_get_data, _set_data)
+
   def _assert (self):
-    if self.buffer_id != -1 and self.data is not None:
+    if self.buffer_id != -1 and self.data != '':
       return "can not have both buffer_id and data set"
     return True
 
