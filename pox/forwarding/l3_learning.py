@@ -107,10 +107,10 @@ class l3_switch (EventMixin):
 
       # Learn or update port/MAC info
       if packet.next.srcip in self.arpTable[dpid]:
-         if self.arpTable[dpid][packet.next.srcip] != (inport, packet.src):
-           log.info("%i %i RE-learned %s", dpid,inport,str(packet.next.srcip))
+        if self.arpTable[dpid][packet.next.srcip] != (inport, packet.src):
+          log.info("%i %i RE-learned %s", dpid,inport,str(packet.next.srcip))
       else:
-         log.debug("%i %i learned %s", dpid,inport,str(packet.next.srcip))
+        log.debug("%i %i learned %s", dpid,inport,str(packet.next.srcip))
       self.arpTable[dpid][packet.next.srcip] = Entry(inport, packet.src)
 
       # Try to forward
@@ -124,7 +124,7 @@ class l3_switch (EventMixin):
            dpid, inport, str(dstaddr)))
         else:
           log.debug("%i %i installing flow for %s => %s out port %i" % (dpid,
-           inport, str(packet.next.srcip), str(dstaddr), prt))
+            inport, str(packet.next.srcip), str(dstaddr), prt))
 
           msg = of.ofp_flow_mod(command=of.OFPFC_ADD,
                                 idle_timeout=FLOW_IDLE_TIMEOUT,
