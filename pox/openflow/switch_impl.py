@@ -16,14 +16,14 @@ Created by ykk
 
 from pox.lib.util import assert_type
 from pox.lib.revent import Event, EventMixin
-from pox.core import core
 from pox.openflow.libopenflow_01 import *
-from pox.openflow.of_01 import make_type_to_class_table, deferredSender
-from pox.openflow.flow_table import TableEntry, SwitchFlowTable
+from pox.openflow.util import make_type_to_class_table
+from pox.openflow.flow_table import SwitchFlowTable
 
 from errno import EAGAIN
 from collections import namedtuple
 import itertools
+import logging
 
 class SwitchDpPacketOut (Event):
   """ Event raised by SwitchImpl when a dataplane packet is sent out a port """
@@ -52,7 +52,7 @@ class SwitchImpl(EventMixin):
     self.name = name
     if self.name is None:
       self.name = str(dpid)
-    self.log = core.getLogger(self.name)
+    self.log = logging.getLogger(self.name)
     ##Number of buffers
     self.n_buffers = n_buffers
     ##Number of tables
@@ -93,16 +93,13 @@ class SwitchImpl(EventMixin):
     else:
       self.capabilities = SwitchCapabilities(miss_send_len)
 
-  def set_socket(self, socket):
-    self._connection = ControllerConnection(socket, self.ofp_handlers)
+  def set_socket(self, io_worker):
+    self._connection = ControllerConnection(io_worker, self.ofp_handlers)
     return self._connection
 
   def set_connection(self, connection):
     connection.ofp_handlers = self.ofp_handlers
     self._connection = connection
-
-  def demux_openflow(self, raw_bytes):
-    pass
 
   # ==================================== #
   #    Reactive OFP processing           #
@@ -184,7 +181,8 @@ class SwitchImpl(EventMixin):
     if (buffer_id == None):
       buffer_id = int("0xFFFFFFFF",16)
 
-    if xid == None: xid = self.xid_count.next()
+    if xid == None:
+      xid = self.xid_count.next()
     msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
                         data = packet.pack())
     self._connection.send(msg)
@@ -195,9 +193,13 @@ class SwitchImpl(EventMixin):
     self.log.debug("Send echo %s" % self.name)
     msg = ofp_echo_request()
     self._connection.send(msg)
+    
+  # ==================================== #
+  #   Dataplane processing               #
+  # ==================================== #
 
   def process_packet(self, packet, in_port):
-    """ process a packet the way a real OpenFlow switch would.
+    """ process a dataplane packet the way a real OpenFlow switch would.
         packet: an instance of ethernet
         in_port: the integer port number
     """
@@ -328,31 +330,25 @@ class ControllerConnection (object):
   # recoco Connection Listener loop)
   # Globally unique identifier for the Connection instance
   ID = 0
-
+  
+  # These methods are called externally by IOWorker
   def msg (self, m):
-    #print str(self), m
     self.log.debug(str(self) + " " + str(m))
   def err (self, m):
-    #print str(self), m
     self.log.error(str(self) + " " + str(m))
   def info (self, m):
-    pass
-    #print str(self), m
     self.log.info(str(self) + " " + str(m))
-
-  def __init__ (self, sock, ofp_handlers):
-    self.sock = sock
-    self.buf = ''
+  
+  def __init__ (self, io_worker, ofp_handlers):
+    self.io_worker = io_worker
+    self.io_worker.set_receive_handler(self.read)
     ControllerConnection.ID += 1
     self.ID = ControllerConnection.ID
-    self.log = core.getLogger("ControllerConnection(id=%d)" % self.ID)
+    self.log = logging.getLogger("ControllerConnection(id=%d)" % self.ID)
     ## OpenFlow Message map
     self.ofp_msgs = make_type_to_class_table()
     ## Hash from ofp_type -> handler(packet)
     self.ofp_handlers = ofp_handlers
-
-  def fileno (self):
-    return self.sock.fileno()
 
   def send (self, data):
     """
@@ -363,68 +359,44 @@ class ControllerConnection (object):
     way, you can just pass one of the OpenFlow objects from the OpenFlow
     library to it and get the expected result, for example.
     """
-    # TODO: this is taken directly from of_01.Connection. Refoactor to reduce
-    # redundancy
     if type(data) is not bytes:
       if hasattr(data, 'pack'):
         data = data.pack()
-
-    if deferredSender.sending:
-      self.log.debug("deferred sender is sending!")
-      deferredSender.send(self, data)
-      return
-    try:
-      l = self.sock.send(data)
-      if l != len(data):
-        self.msg("Didn't send complete buffer.")
-        data = data[l:]
-        deferredSender.send(self, data)
-    except socket.error as (errno, strerror):
-      if errno == EAGAIN:
-        self.msg("Out of send buffer space.  Consider increasing SO_SNDBUF.")
-        deferredSender.send(self, data)
-      else:
-        self.msg("Socket error: " + strerror)
-        self.disconnect()
-
-  def read (self):
-    """
-    Read data from this connection.
-
-    Note: if no data is available to read, this method will block. Only invoke
-    after select() has returned this socket.
-    """
-    # TODO: this is taken directly from of_01.Connection. The only difference is the
-    # event handlers. Refactor to reduce redundancy.
-    d = self.sock.recv(2048)
-    if len(d) == 0:
-      return False
-    self.buf += d
-    l = len(self.buf)
-    while l > 4:
-      if ord(self.buf[0]) != OFP_VERSION:
-        self.log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) +
-                    ") on connection " + str(self))
-        return False
+    self.io_worker.send(data)
+    
+  def read (self, io_worker):
+    message = io_worker.peek_receive_buf()
+    while len(message) > 4:
+      # TODO: this is taken directly from of_01.Connection. The only difference is the
+      # event handlers. Refactor to reduce redundancy.
+      if ord(message[0]) != OFP_VERSION:
+          self.log.warning("Bad OpenFlow version (" + str(ord(message[0])) +
+                            ") on connection " + str(self))
+          return False
       # OpenFlow parsing occurs here:
-      ofp_type = ord(self.buf[1])
-      packet_length = ord(self.buf[2]) << 8 | ord(self.buf[3])
-      if packet_length > l: break
-      msg = self.ofp_msgs[ofp_type]()
-      msg.unpack(self.buf)
-      self.buf = self.buf[packet_length:]
-      l = len(self.buf)
+      ofp_type = ord(message[1])
+      packet_length = ord(message[2]) << 8 | ord(message[3])
+      if packet_length > len(message):
+          return
+        
+      # msg.unpack implicitly only examines its own bytes, and not trailing
+      # bytes 
+      msg_obj = self.ofp_msgs[ofp_type]()
+      msg_obj.unpack(message)
+      
+      io_worker.consume_receive_buf(packet_length)
+      # prime the next iteration of the loop
+      message = io_worker.peek_receive_buf()
+            
       try:
         if ofp_type not in self.ofp_handlers:
           raise RuntimeError("No handler for ofp_type %d" % ofp_type)
 
         h = self.ofp_handlers[ofp_type]
-        h(msg)
+        h(msg_obj)
       except Exception as e:
         self.log.exception(e)
-        #self.log.exception("%s: Exception while handling OpenFlow message:\n%s %s",
-        #              self,self,("\n" + str(self) + " ").join(str(msg).split('\n')))
-        continue
+        return False
     return True
 
   def disconnect(self):
