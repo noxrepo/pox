@@ -89,8 +89,6 @@ class RecocoIOLoop(Task):
     return worker
 
   def remove_worker(self, worker):
-    if isinstance(worker, DeferredIOWorker):
-      worker = worker.io_worker
     worker.close()
     self.workers.discard(worker)
 
