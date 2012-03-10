@@ -101,6 +101,14 @@ class SwitchImpl(EventMixin):
     connection.ofp_handlers = self.ofp_handlers
     self._connection = connection
 
+  def send(self, message):
+    """ Send a message to this switches communication partner. If the switch is not connected, the message is silently dropped. """
+
+    if self._connection:
+      self._connection.send(message)
+    else:
+      self.log.debug("Asked to send message %s, but not connected" % message)
+
   # ==================================== #
   #    Reactive OFP processing           #
   # ==================================== #
@@ -114,7 +122,7 @@ class SwitchImpl(EventMixin):
     """
     self.log.debug("Reply echo of xid: %s %s" % (str(ofp), self.name))
     msg = ofp_echo_reply(xid=ofp.xid)
-    self._connection.send(msg)
+    self.send(msg)
 
   def _receive_features_request(self, ofp):
     """Reply to feature request
@@ -125,7 +133,7 @@ class SwitchImpl(EventMixin):
                              capabilities = self.capabilities.get_capabilities(),
                              actions = self.capabilities.get_actions(),
                              ports = self.ports.values())
-    self._connection.send(msg)
+    self.send(msg)
 
   def _receive_flow_mod(self, ofp):
     """Handle flow mod: just print it here
@@ -154,7 +162,7 @@ class SwitchImpl(EventMixin):
   def _receive_barrier_request(self, ofp):
     self.log.debug("Barrier request %s %s" % (self.name, str(ofp)))
     msg = ofp_barrier_reply(xid = ofp.xid)
-    self._connection.send(msg)
+    self.send(msg)
 
   def _receive_set_config(self, config):
     self.log.debug("Set  config %s %s" % (self.name, str(config)))
@@ -167,7 +175,7 @@ class SwitchImpl(EventMixin):
     """
     self.log.debug("Send hello %s " % self.name)
     msg = ofp_hello()
-    self._connection.send(msg)
+    self.send(msg)
 
   def send_packet_in(self, in_port, buffer_id=None, packet="", xid=None, reason=None):
     """Send PacketIn
@@ -185,14 +193,14 @@ class SwitchImpl(EventMixin):
       xid = self.xid_count.next()
     msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
                         data = packet.pack())
-    self._connection.send(msg)
+    self.send(msg)
 
   def send_echo(self, xid=0):
     """Send echo request
     """
     self.log.debug("Send echo %s" % self.name)
     msg = ofp_echo_request()
-    self._connection.send(msg)
+    self.send(msg)
 
   # ==================================== #
   #   Dataplane processing               #
