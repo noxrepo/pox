@@ -403,8 +403,8 @@ class ControllerConnection (object):
         return False
     return True
 
-  def disconnect(self):
-    # not yet implemented
+  def close(self):
+    self.io_worker.close()
     pass
 
   def __str__ (self):
