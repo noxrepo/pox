@@ -93,7 +93,7 @@ class SwitchImpl(EventMixin):
     else:
       self.capabilities = SwitchCapabilities(miss_send_len)
 
-  def set_socket(self, io_worker):
+  def set_io_worker(self, io_worker):
     self._connection = ControllerConnection(io_worker, self.ofp_handlers)
     return self._connection
 
@@ -193,7 +193,7 @@ class SwitchImpl(EventMixin):
     self.log.debug("Send echo %s" % self.name)
     msg = ofp_echo_request()
     self._connection.send(msg)
-    
+
   # ==================================== #
   #   Dataplane processing               #
   # ==================================== #
@@ -330,7 +330,7 @@ class ControllerConnection (object):
   # recoco Connection Listener loop)
   # Globally unique identifier for the Connection instance
   ID = 0
-  
+
   # These methods are called externally by IOWorker
   def msg (self, m):
     self.log.debug(str(self) + " " + str(m))
@@ -338,10 +338,11 @@ class ControllerConnection (object):
     self.log.error(str(self) + " " + str(m))
   def info (self, m):
     self.log.info(str(self) + " " + str(m))
-  
+
   def __init__ (self, io_worker, ofp_handlers):
     self.io_worker = io_worker
     self.io_worker.set_receive_handler(self.read)
+    self.error_handler = None
     ControllerConnection.ID += 1
     self.ID = ControllerConnection.ID
     self.log = logging.getLogger("ControllerConnection(id=%d)" % self.ID)
@@ -363,31 +364,31 @@ class ControllerConnection (object):
       if hasattr(data, 'pack'):
         data = data.pack()
     self.io_worker.send(data)
-    
+
   def read (self, io_worker):
     message = io_worker.peek_receive_buf()
     while len(message) > 4:
       # TODO: this is taken directly from of_01.Connection. The only difference is the
       # event handlers. Refactor to reduce redundancy.
       if ord(message[0]) != OFP_VERSION:
-          self.log.warning("Bad OpenFlow version (" + str(ord(message[0])) +
-                            ") on connection " + str(self))
-          return False
+        self.log.warning("Bad OpenFlow version (" + str(ord(message[0])) +
+                          ") on connection " + str(self))
+        return False
       # OpenFlow parsing occurs here:
       ofp_type = ord(message[1])
       packet_length = ord(message[2]) << 8 | ord(message[3])
       if packet_length > len(message):
-          return
-        
+        return
+
       # msg.unpack implicitly only examines its own bytes, and not trailing
-      # bytes 
+      # bytes
       msg_obj = self.ofp_msgs[ofp_type]()
       msg_obj.unpack(message)
-      
+
       io_worker.consume_receive_buf(packet_length)
       # prime the next iteration of the loop
       message = io_worker.peek_receive_buf()
-            
+
       try:
         if ofp_type not in self.ofp_handlers:
           raise RuntimeError("No handler for ofp_type %d" % ofp_type)
@@ -395,7 +396,10 @@ class ControllerConnection (object):
         h = self.ofp_handlers[ofp_type]
         h(msg_obj)
       except Exception as e:
-        self.log.exception(e)
+        if self.error_handler:
+          self.error_handler(e)
+        else:
+          self.log.exception(e)
         return False
     return True
 
