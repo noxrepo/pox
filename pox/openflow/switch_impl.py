@@ -93,7 +93,7 @@ class SwitchImpl(EventMixin):
     else:
       self.capabilities = SwitchCapabilities(miss_send_len)
 
-  def set_socket(self, io_worker):
+  def set_io_worker(self, io_worker):
     self._connection = ControllerConnection(io_worker, self.ofp_handlers)
     return self._connection
 
