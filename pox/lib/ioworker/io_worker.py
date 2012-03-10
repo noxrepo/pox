@@ -120,7 +120,8 @@ class RecocoIOLoop(Task):
 
         for worker in elist:
           worker.close()
-          self.workers.remove(worker)
+          if worker in self.workers:
+            self.workers.remove(worker)
 
         for worker in rlist:
           try:
@@ -129,7 +130,8 @@ class RecocoIOLoop(Task):
           except socket.error as (errno, strerror):
             log.error("Socket error: " + strerror)
             worker.close()
-            self.workers.remove(worker)
+            if worker in self.workers:
+              self.workers.remove(worker)
 
         for worker in wlist:
           try:
