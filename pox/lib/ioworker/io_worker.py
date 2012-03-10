@@ -95,10 +95,9 @@ class RecocoIOLoop(Task):
     self.pinger.ping()
     return worker
 
-  def remove_worker(self, worker):
-    worker.close()
-    self.workers.discard(worker)
-
+  def schedule_socket_close(self, io_worker):
+    self.pending_socket_closes.append(io_worker)
+    
   def stop(self):
     self.running = False
     self.pinger.ping()
