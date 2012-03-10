@@ -90,7 +90,7 @@ class RecocoIOLoop(Task):
     self.pinger = makePinger()
 
   def create_worker_for_socket(self, socket):
-    worker = RecocoIOWorker(socket, pinger=self.pinger, on_close=lambda worker: self.workers.remove(worker))
+    worker = RecocoIOWorker(socket, pinger=self.pinger, on_close=lambda worker: self.workers.discard(worker))
     self.workers.add(worker)
     self.pinger.ping()
     return worker
@@ -127,22 +127,21 @@ class RecocoIOLoop(Task):
           try:
             data = worker.socket.recv(self._BUF_SIZE)
             worker.push_receive_data(data)
-          except socket.error as (errno, strerror):
+          except socket.error as (s_errno, strerror):
             log.error("Socket error: " + strerror)
             worker.close()
-            if worker in self.workers:
-              self.workers.remove(worker)
+            self.workers.discard(worker)
 
         for worker in wlist:
           try:
             l = worker.socket.send(worker.send_buf)
             if l > 0:
               worker.consume_send_buf(l)
-          except socket.error as (errno, strerror):
-            if errno != errno.EAGAIN:
+          except socket.error as (s_errno, strerror):
+            if s_errno != errno.EAGAIN:
               log.error("Socket error: " + strerror)
               worker.close()
-              self.workers.remove(worker)
+              self.workers.discard(worker)
 
       except exceptions.KeyboardInterrupt:
         break
