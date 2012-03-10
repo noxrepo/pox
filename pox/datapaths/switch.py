@@ -342,6 +342,7 @@ class ControllerConnection (object):
   def __init__ (self, io_worker, ofp_handlers):
     self.io_worker = io_worker
     self.io_worker.set_receive_handler(self.read)
+    self.error_handler = None
     ControllerConnection.ID += 1
     self.ID = ControllerConnection.ID
     self.log = logging.getLogger("ControllerConnection(id=%d)" % self.ID)
@@ -395,7 +396,10 @@ class ControllerConnection (object):
         h = self.ofp_handlers[ofp_type]
         h(msg_obj)
       except Exception as e:
-        self.log.exception(e)
+        if self.error_handler:
+          self.error_handler(e)
+        else:
+          self.log.exception(e)
         return False
     return True
 
