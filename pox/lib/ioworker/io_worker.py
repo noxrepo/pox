@@ -58,10 +58,11 @@ class IOWorker(object):
 
 class RecocoIOWorker(IOWorker):
   """ An IOWorker that works with our RecocoIOLoop, and notifies it via pinger """
-  def __init__(self, socket, pinger):
+  def __init__(self, socket, pinger, on_close):
     IOWorker.__init__(self)
     self.socket = socket
     self.pinger = pinger
+    self.on_close = on_close
 
   def fileno(self):
     return self.socket.fileno()
@@ -69,6 +70,12 @@ class RecocoIOWorker(IOWorker):
   def send(self, data):
     IOWorker.send(self, data)
     self.pinger.ping()
+
+  def close(self):
+    IOWorker.close(self)
+    self.socket.close()
+    # on_close is a function not a method
+    self.on_close(self)
 
 class RecocoIOLoop(Task):
   """
@@ -83,7 +90,7 @@ class RecocoIOLoop(Task):
     self.pinger = makePinger()
 
   def create_worker_for_socket(self, socket):
-    worker = RecocoIOWorker(socket, self.pinger)
+    worker = RecocoIOWorker(socket, pinger=self.pinger, on_close=lambda worker: self.workers.remove(worker))
     self.workers.add(worker)
     self.pinger.ping()
     return worker

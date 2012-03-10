@@ -45,7 +45,7 @@ class IOWorkerTest(unittest.TestCase):
     # data has been consumed
     i.push_receive_data("hepp")
     self.assertEqual(self.data, "hepp")
-    
+
 
 class RecocoIOLoopTest(unittest.TestCase):
   def test_basic(self):
@@ -82,6 +82,15 @@ class RecocoIOLoopTest(unittest.TestCase):
     # that should result in the socket being red the data being handed
     # to the ioworker, the callback being called. Everybody happy.
     self.assertEquals(self.received, "hallo")
+
+  def test_run_close(self):
+    loop = RecocoIOLoop()
+    (left, right) = MockSocket.pair()
+    worker = loop.create_worker_for_socket(left)
+
+    self.assertTrue(worker in loop.workers)
+    worker.close()
+    self.assertFalse(worker in loop.workers)
 
   def test_run_write(self):
     loop = RecocoIOLoop()
