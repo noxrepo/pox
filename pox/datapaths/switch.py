@@ -440,7 +440,6 @@ class ControllerConnection (object):
 
   def close(self):
     self.io_worker.close()
-    pass
 
   def __str__ (self):
     return "[Con " + str(self.ID) + "]"
