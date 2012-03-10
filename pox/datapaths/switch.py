@@ -201,6 +201,16 @@ class SwitchImpl(EventMixin):
     self.log.debug("Send echo %s" % self.name)
     msg = ofp_echo_request()
     self.send(msg)
+    
+  def send_port_status(self, port, reason):
+    '''
+    port is an ofp_phy_port
+    reason is one of 'OFPPR_ADD', 'OFPPR_DELETE', 'OFPPR_MODIFY'
+    '''
+    assert_type("port", port, ofp_phy_port, none_ok=False)
+    assert(reason in ofp_port_reason_rev_map.values())
+    msg = ofp_port_status(desc=port, reason=reason)
+    self.send(msg)
 
   # ==================================== #
   #   Dataplane processing               #
@@ -221,6 +231,23 @@ class SwitchImpl(EventMixin):
       # no matching entry
       buffer_id = self._buffer_packet(packet, in_port)
       self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_NO_MATCH)
+      
+  def take_port_down(self, port):
+    ''' Take the given port down, and send a port_status message to the controller '''
+    port_no = port.port_no
+    if port_no not in self.ports:
+      raise RuntimeError("port_no %d not in %s's ports" % (port_no, str(self)))
+    # Hmmm, is deleting the port the correct behavior?
+    del self.ports[port_no]
+    self.send_port_status(port, OFPPR_DELETE)
+    
+  def bring_port_up(self, port):
+    ''' Bring the given port up, and send a port_status message to the controller '''
+    port_no = port.port_no
+    if port_no in self.ports:
+      raise RuntimeError("port_no %d already in %s's ports" % (port_no, str(self)))
+    self.ports[port_no] = port
+    self.send_port_status(port, OFPPR_ADD)
 
   # ==================================== #
   #    Helper Methods                    #
