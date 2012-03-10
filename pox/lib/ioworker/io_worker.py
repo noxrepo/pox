@@ -73,7 +73,6 @@ class RecocoIOWorker(IOWorker):
 
   def close(self):
     IOWorker.close(self)
-    self.socket.close()
     # on_close is a function not a method
     self.on_close(self)
 
@@ -88,15 +87,24 @@ class RecocoIOLoop(Task):
     Task.__init__(self)
     self.workers = set()
     self.pinger = makePinger()
+    # socket.close() must be performed by this Select task -- otherwise
+    # we'll end up blocking on socket that doesn't exist.
+    self.pending_worker_closes = []
 
   def create_worker_for_socket(self, socket):
-    worker = RecocoIOWorker(socket, pinger=self.pinger, on_close=lambda worker: self.workers.discard(worker))
+    def on_close(worker):
+      ''' callback for io_worker.close() '''
+      self.pending_worker_closes.append(worker)
+      self.pinger.ping()
+    worker = RecocoIOWorker(socket, pinger=self.pinger, on_close=on_close)
     self.workers.add(worker)
     self.pinger.ping()
     return worker
-
-  def schedule_socket_close(self, io_worker):
-    self.pending_socket_closes.append(io_worker)
+    
+  def _close_worker(self, worker):
+    ''' only called by our Select task ''' 
+    worker.socket.close()
+    self.workers.discard(worker)
     
   def stop(self):
     self.running = False
@@ -106,6 +114,12 @@ class RecocoIOLoop(Task):
     self.running = True
     while self.running:
       try:
+        # First, close and pending sockets
+        for io_worker in self.pending_worker_closes:
+          self._close_worker(io_worker)
+        self.pending_socket_closes = []
+        
+        # Now grab remaining workers
         read_sockets = list(self.workers) + [ self.pinger ]
         write_sockets = [ worker for worker in self.workers if worker.ready_to_send ]
         exception_sockets = list(self.workers)

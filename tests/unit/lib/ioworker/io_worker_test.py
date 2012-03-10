@@ -90,7 +90,11 @@ class RecocoIOLoopTest(unittest.TestCase):
 
     self.assertTrue(worker in loop.workers)
     worker.close()
-    self.assertFalse(worker in loop.workers)
+    # This causes the worker to be scheduled to be closed -- it also 
+    # calls pinger.ping(). However, the Select task won't receive the ping
+    # Until after this method has completed! Thus, we only test whether
+    # worker has been added to the pending close queue
+    self.assertTrue(worker in loop.pending_worker_closes)
 
   def test_run_write(self):
     loop = RecocoIOLoop()
