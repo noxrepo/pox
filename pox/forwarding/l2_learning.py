@@ -53,8 +53,8 @@ class LearningSwitch (EventMixin):
 
   For each new flow:
   1) Use source address and port to update address/port table
-  2) Does destination address fall into MAC Group Address range and
-     pass_mac_group_addrs parameter is unset?
+  2) Does destination address fall into Bridge Filtered MAC Group Address
+     range and pass_bf_frames parameter is unset?
      Yes:
         2a) Drop packet to avoid forwarding link-local traffic (LLDP, 802.1x)
             DONE
@@ -133,7 +133,7 @@ class LearningSwitch (EventMixin):
 
     self.macToPort[packet.src] = event.port # 1
 
-    if packet.dst.isBridgeFiltered() and (self.args['pass_mac_group_addrs'] == 0):
+    if packet.dst.isBridgeFiltered() and (self.args['pass_bf_frames'] == 0):
       drop()
       return
 
@@ -177,8 +177,8 @@ class l2_learning (EventMixin):
     LearningSwitch(event.connection, self.args)
 
 
-def launch (pass_mac_group_addrs=0):
+def launch (pass_bf_frames=0):
   """
   Starts an L2 learning switch.
   """
-  core.registerNew(l2_learning, {'pass_mac_group_addrs':int(pass_mac_group_addrs)})
+  core.registerNew(l2_learning, {'pass_bf_frames':int(pass_bf_frames)})
