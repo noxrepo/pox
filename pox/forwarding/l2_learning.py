@@ -84,7 +84,7 @@ class LearningSwitch (EventMixin):
     # We want to hear PacketIn messages, so we listen
     self.listenTo(connection)
 
-    log.info("Initializing LearningSwitch, args=%s", str(self.args))
+    #log.info("Initializing LearningSwitch, args=%s", str(self.args))
 
   def _handle_PacketIn (self, event):
     """
