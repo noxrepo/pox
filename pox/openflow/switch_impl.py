@@ -147,9 +147,9 @@ class SwitchImpl(EventMixin):
     """
     Send the packet out the given port
     """
-    self.log.debug("Packet out") # , str(packet))
+    self.log.debug("Packet out: %s" % packet_out.show())
 
-    if(packet_out.data != None):
+    if(packet_out.data):
       self._process_actions_for_packet(packet_out.actions, packet_out.data, packet_out.in_port)
     elif(packet_out.buffer_id > 0):
       self._process_actions_for_packet_from_buffer(packet_out.actions, packet_out.buffer_id)
