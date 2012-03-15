@@ -24,7 +24,7 @@ from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.revent import *
 from pox.lib.util import dpidToStr
-import time
+import time, lib.util
 
 log = core.getLogger()
 
@@ -54,7 +54,7 @@ class LearningSwitch (EventMixin):
   For each new flow:
   1) Use source address and port to update address/port table
   2) Does destination address fall into Bridge Filtered MAC Group Address
-     range and pass_bf_frames parameter is unset?
+     range and 'transparent' parameter is unset?
      Yes:
         2a) Drop packet to avoid forwarding link-local traffic (LLDP, 802.1x)
             DONE
@@ -73,10 +73,10 @@ class LearningSwitch (EventMixin):
      flow goes out the appopriate port
      6a) Send buffered packet out appopriate port
   """
-  def __init__ (self, connection, args):
+  def __init__ (self, connection, transparent):
     # Switch we'll be adding L2 learning switch capabilities to
     self.connection = connection
-    self.args = args
+    self.transparent = transparent
 
     # Our table
     self.macToPort = {}
@@ -84,7 +84,7 @@ class LearningSwitch (EventMixin):
     # We want to hear PacketIn messages, so we listen
     self.listenTo(connection)
 
-    #log.info("Initializing LearningSwitch, args=%s", str(self.args))
+    log.debug("Initializing LearningSwitch, transparent=%s", str(self.transparent))
 
   def _handle_PacketIn (self, event):
     """
@@ -133,7 +133,7 @@ class LearningSwitch (EventMixin):
 
     self.macToPort[packet.src] = event.port # 1
 
-    if packet.dst.isBridgeFiltered() and (self.args['pass_bf_frames'] == 0):
+    if packet.dst.isBridgeFiltered() and not self.transparent:
       drop()
       return
 
@@ -168,17 +168,18 @@ class l2_learning (EventMixin):
   """
   Waits for OpenFlow switches to connect and makes them learning switches.
   """
-  def __init__ (self, args):
+  def __init__ (self, transparent):
     self.listenTo(core.openflow)
-    self.args = args
+    self.transparent = transparent
 
   def _handle_ConnectionUp (self, event):
     log.debug("Connection %s" % (event.connection,))
-    LearningSwitch(event.connection, self.args)
+    LearningSwitch(event.connection, self.transparent)
 
 
-def launch (pass_bf_frames=0):
+def launch (transparent=False):
   """
   Starts an L2 learning switch.
   """
-  core.registerNew(l2_learning, {'pass_bf_frames':int(pass_bf_frames)})
+  bool_transparent = lib.util.str_to_bool(transparent)
+  core.registerNew(l2_learning, bool_transparent)
