@@ -53,9 +53,10 @@ class LearningSwitch (EventMixin):
 
   For each new flow:
   1) Use source address and port to update address/port table
-  2) Is ethertype LLDP?
+  2) Does destination address fall into Bridge Filtered MAC Group Address
+     range and pass_bf_frames parameter is unset?
      Yes:
-        2a) Drop packet -- LLDP is never forwarded
+        2a) Drop packet to avoid forwarding link-local traffic (LLDP, 802.1x)
             DONE
   3) Is destination multicast?
      Yes:
@@ -72,15 +73,18 @@ class LearningSwitch (EventMixin):
      flow goes out the appopriate port
      6a) Send buffered packet out appopriate port
   """
-  def __init__ (self, connection):
+  def __init__ (self, connection, args):
     # Switch we'll be adding L2 learning switch capabilities to
     self.connection = connection
+    self.args = args
 
     # Our table
     self.macToPort = {}
 
     # We want to hear PacketIn messages, so we listen
     self.listenTo(connection)
+
+    #log.info("Initializing LearningSwitch, args=%s", str(self.args))
 
   def _handle_PacketIn (self, event):
     """
@@ -129,7 +133,7 @@ class LearningSwitch (EventMixin):
 
     self.macToPort[packet.src] = event.port # 1
 
-    if packet.type == packet.LLDP_TYPE: # 2
+    if packet.dst.isBridgeFiltered() and (self.args['pass_bf_frames'] == 0):
       drop()
       return
 
@@ -164,16 +168,17 @@ class l2_learning (EventMixin):
   """
   Waits for OpenFlow switches to connect and makes them learning switches.
   """
-  def __init__ (self):
+  def __init__ (self, args):
     self.listenTo(core.openflow)
+    self.args = args
 
   def _handle_ConnectionUp (self, event):
     log.debug("Connection %s" % (event.connection,))
-    LearningSwitch(event.connection)
+    LearningSwitch(event.connection, self.args)
 
 
-def launch ():
+def launch (pass_bf_frames=0):
   """
   Starts an L2 learning switch.
   """
-  core.registerNew(l2_learning)
+  core.registerNew(l2_learning, {'pass_bf_frames':int(pass_bf_frames)})
