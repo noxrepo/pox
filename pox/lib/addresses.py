@@ -168,7 +168,15 @@ class EthAddr (object):
     """
     return self._value
 
-  #def toInt (self):
+  def toInt (self):
+    '''
+    Returns the address as an (unsigned) integer
+    '''
+    value = 0
+    for byte in self.toTuple():
+      value += byte
+      value <<= 8
+    return value
 
   def toTuple (self):
     """

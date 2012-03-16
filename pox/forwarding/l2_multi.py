@@ -387,5 +387,9 @@ class l2_multi (EventMixin):
 
 
 def launch ():
+  if 'openflow_discovery' not in core.components:
+    import pox.openflow.discovery as discovery
+    core.registerNew(discovery.Discovery)
+    
   core.registerNew(l2_multi)
 
