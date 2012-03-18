@@ -25,22 +25,22 @@ from collections import namedtuple
 import itertools
 import logging
 
-class SwitchDpPacketOut (Event):
-  """ Event raised by SwitchImpl when a dataplane packet is sent out a port """
-  def __init__ (self, switch, packet, port):
-    assert_type("switch", switch, SwitchImpl, none_ok=False)
+class DpPacketOut (Event):
+  """ Event raised when a dataplane packet is sent out a port """
+  def __init__ (self, node, packet, port):
     assert_type("packet", packet, ethernet, none_ok=False)
-    assert_type("port", port, ofp_phy_port, none_ok=False)
     Event.__init__(self)
-    self.switch = switch
+    self.node = node
     self.packet = packet
     self.port = port
+    # For backwards compatability:
+    self.switch = node
 
 def _default_port_list(num_ports=4, prefix=0):
   return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x" % (prefix % 255, i))) for i in range(1, num_ports+1)]
 
 class SwitchImpl(EventMixin):
-  _eventMixin_events = set([SwitchDpPacketOut])
+  _eventMixin_events = set([DpPacketOut])
 
   # ports is a list of ofp_phy_ports
   def __init__(self, dpid, name=None, ports=4, miss_send_len=128,
@@ -261,7 +261,7 @@ class SwitchImpl(EventMixin):
     def real_send(port_no):
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
-      self.raiseEvent(SwitchDpPacketOut(self, packet, self.ports[port_no]))
+      self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
     if out_port < OFPP_MAX:
       real_send(out_port)
