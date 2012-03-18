@@ -259,6 +259,8 @@ class SwitchImpl(EventMixin):
         out_port, in_port: the integer port number """
     assert_type("packet", packet, ethernet, none_ok=False)
     def real_send(port_no):
+      if type(port_no) == ofp_phy_port:
+        port_no = port_no.port_no
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
       self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
