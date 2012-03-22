@@ -55,6 +55,7 @@ class LearningSwitch (EventMixin):
   1) Use source address and port to update address/port table
   2) Does destination address fall into Bridge Filtered MAC Group Address
      range and 'transparent' parameter is unset?
+     Is ethertype LLDP? (this is a hack for backward-compability with NOX discovery)
      Yes:
         2a) Drop packet to avoid forwarding link-local traffic (LLDP, 802.1x)
             DONE
@@ -133,7 +134,8 @@ class LearningSwitch (EventMixin):
 
     self.macToPort[packet.src] = event.port # 1
 
-    if packet.dst.isBridgeFiltered() and not self.transparent:
+    if (not self.transparent and 
+	(packet.type == packet.LLDP_TYPE or packet.dst.isBridgeFiltered()) # 2
       drop()
       return
 
