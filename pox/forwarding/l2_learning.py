@@ -134,10 +134,10 @@ class LearningSwitch (EventMixin):
 
     self.macToPort[packet.src] = event.port # 1
 
-    if (not self.transparent and 
-	(packet.type == packet.LLDP_TYPE or packet.dst.isBridgeFiltered()) # 2
-      drop()
-      return
+    if not self.transparent:
+      if packet.type == packet.LLDP_TYPE or packet.dst.isBridgeFiltered(): # 2
+        drop()
+        return
 
     if packet.dst.isMulticast():
       flood() # 3a
