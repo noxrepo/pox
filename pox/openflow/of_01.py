@@ -37,6 +37,10 @@ log = core.getLogger()
 
 import socket
 import select
+if not hasattr(select, 'PIPE_BUF'):
+    import IN
+    select.PIPE_BUF = IN.PIPE_BUF
+
 import pox.openflow.libopenflow_01 as of
 
 import threading
