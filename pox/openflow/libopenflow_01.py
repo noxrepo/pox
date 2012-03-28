@@ -3663,3 +3663,136 @@ ofp_match_data = {
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
 }
+
+class nxt_dag_information(ofp_vendor_header):
+  NX_VENDOR_ID = 0x00002320
+  NXT_DAG_INFORMATION = 18
+  def __init__ (self, **kw):
+    ofp_vendor_header.__init__(self)
+    self.vendor = self.NX_VENDOR_ID
+    self.subtype = self.NXT_DAG_INFORMATION
+    self.dpid = 0
+    self.own_dpid = 0
+    self.directions = []
+    initHelper(self, kw)
+    if not self.version:
+        self.version = 0
+
+  def pack (self, assertstruct=True):
+    self.length = self.__len__()
+    packed = ""
+    packed = ofp_vendor_header.pack(self)
+    packed += struct.pack('!IHHHH', self.subtype, self.version, self.dpid, self.own_dpid, len(self.directions))
+    for direction in self.directions:
+        packed += direction.pack(assertstruct)
+    return packed
+
+  def unpack (self, binaryString):
+    if len(binaryString) < 24:
+      return binaryString
+    ofp_vendor_header.unpack(self, binaryString)
+    (self.subtype, self.version, self.dpid) = struct.unpack_from('!IHHxxxx', binaryString, 12)
+    return binaryString[24:]
+  
+  def __len__ (self):
+    l = 24
+    for direction in self.directions:
+        l += direction.__len__()
+    return l
+  
+  def __eq__ (self, other):
+    if self.subtype != other.subtype: return False
+    if self.dpid != other.dpid: return False
+    return ofp_vendor_header.__eq__(self, other)
+
+  def __ne__ (self, other): return not self.__eq__(other)
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'header: \n'
+    outstr += ofp_vendor_header.show(self, prefix + '  ')
+    outstr += prefix + 'subtype: ' + self.subtype + '\n'
+    outstr += prefix + 'dpid: ' + self.dpid + '\n'
+    return outstr
+
+class nxt_set_port_state(ofp_vendor_header):
+  NX_VENDOR_ID = 0x00002320
+  NXT_SET_PORT_STATE = 19
+  PORT_DOWN = 0
+  PORT_UP = 1
+  def __init__ (self, **kw):
+    ofp_vendor_header.__init__(self)
+    self.vendor = self.NX_VENDOR_ID
+    self.subtype = self.NXT_SET_PORT_STATE
+    self.port = 0
+    self.state = -1
+    initHelper(self, kw)
+
+  def pack (self, assertstruct=True):
+    if (assertstruct):
+        if (self.port <= 0 or self.port > OFPP_MAX):
+            return None
+        if (self.state != self.PORT_DOWN and self.state != self.PORT_UP):
+            return None
+    self.length = self.__len__()
+    packed = ""
+    packed = ofp_vendor_header.pack(self)
+    packed += struct.pack('!IHBxxxxx', self.subtype, self.port, self.state)
+    return packed
+
+  def unpack (self, binaryString):
+    if len(binaryString) < 24:
+      return binaryString
+    ofp_vendor_header.unpack(self, binaryString)
+    (self.subtype, self.port, self.state) = struct.unpack_from('!IHBxxxxx', binaryString, 12)
+    return binaryString[24:]
+  
+  def __len__ (self):
+    return 24
+  
+  def __eq__ (self, other):
+    if self.port != other.port: return False
+    if self.state != other.state: return False
+    return ofp_vendor_header.__eq__(self, other)
+
+  def __ne__ (self, other): return not self.__eq__(other)
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'header: \n'
+    outstr += ofp_vendor_header.show(self, prefix + '  ')
+    outstr += prefix + 'port: ' + self.port + '\n'
+    outstr += prefix + 'state: ' + self.state + '\n'
+    return outstr
+
+class ddc_port_direction (object):
+  IN = 0
+  OUT = 1
+  NONE = 2
+  def __init__ (self, port, direction):
+    self.port = port
+    self.direction = direction
+  def pack (self, assertstruct):
+    packed = ""
+    packed += struct.pack("!HH", self.port, self.direction)
+    return packed
+
+  def unpack (self, binaryString):
+    (self.port, self.direction) = struct.unpack_from("!HH", binaryString, 0)
+    return
+  def __len__ (self):
+    return 4
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.port != other.port or self.direction != other.direction:
+        return False
+    return True
+
+  def __ne__ (self, other): return not self.__eq__(other)
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'port: ' + str(self.port) + '\n'
+    outstr += prefix + 'direction: ' + str(self.direction) + '\n'
+    return outstr
