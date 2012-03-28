@@ -37,6 +37,18 @@ log = core.getLogger()
 
 import socket
 import select
+
+try:
+  PIPE_BUF = select.PIPE_BUF
+except:
+  try:
+    # Try to get it from where PyPy (sometimes) has it
+    import IN
+    PIPE_BUF = IN.PIPE_BUF
+  except:
+    # (Hopefully) reasonable default
+    PIPE_BUF = 512
+
 import pox.openflow.libopenflow_01 as of
 
 import threading
@@ -249,12 +261,12 @@ class DeferredSender (threading.Thread):
   def _sliceup (self, data):
     """
     Takes an array of data bytes, and slices into elements of
-    select.PIPE_BUF bytes each
+    PIPE_BUF bytes each
     """
     out = []
-    while len(data) > select.PIPE_BUF:
-      out.append(data[0:select.PIPE_BUF])
-      data = data[select.PIPE_BUF:]
+    while len(data) > PIPE_BUF:
+      out.append(data[0:PIPE_BUF])
+      data = data[PIPE_BUF:]
     if len(data) > 0:
       out.append(data)
     return out
