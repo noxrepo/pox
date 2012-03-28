@@ -37,10 +37,14 @@ log = core.getLogger()
 
 import socket
 import select
+
+# This hack exists because PyPy currently doesn't seem ot have PIPE_BUF
+PIPE_BUF = None
 if not hasattr(select, 'PIPE_BUF'):
     import IN
-    select.PIPE_BUF = IN.PIPE_BUF
-
+    PIPE_BUF = IN.PIPE_BUF
+else:
+    PIPE_BUF = select.PIPE_BUF
 import pox.openflow.libopenflow_01 as of
 
 import threading
@@ -253,12 +257,12 @@ class DeferredSender (threading.Thread):
   def _sliceup (self, data):
     """
     Takes an array of data bytes, and slices into elements of
-    select.PIPE_BUF bytes each
+    PIPE_BUF bytes each
     """
     out = []
-    while len(data) > select.PIPE_BUF:
-      out.append(data[0:select.PIPE_BUF])
-      data = data[select.PIPE_BUF:]
+    while len(data) > PIPE_BUF:
+      out.append(data[0:PIPE_BUF])
+      data = data[PIPE_BUF:]
     if len(data) > 0:
       out.append(data)
     return out
