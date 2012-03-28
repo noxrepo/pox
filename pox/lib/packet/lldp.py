@@ -509,7 +509,7 @@ class organizationally_specific (basic_tlv):
       
     def parse (self):
         basic_tlv.parse(self)
-        (self.oui,self.subtype) = struct.parse("3sB", self.next[0:4])
+        (self.oui,self.subtype) = struct.unpack("3sB", self.next[0:4])
         self.next = self.next[4:]
 
     def pack(self):
@@ -535,7 +535,7 @@ class system_capabilities (basic_tlv):
       
     def parse (self):
         basic_tlv.parse(self)
-        (cap,en) = struct.parse("!HH", self.next)
+        (cap,en) = struct.unpack("!HH", self.next)
         del self.caps[:]
         del self.enabled_caps[:]
         for i in range(0, 16):
