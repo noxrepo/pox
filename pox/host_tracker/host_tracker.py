@@ -276,9 +276,10 @@ class host_tracker (EventMixin):
       log.info("Learned %s moved to %i %i", str(macEntry), dpid, inport)
       # if there has not been long since heard from it...
       if time.time() - macEntry.lastTimeSeen < timeoutSec['entryMove']:
-        log.warning("Possible duplicate: %s at time %i, now (%i %i), time %i",
-                    str(macEntry), macEntry.lastTimeSeen(),
-                    dpid, inport, time.time())
+        pass
+        #log.warning("Possible duplicate: %s at time %i, now (%i %i), time %i",
+        #            str(macEntry), macEntry.lastTimeSeen(),
+        #            dpid, inport, time.time())
       # should we create a whole new entry, or keep the previous host info?
       # for now, we keep it: IP info, answers pings, etc.
       macEntry.dpid = dpid
