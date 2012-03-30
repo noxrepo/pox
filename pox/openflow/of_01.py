@@ -100,6 +100,8 @@ def handle_FEATURES_REPLY (con, msg):
 
   barrier = of.ofp_barrier_request()
 
+  listeners = []
+
   def finish_connecting (event):
     if event.xid != barrier.xid:
       con.dpid = None
@@ -113,9 +115,19 @@ def handle_FEATURES_REPLY (con, msg):
       #for p in msg.ports: print(p.show())
       con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
       con.raiseEventNoErrors(ConnectionUp, con, msg)
-    return EventHaltAndRemove
+    con.removeListeners(listeners)
+  listeners.append(con.addListener(BarrierIn, finish_connecting))
 
-  con.addListener(BarrierIn, finish_connecting)
+  def also_finish_connecting (event):
+    if event.xid != barrier.xid: return
+    if event.ofp.type != of.OFPET_BAD_REQUEST: return
+    if event.ofp.code != of.OFPBRC_BAD_TYPE: return
+    # Okay, so this is probably an HP switch that doesn't support barriers
+    # (ugh).  We'll just assume that things are okay.
+    finish_connecting(event)
+  listeners.append(con.addListener(ErrorIn, also_finish_connecting))
+
+  #TODO: Add a timeout for finish_connecting
 
   if con.ofnexus.miss_send_len is not None:
     con.send(of.ofp_switch_config(miss_send_len =
