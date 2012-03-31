@@ -24,7 +24,8 @@ from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.revent import *
 from pox.lib.util import dpidToStr
-import time, lib.util
+from pox.lib.util import str_to_bool
+import time
 
 log = core.getLogger()
 
@@ -53,9 +54,8 @@ class LearningSwitch (EventMixin):
 
   For each new flow:
   1) Use source address and port to update address/port table
-  2) Does destination address fall into Bridge Filtered MAC Group Address
-     range and 'transparent' parameter is unset?
-     Is ethertype LLDP? (this is a hack for backward-compability with NOX discovery)
+  2) Is destination address a Bridge Filtered address, or is Ethertpe LLDP?
+     * This step is ignored if transparent = True *
      Yes:
         2a) Drop packet to avoid forwarding link-local traffic (LLDP, 802.1x)
             DONE
@@ -85,7 +85,8 @@ class LearningSwitch (EventMixin):
     # We want to hear PacketIn messages, so we listen
     self.listenTo(connection)
 
-    log.debug("Initializing LearningSwitch, transparent=%s", str(self.transparent))
+    #log.debug("Initializing LearningSwitch, transparent=%s",
+    #          str(self.transparent))
 
   def _handle_PacketIn (self, event):
     """
@@ -96,9 +97,6 @@ class LearningSwitch (EventMixin):
 
     def flood ():
       """ Floods the packet """
-      # Should there be a layer below this to build this packet?
-      # I guess I would have expected something like:
-      # msg = of.ofp_packet_out(actions = [foo],  buffer_id = event.ofp.buffer_id, in_port = event.port)
       msg = of.ofp_packet_out()
       if time.time() - self.connection.connect_time > FLOOD_DELAY:
         # Only flood if we've been connected for a little while...
@@ -157,8 +155,6 @@ class LearningSwitch (EventMixin):
         log.debug("installing flow for %s.%i -> %s.%i" %
                   (packet.src, event.port, packet.dst, port))
         msg = of.ofp_flow_mod()
-        # TODO: ofp_match.from_packet matches the entire packet, not just l2.
-        #       Don't we want to be wildcarding everything but L2?
         msg.match = of.ofp_match.from_packet(packet)
         msg.idle_timeout = 10
         msg.hard_timeout = 30
@@ -183,5 +179,4 @@ def launch (transparent=False):
   """
   Starts an L2 learning switch.
   """
-  bool_transparent = lib.util.str_to_bool(transparent)
-  core.registerNew(l2_learning, bool_transparent)
+  core.registerNew(l2_learning, str_to_bool(transparent))
