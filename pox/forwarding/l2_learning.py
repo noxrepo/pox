@@ -124,7 +124,7 @@ class LearningSwitch (EventMixin):
         msg.actions.append(of.ofp_action_output(port = port))
         msg.buffer_id = event.ofp.buffer_id
         self.connection.send(msg)
-      else:
+      elif event.ofp.buffer_id != -1:
         msg = of.ofp_packet_out()
         msg.buffer_id = event.ofp.buffer_id
         msg.in_port = event.port
