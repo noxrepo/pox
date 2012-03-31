@@ -97,6 +97,10 @@ class LearningSwitch (EventMixin):
 
     def flood ():
       """ Floods the packet """
+      if event.ofp.buffer_id == -1:
+        log.warning("Not flooding unbuffered packet on %s",
+                    dpidToStr(event.dpid))
+        return
       msg = of.ofp_packet_out()
       if time.time() - self.connection.connect_time > FLOOD_DELAY:
         # Only flood if we've been connected for a little while...
