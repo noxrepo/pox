@@ -141,7 +141,7 @@ class Node (object):
     Map of local_port -> (other, other_port)
     """
     ports = defaultdict(_void)
-    for n1,n2,k,d in self._g._g.edges(self, data=True, keys=True):
+    for n1,n2,k,d in self._g._g.edges(data=True, keys=True):
       p = d[LINK]
       assert n1 is self
       assert ports.get(p[self]) is None
@@ -529,7 +529,7 @@ class Graph (object):
     self._g.remove_node(node)
 
   def neighbors (self, n):
-    return nx.neighbors(self._g, n)
+    return nx.MultiGraph.neighbors(self._g, n)
 
   def find_ports (self, n1, *arg, **kw):
     return n1.find_ports(*arg, **kw)
@@ -676,7 +676,8 @@ class Graph (object):
       if k == "is_a":
         if not isinstance(n,v): return
       elif k == "type":
-        if type(n) is not kind: return
+        pass
+        #if type(n) is not kind: return
       else:
         if not hasattr(n, k): return
         if getattr(n, k) != v: return
@@ -727,7 +728,6 @@ class Graph (object):
         r.append(n)
       else:
         if debug: print ">> NO"
-
     return r
 
   def get_one (self, *args, **kw):

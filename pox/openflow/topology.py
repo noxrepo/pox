@@ -37,6 +37,7 @@ from pox.openflow.libopenflow_01 import xid_generator
 from pox.openflow.flow_table import NOMFlowTable
 from pox.lib.util import dpidToStr
 from pox.lib.addresses import *
+from pox.lib.graph.nom import *
 
 # After a switch disconnects, it has this many seconds to reconnect in
 # order to reactivate the same OpenFlowSwitch object.  After this, if
@@ -100,12 +101,14 @@ class OpenFlowTopology (EventMixin):
       if sw._connection is not None:
         log.warn("Switch %s connected, but... it's already connected!" %
                  (dpidToStr(event.dpid),))
-    sw._setConnection(event.connection, event.ofp)
-    log.info("Switch " + dpidToStr(event.dpid) + " connected")
+    
     if add:
       self.topology.addEntity(sw)
       sw.raiseEvent(SwitchJoin, sw)
-
+    
+    sw._setConnection(event.connection, event.ofp)
+    log.info("Switch " + dpidToStr(event.dpid) + " connected")
+    
   def _handle_openflow_ConnectionDown (self, event):
     sw = self.topology.getEntityByID(event.dpid)
     if sw is None:
@@ -180,7 +183,7 @@ class OpenFlowSwitch (EventMixin, Switch):
   below, and triggering mock events for those listeners.
   """
   _eventMixin_events = set([
-    SwitchJoin, # Defined in pox.topology
+    SwitchJoin, # Defined in graph.nom
     SwitchLeave,
     SwitchConnectionUp,
     SwitchConnectionDown,
@@ -192,10 +195,10 @@ class OpenFlowSwitch (EventMixin, Switch):
   ])
 
   def __init__ (self, dpid):
-    Switch.__init__(self, id=dpid)
+    Switch.__init__(self)#, id=dpid)
     EventMixin.__init__(self)
     self.dpid = dpid
-    self.ports = {}
+    #self.ports = {}
     self.flow_table = NOMFlowTable(self)
     self.capabilities = 0
     self._connection = None
@@ -214,6 +217,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     if connection is None:
       self._reconnectTimeout = Timer(RECONNECT_TIMEOUT,
                                      self._timer_ReconnectTimeout)
+    
     if ofp is not None:
       # update capabilities
       self.capabilities = ofp.capabilities
@@ -228,6 +232,7 @@ class OpenFlowSwitch (EventMixin, Switch):
       for p in untouched:
         self.ports[p].exists = False
         del self.ports[p]
+    
     if connection is not None:
       self._listeners = self.listenTo(connection, prefix="con")
       self.raiseEvent(SwitchConnectionUp(switch=self, connection = connection))

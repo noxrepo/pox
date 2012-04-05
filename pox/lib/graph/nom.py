@@ -52,6 +52,39 @@ class EntityLeave (EntityEvent):
   """
   pass
 
+
+
+class SwitchEvent (EntityEvent): pass
+
+class SwitchJoin (SwitchEvent):
+  """
+  As opposed to ConnectionUp, SwitchJoin occurs over large time scales
+  (e.g. an administrator physically moving a switch).
+  """
+  def __init__ (self, switch):
+    Event.__init__(self)
+    self.switch = switch
+
+class SwitchLeave (SwitchEvent):
+  """
+  As opposed to ConnectionDown, SwitchLeave occurs over large time scales
+  (e.g. an administrator physically moving a switch).
+  """
+  pass
+
+class SwitchConnectionUp(SwitchEvent):
+  def __init__(self, switch, connection):
+    SwitchEvent.__init__(self, switch)
+    self.switch = switch
+    self.connection = connection
+
+class SwitchConnectionDown(SwitchEvent): pass
+
+class HostEvent (EntityEvent): pass
+class HostJoin (HostEvent): pass
+class HostLeave (HostEvent): pass
+
+
 class Update (Event):
   """
   Fired by Topology whenever anything has changed
@@ -85,14 +118,12 @@ class Switch (Entity):
   e.g. pox.openflow.topology.OpenFlowSwitch
   """
 
-"""
 class Port (Entity):
   def __init__ (self, num, hwAddr, name):
     Entity.__init__(self)
     self.number = num
     self.hwAddr = EthAddr(hwAddr)
     self.name = name
-"""
 
 class NOM (Graph, EventMixin):
   __eventMixin_events = [
@@ -131,7 +162,7 @@ class NOM (Graph, EventMixin):
 
   def addEntity (self, entity):
     """ Will raise an exception if entity.id already exists """
-    if entity in self:
+    if entity in self._entities:
       raise RuntimeError("Entity exists")
     self.add(entity)
     self.log.info(str(entity) + " joined")
