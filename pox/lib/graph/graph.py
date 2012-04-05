@@ -18,11 +18,6 @@
 
 #import networkx as nx
 import pox.lib.graph.minigraph as nx
-try:
-  from weakref import WeakSet
-except:
-  # python 2.6 compatibility
-  from weakrefset import WeakSet
 from collections import defaultdict
 from copy import copy
 
@@ -654,8 +649,9 @@ class Graph (object):
       has_default = False
     one = False
     if 'one' in kw:
+      one = kw['one']
       del kw['one']
-      one = True
+
     assert len(kw) == 0
     r = self.find_links(query1, query2)
     if len(r) > 1 and one is False:
@@ -674,21 +670,21 @@ class Graph (object):
     #TODO: Should use a special value for unspecified n2
     for k,v in kw.iteritems():
       if k == "is_a":
-        if not isinstance(n,v): return
+        if not isinstance(n,v): return False
       elif k == "type":
-        if type(n) is not kind: return
+        if type(n) is not kind: return False
       else:
-        if not hasattr(n, k): return
-        if getattr(n, k) != v: return
+        if not hasattr(n, k): return False
+        if getattr(n, k) != v: return False
     for a in args:
       if debug: print ">>",a,
       try:
         if not a(n, link):
           if debug: print " -> ",False
-          return
+          return False
       except LeaveException:
         if debug: print " ...  Skip"
-        return
+        return False
       if debug: print " -> ",True
     return True
 
@@ -697,29 +693,6 @@ class Graph (object):
     r = []
     def test (n):
       return self._test_node(n, args, kw, debug)
-    """
-    def test (n):
-      for k,v in kw:
-        if k == "is_a":
-          if not isinstance(n,v): return
-        elif k == "type":
-          if type(n) is not kind: return
-        else:
-          if not hasattr(n, k): return
-          if getattr(n, k) != v: return
-      for a in args:
-        if debug: print ">>",a,
-        try:
-          if not a(n):
-            if debug: print " -> ",False
-            return
-        except LeaveException:
-          if debug: print " ...  Skip"
-          return
-        if debug: print " -> ",True
-      return True
-    """
-
     for n in self._g.nodes():
       if debug: print ">", n
       if test(n):
