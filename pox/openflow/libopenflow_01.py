@@ -195,10 +195,10 @@ class ofp_phy_port (object):
   def __ne__ (self, other): return not self.__eq__(other)
   
   def __hash__(self, *args, **kwargs):
-    return self.port_no.__hash__() + self.hw_addr.toInt().__hash__() +
-           self.name.__hash__() + self.config.__hash__() + 
-           self.state.__hash__() + self.curr.__hash__() + 
-           self.advertised.__hash__() + self.supported.__hash__() +
+    return self.port_no.__hash__() + self.hw_addr.toInt().__hash__() + \
+           self.name.__hash__() + self.config.__hash__() + \
+           self.state.__hash__() + self.curr.__hash__() + \
+           self.advertised.__hash__() + self.supported.__hash__() + \
            self.peer.__hash__()
 
   def show (self, prefix=''):
