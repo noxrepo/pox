@@ -172,6 +172,7 @@ class ErrorIn (Event):
     Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
+    self.xid = ofp.xid
 
   def asString (self):
     return self.ofp.show()

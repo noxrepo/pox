@@ -37,6 +37,18 @@ log = core.getLogger()
 
 import socket
 import select
+
+try:
+  PIPE_BUF = select.PIPE_BUF
+except:
+  try:
+    # Try to get it from where PyPy (sometimes) has it
+    import IN
+    PIPE_BUF = IN.PIPE_BUF
+  except:
+    # (Hopefully) reasonable default
+    PIPE_BUF = 512
+
 import pox.openflow.libopenflow_01 as of
 
 import threading
@@ -88,6 +100,8 @@ def handle_FEATURES_REPLY (con, msg):
 
   barrier = of.ofp_barrier_request()
 
+  listeners = []
+
   def finish_connecting (event):
     if event.xid != barrier.xid:
       con.dpid = None
@@ -101,9 +115,19 @@ def handle_FEATURES_REPLY (con, msg):
       #for p in msg.ports: print(p.show())
       con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
       con.raiseEventNoErrors(ConnectionUp, con, msg)
-    return EventHaltAndRemove
+    con.removeListeners(listeners)
+  listeners.append(con.addListener(BarrierIn, finish_connecting))
 
-  con.addListener(BarrierIn, finish_connecting)
+  def also_finish_connecting (event):
+    if event.xid != barrier.xid: return
+    if event.ofp.type != of.OFPET_BAD_REQUEST: return
+    if event.ofp.code != of.OFPBRC_BAD_TYPE: return
+    # Okay, so this is probably an HP switch that doesn't support barriers
+    # (ugh).  We'll just assume that things are okay.
+    finish_connecting(event)
+  listeners.append(con.addListener(ErrorIn, also_finish_connecting))
+
+  #TODO: Add a timeout for finish_connecting
 
   if con.ofnexus.miss_send_len is not None:
     con.send(of.ofp_switch_config(miss_send_len =
@@ -249,12 +273,12 @@ class DeferredSender (threading.Thread):
   def _sliceup (self, data):
     """
     Takes an array of data bytes, and slices into elements of
-    select.PIPE_BUF bytes each
+    PIPE_BUF bytes each
     """
     out = []
-    while len(data) > select.PIPE_BUF:
-      out.append(data[0:select.PIPE_BUF])
-      data = data[select.PIPE_BUF:]
+    while len(data) > PIPE_BUF:
+      out.append(data[0:PIPE_BUF])
+      data = data[PIPE_BUF:]
     if len(data) > 0:
       out.append(data)
     return out

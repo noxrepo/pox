@@ -193,6 +193,13 @@ class ofp_phy_port (object):
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
+  
+  def __hash__(self, *args, **kwargs):
+    return self.port_no.__hash__() + self.hw_addr.toInt().__hash__() + \
+           self.name.__hash__() + self.config.__hash__() + \
+           self.state.__hash__() + self.curr.__hash__() + \
+           self.advertised.__hash__() + self.supported.__hash__() + \
+           self.peer.__hash__()
 
   def show (self, prefix=''):
     outstr = ''
@@ -513,6 +520,7 @@ class ofp_match (object):
 
   def set_nw_src (self, *args, **kw):
     a = self._make_addr(*args, **kw)
+      # self.internal_links.add(Link(edge, edge.ports[port_no], host, host.interfaces[0]))
     if a == None:
       self._nw_src = ofp_match_data['nw_src'][0]
       self.wildcards &= ~OFPFW_NW_SRC_MASK

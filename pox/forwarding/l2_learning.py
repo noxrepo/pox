@@ -24,6 +24,7 @@ from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.revent import *
 from pox.lib.util import dpidToStr
+from pox.lib.util import str_to_bool
 import time
 
 log = core.getLogger()
@@ -53,9 +54,10 @@ class LearningSwitch (EventMixin):
 
   For each new flow:
   1) Use source address and port to update address/port table
-  2) Is ethertype LLDP?
+  2) Is destination address a Bridge Filtered address, or is Ethertpe LLDP?
+     * This step is ignored if transparent = True *
      Yes:
-        2a) Drop packet -- LLDP is never forwarded
+        2a) Drop packet to avoid forwarding link-local traffic (LLDP, 802.1x)
             DONE
   3) Is destination multicast?
      Yes:
@@ -72,15 +74,19 @@ class LearningSwitch (EventMixin):
      flow goes out the appopriate port
      6a) Send buffered packet out appopriate port
   """
-  def __init__ (self, connection):
+  def __init__ (self, connection, transparent):
     # Switch we'll be adding L2 learning switch capabilities to
     self.connection = connection
+    self.transparent = transparent
 
     # Our table
     self.macToPort = {}
 
     # We want to hear PacketIn messages, so we listen
     self.listenTo(connection)
+
+    #log.debug("Initializing LearningSwitch, transparent=%s",
+    #          str(self.transparent))
 
   def _handle_PacketIn (self, event):
     """
@@ -91,9 +97,10 @@ class LearningSwitch (EventMixin):
 
     def flood ():
       """ Floods the packet """
-      # Should there be a layer below this to build this packet?
-      # I guess I would have expected something like:
-      # msg = of.ofp_packet_out(actions = [foo],  buffer_id = event.ofp.buffer_id, in_port = event.port)
+      if event.ofp.buffer_id == -1:
+        log.warning("Not flooding unbuffered packet on %s",
+                    dpidToStr(event.dpid))
+        return
       msg = of.ofp_packet_out()
       if time.time() - self.connection.connect_time > FLOOD_DELAY:
         # Only flood if we've been connected for a little while...
@@ -121,7 +128,7 @@ class LearningSwitch (EventMixin):
         msg.actions.append(of.ofp_action_output(port = port))
         msg.buffer_id = event.ofp.buffer_id
         self.connection.send(msg)
-      else:
+      elif event.ofp.buffer_id != -1:
         msg = of.ofp_packet_out()
         msg.buffer_id = event.ofp.buffer_id
         msg.in_port = event.port
@@ -129,9 +136,10 @@ class LearningSwitch (EventMixin):
 
     self.macToPort[packet.src] = event.port # 1
 
-    if packet.type == packet.LLDP_TYPE: # 2
-      drop()
-      return
+    if not self.transparent:
+      if packet.type == packet.LLDP_TYPE or packet.dst.isBridgeFiltered(): # 2
+        drop()
+        return
 
     if packet.dst.isMulticast():
       flood() # 3a
@@ -151,8 +159,6 @@ class LearningSwitch (EventMixin):
         log.debug("installing flow for %s.%i -> %s.%i" %
                   (packet.src, event.port, packet.dst, port))
         msg = of.ofp_flow_mod()
-        # TODO: ofp_match.from_packet matches the entire packet, not just l2.
-        #       Don't we want to be wildcarding everything but L2?
         msg.match = of.ofp_match.from_packet(packet)
         msg.idle_timeout = 10
         msg.hard_timeout = 30
@@ -164,16 +170,17 @@ class l2_learning (EventMixin):
   """
   Waits for OpenFlow switches to connect and makes them learning switches.
   """
-  def __init__ (self):
+  def __init__ (self, transparent):
     self.listenTo(core.openflow)
+    self.transparent = transparent
 
   def _handle_ConnectionUp (self, event):
     log.debug("Connection %s" % (event.connection,))
-    LearningSwitch(event.connection)
+    LearningSwitch(event.connection, self.transparent)
 
 
-def launch ():
+def launch (transparent=False):
   """
   Starts an L2 learning switch.
   """
-  core.registerNew(l2_learning)
+  core.registerNew(l2_learning, str_to_bool(transparent))

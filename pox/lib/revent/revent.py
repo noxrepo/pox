@@ -301,8 +301,14 @@ class EventMixin (object):
   def removeListeners (self, listeners):
     altered = False
     for l in listeners:
-      altered = altered or self.removeListener(l)
+      if self.removeListener(l): altered = True
     return altered
+
+  def _eventMixin_get_listener_count (self):
+    """
+    Returns the number of listeners.
+    """
+    return sum((len(x) for x in self._eventMixin_handlers.itervalues()))
 
   def removeListener (self, handlerOrEID, eventType=None):
     """

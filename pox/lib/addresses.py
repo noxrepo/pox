@@ -124,6 +124,19 @@ class EthAddr (object):
     """
     return True if (ord(self._value[0]) & 2) else False
 
+  def isBridgeFiltered (self):
+    """
+    Returns True if this is IEEE 802.1D MAC Bridge Filtered MAC Group Address,
+    01-80-C2-00-00-00 to 01-80-C2-00-00-0F. MAC frames that have a destination MAC address
+    within this range are not relayed by MAC bridges conforming to IEEE 802.1D
+    """
+    return  ((ord(self._value[0]) == 0x01)
+    	and (ord(self._value[1]) == 0x80)
+    	and (ord(self._value[2]) == 0xC2)
+    	and (ord(self._value[3]) == 0x00)
+    	and (ord(self._value[4]) == 0x00)
+    	and (ord(self._value[5]) <= 0x0F))
+
   @property
   def is_local (self):
     return self.isLocal()
