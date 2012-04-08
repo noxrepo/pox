@@ -561,7 +561,7 @@ class Graph (object):
       del kw['one']
     assert len(kw) == 0
     r = self.find_links(query1, query2)
-    if len(r) > 1 and one is False:
+    if len(r) > 1 and one:
       raise RuntimeError("More than one match")
     elif len(r) == 0:
       if has_default:
@@ -680,10 +680,13 @@ def test():
   print g.find(type=Node1)
   print g.find(type=Node3)
   print g.find_links()
+  print "=== NEIGHBORS ==="
   print g.neighbors(n1)
   print g.find_port(n1, n2)
   print g.connected(n1, n3)
   print g.ports_for_node(n3)
+
+  print [(n, x[0], x[1][0], x[1][1]) for n in g.find(is_a=Node1) for x in g.ports_for_node(n).iteritems() ]
   
   g.disconnect_nodes(n1, n3)
   
