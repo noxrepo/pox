@@ -434,7 +434,7 @@ class Graph (object):
     remove = []
     if self.port_for_node(np[0], np[1]) is None:
       return 0
-    for n1,n2,k,d in self._g.edges([np[0], self.node_port[np[0]][np[1]]], data=True, keys=True):
+    for n1,n2,k,d in self._g.edges([np[0], self.node_port[np[0]][np[1]][0]], data=True, keys=True):
       if np in d[LINK]:
         remove.append((n1,n2,k))
         del self.node_port[n1][d[LINK][n1][1]]
@@ -487,8 +487,8 @@ class Graph (object):
     self.disconnect_port(np1)
     self.disconnect_port(np2)
     self._g.add_edge(np1[0],np2[0],link=Link(np1,np2))
-    self.node_port[np1[0]][np1[1]] = np2[0]
-    self.node_port[np2[0]][np2[1]] = np1[0]
+    self.node_port[np1[0]][np1[1]] = np2
+    self.node_port[np2[0]][np2[1]] = np1
 
   def find_links (self, query1=None, query2=()):
     # No idea if new link query stuff works.
