@@ -559,41 +559,31 @@ class Graph (object):
     # Really bad implementation.  We can easily scape early.
     return len(self.find_links(query1, query2)) > 0
 
-  def _test_node (self, n, args=(), kw={}, debug=False, link=None):
+  def _test_node (self, n, args=(), kw={}, link=None):
     #TODO: Should use a special value for unspecified n2
     for k,v in kw.iteritems():
       if k == "is_a":
         if not isinstance(n,v): return False
       elif k == "type":
-        if type(n) is not kind: return False
+        if type(n) is not v: return False
       else:
         if not hasattr(n, k): return False
         if getattr(n, k) != v: return False
     for a in args:
-      if debug: print ">>",a,
       try:
         if not a(n, link):
-          if debug: print " -> ",False
           return False
       except LeaveException:
-        if debug: print " ...  Skip"
         return False
-      if debug: print " -> ",True
     return True
 
   def find (self, *args, **kw):
-    debug = False#True
     r = []
     def test (n):
-      return self._test_node(n, args, kw, debug)
+      return self._test_node(n, args, kw)
     for n in self._g.nodes():
-      if debug: print ">", n
       if test(n):
-        if debug: print ">> YES"
         r.append(n)
-      else:
-        if debug: print ">> NO"
-
     return r
 
   def get_one (self, *args, **kw):
@@ -618,7 +608,7 @@ class Graph (object):
       del kw['one']
       one = True
     r = self.find(*args,**kw)
-    if len(r) > 1 and one is False:
+    if len(r) > 1 and one:
       raise RuntimeError("More than one match")
     elif len(r) == 0:
       if has_default:
@@ -634,19 +624,36 @@ class Graph (object):
     return len(self._g)
 
 def test():
-  class Node (object):
+  class Node1 (object):
     _next_num = 0
     def __init__ (self):
       self._num = self.__class__._next_num
       self.__class__._next_num += 1
   
     def __repr__ (self):
-      return "#" + str(self._num)
+      return "Node1 #" + str(self._num)
 
+  class Node2 (object):
+    _next_num = 0
+    def __init__ (self):
+      self._num = self.__class__._next_num
+      self.__class__._next_num += 1
+  
+    def __repr__ (self):
+      return "Node2 #" + str(self._num)
+
+  class Node3 (Node1):
+    _next_num = 0
+    def __init__ (self):
+      self._num = self.__class__._next_num
+      self.__class__._next_num += 1
+  
+    def __repr__ (self):
+      return "Node3 #" + str(self._num)
   g = Graph()
-  n1 = Node();n1.label=1
-  n2 = Node();n2.label=2
-  n3 = Node();n3.label=3
+  n1 = Node1();n1.label=1
+  n2 = Node2();n2.label=2
+  n3 = Node3();n3.label=3
 
   g.add(n1)
   g.add(n2)
@@ -654,6 +661,10 @@ def test():
   g.link((n1,0),(n2,0))
   g.link((n1,1),(n3,0))
 
+  print g.find(is_a=Node1)
+  print g.find(is_a=Node2)
+  print g.find(type=Node1)
+  print g.find(type=Node3)
   print g.find_links()
   print g.neighbors(n1)
   print g.find_port(n1, n2)
