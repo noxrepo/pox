@@ -84,18 +84,29 @@ class EthAddr (object):
     # Always stores as a 6 character string
     if isinstance(addr, int) or isinstance(addr, long):
       addr = long(addr)
-      self._value = addr
+      # Store the long as an array of 6 bytes
+      # Struct puts the least significant byte at [0] though!
+      # And Murphy puts the least significant byte at [-1]
+      # So we pack ourselves one byte at a time
+      val = []
+      for _ in range(6):
+        # This may not be machine-independent...
+        val.insert(0, struct.pack("B", (addr & 0xFF)))
+        addr >>= 8
+      self._value = ''.join(val)
     elif isinstance(addr, bytes) or isinstance(addr, unicode):
       if len(addr) == 17 or len(addr) == 12 or addr.count(':') == 5:
         # hex
         if len(addr) == 17:
           if addr[2::3] != ':::::' and addr[2::3] != '-----':
             raise RuntimeError("Bad format for ethernet address")
+          # TODOC: I have no clue what this is doing
           addr = ''.join((addr[x*3:x*3+2] for x in xrange(0,6)))
         elif len(addr) == 12:
           pass
         else:
           addr = ''.join(["%02x" % (int(x,16),) for x in addr.split(":")])
+        # TODOC: I have no clue what this is doing
         addr = b''.join((chr(int(addr[x*2:x*2+2], 16)) for x in range(0,6)))
       elif len(addr) == 6:
         # raw
@@ -186,9 +197,15 @@ class EthAddr (object):
     Returns the address as an (unsigned) integer
     '''
     value = 0
-    for byte in self.toTuple():
-      value += byte
-      value <<= 8
+    # Struct puts the least significant (bit|byte) leftmost, 
+    # but Murphy puts least significant (bit|byte) rightmost
+    # So we unpack ourselves, one byte at a time
+    # most-significant byte is leftmost (self._value[0])
+    for i in range(len(self._value)):
+      byte_shift = 5-i
+      byte = self._value[i]
+      byte_value = struct.unpack("B", byte)[0]
+      value += (byte_value << (8*byte_shift))
     return value
 
   def toTuple (self):
