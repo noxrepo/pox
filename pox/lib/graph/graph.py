@@ -403,12 +403,14 @@ class Member (BinaryOp):
 class Graph (object):
   def __init__ (self):
     self._g = nx.MultiGraph()
+    self.node_port = {}
 
   def __contains__ (self, n):
     return n in self._g
 
   def add (self, node):
     self._g.add_node(node)
+    self.node_port[node] = {}
 
   def remove (self, node):
     self._g.remove_node(node)
@@ -430,9 +432,13 @@ class Graph (object):
     """
     assert type(np) is tuple
     remove = []
-    for n1,n2,k,d in self._g.edges([np[0]], data=True, keys=True):
+    if self.port_for_node(np[0], np[1]) is None:
+      return 0
+    for n1,n2,k,d in self._g.edges([np[0], self.node_port[np[0]][np[1]]], data=True, keys=True):
       if np in d[LINK]:
         remove.append((n1,n2,k))
+        del self.node_port[n1][d[LINK][n1][1]]
+        del self.node_port[n2][d[LINK][n2][1]]
     for e in remove:
       #print "remove",e
       self._g.remove_edge(*e)
@@ -447,6 +453,8 @@ class Graph (object):
     else:
       for n1, n2, k, d in self._g.edges([np1, np2], data=True, keys=True):
         self._g.remove_edge(n1,n2,k)
+        del self.node_port[n1][d[LINK][n1][1]]
+        del self.node_port[n2][d[LINK][n2][1]]
         count = count + 1
     return count
 
@@ -479,6 +487,8 @@ class Graph (object):
     self.disconnect_port(np1)
     self.disconnect_port(np2)
     self._g.add_edge(np1[0],np2[0],link=Link(np1,np2))
+    self.node_port[np1[0]][np1[1]] = np2[0]
+    self.node_port[np2[0]][np2[1]] = np1[0]
 
   def find_links (self, query1=None, query2=()):
     # No idea if new link query stuff works.
@@ -512,6 +522,10 @@ class Graph (object):
       assert ports.get(p[node]) is None
       ports[p[node][1]] = p.other(node)
     return ports
+ 
+  def port_for_node(self, node, port):
+    assert node in self.node_port
+    return self.node_port[node].get(port)
 
   def disconnect_nodes(self, node1, node2):
     """ Disconnect node1 from node2. Either of node1 or node2
