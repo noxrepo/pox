@@ -52,7 +52,7 @@ class MultiGraph (object):
       for e2,rest in otherEnd.iteritems():
         if nbunch is not None:
           if e1 not in nbunch: continue
-          if e2 not in nbunch: continue
+          if len(nbunch) > 1 and e2 not in nbunch: continue
 
         e = fix(e1,e2)
         if e in edges: continue
