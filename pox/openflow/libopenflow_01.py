@@ -825,6 +825,12 @@ ofp_action_type_rev_map = {
   'OFPAT_SET_TP_SRC'   : 9,
   'OFPAT_SET_TP_DST'   : 10,
   'OFPAT_ENQUEUE'      : 11,
+  'OFPAT_SET_MPLS_LABEL':13,
+  'OFPAT_SET_MPLS_TC'  : 14,
+  'OFPAT_SET_MPLS_TTL' : 15,
+  'OFPAT_DEC_MPLS_TTL' : 16,
+  'OFPAT_PUSH_MPLS'    : 19,
+  'OFPAT_POP_MPLS'     : 20,
   'OFPAT_VENDOR'       : 65535,
 }
 
