@@ -4,7 +4,6 @@ import unittest
 import sys
 import os.path
 from copy import copy
-
 sys.path.append(os.path.dirname(__file__) + "/../../..")
 
 from pox.openflow.libopenflow_01 import *
@@ -287,6 +286,12 @@ class ofp_action_test(unittest.TestCase):
     self.assertEquals(extract_num(p, 4,2), 80)
     p = c(ofp_action_tp_port.set_src, OFPAT_SET_TP_SRC, { 'tp_port' : 22987 }, 8)
     self.assertEquals(extract_num(p, 4,2), 22987)
+    c(ofp_action_push_mpls, OFPAT_PUSH_MPLS, {'ethertype':0x8847}, 8)
+    c(ofp_action_pop_mpls, OFPAT_POP_MPLS, {'ethertype':0x0800}, 8)
+    c(ofp_action_mpls_dec_ttl, OFPAT_DEC_MPLS_TTL, {}, 8)
+    c(ofp_action_mpls_label, OFPAT_SET_MPLS_LABEL, {'mpls_label': 0xa1f}, 8)
+    c(ofp_action_mpls_tc, OFPAT_SET_MPLS_TC, {'mpls_tc': 0xac}, 8)
+    c(ofp_action_mpls_ttl, OFPAT_SET_MPLS_TTL, {'mpls_ttl': 0xaf}, 8)
 
 if __name__ == '__main__':
   unittest.main()

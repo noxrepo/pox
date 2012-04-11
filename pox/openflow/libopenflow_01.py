@@ -849,7 +849,7 @@ class ofp_action_header (object):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
-    packed = b""
+    packed = ""
     packed += struct.pack("!HH", self.type, self.length)
     packed += _PAD4 # Pad
     return packed
@@ -976,6 +976,242 @@ class ofp_action_enqueue (object):
     outstr += prefix + 'len: ' + str(self.length) + '\n'
     outstr += prefix + 'port: ' + str(self.port) + '\n'
     outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
+    return outstr
+
+class ofp_action_push_mpls (object):
+  """ For now a push mpls action, but we can use this for
+    push vlan too some day"""
+  unicast_mpls_ethertype = 0x8847
+  multicast_mpls_ethertype = 0x8848
+  def __init__ (self, **kw):
+    self.type = OFPAT_PUSH_MPLS
+    self.length = 8
+    self.ethertype = ofp_action_push_mpls.unicast_mpls_ethertype
+
+    initHelper(self, kw)
+  
+  def _assert(self):
+    return ((self.ethertype == ofp_action_push_mpls.unicast_mpls_ethertype or 
+            self.ethertype == ofp_action_push_mpls.multicast_mpls_ethertype), 
+            None)
+  
+  def pack (self, assertstruct = True):
+    if (assertstruct):
+      if not (self._assert()[0]):
+        return None
+      packed = ""
+      packed += struct.pack("!HHHxx", self.type, self.length, self.ethertype)
+      return packed
+  
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length, self.ethertype) = struct.unpack_from("!HHH", binaryString, 0)
+    return binaryString[8:]
+ 
+  def __len__ (self):
+    return self.length
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.ethertype != other.ethertype: return False
+    return True
+  
+  def __ne__ (self, other): 
+    return not self.__eq__(other)
+
+  def show (self, prefix = ''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'ethertype: ' + str(self.ethertype) + '\n'
+    return outstr
+
+class ofp_action_mpls_label (object):
+  def __init__ (self, **kw):
+    self.type = OFPAT_SET_MPLS_LABEL
+    self.length = 8
+    self.mpls_label = 0
+
+    initHelper(self, kw)
+  
+  def _assert(self):
+    return (True, None)
+  
+  def pack (self, assertstruct = True):
+    if (assertstruct):
+      if not (self._assert()[0]):
+        return None
+      packed = ""
+      packed += struct.pack("!HHI", self.type, self.length, self.mpls_label)
+      return packed
+  
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length, self.mpls_label) = struct.unpack_from("!HHI", binaryString, 0)
+    return binaryString[8:]
+ 
+  def __len__ (self):
+    return self.length
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.mpls_label != other.mpls_label: return False
+    return True
+  
+  def __ne__ (self, other): 
+    return not self.__eq__(other)
+
+  def show (self, prefix = ''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'label: ' + str(self.mpls_label) + '\n'
+    return outstr
+
+class ofp_action_mpls_tc (object):
+  def __init__ (self, **kw):
+    self.type = OFPAT_SET_MPLS_TC
+    self.length = 8
+    self.mpls_tc = 0
+
+    initHelper(self, kw)
+  
+  def _assert(self):
+    return (True, None)
+  
+  def pack (self, assertstruct = True):
+    if (assertstruct):
+      if not (self._assert()[0]):
+        return None
+      packed = ""
+      packed += struct.pack("!HHBxxx", self.type, self.length, self.mpls_tc)
+      return packed
+  
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length, self.mpls_tc) = struct.unpack_from("!HHB", binaryString, 0)
+    return binaryString[8:]
+ 
+  def __len__ (self):
+    return self.length
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.mpls_tc != other.mpls_tc: return False
+    return True
+  
+  def __ne__ (self, other): 
+    return not self.__eq__(other)
+
+  def show (self, prefix = ''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'tc: ' + str(self.mpls_tc) + '\n'
+    return outstr
+
+class ofp_action_mpls_ttl (object):
+  def __init__ (self, **kw):
+    self.type = OFPAT_SET_MPLS_TTL
+    self.length = 8
+    self.mpls_ttl = 0
+
+    initHelper(self, kw)
+  
+  def _assert(self):
+    return (True, None)
+  
+  def pack (self, assertstruct = True):
+    if (assertstruct):
+      if not (self._assert()[0]):
+        return None
+      packed = ""
+      packed += struct.pack("!HHBxxx", self.type, self.length, self.mpls_ttl)
+      return packed
+  
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length, self.mpls_ttl) = struct.unpack_from("!HHB", binaryString, 0)
+    return binaryString[8:]
+ 
+  def __len__ (self):
+    return self.length
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.mpls_ttl != other.mpls_ttl: return False
+    return True
+  
+  def __ne__ (self, other): 
+    return not self.__eq__(other)
+
+  def show (self, prefix = ''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'ttl: ' + str(self.mpls_ttl) + '\n'
+    return outstr
+
+class ofp_action_mpls_dec_ttl (ofp_action_header):
+  def __init__ (self, **kw):
+    super(ofp_action_mpls_dec_ttl, self).__init__(**kw)
+    self.type = OFPAT_DEC_MPLS_TTL
+
+class ofp_action_pop_mpls (object):
+  def __init__ (self, **kw):
+    self.type = OFPAT_POP_MPLS
+    self.length = 8
+    self.ethertype = 0
+
+    initHelper(self, kw)
+  
+  def _assert(self):
+    return (True, None)
+  
+  def pack (self, assertstruct = True):
+    if (assertstruct):
+      if not (self._assert()[0]):
+        return None
+      packed = ""
+      packed += struct.pack("!HHHxx", self.type, self.length, self.ethertype)
+      return packed
+  
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length, self.ethertype) = struct.unpack_from("!HHH", binaryString, 0)
+    return binaryString[8:]
+ 
+  def __len__ (self):
+    return self.length
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.ethertype != other.ethertype: return False
+    return True
+  
+  def __ne__ (self, other): 
+    return not self.__eq__(other)
+
+  def show (self, prefix = ''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'ethertype: ' + str(self.ethertype) + '\n'
     return outstr
 
 class ofp_action_vlan_vid (object):
@@ -3597,6 +3833,13 @@ _action_map.update({
   OFPAT_SET_TP_SRC               : ofp_action_tp_port,
   OFPAT_SET_TP_DST               : ofp_action_tp_port,
   OFPAT_ENQUEUE                  : ofp_action_enqueue,
+  OFPAT_PUSH_MPLS                : ofp_action_push_mpls,
+  OFPAT_POP_MPLS                 : ofp_action_pop_mpls,
+  OFPAT_SET_MPLS_LABEL           : ofp_action_mpls_label,
+  OFPAT_SET_MPLS_TC              : ofp_action_mpls_tc,
+  OFPAT_SET_MPLS_TTL             : ofp_action_mpls_ttl,
+  OFPAT_DEC_MPLS_TTL             : ofp_action_mpls_dec_ttl,
+  
 })
 
 # Values from macro definitions
