@@ -792,8 +792,6 @@ class ofp_match (object):
     outstr += append('nw_dst')
     outstr += append('tp_src')
     outstr += append('tp_dst')
-    outstr += append('mpls_label')
-    outstr += append('mpls_tc')
     return outstr
 
 ofp_flow_wildcards_rev_map = {
@@ -3934,6 +3932,6 @@ ofp_match_data = {
   'nw_dst' : (0, OFPFW_NW_DST_ALL),
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
-  'mpls_label': (0, OFPFW_MPLS_LABEL),
-  'mpls_tc': (0, OFPFW_MPLS_TC),
+#  'mpls_label': (0, OFPFW_MPLS_LABEL),
+#  'mpls_tc': (0, OFPFW_MPLS_TC),
 }
