@@ -55,7 +55,6 @@ class mpls(packet_base):
         self.ttl = 0
         if raw is not None:
             self.parse(raw)
-
         self._init(kw)
 
     def __str__(self):
@@ -75,7 +74,6 @@ class mpls(packet_base):
             return
 
         (label_high, label_low_tc_s, self.ttl) = struct.unpack("!HBB", raw[:mpls.MIN_LEN])
-
         self.s = label_low_tc_s & 0x1
         self.tc = ((label_low_tc_s & 0xf) >> 1)
         self.label = (label_high << 4) | (label_low_tc_s >> 4)
