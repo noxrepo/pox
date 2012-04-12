@@ -30,6 +30,7 @@ from pox.lib.packet.udp import udp
 from pox.lib.packet.tcp import tcp
 from pox.lib.packet.icmp import icmp
 from pox.lib.packet.arp import arp
+from pox.lib.packet.mpls import mpls
 
 from pox.lib.addresses import *
 from pox.lib.util import assert_type
@@ -792,6 +793,8 @@ class ofp_match (object):
     outstr += append('nw_dst')
     outstr += append('tp_src')
     outstr += append('tp_dst')
+    outstr += append('mpls_label')
+    outstr += append('mpls_tc')
     return outstr
 
 ofp_flow_wildcards_rev_map = {
@@ -803,8 +806,8 @@ ofp_flow_wildcards_rev_map = {
   'OFPFW_NW_PROTO'     : 32,
   'OFPFW_TP_SRC'       : 64,
   'OFPFW_TP_DST'       : 128,
-  'OFPFW_MPLS_LABEL'   : 1 << 8,
-  'OFPFW_MPLS_TC'      : 1 << 9,
+  'OFPFW_MPLS_LABEL'   : 1 << 21,
+  'OFPFW_MPLS_TC'      : 1 << 22,
   'OFPFW_DL_VLAN_PCP'  : 1048576,
   'OFPFW_NW_TOS'       : 2097152,
 }
@@ -816,9 +819,9 @@ OFPFW_NW_SRC_ALL       = 8192
 OFPFW_NW_SRC_MASK      = 16128
 OFPFW_NW_DST_ALL       = 524288
 OFPFW_NW_DST_MASK      = 1032192
-OFPFW_MPLS_LABEL       = 1 << 8
-OFPFW_MPLS_TC          = 1 << 9
-OFPFW_ALL              = 4194303
+OFPFW_MPLS_LABEL       = 1 << 21
+OFPFW_MPLS_TC          = 1 << 22
+OFPFW_ALL              = ((1 << 23) - 1)
 
 ##2.4 Flow Action Structures
 ofp_action_type_rev_map = {
@@ -3932,6 +3935,6 @@ ofp_match_data = {
   'nw_dst' : (0, OFPFW_NW_DST_ALL),
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
-#  'mpls_label': (0, OFPFW_MPLS_LABEL),
-#  'mpls_tc': (0, OFPFW_MPLS_TC),
+  'mpls_label': (0, OFPFW_MPLS_LABEL),
+  'mpls_tc': (0, OFPFW_MPLS_TC),
 }
