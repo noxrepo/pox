@@ -398,7 +398,7 @@ class SwitchImpl(EventMixin):
       if not isinstance(packet.next, mpls):
         return packet
       packet.next.ttl = packet.next.ttl - 1
-      return
+      return packet
     handler_map = {
         OFPAT_OUTPUT: output_packet,
         OFPAT_SET_VLAN_VID: set_vlan_id,
@@ -420,6 +420,9 @@ class SwitchImpl(EventMixin):
         OFPAT_DEC_MPLS_TTL: dec_mpls_ttl,
     }
     for action in actions:
+      if action.type is ofp_action_resubmit:
+        self.process_packet(packet, in_port)
+        return
       if(action.type not in handler_map):
         raise NotImplementedError("Unknown action type: %x " % type)
       packet = handler_map[action.type](action, packet)
