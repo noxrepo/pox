@@ -637,7 +637,7 @@ class ofp_match (object):
     packed += struct.pack("!LLHH", fix(self.nw_src), fix(self.nw_dst),
                           self.tp_src or 0, self.tp_dst or 0)
     if USE_MPLS_MATCH:
-        packed += struct.pack("!IBxxx", self.mpls_label, self.mpls_tc)
+        packed += struct.pack("!IBxxx", self.mpls_label or 0, self.mpls_tc or 0)
     return packed
 
   def _normalize_wildcards (self, wildcards):
@@ -671,10 +671,9 @@ class ofp_match (object):
     (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = struct.unpack_from("!LLHH", binaryString, 28)
     self._nw_src = IPAddr(self._nw_src)
     self._nw_dst = IPAddr(self._nw_dst)
-
-    self.wildcards = self._normalize_wildcards(wildcards) # Override
     if USE_MPLS_MATCH:
-      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IB", binaryString, 40)
+      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IBxxx", binaryString, 40)
+    self.wildcards = self._normalize_wildcards(wildcards) # Overide
     return binaryString[self.__len__():]
 
   def __len__ (self):
@@ -827,8 +826,6 @@ OFPFW_NW_SRC_ALL       = 8192
 OFPFW_NW_SRC_MASK      = 16128
 OFPFW_NW_DST_ALL       = 524288
 OFPFW_NW_DST_MASK      = 1032192
-OFPFW_MPLS_LABEL       = 1 << 21
-OFPFW_MPLS_TC          = 1 << 22
 OFPFW_ALL              = ((1 << 24) - 1)
 
 ##2.4 Flow Action Structures
@@ -1800,15 +1797,15 @@ class ofp_flow_mod (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     self.match.unpack(binaryString[8:])
-    (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 48)
+    (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 8 + len(self.match))
     if self.buffer_id == 0xffffffff:
       self.buffer_id = -1
-    self.actions, offset = _unpack_actions(binaryString, self.length-72, 72)
+    self.actions, offset = _unpack_actions(binaryString, self.length-(32 + len(self.match)), 32 + len(self.match))
     assert offset == self.length
     return binaryString[offset:]
 
   def __len__ (self):
-    l = 72
+    l = 32 + len(self.match)
     for i in self.actions:
       l += len(i)#.length()
     return l
@@ -2283,11 +2280,11 @@ class ofp_flow_stats_request (object):
     if (len(binaryString) < 44):
       return binaryString
     self.match.unpack(binaryString[0:])
-    (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, 40)
-    return binaryString[44:]
+    (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, len(self.match))
+    return binaryString[len(self)]
 
   def __len__ (self):
-    return 44
+    return 4 + len(self.match)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2343,19 +2340,19 @@ class ofp_flow_stats (object):
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 88):
+    if (len(binaryString) < 48 + len(self.match())):
       return binaryString
     (self.length, self.table_id, pad) = struct.unpack_from("!HBB", binaryString, 0)
     self.match.unpack(binaryString[4:])
-    (self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout) = struct.unpack_from("!LLHHH", binaryString, 44)
-    (self.cookie, self.packet_count, self.byte_count) = struct.unpack_from("!QQQ", binaryString, 64)
-    self.actions,offset = _unpack_actions(binaryString, self.length - 88, 88)
+    (self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout) = struct.unpack_from("!LLHHH", binaryString, 4 + len(self.match))
+    (self.cookie, self.packet_count, self.byte_count) = struct.unpack_from("!QQQ", binaryString, 24 + len(self.match))
+    self.actions,offset = _unpack_actions(binaryString, self.length - (48 + len(self.match)), 48 + len(self.match))
     assert offset == self.length
     assert self.length == len(self)
     return binaryString[offset:]
 
   def __len__ (self):
-    l = 88
+    l = 48 + len(self.match)
     for i in self.actions:
       l += len(i)
     return l
@@ -2420,10 +2417,10 @@ class ofp_aggregate_stats_request (object):
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 44):
+    if (len(binaryString) < 4 + len(self.match)):
       return binaryString
     self.match.unpack(binaryString[0:])
-    (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, 40)
+    (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, len(self.match))
     return binaryString[44:]
 
   def __len__ (self):
@@ -3053,7 +3050,7 @@ class ofp_flow_removed (ofp_header):
     self.idle_timeout = 0
     self.packet_count = 0
     self.byte_count = 0
-    self.length = 88
+    self.length = len(self)
     initHelper(self, kw)
 
   def _assert (self):
@@ -3076,17 +3073,17 @@ class ofp_flow_removed (ofp_header):
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 88):
+    if (len(binaryString) < len(self)):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     self.match.unpack(binaryString[8:])
-    (self.cookie, self.priority, self.reason) = struct.unpack_from("!QHB", binaryString, 48)
-    (self.duration_sec, self.duration_nsec, self.idle_timeout) = struct.unpack_from("!LLH", binaryString, 60)
-    (self.packet_count, self.byte_count) = struct.unpack_from("!QQ", binaryString, 72)
-    return binaryString[88:]
+    (self.cookie, self.priority, self.reason) = struct.unpack_from("!QHB", binaryString, 8 + len(self.match))
+    (self.duration_sec, self.duration_nsec, self.idle_timeout) = struct.unpack_from("!LLH", binaryString, 20 + len(self.match))
+    (self.packet_count, self.byte_count) = struct.unpack_from("!QQ", binaryString, 32 + len(self.match))
+    return binaryString[len(self):]
 
   def __len__ (self):
-    return 88
+    return 48 + len(self.match)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
