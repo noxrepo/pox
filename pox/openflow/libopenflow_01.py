@@ -816,8 +816,9 @@ ofp_flow_wildcards_rev_map = {
   'OFPFW_MPLS_LABEL'   : 1 << 21,
   'OFPFW_MPLS_TC'      : 1 << 22,
   'OFPFW_DL_VLAN_PCP'  : 1048576,
-  'OFPFW_NW_TOS'       : 2097152,
+  'OFPFW_NW_TOS'       : 1<<23,
 }
+
 OFPFW_NW_DST_BITS      = 6
 OFPFW_NW_SRC_BITS      = 6
 OFPFW_NW_SRC_SHIFT     = 8
@@ -828,7 +829,7 @@ OFPFW_NW_DST_ALL       = 524288
 OFPFW_NW_DST_MASK      = 1032192
 OFPFW_MPLS_LABEL       = 1 << 21
 OFPFW_MPLS_TC          = 1 << 22
-OFPFW_ALL              = ((1 << 23) - 1)
+OFPFW_ALL              = ((1 << 24) - 1)
 
 ##2.4 Flow Action Structures
 ofp_action_type_rev_map = {
@@ -850,6 +851,7 @@ ofp_action_type_rev_map = {
   'OFPAT_DEC_MPLS_TTL' : 16,
   'OFPAT_PUSH_MPLS'    : 19,
   'OFPAT_POP_MPLS'     : 20,
+  'OFPAT_RESUBMIT'     : 21,
   'OFPAT_VENDOR'       : 65535,
 }
 
@@ -1187,6 +1189,11 @@ class ofp_action_mpls_dec_ttl (ofp_action_header):
   def __init__ (self, **kw):
     super(ofp_action_mpls_dec_ttl, self).__init__(**kw)
     self.type = OFPAT_DEC_MPLS_TTL
+
+class ofp_action_resubmit (ofp_action_header):
+  def __init__ (self, **kw):
+    super(ofp_action_resubmit, self).__init__(**kw)
+    self.type = OFPAT_RESUBMIT
 
 class ofp_action_pop_mpls (object):
   def __init__ (self, **kw):
@@ -3858,6 +3865,7 @@ _action_map.update({
   OFPAT_SET_MPLS_TC              : ofp_action_mpls_tc,
   OFPAT_SET_MPLS_TTL             : ofp_action_mpls_ttl,
   OFPAT_DEC_MPLS_TTL             : ofp_action_mpls_dec_ttl,
+  OFPAT_RESUBMIT                 : ofp_action_resubmit
   
 })
 
