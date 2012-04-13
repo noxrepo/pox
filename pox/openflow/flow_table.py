@@ -321,7 +321,7 @@ class NOMFlowTable(EventMixin):
     if barrier.xid in self.pending_barrier_to_ops:
       added = []
       removed = []
-      print "barrier in: pending for barrier: %d: %s" % (barrier.xid, self.pending_barrier_to_ops[barrier.xid])
+      #print "barrier in: pending for barrier: %d: %s" % (barrier.xid, self.pending_barrier_to_ops[barrier.xid])
       for op in self.pending_barrier_to_ops[barrier.xid]:
         (command, entry) = op
         if(command == NOMFlowTable.ADD):
@@ -329,7 +329,7 @@ class NOMFlowTable(EventMixin):
           added.append(entry)
         else:
           removed.extend(self.flow_table.remove_matching_entries(entry.match, entry.priority, strict=command == NOMFlowTable.REMOVE_STRICT))
-        print "op: %s, pending: %s" % (op, self.pending)
+        #print "op: %s, pending: %s" % (op, self.pending)
         self.pending.remove(op)
       del self.pending_barrier_to_ops[barrier.xid]
       self.raiseEvent(FlowTableModification(added = added, removed=removed))

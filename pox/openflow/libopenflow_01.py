@@ -48,6 +48,7 @@ EMPTY_ETH = EthAddr(None)
 
 MAX_XID = 0x7fFFffFF
 _nextXID = 1
+USE_MPLS_MATCH = False
 
 def generateXID ():
   global _nextXID
@@ -635,6 +636,8 @@ class ofp_match (object):
       return addr.toUnsigned()
     packed += struct.pack("!LLHH", fix(self.nw_src), fix(self.nw_dst),
                           self.tp_src or 0, self.tp_dst or 0)
+    if USE_MPLS_MATCH:
+        packed += struct.pack("!IBxxx", self.mpls_label, self.mpls_tc)
     return packed
 
   def _normalize_wildcards (self, wildcards):
@@ -658,7 +661,7 @@ class ofp_match (object):
     return not self.is_wildcarded
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 40):
+    if (len(binaryString) < self.__len__()):
       return binaryString
     (wildcards, self._in_port) = struct.unpack_from("!LH", binaryString, 0)
     self._dl_src = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 6))
@@ -670,9 +673,13 @@ class ofp_match (object):
     self._nw_dst = IPAddr(self._nw_dst)
 
     self.wildcards = self._normalize_wildcards(wildcards) # Override
-    return binaryString[40:]
+    if USE_MPLS_MATCH:
+      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IB", binaryString, 40)
+    return binaryString[self.__len__():]
 
   def __len__ (self):
+    if USE_MPLS_MATCH:
+      return 48
     return 40
 
   def hash_code (self):

@@ -165,7 +165,7 @@ class MockSwitch(EventMixin):
     self.sent = []
 
   def send(self, msg):
-    print "Hey: %s" % msg
+    #print "Hey: %s" % msg
     self.sent.append(msg)
 
   @property
