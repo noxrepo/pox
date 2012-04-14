@@ -334,11 +334,15 @@ def setup_logging(log_config="logging.cfg", fail_if_non_existent=False):
     logging.config.fileConfig(log_config)
   else:
     if fail_if_non_existent:
-      raise IOError("Could not find logging config file: %s" % log_config)
+      raise IOError("Could not find logging config file: %s" % (log_config,))
 
-    _default_log_handler = logging.StreamHandler()
-    _default_log_handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
-    logging.getLogger().addHandler(_default_log_handler)
+    # This is kind of a hack, but we need to keep track of the handler we
+    # install so that we can, for example, uninstall it later.  This code
+    # originally lived in pox.core, so we explicitly reference it here.
+    pox.core._default_log_handler = logging.StreamHandler()
+    formatter = logging.Formatter(logging.BASIC_FORMAT)
+    pox.core._default_log_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(pox.core._default_log_handler)
     logging.getLogger().setLevel(logging.DEBUG)
 
 def main ():

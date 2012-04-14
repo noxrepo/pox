@@ -16,10 +16,10 @@ class IOWorkerTest(unittest.TestCase):
   def test_basic_send(self):
     i = IOWorker()
     i.send("foo")
-    self.assertTrue(i.ready_to_send)
+    self.assertTrue(i._ready_to_send)
     self.assertEqual(i.send_buf, "foo")
-    i.consume_send_buf(3)
-    self.assertFalse(i.ready_to_send)
+    i._consume_send_buf(3)
+    self.assertFalse(i._ready_to_send)
 
   def test_basic_receive(self):
     i = IOWorker()
@@ -27,10 +27,10 @@ class IOWorkerTest(unittest.TestCase):
     def d(worker):
       self.data = worker.peek_receive_buf()
     i.set_receive_handler(d)
-    i.push_receive_data("bar")
+    i._push_receive_data("bar")
     self.assertEqual(self.data, "bar")
     # d does not consume the data
-    i.push_receive_data("hepp")
+    i._push_receive_data("hepp")
     self.assertEqual(self.data, "barhepp")
 
   def test_receive_consume(self):
@@ -40,10 +40,10 @@ class IOWorkerTest(unittest.TestCase):
       self.data = worker.peek_receive_buf()
       worker.consume_receive_buf(len(self.data))
     i.set_receive_handler(consume)
-    i.push_receive_data("bar")
+    i._push_receive_data("bar")
     self.assertEqual(self.data, "bar")
     # data has been consumed
-    i.push_receive_data("hepp")
+    i._push_receive_data("hepp")
     self.assertEqual(self.data, "hepp")
 
 
@@ -88,13 +88,14 @@ class RecocoIOLoopTest(unittest.TestCase):
     (left, right) = MockSocket.pair()
     worker = loop.create_worker_for_socket(left)
 
-    self.assertTrue(worker in loop.workers)
+    self.assertFalse(worker in loop._workers,  "Should not add to _workers yet, until we start up the loop")
+    self.assertTrue(loop._pending_commands.qsize() == 1, "Should have added pending create() command")
     worker.close()
     # This causes the worker to be scheduled to be closed -- it also 
     # calls pinger.ping(). However, the Select task won't receive the ping
     # Until after this method has completed! Thus, we only test whether
     # worker has been added to the pending close queue
-    self.assertTrue(worker in loop.pending_worker_closes)
+    self.assertTrue(loop._pending_commands.qsize() == 2, "Should have added pending close() command")
 
   def test_run_write(self):
     loop = RecocoIOLoop()
