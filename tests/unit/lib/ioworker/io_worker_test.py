@@ -88,13 +88,14 @@ class RecocoIOLoopTest(unittest.TestCase):
     (left, right) = MockSocket.pair()
     worker = loop.create_worker_for_socket(left)
 
-    self.assertTrue(worker in loop.workers)
+    self.assertFalse(worker in loop._workers,  "Should not add to _workers yet, until we start up the loop")
+    self.assertTrue(loop._pending_commands.qsize() == 1, "Should have added pending create() command")
     worker.close()
     # This causes the worker to be scheduled to be closed -- it also 
     # calls pinger.ping(). However, the Select task won't receive the ping
     # Until after this method has completed! Thus, we only test whether
     # worker has been added to the pending close queue
-    self.assertTrue(worker in loop.pending_worker_closes)
+    self.assertTrue(loop._pending_commands.qsize() == 2, "Should have added pending close() command")
 
   def test_run_write(self):
     loop = RecocoIOLoop()

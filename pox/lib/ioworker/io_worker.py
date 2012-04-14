@@ -87,7 +87,7 @@ class RecocoIOWorker(IOWorker):
     IOWorker.close(self)
     # on_close is a function not a method
     self.on_close(self)
-
+    
 class RecocoIOLoop(Task):
   """
   recoco task that handles the actual IO for our IO workers
@@ -97,27 +97,37 @@ class RecocoIOLoop(Task):
 
   def __init__ (self):
     Task.__init__(self)
-    self.workers = set()
+    self._workers = set()
     self.pinger = makePinger()
-    # socket.close() must be performed by this Select task -- otherwise
-    # we'll end up blocking on socket that doesn't exist.
-    self.pending_worker_closes = []
+    # socket.open() and socket.close() are performed by this Select task
+    # other threads register open() and close() requests by adding lambdas
+    # to this thread-safe queue.
+    self._pending_commands = Queue.Queue()
 
   def create_worker_for_socket(self, socket):
+    '''
+    Return an IOWorker wrapping the given socket.
+    '''
+    # Called from external threads.
+    # Does not register the IOWorker immediately with the select loop --
+    # rather, adds a command to the pending queue
+    
+    # Our callback for io_worker.close():
     def on_close(worker):
-      ''' callback for io_worker.close() '''
-      self.pending_worker_closes.append(worker)
+      def close_worker(worker):
+        # Actually close the worker (called by Select loop)
+        worker.socket.close()
+        self._workers.discard(worker)
+      # schedule close_worker to be called by Select loop
+      self._pending_commands.put(lambda: close_worker(worker))
       self.pinger.ping()
+      
     worker = RecocoIOWorker(socket, pinger=self.pinger, on_close=on_close)
-    self.workers.add(worker)
+    # Don't add immediately, since we're in the wrong thread
+    self._pending_commands.put(lambda: self._workers.add(worker))
     self.pinger.ping()
     return worker
-    
-  def _close_worker(self, worker):
-    ''' only called by our Select task ''' 
-    worker.socket.close()
-    self.workers.discard(worker)
-    
+     
   def stop(self):
     self.running = False
     self.pinger.ping()
@@ -126,15 +136,14 @@ class RecocoIOLoop(Task):
     self.running = True
     while self.running:
       try:
-        # First, close and pending sockets
-        for io_worker in self.pending_worker_closes:
-          self._close_worker(io_worker)
-        self.pending_socket_closes = []
+        # First, execute pending commands
+        while not self._pending_commands.empty():
+          self._pending_commands.get()()
         
-        # Now grab remaining workers
-        read_sockets = list(self.workers) + [ self.pinger ]
-        write_sockets = [ worker for worker in self.workers if worker._ready_to_send ]
-        exception_sockets = list(self.workers)
+        # Now grab workers
+        read_sockets = list(self._workers) + [ self.pinger ]
+        write_sockets = [ worker for worker in self._workers if worker._ready_to_send ]
+        exception_sockets = list(self._workers)
 
         rlist, wlist, elist = yield Select(read_sockets, write_sockets,
                 exception_sockets, self._select_timeout)
@@ -145,8 +154,8 @@ class RecocoIOLoop(Task):
 
         for worker in elist:
           worker.close()
-          if worker in self.workers:
-            self.workers.remove(worker)
+          if worker in self._workers:
+            self._workers.remove(worker)
 
         for worker in rlist:
           try:
@@ -155,7 +164,7 @@ class RecocoIOLoop(Task):
           except socket.error as (s_errno, strerror):
             log.error("Socket error: " + strerror)
             worker.close()
-            self.workers.discard(worker)
+            self._workers.discard(worker)
 
         for worker in wlist:
           try:
@@ -166,7 +175,7 @@ class RecocoIOLoop(Task):
             if s_errno != errno.EAGAIN:
               log.error("Socket error: " + strerror)
               worker.close()
-              self.workers.discard(worker)
+              self._workers.discard(worker)
 
       except exceptions.KeyboardInterrupt:
         break
