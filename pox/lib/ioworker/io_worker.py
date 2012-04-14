@@ -25,6 +25,7 @@ class IOWorker(object):
     self._on_data_receive = lambda worker: None
 
   def set_receive_handler(self, block):
+    """ Cause us to call the given block whenever data is ready to be read """
     self._on_data_receive = block
 
   def send(self, data):
@@ -32,28 +33,34 @@ class IOWorker(object):
     assert_type("data", data, [bytes], none_ok=False)
     self.send_buf += data
 
-  def push_receive_data(self, new_data):
-    """ notify client of new received data. called by a Select loop """
+  def _push_receive_data(self, new_data):
+    # notify client of new received data. called by a Select loop
     self.receive_buf += new_data
     self._on_data_receive(self)
 
   def peek_receive_buf(self):
+    """ Grab the receive buffer. Don't modify it! """
     return self.receive_buf
 
   def consume_receive_buf(self, l):
-    """ called from the client to consume receive buffer """
+    """ Consume receive buffer """
+    # called from the client 
     assert(len(self.receive_buf) >= l)
     self.receive_buf = self.receive_buf[l:]
 
   @property
-  def ready_to_send(self):
+  def _ready_to_send(self):
+    # called by Select loop
     return len(self.send_buf) > 0
 
-  def consume_send_buf(self, l):
+  def _consume_send_buf(self, l):
+    # Throw out the first l bytes of the send buffer 
+    # Called by Select loop
     assert(len(self.send_buf)>=l)
     self.send_buf = self.send_buf[l:]
 
   def close(self):
+    """ Close this socket """
     pass
 
 class RecocoIOWorker(IOWorker):
@@ -62,16 +69,21 @@ class RecocoIOWorker(IOWorker):
     IOWorker.__init__(self)
     self.socket = socket
     self.pinger = pinger
+    # (on_close factory method hides details of the Select loop) 
     self.on_close = on_close
 
   def fileno(self):
+    """ Return the wrapped sockets' fileno """
     return self.socket.fileno()
 
   def send(self, data):
+    """ send data from the client side. fire and forget. """
     IOWorker.send(self, data)
     self.pinger.ping()
 
   def close(self):
+    """ Register this socket to be closed. fire and forget """
+    # (don't close until Select loop is ready) 
     IOWorker.close(self)
     # on_close is a function not a method
     self.on_close(self)
@@ -121,7 +133,7 @@ class RecocoIOLoop(Task):
         
         # Now grab remaining workers
         read_sockets = list(self.workers) + [ self.pinger ]
-        write_sockets = [ worker for worker in self.workers if worker.ready_to_send ]
+        write_sockets = [ worker for worker in self.workers if worker._ready_to_send ]
         exception_sockets = list(self.workers)
 
         rlist, wlist, elist = yield Select(read_sockets, write_sockets,
@@ -139,7 +151,7 @@ class RecocoIOLoop(Task):
         for worker in rlist:
           try:
             data = worker.socket.recv(self._BUF_SIZE)
-            worker.push_receive_data(data)
+            worker._push_receive_data(data)
           except socket.error as (s_errno, strerror):
             log.error("Socket error: " + strerror)
             worker.close()
@@ -149,7 +161,7 @@ class RecocoIOLoop(Task):
           try:
             l = worker.socket.send(worker.send_buf)
             if l > 0:
-              worker.consume_send_buf(l)
+              worker._consume_send_buf(l)
           except socket.error as (s_errno, strerror):
             if s_errno != errno.EAGAIN:
               log.error("Socket error: " + strerror)

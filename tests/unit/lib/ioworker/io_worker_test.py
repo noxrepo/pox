@@ -16,10 +16,10 @@ class IOWorkerTest(unittest.TestCase):
   def test_basic_send(self):
     i = IOWorker()
     i.send("foo")
-    self.assertTrue(i.ready_to_send)
+    self.assertTrue(i._ready_to_send)
     self.assertEqual(i.send_buf, "foo")
-    i.consume_send_buf(3)
-    self.assertFalse(i.ready_to_send)
+    i._consume_send_buf(3)
+    self.assertFalse(i._ready_to_send)
 
   def test_basic_receive(self):
     i = IOWorker()
@@ -27,10 +27,10 @@ class IOWorkerTest(unittest.TestCase):
     def d(worker):
       self.data = worker.peek_receive_buf()
     i.set_receive_handler(d)
-    i.push_receive_data("bar")
+    i._push_receive_data("bar")
     self.assertEqual(self.data, "bar")
     # d does not consume the data
-    i.push_receive_data("hepp")
+    i._push_receive_data("hepp")
     self.assertEqual(self.data, "barhepp")
 
   def test_receive_consume(self):
@@ -40,10 +40,10 @@ class IOWorkerTest(unittest.TestCase):
       self.data = worker.peek_receive_buf()
       worker.consume_receive_buf(len(self.data))
     i.set_receive_handler(consume)
-    i.push_receive_data("bar")
+    i._push_receive_data("bar")
     self.assertEqual(self.data, "bar")
     # data has been consumed
-    i.push_receive_data("hepp")
+    i._push_receive_data("hepp")
     self.assertEqual(self.data, "hepp")
 
 
