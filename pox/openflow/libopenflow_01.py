@@ -30,6 +30,7 @@ from pox.lib.packet.udp import udp
 from pox.lib.packet.tcp import tcp
 from pox.lib.packet.icmp import icmp
 from pox.lib.packet.arp import arp
+from pox.lib.packet.mpls import mpls
 
 from pox.lib.addresses import *
 from pox.lib.util import assert_type
@@ -47,6 +48,7 @@ EMPTY_ETH = EthAddr(None)
 
 MAX_XID = 0x7fFFffFF
 _nextXID = 1
+USE_MPLS_MATCH = False
 
 def generateXID ():
   global _nextXID
@@ -213,6 +215,9 @@ class ofp_phy_port (object):
     outstr += prefix + 'supported: ' + str(self.supported) + '\n'
     outstr += prefix + 'peer: ' + str(self.peer) + '\n'
     return outstr
+
+  def __repr__(self):
+    return self.show()
 
 ofp_port_config_rev_map = {
   'OFPPC_PORT_DOWN'    : 1,
@@ -413,7 +418,12 @@ class ofp_match (object):
     match.dl_dst = packet.dst
     match.dl_type = packet.type
     p = packet.next
-
+    if isinstance(p, mpls):
+      match.mpls_label = p.label
+      match.mpls_tc = p.tc
+    else:
+      match.mpls_label = 0
+      match.mpls_tc = 0
     if isinstance(p, vlan):
       match.dl_vlan = p.id
       match.dl_vlan_pcp = p.pcp
@@ -626,6 +636,8 @@ class ofp_match (object):
       return addr.toUnsigned()
     packed += struct.pack("!LLHH", fix(self.nw_src), fix(self.nw_dst),
                           self.tp_src or 0, self.tp_dst or 0)
+    if USE_MPLS_MATCH:
+        packed += struct.pack("!IBxxx", self.mpls_label or 0, self.mpls_tc or 0)
     return packed
 
   def _normalize_wildcards (self, wildcards):
@@ -649,7 +661,7 @@ class ofp_match (object):
     return not self.is_wildcarded
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 40):
+    if (len(binaryString) < self.__len__()):
       return binaryString
     (wildcards, self._in_port) = struct.unpack_from("!LH", binaryString, 0)
     self._dl_src = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 6))
@@ -659,11 +671,14 @@ class ofp_match (object):
     (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = struct.unpack_from("!LLHH", binaryString, 28)
     self._nw_src = IPAddr(self._nw_src)
     self._nw_dst = IPAddr(self._nw_dst)
-
-    self.wildcards = self._normalize_wildcards(wildcards) # Override
-    return binaryString[40:]
+    if USE_MPLS_MATCH:
+      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IBxxx", binaryString, 40)
+    self.wildcards = self._normalize_wildcards(wildcards) # Overide
+    return binaryString[self.__len__():]
 
   def __len__ (self):
+    if USE_MPLS_MATCH:
+      return 48
     return 40
 
   def hash_code (self):
@@ -784,6 +799,8 @@ class ofp_match (object):
     outstr += append('nw_dst')
     outstr += append('tp_src')
     outstr += append('tp_dst')
+    outstr += append('mpls_label')
+    outstr += append('mpls_tc')
     return outstr
 
 ofp_flow_wildcards_rev_map = {
@@ -795,9 +812,12 @@ ofp_flow_wildcards_rev_map = {
   'OFPFW_NW_PROTO'     : 32,
   'OFPFW_TP_SRC'       : 64,
   'OFPFW_TP_DST'       : 128,
+  'OFPFW_MPLS_LABEL'   : 1 << 21,
+  'OFPFW_MPLS_TC'      : 1 << 22,
   'OFPFW_DL_VLAN_PCP'  : 1048576,
-  'OFPFW_NW_TOS'       : 2097152,
+  'OFPFW_NW_TOS'       : 1<<23,
 }
+
 OFPFW_NW_DST_BITS      = 6
 OFPFW_NW_SRC_BITS      = 6
 OFPFW_NW_SRC_SHIFT     = 8
@@ -806,7 +826,7 @@ OFPFW_NW_SRC_ALL       = 8192
 OFPFW_NW_SRC_MASK      = 16128
 OFPFW_NW_DST_ALL       = 524288
 OFPFW_NW_DST_MASK      = 1032192
-OFPFW_ALL              = 4194303
+OFPFW_ALL              = ((1 << 24) - 1)
 
 ##2.4 Flow Action Structures
 ofp_action_type_rev_map = {
@@ -822,6 +842,13 @@ ofp_action_type_rev_map = {
   'OFPAT_SET_TP_SRC'   : 9,
   'OFPAT_SET_TP_DST'   : 10,
   'OFPAT_ENQUEUE'      : 11,
+  'OFPAT_SET_MPLS_LABEL':13,
+  'OFPAT_SET_MPLS_TC'  : 14,
+  'OFPAT_SET_MPLS_TTL' : 15,
+  'OFPAT_DEC_MPLS_TTL' : 16,
+  'OFPAT_PUSH_MPLS'    : 19,
+  'OFPAT_POP_MPLS'     : 20,
+  'OFPAT_RESUBMIT'     : 21,
   'OFPAT_VENDOR'       : 65535,
 }
 
@@ -840,13 +867,14 @@ class ofp_action_header (object):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
-    packed = b""
+    packed = ""
     packed += struct.pack("!HH", self.type, self.length)
     packed += _PAD4 # Pad
     return packed
 
   def unpack (self, binaryString):
-    if len(binaryString) < 8: return binaryString
+    if (len(binaryString) < 8):
+      return binaryString
     (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
     if len(binaryString) < self.length: return binaryString
     self.data = binaryString[8:8+self.length]
@@ -966,6 +994,247 @@ class ofp_action_enqueue (object):
     outstr += prefix + 'len: ' + str(self.length) + '\n'
     outstr += prefix + 'port: ' + str(self.port) + '\n'
     outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
+    return outstr
+
+class ofp_action_push_mpls (object):
+  """ For now a push mpls action, but we can use this for
+    push vlan too some day"""
+  unicast_mpls_ethertype = 0x8847
+  multicast_mpls_ethertype = 0x8848
+  def __init__ (self, **kw):
+    self.type = OFPAT_PUSH_MPLS
+    self.length = 8
+    self.ethertype = ofp_action_push_mpls.unicast_mpls_ethertype
+
+    initHelper(self, kw)
+  
+  def _assert(self):
+    return ((self.ethertype == ofp_action_push_mpls.unicast_mpls_ethertype or 
+            self.ethertype == ofp_action_push_mpls.multicast_mpls_ethertype), 
+            None)
+  
+  def pack (self, assertstruct = True):
+    if (assertstruct):
+      if not (self._assert()[0]):
+        return None
+      packed = ""
+      packed += struct.pack("!HHHxx", self.type, self.length, self.ethertype)
+      return packed
+  
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length, self.ethertype) = struct.unpack_from("!HHH", binaryString, 0)
+    return binaryString[8:]
+ 
+  def __len__ (self):
+    return self.length
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.ethertype != other.ethertype: return False
+    return True
+  
+  def __ne__ (self, other): 
+    return not self.__eq__(other)
+
+  def show (self, prefix = ''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'ethertype: ' + str(self.ethertype) + '\n'
+    return outstr
+
+class ofp_action_mpls_label (object):
+  def __init__ (self, **kw):
+    self.type = OFPAT_SET_MPLS_LABEL
+    self.length = 8
+    self.mpls_label = 0
+
+    initHelper(self, kw)
+  
+  def _assert(self):
+    return (True, None)
+  
+  def pack (self, assertstruct = True):
+    if (assertstruct):
+      if not (self._assert()[0]):
+        return None
+      packed = ""
+      packed += struct.pack("!HHI", self.type, self.length, self.mpls_label)
+      return packed
+  
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length, self.mpls_label) = struct.unpack_from("!HHI", binaryString, 0)
+    return binaryString[8:]
+ 
+  def __len__ (self):
+    return self.length
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.mpls_label != other.mpls_label: return False
+    return True
+  
+  def __ne__ (self, other): 
+    return not self.__eq__(other)
+
+  def show (self, prefix = ''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'label: ' + str(self.mpls_label) + '\n'
+    return outstr
+
+class ofp_action_mpls_tc (object):
+  def __init__ (self, **kw):
+    self.type = OFPAT_SET_MPLS_TC
+    self.length = 8
+    self.mpls_tc = 0
+
+    initHelper(self, kw)
+  
+  def _assert(self):
+    return (True, None)
+  
+  def pack (self, assertstruct = True):
+    if (assertstruct):
+      if not (self._assert()[0]):
+        return None
+      packed = ""
+      packed += struct.pack("!HHBxxx", self.type, self.length, self.mpls_tc)
+      return packed
+  
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length, self.mpls_tc) = struct.unpack_from("!HHB", binaryString, 0)
+    return binaryString[8:]
+ 
+  def __len__ (self):
+    return self.length
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.mpls_tc != other.mpls_tc: return False
+    return True
+  
+  def __ne__ (self, other): 
+    return not self.__eq__(other)
+
+  def show (self, prefix = ''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'tc: ' + str(self.mpls_tc) + '\n'
+    return outstr
+
+class ofp_action_mpls_ttl (object):
+  def __init__ (self, **kw):
+    self.type = OFPAT_SET_MPLS_TTL
+    self.length = 8
+    self.mpls_ttl = 0
+
+    initHelper(self, kw)
+  
+  def _assert(self):
+    return (True, None)
+  
+  def pack (self, assertstruct = True):
+    if (assertstruct):
+      if not (self._assert()[0]):
+        return None
+      packed = ""
+      packed += struct.pack("!HHBxxx", self.type, self.length, self.mpls_ttl)
+      return packed
+  
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length, self.mpls_ttl) = struct.unpack_from("!HHB", binaryString, 0)
+    return binaryString[8:]
+ 
+  def __len__ (self):
+    return self.length
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.mpls_ttl != other.mpls_ttl: return False
+    return True
+  
+  def __ne__ (self, other): 
+    return not self.__eq__(other)
+
+  def show (self, prefix = ''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'ttl: ' + str(self.mpls_ttl) + '\n'
+    return outstr
+
+class ofp_action_mpls_dec_ttl (ofp_action_header):
+  def __init__ (self, **kw):
+    super(ofp_action_mpls_dec_ttl, self).__init__(**kw)
+    self.type = OFPAT_DEC_MPLS_TTL
+
+class ofp_action_resubmit (ofp_action_header):
+  def __init__ (self, **kw):
+    super(ofp_action_resubmit, self).__init__(**kw)
+    self.type = OFPAT_RESUBMIT
+
+class ofp_action_pop_mpls (object):
+  def __init__ (self, **kw):
+    self.type = OFPAT_POP_MPLS
+    self.length = 8
+    self.ethertype = 0
+
+    initHelper(self, kw)
+  
+  def _assert(self):
+    return (True, None)
+  
+  def pack (self, assertstruct = True):
+    if (assertstruct):
+      if not (self._assert()[0]):
+        return None
+      packed = ""
+      packed += struct.pack("!HHHxx", self.type, self.length, self.ethertype)
+      return packed
+  
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length, self.ethertype) = struct.unpack_from("!HHH", binaryString, 0)
+    return binaryString[8:]
+ 
+  def __len__ (self):
+    return self.length
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.ethertype != other.ethertype: return False
+    return True
+  
+  def __ne__ (self, other): 
+    return not self.__eq__(other)
+
+  def show (self, prefix = ''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'ethertype: ' + str(self.ethertype) + '\n'
     return outstr
 
 class ofp_action_vlan_vid (object):
@@ -1528,15 +1797,15 @@ class ofp_flow_mod (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     self.match.unpack(binaryString[8:])
-    (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 48)
+    (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 8 + len(self.match))
     if self.buffer_id == 0xffffffff:
       self.buffer_id = -1
-    self.actions, offset = _unpack_actions(binaryString, self.length-72, 72)
+    self.actions, offset = _unpack_actions(binaryString, self.length-(32 + len(self.match)), 32 + len(self.match))
     assert offset == self.length
     return binaryString[offset:]
 
   def __len__ (self):
-    l = 72
+    l = 32 + len(self.match)
     for i in self.actions:
       l += len(i)#.length()
     return l
@@ -2011,11 +2280,11 @@ class ofp_flow_stats_request (object):
     if (len(binaryString) < 44):
       return binaryString
     self.match.unpack(binaryString[0:])
-    (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, 40)
-    return binaryString[44:]
+    (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, len(self.match))
+    return binaryString[len(self)]
 
   def __len__ (self):
-    return 44
+    return 4 + len(self.match)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2071,19 +2340,19 @@ class ofp_flow_stats (object):
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 88):
+    if (len(binaryString) < 48 + len(self.match())):
       return binaryString
     (self.length, self.table_id, pad) = struct.unpack_from("!HBB", binaryString, 0)
     self.match.unpack(binaryString[4:])
-    (self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout) = struct.unpack_from("!LLHHH", binaryString, 44)
-    (self.cookie, self.packet_count, self.byte_count) = struct.unpack_from("!QQQ", binaryString, 64)
-    self.actions,offset = _unpack_actions(binaryString, self.length - 88, 88)
+    (self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout) = struct.unpack_from("!LLHHH", binaryString, 4 + len(self.match))
+    (self.cookie, self.packet_count, self.byte_count) = struct.unpack_from("!QQQ", binaryString, 24 + len(self.match))
+    self.actions,offset = _unpack_actions(binaryString, self.length - (48 + len(self.match)), 48 + len(self.match))
     assert offset == self.length
     assert self.length == len(self)
     return binaryString[offset:]
 
   def __len__ (self):
-    l = 88
+    l = 48 + len(self.match)
     for i in self.actions:
       l += len(i)
     return l
@@ -2148,10 +2417,10 @@ class ofp_aggregate_stats_request (object):
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 44):
+    if (len(binaryString) < 4 + len(self.match)):
       return binaryString
     self.match.unpack(binaryString[0:])
-    (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, 40)
+    (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, len(self.match))
     return binaryString[44:]
 
   def __len__ (self):
@@ -2781,7 +3050,7 @@ class ofp_flow_removed (ofp_header):
     self.idle_timeout = 0
     self.packet_count = 0
     self.byte_count = 0
-    self.length = 88
+    self.length = len(self)
     initHelper(self, kw)
 
   def _assert (self):
@@ -2804,17 +3073,17 @@ class ofp_flow_removed (ofp_header):
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 88):
+    if (len(binaryString) < len(self)):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     self.match.unpack(binaryString[8:])
-    (self.cookie, self.priority, self.reason) = struct.unpack_from("!QHB", binaryString, 48)
-    (self.duration_sec, self.duration_nsec, self.idle_timeout) = struct.unpack_from("!LLH", binaryString, 60)
-    (self.packet_count, self.byte_count) = struct.unpack_from("!QQ", binaryString, 72)
-    return binaryString[88:]
+    (self.cookie, self.priority, self.reason) = struct.unpack_from("!QHB", binaryString, 8 + len(self.match))
+    (self.duration_sec, self.duration_nsec, self.idle_timeout) = struct.unpack_from("!LLH", binaryString, 20 + len(self.match))
+    (self.packet_count, self.byte_count) = struct.unpack_from("!QQ", binaryString, 32 + len(self.match))
+    return binaryString[len(self):]
 
   def __len__ (self):
-    return 88
+    return 48 + len(self.match)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3500,8 +3769,8 @@ def _unpack_actions (b, length, offset=0):
   offset, if specified is where in b to start decoding
   returns ([Actions], next_offset)
   """
+  if (len(b) - offset) < length: return ([], offset)
   actions = []
-  if (len(b) - offset) < length: return (actions, offset)
   end = length + offset
   while offset < end:
     (t,l) = struct.unpack_from("!HH", b, offset)
@@ -3587,6 +3856,14 @@ _action_map.update({
   OFPAT_SET_TP_SRC               : ofp_action_tp_port,
   OFPAT_SET_TP_DST               : ofp_action_tp_port,
   OFPAT_ENQUEUE                  : ofp_action_enqueue,
+  OFPAT_PUSH_MPLS                : ofp_action_push_mpls,
+  OFPAT_POP_MPLS                 : ofp_action_pop_mpls,
+  OFPAT_SET_MPLS_LABEL           : ofp_action_mpls_label,
+  OFPAT_SET_MPLS_TC              : ofp_action_mpls_tc,
+  OFPAT_SET_MPLS_TTL             : ofp_action_mpls_ttl,
+  OFPAT_DEC_MPLS_TTL             : ofp_action_mpls_dec_ttl,
+  OFPAT_RESUBMIT                 : ofp_action_resubmit
+  
 })
 
 # Values from macro definitions
@@ -3670,4 +3947,6 @@ ofp_match_data = {
   'nw_dst' : (0, OFPFW_NW_DST_ALL),
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
+  'mpls_label': (0, OFPFW_MPLS_LABEL),
+  'mpls_tc': (0, OFPFW_MPLS_TC),
 }

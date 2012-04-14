@@ -6,10 +6,6 @@ Implementation of an OpenFlow flow table
 
 """
 from collections import namedtuple
-from pox.openflow.libopenflow_01 import *
-from pox.openflow.flow_table import *
-from pox.openflow import *
-from pox.openflow.topology import *
 
 import time
 
@@ -17,7 +13,12 @@ import unittest
 import sys
 import os.path
 import itertools
-sys.path.append(os.path.dirname(__file__) + "/../..")
+
+sys.path.append(os.path.dirname(__file__) + "/../../..")
+from pox.openflow.libopenflow_01 import *
+from pox.openflow.flow_table import *
+from pox.openflow import *
+from pox.openflow.topology import *
 
 class TableEntryTest(unittest.TestCase):
   def test_create(self):
@@ -164,7 +165,7 @@ class MockSwitch(EventMixin):
     self.sent = []
 
   def send(self, msg):
-    print "Hey: %s" % msg
+    #print "Hey: %s" % msg
     self.sent.append(msg)
 
   @property
