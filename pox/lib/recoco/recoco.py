@@ -28,6 +28,7 @@ import os
 import socket
 import pox.lib.util
 import random
+from pox.lib.epoll_select import EpollSelect
 
 CYCLE_MAXIMUM = 2
 
@@ -133,10 +134,10 @@ class Task (BaseTask):
 class Scheduler (object):
   """ Scheduler for Tasks """
   def __init__ (self, isDefaultScheduler = None, startInThread = True,
-                daemon = False):
+                daemon = False, useEpoll=False):
     self._ready = deque()
     self._hasQuit = False
-    self._selectHub = SelectHub(self)
+    self._selectHub = SelectHub(self, useEpoll=useEpoll)
     self._thread = None
     self._event = threading.Event()
 
@@ -484,20 +485,20 @@ class Send (BlockingOperation):
     task.rf = self._sendReturnFunc
     scheduler._selectHub.registerSelect(task, None, [self._fd], [self._fd])
 
-
 #TODO: just merge this in with Scheduler?
 class SelectHub (object):
   """
   This class is a single select() loop that handles all Select() requests for
   a scheduler as well as timed wakes (i.e., Sleep()).
   """
-  def __init__ (self, scheduler):
+  def __init__ (self, scheduler, useEpoll=False):
     # We store tuples of (elapse-time, task)
     self._sleepers = [] # Sleeping items stored as a heap
     self._incoming = Queue() # Threadsafe queue for new items
 
     self._scheduler = scheduler
     self._pinger = pox.lib.util.makePinger()
+    self.epoll = EpollSelect() if useEpoll else None
 
     self._ready = False
 
@@ -507,7 +508,6 @@ class SelectHub (object):
 
     # Ugly busy wait for initialization
     #while self._ready == False:
-    #  time.sleep(0.2)
 
   def _threadProc (self):
     tasks = {}
@@ -564,7 +564,12 @@ class SelectHub (object):
           self._return(t, ([],[],[]))
 
       if timeout is None: timeout = CYCLE_MAXIMUM
-      ro, wo, xo = select.select( rl.keys() + [self._pinger],
+      if self.epoll:
+        ro, wo, xo = self.epoll.select( rl.keys() + [self._pinger],
+                                  wl.keys(),
+                                  xl.keys(), timeout )
+      else:
+        ro, wo, xo = select.select( rl.keys() + [self._pinger],
                                   wl.keys(),
                                   xl.keys(), timeout )
 
