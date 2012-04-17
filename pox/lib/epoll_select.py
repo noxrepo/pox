@@ -55,7 +55,7 @@ class EpollSelect(object):
     # optimization assumptions
     # rl is large and rarely changes
     if rl != self.lastrl:
-      self.last_rl_set = modify_table(rl, self.lastrl_set, select.EPOLLIN|select.EPOLLPRI)
+      self.lastrl_set = modify_table(rl, self.lastrl_set, select.EPOLLIN|select.EPOLLPRI)
       self.lastrl = rl
 
     if wl != self.lastwl:
@@ -70,6 +70,7 @@ class EpollSelect(object):
       if fd in self.registered:
         if mask == 0:
           self.epoll.unregister(fd)
+          del self.registered[fd]
         else:
           self.epoll.modify(fd, mask)
           self.registered[fd] = mask
