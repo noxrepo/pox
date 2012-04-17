@@ -137,7 +137,7 @@ class Scheduler (object):
                 daemon = False, useEpoll=False):
     self._ready = deque()
     self._hasQuit = False
-    self._selectHub = SelectHub(self, useEpoll)
+    self._selectHub = SelectHub(self, useEpoll=useEpoll)
     self._thread = None
     self._event = threading.Event()
 
