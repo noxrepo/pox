@@ -48,6 +48,8 @@ class MainWindow(QtGui.QMainWindow):
             self.usage()
             sys.exit(2)
 
+        self.mininet_address = None
+        
         #Get options
         self.backend_port = 7790 #GuiMessenger port
         for opt,arg in opts:
