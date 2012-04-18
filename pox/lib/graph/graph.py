@@ -518,7 +518,7 @@ class Graph (object):
     self._g = nx.MultiGraph()
 
   def __contains__ (self, n):
-    return n in self._g
+    return n in self._g.nodes() or n in self._g.edges()
 
   def add (self, node):
     assert not hasattr(node, '_parent_graph') or node._parent_graph in [None, self]
