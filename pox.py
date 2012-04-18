@@ -24,7 +24,7 @@
 # We fall back to just "python" and hope that works.
 
 ''''echo -n
-export OPT="-O"
+export OPT="-u -O"
 export FLG=""
 if [[ "$(basename $0)" == "debug-pox.py" ]]; then
   export OPT=""
