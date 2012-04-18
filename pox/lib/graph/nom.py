@@ -137,7 +137,6 @@ class NOM (Graph, EventMixin):
     Graph.__init__(self)
     EventMixin.__init__(self)
     self._eventMixin_addEvents(self.__eventMixin_events)
-    self._entities = {}
     self.log = core.getLogger(self.__class__.__name__)
 
   def getEntityByID (self, ID, fail=False):
@@ -162,7 +161,7 @@ class NOM (Graph, EventMixin):
 
   def addEntity (self, entity):
     """ Will raise an exception if entity.id already exists """
-    if entity in self._entities:
+    if entity in self:
       raise RuntimeError("Entity exists")
     self.add(entity)
     self.log.info(str(entity) + " joined")
