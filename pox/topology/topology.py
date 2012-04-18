@@ -23,13 +23,13 @@ class Topology (NOM):
     self.log = core.getLogger(name)
 
   def __len__(self):
-    return len(self._entities)
+    return len(self.getEntitiesOfType())
 
   def __str__(self):
     # TODO: display me graphically
     strings = []
-    strings.append("topology (%d total entities)" % len(self._entities))
-    for id,entity in self._entities.iteritems():
-      strings.append("%s %s" % (str(id), str(entity)))
+    strings.append("topology (%d total entities)" % len(self))
+    for entity in self.getEntitiesOfType():
+      strings.append(str(entity))
 
     return '\n'.join(strings)
