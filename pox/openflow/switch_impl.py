@@ -81,11 +81,12 @@ class SwitchImpl(EventMixin):
        ofp_type_rev_map['OFPT_PACKET_OUT'] : self._receive_packet_out,
        ofp_type_rev_map['OFPT_BARRIER_REQUEST'] : self._receive_barrier_request,
        ofp_type_rev_map['OFPT_SET_CONFIG'] : self._receive_set_config,
-
+       ofp_type_rev_map['OFPT_VENDOR'] : self._receive_vendor,
        # Proactive responses
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
        # TODO: many more packet types to process
     }
+    
     self._connection = None
 
     ##Capabilities
@@ -167,6 +168,12 @@ class SwitchImpl(EventMixin):
 
   def _receive_set_config(self, config):
     self.log.debug("Set  config %s %s" % (self.name, str(config)))
+    
+  def _receive_vendor(self, vendor):
+    self.log.debug("Vendor %s %s" % (self.name, str(vendor)))
+    # We don't support vendor extensions, so send an OFP_ERROR, per page 42 of spec
+    err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
+    self.send(err)
 
   # ==================================== #
   #    Proactive OFP processing          #
@@ -194,6 +201,7 @@ class SwitchImpl(EventMixin):
       xid = self.xid_count.next()
     msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
                         data = packet.pack())
+    
     self.send(msg)
 
   def send_echo(self, xid=0):
@@ -526,10 +534,10 @@ class SwitchCapabilities:
     Created by ykk
     """
     ##Capabilities support by datapath
-    self.flow_stats = True
-    self.table_stats = True
-    self.port_stats = True
-    self.stp = True
+    self.flow_stats = False
+    self.table_stats = False
+    self.port_stats = False
+    self.stp = False
     self.multi_phy_tx = False
     self.ip_resam = False
     ##Switch config
