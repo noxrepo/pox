@@ -48,7 +48,7 @@ EMPTY_ETH = EthAddr(None)
 
 MAX_XID = 0x7fFFffFF
 _nextXID = 1
-USE_MPLS_MATCH = False
+#USE_MPLS_MATCH = False
 
 def generateXID ():
   global _nextXID
@@ -418,12 +418,12 @@ class ofp_match (object):
     match.dl_dst = packet.dst
     match.dl_type = packet.type
     p = packet.next
-    if isinstance(p, mpls):
-      match.mpls_label = p.label
-      match.mpls_tc = p.tc
-    else:
-      match.mpls_label = 0
-      match.mpls_tc = 0
+#    if isinstance(p, mpls):
+#      match.mpls_label = p.label
+#      match.mpls_tc = p.tc
+#    else:
+#      match.mpls_label = 0
+#      match.mpls_tc = 0
     if isinstance(p, vlan):
       match.dl_vlan = p.id
       match.dl_vlan_pcp = p.pcp
@@ -636,8 +636,8 @@ class ofp_match (object):
       return addr.toUnsigned()
     packed += struct.pack("!LLHH", fix(self.nw_src), fix(self.nw_dst),
                           self.tp_src or 0, self.tp_dst or 0)
-    if USE_MPLS_MATCH:
-        packed += struct.pack("!IBxxx", self.mpls_label or 0, self.mpls_tc or 0)
+#    if USE_MPLS_MATCH:
+#        packed += struct.pack("!IBxxx", self.mpls_label or 0, self.mpls_tc or 0)
     return packed
 
   def _normalize_wildcards (self, wildcards):
@@ -671,14 +671,14 @@ class ofp_match (object):
     (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = struct.unpack_from("!LLHH", binaryString, 28)
     self._nw_src = IPAddr(self._nw_src)
     self._nw_dst = IPAddr(self._nw_dst)
-    if USE_MPLS_MATCH:
-      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IBxxx", binaryString, 40)
+#    if USE_MPLS_MATCH:
+#      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IBxxx", binaryString, 40)
     self.wildcards = self._normalize_wildcards(wildcards) # Overide
     return binaryString[self.__len__():]
 
   def __len__ (self):
-    if USE_MPLS_MATCH:
-      return 48
+ #   if USE_MPLS_MATCH:
+ #     return 48
     return 40
 
   def hash_code (self):
@@ -799,8 +799,8 @@ class ofp_match (object):
     outstr += append('nw_dst')
     outstr += append('tp_src')
     outstr += append('tp_dst')
-    outstr += append('mpls_label')
-    outstr += append('mpls_tc')
+#    outstr += append('mpls_label')
+#    outstr += append('mpls_tc')
     return outstr
 
 ofp_flow_wildcards_rev_map = {
@@ -812,8 +812,8 @@ ofp_flow_wildcards_rev_map = {
   'OFPFW_NW_PROTO'     : 32,
   'OFPFW_TP_SRC'       : 64,
   'OFPFW_TP_DST'       : 128,
-  'OFPFW_MPLS_LABEL'   : 1 << 21,
-  'OFPFW_MPLS_TC'      : 1 << 22,
+#  'OFPFW_MPLS_LABEL'   : 1 << 21,
+#  'OFPFW_MPLS_TC'      : 1 << 22,
   'OFPFW_DL_VLAN_PCP'  : 1048576,
   'OFPFW_NW_TOS'       : 1<<23,
 }
@@ -3947,6 +3947,6 @@ ofp_match_data = {
   'nw_dst' : (0, OFPFW_NW_DST_ALL),
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
-  'mpls_label': (0, OFPFW_MPLS_LABEL),
-  'mpls_tc': (0, OFPFW_MPLS_TC),
+#  'mpls_label': (0, OFPFW_MPLS_LABEL),
+#  'mpls_tc': (0, OFPFW_MPLS_TC),
 }
