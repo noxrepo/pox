@@ -142,7 +142,7 @@ class SwitchImpl(EventMixin):
     """
     self.log.debug("Flow mod %s: %s" % (self.name, ofp.show()))
     self.table.process_flow_mod(ofp)
-    if(ofp.buffer_id >=0 ):
+    if(ofp.buffer_id > 0):
       self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id)
 
   def _receive_packet_out(self, packet_out):
