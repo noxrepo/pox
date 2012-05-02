@@ -163,12 +163,13 @@ class FlowTable (EventMixin):
     self.raiseEvent(FlowTableModification(removed=remove_flows))
     return remove_flows
 
-  def entry_for_packet(self, packet, in_port=None):
+  def entry_for_packet(self, packet, in_port):
     """ return the highest priority flow table entry that matches the given packet 
     on the given in_port, or None if no matching entry is found. """
     packet_match = ofp_match.from_packet(packet, in_port)
+
     for entry in self._table:
-      if entry.match.matches_with_wildcards(packet_match):
+      if entry.match.matches_with_wildcards(packet_match, consider_other_wildcards=False):
         return entry
     else:
       return None

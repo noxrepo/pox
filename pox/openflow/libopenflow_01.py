@@ -430,11 +430,13 @@ class ofp_match (object):
       p = p.next
     else:
       match.dl_vlan = OFP_VLAN_NONE
+      match.dl_vlan_pcp = 0
 
     if isinstance(p, ipv4):
       match.nw_src = p.srcip
       match.nw_dst = p.dstip
       match.nw_proto = p.protocol
+      match.nw_tos = p.tos
       p = p.next
 
       if isinstance(p, udp) or isinstance(p, tcp):
@@ -697,7 +699,7 @@ class ofp_match (object):
 
     return int(h & 0x7fFFffFF)
 
-  def matches_with_wildcards (self, other):
+  def matches_with_wildcards (self, other, consider_other_wildcards=True):
     """
     Test whether /this/ match completely encompasses the other match. Important for non-strict modify flow_mods etc.
     """
@@ -707,9 +709,10 @@ class ofp_match (object):
     # only candidate if all wildcard bits in the *other* match are also set in this match (i.e., a submatch)
 
     # first compare the bitmask part
-    self_bits  = self.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
-    other_bits = other.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
-    if( self_bits | other_bits != self_bits): return False
+    if(consider_other_wildcards):
+      self_bits  = self.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
+      other_bits = other.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
+      if( self_bits | other_bits != self_bits): return False
 
     def match_fail(mine, others):
       return mine != None and mine != others
@@ -826,7 +829,10 @@ OFPFW_NW_SRC_ALL       = 8192
 OFPFW_NW_SRC_MASK      = 16128
 OFPFW_NW_DST_ALL       = 524288
 OFPFW_NW_DST_MASK      = 1032192
-OFPFW_ALL              = ((1 << 24) - 1)
+# Note: Need to handle all flags that are set in this
+# glob-all masks in the packet handling methods. (Esp. ofp_match.from_packet)
+# Otherwise, packets are not being matched as they should
+OFPFW_ALL              = ((1 << 22) - 1)
 
 ##2.4 Flow Action Structures
 ofp_action_type_rev_map = {
