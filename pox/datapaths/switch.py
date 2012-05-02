@@ -231,6 +231,7 @@ class SwitchImpl(EventMixin):
         in_port: the integer port number
     """
     assert_type("packet", packet, ethernet, none_ok=False)
+    assert_type("in_port", in_port, int, none_ok=False)
 
     entry = self.table.entry_for_packet(packet, in_port)
     if(entry != None):
@@ -240,7 +241,7 @@ class SwitchImpl(EventMixin):
       # no matching entry
       buffer_id = self._buffer_packet(packet, in_port)
       self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_NO_MATCH)
-      
+
   def take_port_down(self, port):
     ''' Take the given port down, and send a port_status message to the controller '''
     port_no = port.port_no
