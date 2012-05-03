@@ -69,8 +69,11 @@ class SwitchImpl(EventMixin):
 
     ## Hash of port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
+    self.port_stats = {}
     for port in ports:
       self.ports[port.port_no] = port
+      self.port_stats[port.port_no] = ofp_port_stats(port_no=port.port_no)
+
     ## (OpenFlow Handler map)
     self.ofp_handlers = {
        # Reactive handlers
@@ -80,7 +83,9 @@ class SwitchImpl(EventMixin):
        ofp_type_rev_map['OFPT_FLOW_MOD'] : self._receive_flow_mod,
        ofp_type_rev_map['OFPT_PACKET_OUT'] : self._receive_packet_out,
        ofp_type_rev_map['OFPT_BARRIER_REQUEST'] : self._receive_barrier_request,
+       ofp_type_rev_map['OFPT_GET_CONFIG_REQUEST'] : self._receive_get_config_request,
        ofp_type_rev_map['OFPT_SET_CONFIG'] : self._receive_set_config,
+       ofp_type_rev_map['OFPT_STATS_REQUEST'] : self._receive_stats_request,
        ofp_type_rev_map['OFPT_VENDOR'] : self._receive_vendor,
        # Proactive responses
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
@@ -166,9 +171,68 @@ class SwitchImpl(EventMixin):
     msg = ofp_barrier_reply(xid = ofp.xid)
     self.send(msg)
 
+  def _receive_get_config_request(self, ofp):
+    self.log.debug("Get config request %s %s " % (self.name, str(ofp)))
+    msg = ofp_get_config_reply(xid = ofp.xid)
+    self.send(msg)
+
+  def _receive_stats_request(self, ofp):
+    self.log.debug("Get stats request %s %s " % (self.name, str(ofp)))
+ 
+    def desc_stats(ofp):
+      return ofp_desc_stats(mfr_desc="BadAssEmulatedPoxSwitch(TM)",
+                            hw_desc="your finest emulated asics",
+                            sw_desc="pox. reliable, fast, stable. Choose 0 (or more?)",
+                            serial_num=str(self.dpid),
+                            dp_desc="high performance emuswitch. Several packets per second have been observed (but not by reliable witnesses)")
+
+    def flow_stats(ofp):
+      req = ofp_flow_stats_request().unpack(ofp.body)
+      assert(self.table_id == TABLE_ALL)
+      return self.table.flow_stats(req.match, req.out_port)
+
+    def aggregate_stats(ofp):
+      req = ofp_aggregate_stats_request().unpack(ofp.body)
+      assert(self.table_id == TABLE_ALL)
+      return self.table.aggregate_stats(req.match, out_port)
+
+    def table_stats(ofp):
+      return self.table.table_stats()
+
+    def port_stats(ofp):
+      req = ofp_port_stats_request().unpack(ofp.body)
+      if req.port_no == OFPP_NONE:
+        res = ofp_port_stats(port_no=OFPP_NONE)
+        for stats in self.port_stats.values():
+          res += stats
+        return res
+      else:
+        return self.port_stats[req.port_no]
+
+    def queue_stats(ofp):
+      raise AttributeError("not implemented")
+
+    stats_handlers = {
+        OFPST_DESC: desc_stats,
+        OFPST_FLOW: flow_stats,
+        OFPST_AGGREGATE: aggregate_stats,
+        OFPST_TABLE: table_stats,
+        OFPST_PORT: port_stats,
+        OFPST_QUEUE: queue_stats
+    }
+
+    if ofp.type in stats_handlers:
+      handler = stats_handlers[ofp.type]
+    else:
+      raise AttributeError("Unsupported stats request type %d" % ofp.type)
+
+    reply = ofp_stats_reply(xid=ofp.xid, body=handler(ofp))
+    self.log.debug("Sending stats reply %s %s" % (self.name, str(reply)))
+    self.send(reply)
+
   def _receive_set_config(self, config):
-    self.log.debug("Set  config %s %s" % (self.name, str(config)))
-    
+    self.log.debug("Set config %s %s" % (self.name, str(config)))
+
   def _receive_vendor(self, vendor):
     self.log.debug("Vendor %s %s" % (self.name, str(vendor)))
     # We don't support vendor extensions, so send an OFP_ERROR, per page 42 of spec
@@ -505,7 +569,7 @@ class ControllerConnection (object):
 
       try:
         if ofp_type not in self.ofp_handlers:
-          raise RuntimeError("No handler for ofp_type %d" % ofp_type)
+          raise RuntimeError("No handler for ofp_type %s(%d)" % (ofp_type_map.get(ofp_type), ofp_type))
 
         h = self.ofp_handlers[ofp_type]
         h(msg_obj)
