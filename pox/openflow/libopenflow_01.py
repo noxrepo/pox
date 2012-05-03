@@ -3549,7 +3549,7 @@ class ofp_vendor (ofp_header):
     self.header_type = OFPT_VENDOR
     self.vendor = 0
     self.data = b''
-
+    self.length = 12
     initHelper(self, kw)
 
   def _assert (self):
@@ -3559,10 +3559,14 @@ class ofp_vendor (ofp_header):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
+    self.length = 12 + len(self.data)
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!L", self.vendor)
-    packed += self.data
+    if hasattr(self.data, "pack"):
+      packed += self.data.pack()
+    else:
+      packed += self.data
     return packed
 
   def unpack (self, binaryString):

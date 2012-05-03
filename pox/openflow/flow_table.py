@@ -53,12 +53,14 @@ class TableEntry (object):
                         idle_timeout = self.idle_timeout, hard_timeout = self.hard_timeout,
                           actions = self.actions, buffer_id = self.buffer_id, **kw)
 
-  def is_matched_by(self, match, priority = None, strict = False):
+  def is_matched_by(self, match, priority = None, strict = False, out_port=None):
     """ return whether /this/ entry is matched by some other entry (e.g., for FLOW_MOD updates) """
+    check_port = lambda: out_port == None or any(isinstance(a, ofp_action_output) and a.port == out_port for a in self.actions)
+
     if(strict):
-      return (self.match == match and self.priority == priority)
+      return (self.match == match and self.priority == priority) and check_port()
     else:
-      return match.matches_with_wildcards(self.match)
+      return match.matches_with_wildcards(self.match) and check_port()
 
   def touch_packet(self, byte_count, now=None):
     """ update the counters and expiry timer of this entry for a packet with a given byte count"""
@@ -81,6 +83,22 @@ class TableEntry (object):
   def show(self):
        return "priority=%s, cookie=%x, idle_timeoout=%d, hard_timeout=%d, match=%s, actions=%s buffer_id=%s" % (
           self.priority, self.cookie, self.idle_timeout, self.hard_timeout, self.match, repr(self.actions), str(self.buffer_id))
+
+  def flow_stats(self, now=None):
+    if now == None: now = time.time()
+    duration = now - self.counters["created"]
+    return ofp_flow_stats (
+        match = self.match,
+        duration_sec = int(duration),
+        duration_nsec = int(duration * 1e9),
+        priority = self.priority,
+        idle_timeout = self.idle_timeout,
+        hard_timeout = self.hard_timeout,
+        cookie = self.cookie,
+        packet_count = self.counters["packets"],
+        byte_count = self.counters["last_touched"],
+        actions = self.actions
+        )
 
 class FlowTableModification (Event):
   def __init__(self, added=[], removed=[]):
@@ -130,7 +148,6 @@ class FlowTable (EventMixin):
     self._table.remove(entry)
     self.raiseEvent(FlowTableModification(removed=[entry]))
 
-
   def entries_for_port(self, port_no):
     entries = []
     for entry in self._table:
@@ -143,8 +160,11 @@ class FlowTable (EventMixin):
             entries.apend(entry)
     return entries
 
-  def matching_entries(self, match, priority=0, strict=False):
-    return [ entry for entry in self._table if entry.is_matched_by(match, priority, strict) ]
+  def matching_entries(self, match, priority=0, strict=False, out_port=None):
+    return [ entry for entry in self._table if entry.is_matched_by(match, priority, strict, out_port) ]
+
+  def flow_stats(self, match, out_port=None, now=None):
+    return ( e.flow_stats() for e in self.matching_entries(match=match, strict=False, out_port=out_port))
 
   def expired_entries(self, now=None):
     return [ entry for entry in self._table if entry.is_expired(now) ]
