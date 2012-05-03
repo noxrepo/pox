@@ -390,6 +390,7 @@ def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
   '''
   backoff_seconds = 1
   sock = None
+  print >>sys.stderr, "connect_socket_with_backoff(address=%s, port=%d)" % (address, port)
   while True:
     try:
       sock = socket.socket()

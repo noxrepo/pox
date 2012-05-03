@@ -21,6 +21,7 @@
 
 import struct
 import operator
+import collections
 import sys
 from pox.lib.packet.packet_base import packet_base
 from pox.lib.packet.ethernet import ethernet
@@ -2120,13 +2121,32 @@ class ofp_stats_reply (ofp_header):
     self.type = 0
     self.flags = 0
     self.body = b''
+    self._body_data = (None, None)
 
     initHelper(self, kw)
 
   def _assert (self):
     return (True, None)
 
+  @property
+  def body_data (self):
+    if self._body_data[0] is not self.body:
+      def _pack(b):
+        return b.pack() if hasattr(b, 'pack') else b
+
+      data = b''
+      if isinstance(self.body, collections.Iterable):
+        for b in self.body:
+          data += _pack(b)
+      else:
+        data = _pack(self.body)
+      self._body_data = (self.body, data)
+    return self._body_data[1]
+
   def pack (self, assertstruct=True):
+    if type == None or type == 0 and type(self.body) in ofp_stats_reply_class_to_type_map:
+      self.type = ofp_stats_reply_class_to_type_map[type(self.body)]
+
     self.length = len(self)
     if(assertstruct):
       if(not self._assert()[0]):
@@ -2134,7 +2154,7 @@ class ofp_stats_reply (ofp_header):
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.flags)
-    packed += self.body
+    packed += self.body_data
     return packed
 
   def unpack (self, binaryString):
@@ -2449,7 +2469,7 @@ class ofp_aggregate_stats_request (object):
     outstr += prefix + 'out_port: ' + str(self.out_port) + '\n'
     return outstr
 
-class ofp_aggregate_stats_reply (object):
+class ofp_aggregate_stats (object):
   def __init__ (self, **kw):
     self.packet_count = 0
     self.byte_count = 0
@@ -2657,6 +2677,23 @@ class ofp_port_stats (object):
 
   def __ne__ (self, other): return not self.__eq__(other)
 
+  def __add__(self, other):
+    if type(self) != type(other): raise NotImplemented()
+    return ofp_port_stats(
+        port_no=OFPP_NONE,
+        rx_packets = self.rx_packets + other.rx_packets,
+        tx_packets = self.tx_packets + other.tx_packets,
+        rx_bytes = self.rx_bytes + other.rx_bytes,
+        tx_bytes = self.tx_bytes + other.tx_bytes,
+        rx_dropped = self.rx_dropped + other.rx_dropped,
+        tx_dropped = self.tx_dropped + other.tx_dropped,
+        rx_errors = self.rx_errors + other.rx_errors,
+        tx_errors = self.tx_errors + other.tx_errors,
+        rx_frame_err = self.rx_frame_err + other.rx_frame_err,
+        rx_over_err = self.rx_over_err + other.rx_over_err,
+        rx_crc_err = self.rx_crc_err + other.rx_crc_err,
+        collisions = self.collisions + other.collisions)
+
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
@@ -2770,6 +2807,16 @@ class ofp_queue_stats (object):
     outstr += prefix + 'tx_packets: ' + str(self.tx_packets) + '\n'
     outstr += prefix + 'tx_errors: ' + str(self.tx_errors) + '\n'
     return outstr
+
+ofp_stats_reply_class_to_type_map = {
+    ofp_desc_stats : ofp_stats_types_rev_map['OFPST_DESC'],
+    ofp_flow_stats : ofp_stats_types_rev_map['OFPST_FLOW'],
+    ofp_aggregate_stats : ofp_stats_types_rev_map['OFPST_AGGREGATE'],
+    ofp_table_stats : ofp_stats_types_rev_map['OFPST_TABLE'],
+    ofp_port_stats : ofp_stats_types_rev_map['OFPST_PORT'],
+    ofp_queue_stats : ofp_stats_types_rev_map['OFPST_QUEUE']
+}
+
 
 ##3.6 Send Packet Message
 class ofp_packet_out (ofp_header):
