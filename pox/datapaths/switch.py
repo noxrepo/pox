@@ -572,7 +572,10 @@ class ControllerConnection (object):
           raise RuntimeError("No handler for ofp_type %s(%d)" % (ofp_type_map.get(ofp_type), ofp_type))
 
         h = self.ofp_handlers[ofp_type]
-        h(msg_obj)
+        if "connection" in inspect.getargspec(h)[0]:
+          h(msg_obj, connection=self)
+        else:
+          h(msg_obj)
       except Exception as e:
         if self.error_handler:
           self.error_handler(e)
