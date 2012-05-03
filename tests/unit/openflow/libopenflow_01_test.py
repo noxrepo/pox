@@ -25,7 +25,7 @@ class ofp_match_test(unittest.TestCase):
 
     # all match entries should start out as wildcarded
     for k,v in ofp_match_data.iteritems():
-         self.assertEquals(getattr(m, k), None)
+         self.assertEquals(getattr(m, k), None, "Attr %s should be wildcarded and reported as None" % k)
          self.assertEquals(m.wildcards & v[1], v[1])
 
     # try setting and unsetting specific bit-level match entries
