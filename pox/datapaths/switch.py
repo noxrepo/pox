@@ -23,6 +23,7 @@ from pox.lib.packet import *
 
 from errno import EAGAIN
 from collections import namedtuple
+import inspect
 import itertools
 import logging
 
