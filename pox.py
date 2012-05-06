@@ -330,20 +330,20 @@ def _monkeypatch_console ():
     pass
 
 def setup_logging(log_config="logging.cfg", fail_if_non_existent=False):
+  # This is kind of a hack, but we need to keep track of the handler we
+  # install so that we can, for example, uninstall it later.  This code
+  # originally lived in pox.core, so we explicitly reference it here.
+  pox.core._default_log_handler = logging.StreamHandler()
+  formatter = logging.Formatter(logging.BASIC_FORMAT)
+  pox.core._default_log_handler.setFormatter(formatter)
+  logging.getLogger().addHandler(pox.core._default_log_handler)
+  logging.getLogger().setLevel(logging.DEBUG)
+
   if os.path.exists(log_config):
-    logging.config.fileConfig(log_config)
+    logging.config.fileConfig(log_config, disable_existing_loggers=True)
   else:
     if fail_if_non_existent:
       raise IOError("Could not find logging config file: %s" % (log_config,))
-
-    # This is kind of a hack, but we need to keep track of the handler we
-    # install so that we can, for example, uninstall it later.  This code
-    # originally lived in pox.core, so we explicitly reference it here.
-    pox.core._default_log_handler = logging.StreamHandler()
-    formatter = logging.Formatter(logging.BASIC_FORMAT)
-    pox.core._default_log_handler.setFormatter(formatter)
-    logging.getLogger().addHandler(pox.core._default_log_handler)
-    logging.getLogger().setLevel(logging.DEBUG)
 
 def main ():
   setup_logging()
