@@ -165,6 +165,12 @@ class LearningSwitch (EventMixin):
         msg.actions.append(of.ofp_action_output(port = port))
         msg.buffer_id = event.ofp.buffer_id # 6a
         self.connection.send(msg)
+        
+        dpid = self.connection.dpid
+        dp = core.topology.getEntityByID(dpid)
+        dp.installFlow(priority=msg.priority, cookie=msg.cookie, \
+            idle_timeout=msg.idle_timeout, hard_timeout=msg.hard_timeout, \
+            match=msg.match, actions=msg.actions)
 
 class l2_learning (EventMixin):
   """
