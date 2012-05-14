@@ -297,15 +297,20 @@ class NOMFlowTable(EventMixin):
     for op in todo:
       fmod_xid = self.switch.xid_generator.next()
       flow_mod = op[1].to_flow_mod(xid=fmod_xid, command=op[0])
-      self.switch.send(flow_mod)
+      #self.switch.send(flow_mod) #this hangs - Also, is this where we want to
+      #issue the flow mod? Currently the model is a bit confusing: Do we want to
+      #[manually send a flow_mod and update the nom] OR [write the nom, and IT 
+      #will automatically take care of pushing the sate to the network? 
+
 
     barrier_xid = self.switch.xid_generator.next()
     self.switch.send(ofp_barrier_request(xid=barrier_xid))
     now = time.time()
     self.pending_barrier_to_ops[barrier_xid] = todo
 
-    for op in todo:
-      self.pending_op_to_barrier[op] = (barrier_xid, now)
+    #for op in todo:
+    #  self.pending_op_to_barrier[op] = (barrier_xid, now) this hangs
+
 
   def _handle_SwitchConnectionUp(self, event):
     # sync all_flows

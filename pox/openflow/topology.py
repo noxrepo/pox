@@ -34,7 +34,7 @@ from pox.core import core
 from pox.topology.topology import *
 from pox.openflow.discovery import *
 from pox.openflow.libopenflow_01 import xid_generator
-from pox.openflow.flow_table import NOMFlowTable
+from pox.openflow.flow_table import NOMFlowTable, TableEntry
 from pox.lib.util import dpidToStr
 from pox.lib.addresses import *
 from pox.lib.graph.nom import *
