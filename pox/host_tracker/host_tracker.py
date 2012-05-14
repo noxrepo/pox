@@ -1,4 +1,7 @@
-# Copyright 2011 Dorgival Guedes
+# Copyright 2011
+# 
+# Author: Dorgival Guedes
+# Author: Kyriakos Zarifis
 #
 # This file is part of POX.
 # Some of the arp/openflow-related code was borrowed from dumb_l3_switch.
@@ -38,8 +41,9 @@ log = core.getLogger()
 from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.ipv4 import ipv4
 from pox.lib.packet.arp import arp
-
+from pox.lib.graph.nom import Host, HostJoin, HostLeave
 from pox.lib.recoco.recoco import Timer
+from pox.lib.addresses import EthAddr
 
 import pox.openflow.libopenflow_01 as of
 
@@ -120,54 +124,20 @@ class IpEntry (Alive):
       self.interval = timeoutSec['arpAware']
 
 
-class MacEntry (Alive):
-  """
-  Not strictly an ARP entry.
-  When it gets moved to Topology, may include other host info, like
-  services, and it may replace dpid by a general switch object reference
-  We use the port to determine which port to forward traffic out of.
-  """
-  def __init__ (self, dpid, port, macaddr):
-    Alive.__init__(self)
-    self.dpid = dpid
-    self.port = port
-    self.macaddr = macaddr
-    self.ipAddrs = {}
-
-  def __str__(self):
-    return string.join([str(self.dpid), str(self.port), str(self.macaddr)],' ')
-
-  def __eq__ (self, other):
-    if type(other) == type(None):
-      return type(self) == type(None)
-    elif type(other) == tuple:
-      return (self.dpid,self.port,self.macaddr)==other
-    else:
-      return (self.dpid,self.port,self.macaddr)     \
-             ==(other.dpid,other.port,other.macaddr)
-
-  def __ne__ (self, other):
-    return not self.__eq__(other)
-
-
-class host_tracker (EventMixin):
-  def __init__ (self):
+class HostTracker (EventMixin):
     
-    # The following tables should go to Topology later
-    self.entryByMAC = {}
-    self._t = Timer(timeoutSec['timerInterval'],
-                   self._check_timeouts, recurring=True)
+  _eventMixin_events = set([
+    HostJoin, # Defined in pox.lib.graph
+    HostLeave,
+  ])
+    
+  def __init__ (self):
+    #self._t = Timer(timeoutSec['timerInterval'],
+    #               self._check_timeouts, recurring=True)
+    self.topology = core.topology
     self.listenTo(core)
-    log.info("host_tracker ready")
-
-  # The following two functions should go to Topology also
-  def getMacEntry(self, macaddr):
-    try:
-      result = self.entryByMAC[macaddr]
-    except KeyError as e:
-      result = None
-    return result
-
+    log.info("HostTracker ready")
+  
   def sendPing(self, macEntry, ipAddr):
     r = arp() # Builds an "ETH/IP any-to-any ARP packet
     r.opcode = arp.REQUEST
@@ -232,7 +202,6 @@ class host_tracker (EventMixin):
 
   def _handle_GoingUpEvent (self, event):
     self.listenTo(core.openflow)
-    log.debug("Up...")
 
   def _handle_PacketIn (self, event):
     """
@@ -262,15 +231,22 @@ class host_tracker (EventMixin):
     log.debug("PacketIn: %i %i ETH %s => %s",
             dpid, inport, str(packet.src), str(packet.dst))
 
+    mac = EthAddr(packet.src)
     # Learn or update dpid/port/MAC info
-    macEntry = self.getMacEntry(packet.src)
-    if macEntry == None:
+    # Look for host with same MAC in topology (should be doable in one line(?))
+    hosts = self.topology.getEntitiesOfType(Host)
+    host = None
+    for h in hosts:
+      if h.mac.toStr == mac.toStr:
+        host = h
+    
+    if not host:
       # there is no known host by that MAC
-      # should we raise a NewHostFound event (at the end)?
-      macEntry = MacEntry(dpid,inport,packet.src)
-      self.entryByMAC[packet.src] = macEntry
-      log.info("Learned %s", str(macEntry))
-    elif macEntry != (dpid, inport, packet.src):    
+      log.info("Learned %s", packet.src)
+      newHost = Host(mac)
+      self.topology.addEntity(newHost)
+      self.raiseEventNoErrors(HostJoin, newHost)
+    elif host.location != (dpid, inport):    
       # there is already an entry of host with that MAC, but host has moved
       # should we raise a HostMoved event (at the end)?
       log.info("Learned %s moved to %i %i", str(macEntry), dpid, inport)
@@ -281,15 +257,15 @@ class host_tracker (EventMixin):
                     dpid, inport, time.time())
       # should we create a whole new entry, or keep the previous host info?
       # for now, we keep it: IP info, answers pings, etc.
-      macEntry.dpid = dpid
-      macEntry.inport = inport
+      switch = core.topology.getEntityById(dpid)
+      port = inport
+      host.locatio = (s, p)
 
     macEntry.refresh()
-
     (pckt_srcip, hasARP) = self.getSrcIPandARP(packet.next)
     if pckt_srcip != None:
       self.updateIPInfo(pckt_srcip,macEntry,hasARP)
-
+    
     return
 
   def _check_timeouts(self):
