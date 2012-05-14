@@ -81,8 +81,14 @@ class SwitchConnectionUp(SwitchEvent):
 class SwitchConnectionDown(SwitchEvent): pass
 
 class HostEvent (EntityEvent): pass
-class HostJoin (HostEvent): pass
-class HostLeave (HostEvent): pass
+
+class HostJoin (HostEvent): 
+  def __init__(self, host):
+    HostEvent.__init__(self, host)
+    
+class HostLeave (HostEvent):
+  def __init__(self, host):
+    HostEvent.__init__(self, host)
 
 
 class Update (Event):
@@ -109,8 +115,26 @@ class Host (Entity):
   """
   A generic Host entity.
   """
-  def __init__(self):
-    Entity.__init__(self)
+  def __init__(self, mac, ip=None):
+    Entity.__init__(self) 
+    self.mac = mac
+    #self.location = (switch, port)
+    '''
+    This is an example of what can be added by a component that does
+    os fingerprinting and replaces a generic to-be-added Host object with one
+    that has this field as an extension
+    '''
+    #self.os =
+  
+  def location(self):
+    '''
+    Returns the location where the host is currently connected
+    as a (switch, port) tuple
+    '''
+    return (switch, port)
+    
+  def __repr__ (self):
+    return "<Host" + self.mac.toStr() + ">"
 
 class Switch (Entity):
   """
@@ -164,11 +188,11 @@ class NOM (Graph, EventMixin):
     if entity in self:
       raise RuntimeError("Entity exists")
     self.add(entity)
-    self.log.info(str(entity) + " joined")
+    self.log.info("Added Entity" + str(entity))
     self.raiseEvent(EntityJoin, entity)
 
   def getEntitiesOfType (self, t=Entity, subtypes=True):
-    if subtypes is False:
+    if subtypes:
       return self.find(is_a=t)
     else:
       return self.find(type=t)

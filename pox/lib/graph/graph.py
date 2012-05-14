@@ -658,7 +658,7 @@ class Graph (object):
       one = True
     assert len(kw) == 0
     r = self.find_links(query1, query2)
-    if len(r) > 1 and one is False:
+    if len(r) > 1 and one:
       raise RuntimeError("More than one match")
     elif len(r) == 0:
       if has_default:
@@ -676,8 +676,7 @@ class Graph (object):
       if k == "is_a":
         if not isinstance(n,v): return
       elif k == "type":
-        pass
-        #if type(n) is not kind: return
+        if type(n) is not v: return
       else:
         if not hasattr(n, k): return
         if getattr(n, k) != v: return
@@ -752,7 +751,7 @@ class Graph (object):
       del kw['one']
       one = True
     r = self.find(*args,**kw)
-    if len(r) > 1 and one is False:
+    if len(r) > 1 and one:
       raise RuntimeError("More than one match")
     elif len(r) == 0:
       if has_default:
