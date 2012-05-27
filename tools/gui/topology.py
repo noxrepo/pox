@@ -1118,6 +1118,7 @@ class TopologyView(QtGui.QGraphicsView):
         while not line.isNull():
             nodeid,x,y = str(line).split()
             line = f.readLine()
+            nodeid = int(nodeid)
             if not nodeid in self.nodes:
                 print "Layout mismatch (node", nodeid, "exists in conf file but has not been discovered on the network)"
             else:
