@@ -41,9 +41,9 @@ log = core.getLogger()
 from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.ipv4 import ipv4
 from pox.lib.packet.arp import arp
-from pox.lib.graph.nom import Host, HostJoin, HostLeave
+from pox.lib.graph.nom import *
 from pox.lib.recoco.recoco import Timer
-from pox.lib.addresses import EthAddr
+from pox.lib.addresses import EthAddr, IPAddr
 
 import pox.openflow.libopenflow_01 as of
 
@@ -234,22 +234,32 @@ class HostTracker (EventMixin):
     mac = EthAddr(packet.src)
     # Learn or update dpid/port/MAC info
     # Look for host with same MAC in topology (should be doable in one line(?))
+    
+    '''
     hosts = self.topology.getEntitiesOfType(Host)
     host = None
     for h in hosts:
       if h.mac.toStr == mac.toStr:
         host = h
-    
+    '''
+    #host = core.topology.findIsInstance(Host))
+    host = core.topology.find(IsInstance(Host), mac=mac.toStr())#, one=True)
+    print host
     if not host:
       # there is no known host by that MAC
       log.info("Learned %s", packet.src)
-      newHost = Host(mac)
+      (pckt_srcip, hasARP) = self.getSrcIPandARP(packet.next)
+      if pckt_srcip:
+        newHost = Host(mac.toStr(), IPAddr(pckt_srcip), (dpid, inport))
+      else:
+        newHost = Host(mac.toStr(), None, (dpid, inport))
       self.topology.addEntity(newHost)
       self.raiseEventNoErrors(HostJoin, newHost)
-    elif host.location != (dpid, inport):    
+    elif host[0].location != (dpid, inport):    
       # there is already an entry of host with that MAC, but host has moved
       # should we raise a HostMoved event (at the end)?
-      log.info("Learned %s moved to %i %i", str(macEntry), dpid, inport)
+      log.info("Learned %s moved to %i %i", host.mac.toStr(), dpid, inport)
+      """
       # if there has not been long since heard from it...
       if time.time() - macEntry.lastTimeSeen < timeoutSec['entryMove']:
         log.warning("Possible duplicate: %s at time %i, now (%i %i), time %i",
@@ -257,14 +267,10 @@ class HostTracker (EventMixin):
                     dpid, inport, time.time())
       # should we create a whole new entry, or keep the previous host info?
       # for now, we keep it: IP info, answers pings, etc.
+      """
       switch = core.topology.getEntityById(dpid)
       port = inport
       host.locatio = (s, p)
-
-    macEntry.refresh()
-    (pckt_srcip, hasARP) = self.getSrcIPandARP(packet.next)
-    if pckt_srcip != None:
-      self.updateIPInfo(pckt_srcip,macEntry,hasARP)
     
     return
 
