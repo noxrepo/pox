@@ -319,7 +319,9 @@ class UnaryOp (Operator):
   def _apply (self, attr):
     raise RuntimeError("Unimplemented")
 
-class BinaryOp (Operator):
+# TODO: There is a bug here
+# Probably BinaryOp and NodeOp need to become aware of LeaveException
+class BinaryOp (Operator): 
   def __init__ (self, left, right):
     if isinstance(left, Operator):
       self._left = left 
@@ -344,7 +346,7 @@ class BinaryOp (Operator):
     else:
       return "%s(%s, %s)" % (self.__class__.__name__, self._left, self._right)
 
-class Or (BinaryOp):
+class Or (BinaryOp): 
   _symbol = "or"
   def _apply (self, l, r):
     return l or r
@@ -407,6 +409,8 @@ class Index (BinaryOp):
   def __repr__ (self):
     return "%s[%s]" % (self._left, self._right)
 
+# TODO: There is a bug here
+# Probably BinaryOp and NodeOp need to become aware of LeaveException
 _dummy = object()
 class NodeOp (Operator):
   """
@@ -658,7 +662,7 @@ class Graph (object):
       one = True
     assert len(kw) == 0
     r = self.find_links(query1, query2)
-    if len(r) > 1 and one:
+    if len(r) > 1 and one is True:
       raise RuntimeError("More than one match")
     elif len(r) == 0:
       if has_default:
@@ -751,7 +755,7 @@ class Graph (object):
       del kw['one']
       one = True
     r = self.find(*args,**kw)
-    if len(r) > 1 and one:
+    if len(r) > 1 and one is True:
       raise RuntimeError("More than one match")
     elif len(r) == 0:
       if has_default:
