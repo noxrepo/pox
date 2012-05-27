@@ -37,8 +37,8 @@ from pox.core import core
 from pox.messenger.messenger import *
 from pox.lib.revent import *
 from pox.messenger.messenger import MessageReceived
-import json
-import traceback
+from pox.lib.graph.nom import *
+import json, traceback
 
 log = core.getLogger()
 
@@ -59,38 +59,34 @@ class GuiMessengerService (EventMixin):
   
   _core_name = "guimessenger"
   
-  _wantComponents = set(['topology', 'openflow_discovery'])
+  _wantComponents = set(['topology','openflow_topology', 'openflow_discovery'])
   def __init__ (self, connection, params):
     core.listenToDependencies(self, self._wantComponents)
     self.addListeners(core.monitoring, prefix = "guimessenger")
     self.connection = connection
-    """
-    connection._newlines = params.get("newlines", True) == True #HACK
-    
-    # Make LogMessenger always send back "source":"logger"
-    params['opaque'] = {'type':'log'}
-    self._logService = LogMessenger(connection, params) # Aggregate
-    # Unhook its message received listener (we will pass it those events
-    # manually ourselves...)
-    connection.removeListener(dict(self._logService._listeners)[MessageReceived])
-    """
     self.listenTo(connection)
     
-  def _handle_topology_SwitchJoin(self, event):
+  def _handle_topology_Update(self, event, *args, **kw):
+    e = event.event
+    if e is EntityJoin:
+      entity = args[0]
+      if isinstance (entity, Switch):
+        msg = {}
+        msg["type"] = "topology"
+        msg["command"] = "add"
+        msg["node_id"] = [entity.dpid]
+        msg["node_type"] = "switch"
+        self.connection.send(msg)
+        
+  """
+  def _handle_openflow_topology_SwitchConnectionUp(self, event):
     msg = {}
     msg["type"] = "topology"
     msg["command"] = "add"
     msg["node_id"] = [event.switch.id]
     msg["node_type"] = "switch"
     self.connection.send(msg)
-    
-  def _handle_topology_HostJoin(self, event):
-    msg = {}
-    msg["type"] = "topology"
-    msg["command"] = "add"
-    msg["node_id"] = [event.host.id]
-    msg["node_type"] = "host"
-    self.connection.send(msg)
+  """
     
   def _handle_openflow_discovery_LinkEvent (self, event):
     msg = {}
@@ -100,7 +96,16 @@ class GuiMessengerService (EventMixin):
                     "dst id":event.link.dpid2, "dst port":event.link.port2 }]
     msg["node_type"] = "host"
     self.connection.send(msg)
-
+    
+  def _handle_topology_HostJoin(self, event):
+    print "SENDING HOSTJOIN"
+    msg = {}
+    msg["type"] = "topology"
+    msg["command"] = "add"
+    msg["node_id"] = [event.host.id]
+    msg["node_type"] = "host"
+    self.connection.send(msg)
+    
   def _handle_MessageReceived (self, event, msg):
     if event.con.isReadable():
       r = event.con.read()
