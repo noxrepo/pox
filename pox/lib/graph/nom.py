@@ -90,6 +90,20 @@ class HostLeave (HostEvent):
   def __init__(self, host):
     HostEvent.__init__(self, host)
 
+class LinkEvent (Event):
+  def __init__ (self, add, link):
+    Event.__init__(self)
+    self.link = link
+    self.added = add
+    self.removed = not add
+
+  def portForDPID (self, dpid):
+    if self.link.dpid1 == dpid:
+      return self.link.port1
+    if self.link.dpid2 == dpid:
+      return self.link.port2
+    return None
+
 
 class Update (Event):
   """
@@ -115,10 +129,11 @@ class Host (Entity):
   """
   A generic Host entity.
   """
-  def __init__(self, mac, ip=None):
+  def __init__(self, mac, ip=None, location=None):
     Entity.__init__(self) 
     self.mac = mac
-    #self.location = (switch, port)
+    self.ip = ip
+    self.location = location
     '''
     This is an example of what can be added by a component that does
     os fingerprinting and replaces a generic to-be-added Host object with one
@@ -126,7 +141,14 @@ class Host (Entity):
     '''
     #self.os =
   
-  def location(self):
+  def setLocation(self, switch, port):
+    '''
+    Sets the location where the host is currently connected
+    as a (switch, port) tuple
+    '''
+    self.location = (switch, port)
+  
+  def getLocation(self):
     '''
     Returns the location where the host is currently connected
     as a (switch, port) tuple
@@ -134,7 +156,7 @@ class Host (Entity):
     return (switch, port)
     
   def __repr__ (self):
-    return "<Host" + self.mac.toStr() + ">"
+    return "<Host " + self.mac + ">"
 
 class Switch (Entity):
   """
@@ -168,7 +190,9 @@ class NOM (Graph, EventMixin):
     Raises an exception if fail is True and the entity doesn't exist
     See also: The 'entity' property.
     """
-    r = self.find(Or(Equal('DPID', ID),Equal(F('ID'), ID)))
+    r = self.find(Equal(F('dpid'), ID))
+    # Or is not working atm, so we only match dpids
+    #r = self.find(Or(Equal(F('dpid'), ID),Equal(F('id'), ID)))
     if len(r) == 0:
       if fail:
         raise RuntimeError("No entity with ID " + str(ID))
@@ -188,7 +212,6 @@ class NOM (Graph, EventMixin):
     if entity in self:
       raise RuntimeError("Entity exists")
     self.add(entity)
-    self.log.info("Added Entity" + str(entity))
     self.raiseEvent(EntityJoin, entity)
 
   def getEntitiesOfType (self, t=Entity, subtypes=True):
@@ -204,7 +227,7 @@ class NOM (Graph, EventMixin):
     """
     rv = EventMixin.raiseEvent(self, event, *args, **kw)
     if type(event) is not Update:
-      EventMixin.raiseEvent(self, Update(event))
+      EventMixin.raiseEvent(self, Update(event), *args, **kw)
     return rv
 
   def __str__(self):
