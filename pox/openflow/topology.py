@@ -57,6 +57,15 @@ class OpenFlowTopology (EventMixin):
   # proactively; they must be specified on the command line (with the
   # exception of openflow which usally loads automatically)
   _wantComponents = set(['openflow','topology','openflow_discovery'])
+  
+  _eventMixin_events = set([
+    SwitchJoin, # Defined in graph.nom
+    SwitchLeave,
+    SwitchConnectionUp,
+    SwitchConnectionDown,
+  ])
+  
+  _core_name = "openflow_topology" # we want to be core.openflow_topology
 
   def __init__ (self):
     """ Note that self.topology is initialized in _resolveComponents """
@@ -82,7 +91,7 @@ class OpenFlowTopology (EventMixin):
     elif event.removed:
       sw1.ports[link.port1].entities.remove(sw2)
       sw2.ports[link.port2].entities.remove(sw1)
-
+  
   def _handle_ComponentRegistered (self, event):
     """
     A component was registered with pox.core. If we were dependent on it, 
@@ -90,24 +99,23 @@ class OpenFlowTopology (EventMixin):
     """
     if core.listenToDependencies(self, self._wantComponents):
       return EventRemove
-
+  
   def _handle_openflow_ConnectionUp (self, event):
     sw = self.topology.getEntityByID(event.dpid)
-    add = False
-    if sw is None:
-      sw = OpenFlowSwitch(event.dpid)
-      add = True
-    else:
+    if sw is not None:
       if sw._connection is not None:
         log.warn("Switch %s connected, but... it's already connected!" %
                  (dpidToStr(event.dpid),))
-    
-    if add:
+      else:
+        log.info("Switch %s reconnected!" %
+                 (dpidToStr(event.dpid),))
+    else:
+      sw = OpenFlowSwitch(event.dpid)
+      log.info("Switch " + dpidToStr(event.dpid) + " connected")
       self.topology.addEntity(sw)
-      sw.raiseEvent(SwitchJoin, sw)
-    
+      #sw.raiseEvent(SwitchConnectionUp(sw, event.connection))
+        
     sw._setConnection(event.connection, event.ofp)
-    log.info("Switch " + dpidToStr(event.dpid) + " connected")
     
   def _handle_openflow_ConnectionDown (self, event):
     sw = self.topology.getEntityByID(event.dpid)
@@ -299,5 +307,6 @@ class OpenFlowSwitch (EventMixin, Switch):
     return repr(self)
 
 def launch ():
-  if not core.hasComponent("openflow_topology"):
-    core.register("openflow_topology", OpenFlowTopology())
+  #if not core.hasComponent("openflow_topology"):
+  #  core.register("openflow_topology", OpenFlowTopology())
+  core.registerNew(OpenFlowTopology)
