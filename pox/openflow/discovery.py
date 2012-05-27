@@ -37,6 +37,7 @@ from pox.lib.packet.lldp          import ttl, system_description
 import pox.openflow.libopenflow_01 as of
 from pox.lib.util                 import dpidToStr
 from pox.core import core
+from pox.lib.graph.nom import *
 
 import struct
 import array
@@ -149,20 +150,6 @@ class LLDPSender (object):
                            data = eth.pack())
     return po.pack()
 
-
-class LinkEvent (Event):
-  def __init__ (self, add, link):
-    Event.__init__(self)
-    self.link = link
-    self.added = add
-    self.removed = not add
-
-  def portForDPID (self, dpid):
-    if self.link.dpid1 == dpid:
-      return self.link.port1
-    if self.link.dpid2 == dpid:
-      return self.link.port2
-    return None
 
 
 class Discovery (EventMixin):
