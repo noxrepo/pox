@@ -235,7 +235,6 @@ def doLaunch ():
 cli = True
 verbose = False
 enable_openflow = True
-debug = False
 deadlock = False
 custom_log_config = None
 
@@ -255,14 +254,6 @@ def _opt_no_cli (v):
 def _opt_verbose (v):
   global verbose
   verbose = str(v).lower() == "true"
-
-def _opt_debug (v):
-  global debug
-  debug = str(v).lower() == "true"
-  if debug:
-    # debug implies no openflow 
-    _opt_no_openflow(True)
-    _opt_no_cli(True)
 
 def _opt_log_config (v):
   global custom_log_config
