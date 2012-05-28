@@ -187,7 +187,7 @@ class POXCore (EventMixin):
     self.version = (0,0,0)
     print "{0} / Copyright 2011 James McCauley".format(self.version_string)
 
-    self.scheduler = recoco.Scheduler(daemon=True, useEpoll=True)
+    self.scheduler = recoco.Scheduler(daemon=True)
 
   @property
   def version_string (self):
