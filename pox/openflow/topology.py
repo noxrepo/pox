@@ -81,8 +81,8 @@ class OpenFlowTopology (EventMixin):
     """
     if self.topology is None: return
     link = event.link
-    sw1 = self.topology.getEntityByID(link.dpid1)
-    sw2 = self.topology.getEntityByID(link.dpid2)
+    sw1 = self.topology.getEntityByID(link.node1)
+    sw2 = self.topology.getEntityByID(link.node2)
     if sw1 is None or sw2 is None: return
     if link.port1 not in sw1.ports or link.port2 not in sw2.ports: return
     if event.added:
