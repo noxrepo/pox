@@ -22,7 +22,11 @@ Fires up messenger, guimessenger, and monitoring
 def launch ():
   import pox.messenger.messenger
   pox.messenger.messenger.launch()
+  import pox.messenger.mux
+  pox.messenger.mux.launch()
   import pox.gui_backend.guimessenger
   pox.gui_backend.guimessenger.launch()
+  import pox.messenger.log_service
+  pox.messenger.log_service.launch()
   import pox.gui_backend.monitoring
   pox.gui_backend.monitoring.launch()
