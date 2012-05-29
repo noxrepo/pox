@@ -131,7 +131,8 @@ class Host (Entity):
   """
   def __init__(self, mac, ip=None, location=None):
     Entity.__init__(self) 
-    self.mac = mac
+    self.macstr = mac # this string is used as a key for topology.find()
+    self.mac = EthAddr(mac)
     self.ip = ip
     self.location = location
     '''
@@ -156,7 +157,7 @@ class Host (Entity):
     return (switch, port)
     
   def __repr__ (self):
-    return "<Host " + self.mac + ">"
+    return "<Host " + self.mac.toStr() + ">"
 
 class Switch (Entity):
   """
@@ -170,6 +171,22 @@ class Port (Entity):
     self.number = num
     self.hwAddr = EthAddr(hwAddr)
     self.name = name
+
+
+class Link (Entity):
+  """
+  A generic Link entity.
+  """
+  def __init__(self, node1, port1, node2, port2):
+    Entity.__init__(self) 
+    self.node1 = node1
+    self.port1 = port1
+    self.node2 = node2
+    self.port2 = port2
+    
+  def __repr__ (self):
+    return "<Link (%s:%s <-> %s:%s)" % (self.node1 , self.port1,
+                                        self.node2, self.port2)
 
 class NOM (Graph, EventMixin):
   __eventMixin_events = [
