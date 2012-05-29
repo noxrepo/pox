@@ -16,15 +16,13 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Fires up topology, discovery, and a l2 learning switch controller
+Fires up topology (node discovery) and discovery (link discovery with LLDP)
 """
 
 def launch ():
   import pox.topology
   pox.topology.launch()
-  import pox.openflow.discovery
-  pox.openflow.discovery.launch()
   import pox.openflow.topology
   pox.openflow.topology.launch()
-  import pox.forwarding.l2_learning
-  pox.forwarding.l2_learning.launch()
+  import pox.openflow.discovery
+  pox.openflow.discovery.launch()
