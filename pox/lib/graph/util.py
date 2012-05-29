@@ -19,7 +19,7 @@
 Various NOM utility functions
 """
 from pox.core import core
-from pox.topology.topology import Switch, Host
+from pox.lib.graph.nom import Switch, Host, Link
 import json
 
 def saveNOM(target="nom"):
@@ -35,8 +35,10 @@ def loadNOM(source="nom"):
 def buildjsonNOM():
   # Create a JSON message describing the NOM
   jsonNOM = {}
-  switches = []
   # make sure core.topology is running
+  
+  # Add Switches
+  switches = []
   for sw in core.topology.getEntitiesOfType(Switch):
     rules = []
     for rule in sw.flow_table.entries:
@@ -67,9 +69,17 @@ def buildjsonNOM():
     switches.append({"dpid":sw.dpid, "rules":rules})
   
   jsonNOM["switches"] = switches
+  
+  # Add Hosts
   hosts = []
   for host in core.topology.getEntitiesOfType(Host):
-    pass
-    #hosts.append(host.mac) NOT IMPLEMENTED (missing host tracker functionality)
+    hosts.append({"mac":host.mac.toStr()})
   jsonNOM["hosts"] = hosts
+  
+  # Add Links
+  links = []
+  for link in core.topology.getEntitiesOfType(Link):
+    links.append({"node1":link.node1, "port1":link.port1,\
+                  "node2":link.node2,"port2":link.port2})
+  jsonNOM["links"] = links
   return jsonNOM
