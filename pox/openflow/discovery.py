@@ -176,6 +176,8 @@ class Discovery (EventMixin):
     self._sender = LLDPSender()
     Timer(TIMEOUT_CHECK_PERIOD, self._expireLinks, recurring=True)
 
+    self.topology = core.topology
+
     if core.hasComponent("openflow"):
       self.listenTo(core.openflow)
     else:
@@ -353,25 +355,30 @@ class Discovery (EventMixin):
 
     # print 'LLDP packet in from',chassid,' port',str(portid)
 
-    link = Discovery.Link(originatorDPID, originatorPort, event.dpid,
-                          event.port)
+    link = Discovery.Link(originatorDPID,originatorPort, event.dpid,event.port)
 
     if link not in self.adjacency:
       self.adjacency[link] = time.time()
       log.info('link detected: %s.%i -> %s.%i' %
                (dpidToStr(link.dpid1), link.port1,
                 dpidToStr(link.dpid2), link.port2))
-      self.raiseEventNoErrors(LinkEvent, True, link)
+      #self.raiseEventNoErrors(LinkEvent, True, link)
+      
+      # Create NOM link and add it to the NOM
+      newLink = Link(originatorDPID, originatorPort, event.dpid, event.port)
+      self.topology.addEntity(newLink)
+      self.raiseEventNoErrors(LinkEvent, True, newLink)
     else:
       # Just update timestamp
       self.adjacency[link] = time.time()
-
+      
     return EventHalt # Probably nobody else needs this event
 
   def _deleteLinks (self, links):
     for link in links:
       del self.adjacency[link]
       self.raiseEvent(LinkEvent, False, link)
+      # TODO: Remove it from the NOM
 
 
   def isSwitchOnlyPort (self, dpid, port):
