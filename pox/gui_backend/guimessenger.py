@@ -38,6 +38,7 @@ from pox.messenger.messenger import *
 from pox.lib.revent import *
 from pox.messenger.messenger import MessageReceived
 from pox.lib.graph.nom import *
+from pox.lib.graph.util import *
 import json, traceback
 
 log = core.getLogger()
@@ -71,39 +72,36 @@ class GuiMessengerService (EventMixin):
     if e is EntityJoin:
       entity = args[0]
       if isinstance (entity, Switch):
-        msg = {}
-        msg["type"] = "topology"
-        msg["command"] = "add"
-        msg["node_id"] = [entity.dpid]
-        msg["node_type"] = "switch"
-        self.connection.send(msg)
+        self._addSwitch(entity.dpid)
+      elif isinstance (entity, Host):
+        self._addHost(entity.mac.toStr())
+      elif isinstance (entity, Link):
+        self._addLink(entity.node1, entity.port1, entity.node2, entity.port2)
         
-  """
-  def _handle_openflow_topology_SwitchConnectionUp(self, event):
+  def _addSwitch(self, dpid):
     msg = {}
     msg["type"] = "topology"
     msg["command"] = "add"
-    msg["node_id"] = [event.switch.id]
+    msg["node_id"] = [dpid]
     msg["node_type"] = "switch"
     self.connection.send(msg)
-  """
-    
-  def _handle_openflow_discovery_LinkEvent (self, event):
+  
+  def _addHost(self, mac, object=None):
     msg = {}
     msg["type"] = "topology"
     msg["command"] = "add"
-    msg["links"] = [{"src id":event.link.dpid1, "src port":event.link.port1,\
-                    "dst id":event.link.dpid2, "dst port":event.link.port2 }]
+    msg["node_id"] = [mac]
     msg["node_type"] = "host"
+    msg["object"] = object
     self.connection.send(msg)
-    
-  def _handle_topology_HostJoin(self, event):
-    print "SENDING HOSTJOIN"
+  
+  def _addLink(self, node1, port1, node2, port2):
     msg = {}
     msg["type"] = "topology"
     msg["command"] = "add"
-    msg["node_id"] = [event.host.id]
-    msg["node_type"] = "host"
+    msg["links"] = [{"src id":node1, "src port":port1,\
+                                "dst id":node2, "dst port":port2 }]
+    msg["node_type"] = "host"####
     self.connection.send(msg)
     
   def _handle_MessageReceived (self, event, msg):
@@ -116,7 +114,14 @@ class GuiMessengerService (EventMixin):
           if "type" in r:
             # Dispatch message
             if r["type"] == "topology":
-              pass
+              if r["command"]=="requestall":
+                nom = buildjsonNOM()
+                for s in nom["switches"]:
+                  self._addSwitch(s["dpid"])
+                for h in nom["hosts"]:
+                  self._addHost(h["mac"])
+                for l in nom["links"]:
+                  self._addLink(l["node1"], l["port1"], l["node2"], l["port2"])
             elif r["type"] == "monitoring":
               self.raiseEvent(MonitoringEvent(msg))
             elif r["type"] == "spanning_tree":
