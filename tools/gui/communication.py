@@ -74,14 +74,12 @@ class Communication(QtCore.QThread, QtGui.QWidget):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         #self.sock.setblocking(0)
         try:
+            print "Connecting to backend at %s:%s" % (self.backend_ip,self.backend_port)
             self.sock.connect((self.backend_ip,self.backend_port))
             self.connected = True
         except:
             self.retry_connection()
             
-        #self.subscribe_for_topochanges()
-        #self.subscribe_for_linkutils()
-        
         self.listener = Listener(self)
         self.listener.start()
         
@@ -154,30 +152,6 @@ class Listener(QtCore.QThread):
                 elif msg["type"] == "flowtracer":
                     self.p.flowtracer_received_signal.emit(msg)
                 elif msg["type"] == "log":
+                    print "GOT LOG"
+                    print msg
                     self.p.log_received_signal.emit(msg)
-                    
-class ConsoleInterface():
-    '''
-    Sends JSON commands to NOX
-    '''        
-    def __init__(self, parent):
-        self.consoleWidget = parent
-        ##NOX host
-        self.nox_host = "localhost"
-        ##Port number
-        self.port_no = 2703
-        
-    def send_cmd(self, cmd=None, expectReply=False):        
-        # if textbox empty, construct command
-        if not cmd:
-            print "sending dummy cmd"
-            cmd = "{\"type\":\"lavi\",\"command\":\"request\",\"node_type\":\"all\"}"
-        #Send command
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((self.nox_host,self.port_no))
-        sock.send(cmd)
-        if expectReply:
-            print json.dumps(json.loads(sock.recv(4096)), indent=4)
-        sock.send("{\"type\":\"disconnect\"}")
-        sock.shutdown(1)
-        sock.close() 
