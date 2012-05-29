@@ -701,14 +701,9 @@ class TopologyView(QtGui.QGraphicsView):
         self.links = {}
                 
         self.helloMessenger()        
-                
-        self.get_nodes()
         
-        # Get an initial current snapshot of the topology
-        #self.get_topology()
-                
-        # Subscribe to LAVI for topology changes
-        #self.subscribe_to_topo_changes()
+        # Get an initial current snapshot of the topology        
+        self.get_topology()
         
     def helloMessenger(self):
         '''
@@ -719,56 +714,16 @@ class TopologyView(QtGui.QGraphicsView):
         msg = {"_mux":"gui", "hello":"gui"}
         self.topologyInterface.send(msg)
         
-    def subscribe_to_topo_changes(self):
-        '''
-        Subscribe to topology backend for topology changes
-        '''
-        msg = {}
-        msg["_mux"] = "gui"
-        msg["type"] = "topology"
-        msg["command"] = "subscribe"
-        msg["node_type"] = "all"
-        #msg = json.dumps(msg)
-        self.topologyInterface.send(msg)
-        
-        msg = {}
-        msg["_mux"] = "gui"
-        msg["type"] = "topology"
-        msg["command"] = "subscribe"
-        msg["link_type"] = "all"
-        self.topologyInterface.send(msg)
-        
-    def get_nodes(self):
-        '''
-        Ask topology for an updated nodes set
-        '''
-        msg = {}
-        msg["_mux"] = "gui"
-        msg["type"] = "topology"
-        msg["command"] = "request"
-        msg["node_type"] = "all"
-        #msg = json.dumps(msg)
-        self.topologyInterface.send(msg)
-
-    def get_links(self):
-        '''
-        Ask topology for an updated links set
-        '''
-        msg = {}
-        msg["_mux"] = "gui"
-        msg["type"] = "topology"
-        msg["command"] = "request"
-        msg["link_type"] = "all"
-        #msg = json.dumps(msg)
-        self.topologyInterface.send(msg)
-        
     def get_topology(self):
         '''
         Ask topology for updated nodes and links sets
         '''
-        self.get_nodes()
-        self.get_links()
-        
+        msg = {}
+        msg["_mux"] = "gui"
+        msg["type"] = "topology"
+        msg["command"] = "requestall"
+        self.topologyInterface.send(msg)
+    
     def got_topo_msg(self, msg):
         '''
         Handle received links/nodes message 
@@ -779,11 +734,6 @@ class TopologyView(QtGui.QGraphicsView):
                 new_nodes = []
                 # Populate nodes
                 for nodeID in nodes:
-                    """
-                    # prepend 0s until len = 12
-                    while len(nodeID) < 12 :
-                        nodeID = "0"+nodeID
-                    """
                     # If nodeItem doesn't already exist
                     if nodeID not in self.nodes.keys():
                         nodeItem = Node(self, nodeID, msg["node_type"])
@@ -796,11 +746,7 @@ class TopologyView(QtGui.QGraphicsView):
                 nodes = msg["node_id"]
                 for nodeID in nodes:
                     if not msg["node_type"] == "host":
-                        """
-                        # prepend 0s until len = 12
-                        while len(nodeID) < 12 :
-                            nodeID = "0"+nodeID
-                        """
+                        pass
                     if nodeID in self.nodes.keys():
                         #un-draw node
                         n = self.nodes[nodeID]
@@ -816,21 +762,13 @@ class TopologyView(QtGui.QGraphicsView):
                 # Populate Links
                 linkid = len(self.links)
                 for link in links:
-                
-                    # Lavi advertises 1 link for each direction
-                    # We'll add a single object for a biderectional link
-                    # We'll always use 'minend-maxend' as the key
+                    """
+                    Lavi advertises 1 link for each direction
+                    We'll add a single object for a biderectional link
+                    We'll always use 'minend-maxend' as the key
+                    """
                     srcid = link["src id"]
-                    """
-                    while len(srcid) < 12 :
-                        srcid = "0"+srcid
-                    """
                     dstid = link["dst id"]
-                    """
-                    while len(dstid) < 12 :
-                        dstid = "0"+dstid
-                    """
-                    
                     minend = str(min(srcid,dstid))
                     maxend = str(max(srcid,dstid))
                     key = minend+'-'+maxend
@@ -962,7 +900,6 @@ class TopologyView(QtGui.QGraphicsView):
     def updateAll(self):
         '''
         Refresh all Items
-        # see if there is a auto way to updateall (updateScene()?)
         '''
         self.updateAllNodes()
         self.updateAllLinks()
@@ -983,7 +920,7 @@ class TopologyView(QtGui.QGraphicsView):
         elif key == QtCore.Qt.Key_K:
             self.toggleLinks()
         elif key == QtCore.Qt.Key_L:
-            # LAVI counts a biderctional link as 2 separate links, so IDs overlap
+            # Backend counts a biderctional link as 2 links, so IDs overlap
             self.toggleLinkIDs()
             self.updateAllLinks()
         elif key == QtCore.Qt.Key_P:
@@ -992,9 +929,6 @@ class TopologyView(QtGui.QGraphicsView):
         elif key == QtCore.Qt.Key_H:
             self.toggleHosts()
             self.updateAllNodes()
-        #elif key == QtCore.Qt.Key_R:
-        #    # Refresh topology
-        #    self.get_topology()
         elif key == QtCore.Qt.Key_Space or key == QtCore.Qt.Key_Enter:
             # Redraw topology
             self.positionNodes(self.nodes.values())
@@ -1118,7 +1052,8 @@ class TopologyView(QtGui.QGraphicsView):
         while not line.isNull():
             nodeid,x,y = str(line).split()
             line = f.readLine()
-            nodeid = int(nodeid)
+            if not ":" in nodeid:
+                nodeid = int(nodeid)
             if not nodeid in self.nodes:
                 print "Layout mismatch (node", nodeid, "exists in conf file but has not been discovered on the network)"
             else:
@@ -1164,10 +1099,8 @@ class TopologyView(QtGui.QGraphicsView):
                 
     def mininetLinkUp(self, src, dst):
         self.mininet.linkUp(src, dst)
-        self.parent.setStatusTip("Brought up link %s <-> %s"
-                                     %(src, dst))
+        self.parent.setStatusTip("Brought up link %s <-> %s" %(src, dst))
     
     def mininetLinkDown(self, src, dst):
         self.mininet.linkDown(src, dst)
-        self.parent.setStatusTip("Brought down link %s <-> %s"
-                                     %(src, dst))
+        self.parent.setStatusTip("Brought down link %s <-> %s" %(src, dst))
