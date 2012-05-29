@@ -35,9 +35,6 @@ from pox.core import core
 import pox
 log = core.getLogger()
 
-#import logging
-#log.setLevel(logging.WARN)
-
 from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.ipv4 import ipv4
 from pox.lib.packet.arp import arp
@@ -222,43 +219,40 @@ class HostTracker (EventMixin):
 
     if packet.type == ethernet.LLDP_TYPE:    # Ignore LLDP packets
       return
-    # This should use Topology later 
+    
     if core.openflow_discovery.isSwitchOnlyPort(dpid, inport):
       # No host should be right behind a switch-only port
-      log.debug("%i %i ignoring packetIn at switch-only port", dpid, inport)
+      log.debug("Ignoring packetIn at switch-only port (%i, %i)", dpid, inport)
       return
 
     log.debug("PacketIn: %i %i ETH %s => %s",
             dpid, inport, str(packet.src), str(packet.dst))
 
-    mac = EthAddr(packet.src)
-    # Learn or update dpid/port/MAC info
-    # Look for host with same MAC in topology (should be doable in one line(?))
+    mac = packet.src
     
-    '''
-    hosts = self.topology.getEntitiesOfType(Host)
-    host = None
-    for h in hosts:
-      if h.mac.toStr == mac.toStr:
-        host = h
-    '''
-    #host = core.topology.findIsInstance(Host))
-    host = core.topology.find(IsInstance(Host), mac=mac.toStr())#, one=True)
-    print host
+    # Learn or update dpid/port/MAC info
+    host = core.topology.find(IsInstance(Host), macstr=mac.toStr())#, one=True)
+    
+    """
+    This should be unnecessary. Check if find()'s 'one=True' works
+    """
+    if host:
+      host = host[0]
+    
     if not host:
       # there is no known host by that MAC
       log.info("Learned %s", packet.src)
       (pckt_srcip, hasARP) = self.getSrcIPandARP(packet.next)
       if pckt_srcip:
-        newHost = Host(mac.toStr(), IPAddr(pckt_srcip), (dpid, inport))
+        newHost = Host(mac.toStr(), pckt_srcip, (dpid, inport))
       else:
         newHost = Host(mac.toStr(), None, (dpid, inport))
       self.topology.addEntity(newHost)
       self.raiseEventNoErrors(HostJoin, newHost)
-    elif host[0].location != (dpid, inport):    
+    elif host.location != (dpid, inport):    
       # there is already an entry of host with that MAC, but host has moved
       # should we raise a HostMoved event (at the end)?
-      log.info("Learned %s moved to %i %i", host.mac.toStr(), dpid, inport)
+      log.info("Learned %s moved to %i %i", host.mac, dpid, inport)
       """
       # if there has not been long since heard from it...
       if time.time() - macEntry.lastTimeSeen < timeoutSec['entryMove']:
@@ -268,9 +262,9 @@ class HostTracker (EventMixin):
       # should we create a whole new entry, or keep the previous host info?
       # for now, we keep it: IP info, answers pings, etc.
       """
-      switch = core.topology.getEntityById(dpid)
+      switch = core.topology.getEntityByID(dpid)
       port = inport
-      host.locatio = (s, p)
+      host.location = (switch, port)
     
     return
 
