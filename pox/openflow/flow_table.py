@@ -36,7 +36,7 @@ class TableEntry (object):
   Note: the current time can either be specified explicitely with the optional 'now' parameter or is taken from time.time()
   """
 
-  def __init__(self,priority=OFP_DEFAULT_PRIORITY, cookie = 0, idle_timeout=0, hard_timeout=0, match=ofp_match(), actions=[], buffer_id=None, now=None):
+  def __init__(self,priority=OFP_DEFAULT_PRIORITY, cookie = 0, idle_timeout=0, hard_timeout=0, match=ofp_match(), actions=[], buffer_id=-1, now=None):
     # overriding __new__ instead of init to make fields optional. There's probably a better way to do this.
     if now==None: now = time.time()
     self.counters = {
@@ -64,9 +64,11 @@ class TableEntry (object):
     return TableEntry(priority, cookie, flow_mod.idle_timeout, flow_mod.hard_timeout, match, actions, buffer_id)
 
   def to_flow_mod(self, **kw):
-    return ofp_flow_mod(priority = self.priority, cookie = self.cookie, match = self.match,
-                        idle_timeout = self.idle_timeout, hard_timeout = self.hard_timeout,
-                          actions = self.actions, buffer_id = self.buffer_id, **kw)
+    print "BUFID", self.buffer_id
+    return ofp_flow_mod(priority = self.priority, cookie = self.cookie,
+            match = self.match, idle_timeout = self.idle_timeout,
+            hard_timeout = self.hard_timeout, actions = self.actions,
+            buffer_id = self.buffer_id, **kw)
 
   def is_matched_by(self, match, priority = None, strict = False):
     """ return whether /this/ entry is matched by some other entry (e.g., for FLOW_MOD updates) """
@@ -312,11 +314,7 @@ class NOMFlowTable(EventMixin):
     for op in todo:
       fmod_xid = self.switch.xid_generator.next()
       flow_mod = op[1].to_flow_mod(xid=fmod_xid, command=op[0])
-      #self.switch.send(flow_mod) #this hangs - Also, is this where we want to
-      #issue the flow mod? Currently the model is a bit confusing: Do we want to
-      #[manually send a flow_mod and update the nom] OR [write the nom, and IT 
-      #will automatically take care of pushing the sate to the network? 
-
+      self.switch.send(flow_mod) 
 
     barrier_xid = self.switch.xid_generator.next()
     self.switch.send(ofp_barrier_request(xid=barrier_xid))
@@ -324,7 +322,7 @@ class NOMFlowTable(EventMixin):
     self.pending_barrier_to_ops[barrier_xid] = todo
 
     #for op in todo:
-    #  self.pending_op_to_barrier[op] = (barrier_xid, now) this hangs
+    #  self.pending_op_to_barrier[op] = (barrier_xid, now) #this hangs
 
 
   def _handle_SwitchConnectionUp(self, event):
@@ -349,7 +347,6 @@ class NOMFlowTable(EventMixin):
           added.append(entry)
         else:
           removed.extend(self.flow_table.remove_matching_entries(entry.match, entry.priority, strict=command == NOMFlowTable.REMOVE_STRICT))
-        print "op: %s, pending: %s" % (op, self.pending)
         self.pending.remove(op)
       del self.pending_barrier_to_ops[barrier.xid]
       self.raiseEvent(FlowTableModification(added = added, removed=removed))
