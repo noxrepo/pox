@@ -36,7 +36,7 @@ class TableEntry (object):
   Note: the current time can either be specified explicitely with the optional 'now' parameter or is taken from time.time()
   """
 
-  def __init__(self,priority=OFP_DEFAULT_PRIORITY, cookie = 0, idle_timeout=0, hard_timeout=0, match=ofp_match(), actions=[], buffer_id=-1, now=None):
+  def __init__(self,priority=OFP_DEFAULT_PRIORITY, cookie = 0, idle_timeout=0, hard_timeout=0, flags=0, match=ofp_match(), actions=[], buffer_id=-1, now=None):
     # overriding __new__ instead of init to make fields optional. There's probably a better way to do this.
     if now==None: now = time.time()
     self.counters = {
@@ -49,6 +49,7 @@ class TableEntry (object):
     self.cookie = cookie
     self.idle_timeout = idle_timeout
     self.hard_timeout = hard_timeout
+    self.flags = flags
     self.match = match
     self.actions = actions
     self.buffer_id = buffer_id
@@ -60,15 +61,17 @@ class TableEntry (object):
     match = flow_mod.match
     actions = flow_mod.actions
     buffer_id = flow_mod.buffer_id
+    flags = flow_mod.flags
 
-    return TableEntry(priority, cookie, flow_mod.idle_timeout, flow_mod.hard_timeout, match, actions, buffer_id)
+    return TableEntry(priority, cookie, flow_mod.idle_timeout, flow_mod.hard_timeout, flags, match, actions, buffer_id)
 
-  def to_flow_mod(self, **kw):
-    print "BUFID", self.buffer_id
+  def to_flow_mod(self, flags=None, **kw):
+    if not flags:
+      flags = self.flags 
     return ofp_flow_mod(priority = self.priority, cookie = self.cookie,
             match = self.match, idle_timeout = self.idle_timeout,
             hard_timeout = self.hard_timeout, actions = self.actions,
-            buffer_id = self.buffer_id, **kw)
+            buffer_id = self.buffer_id, flags = flags, **kw)
 
   def is_matched_by(self, match, priority = None, strict = False):
     """ return whether /this/ entry is matched by some other entry (e.g., for FLOW_MOD updates) """
@@ -313,7 +316,7 @@ class NOMFlowTable(EventMixin):
 
     for op in todo:
       fmod_xid = self.switch.xid_generator.next()
-      flow_mod = op[1].to_flow_mod(xid=fmod_xid, command=op[0])
+      flow_mod = op[1].to_flow_mod(xid=fmod_xid, command=op[0], flags=op[1].flags | OFPFF_SEND_FLOW_REM)
       self.switch.send(flow_mod) 
 
     barrier_xid = self.switch.xid_generator.next()
@@ -321,8 +324,8 @@ class NOMFlowTable(EventMixin):
     now = time.time()
     self.pending_barrier_to_ops[barrier_xid] = todo
 
-    #for op in todo:
-    #  self.pending_op_to_barrier[op] = (barrier_xid, now) #this hangs
+    for op in todo:
+      self.pending_op_to_barrier[op] = (barrier_xid, now) #this hangs
 
 
   def _handle_SwitchConnectionUp(self, event):
@@ -358,7 +361,11 @@ class NOMFlowTable(EventMixin):
     """ process a flow removed event -- remove the matching flow from the table. """
     flow_removed = event.ofp
     for entry in self.flow_table.entries:
+      print flow_removed.match
+      print entry.match
+      print "(MATCH)" if flow_removed.match == entry.match else "(NO MATCH)"
       if(flow_removed.match == entry.match and flow_removed.priority == entry.priority):
+        print "REMOVING MATCHING ENTRY FROM NOM"
         self.flow_table.remove_entry(entry)
         self.raiseEvent(FlowTableModification(removed=[entry]))
         return EventHalt
