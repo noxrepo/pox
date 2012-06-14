@@ -232,12 +232,45 @@ class ofp_command_test(unittest.TestCase):
         o = ofp_packet_out(xid=xid, actions=actions, **attrs)
         self._test_pack_unpack(o, xid, OFPT_PACKET_OUT)
 
+  def test_pack_flow_mod_openflow_dl_type_wildcards(self):
+    """ Openflow 1.1 spec clarifies that wildcards should not be set when the protocol in
+        question is not matched i.e., dl_type != 0x800 -> no wildcards for IP.
+        Test this here """
+    def show_wildcards(w):
+      parts = [ k.lower()[len("OFPFW_"):] for (k,v) in ofp_flow_wildcards_rev_map.iteritems() if v & w == v ]
+      nw_src_bits = (w & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT
+      nw_src_bits = (w & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT
+      if(nw_src_bits > 0): parts.append("nw_src(/%d)" % (32 - nw_src_bits))
+
+      nw_dst_bits = (w & OFPFW_NW_DST_MASK) >> OFPFW_NW_DST_SHIFT
+      if(nw_dst_bits > 0): parts.append("nw_dst(/%d)" % (32 - nw_dst_bits))
+      return "|".join(parts)
+
+    def test_wildcards(match, expected):
+      (packed,) = struct.unpack_from("!L", match.pack())
+      self.assertEquals(packed, expected, "packed: %s <> expected: %s" % (show_wildcards(packed), show_wildcards(expected)))
+
+    # no dl type specified -> wildcards for nw/dl are cleared
+    test_wildcards(ofp_match(), OFPFW_ALL & ~ (OFPFW_NW_TOS | OFPFW_NW_PROTO | OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK | OFPFW_TP_SRC | OFPFW_TP_DST))
+    all_normalized = (OFPFW_ALL & ~ (OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)) | \
+            OFPFW_NW_SRC_ALL | OFPFW_NW_DST_ALL
+
+    # dl type = ARP -> certain wildcards live
+    test_wildcards(ofp_match(dl_type=0x806), all_normalized & ~ (OFPFW_NW_TOS | OFPFW_TP_SRC | OFPFW_TP_DST | OFPFW_DL_TYPE))
+    # dl type = IP -> more wildcards live
+    test_wildcards(ofp_match(dl_type=0x800), all_normalized & ~ (OFPFW_TP_SRC | OFPFW_TP_DST | OFPFW_DL_TYPE))
+    # dl type = IP, nw_proto=UDP -> alll wildcards live
+    test_wildcards(ofp_match(dl_type=0x800,nw_proto=6), all_normalized & ~(OFPFW_DL_TYPE | OFPFW_NW_PROTO))
+
+
   def test_pack_custom_flow_mod(self):
     out = ofp_action_output
     xid_gen = xid_generator()
 
     for match in ( ofp_match(),
-        ofp_match(in_port=1, dl_type=0, dl_src=EthAddr("00:00:00:00:00:01"), dl_dst=EthAddr("00:00:00:00:00:02"), dl_vlan=5, nw_proto=6, nw_src="10.0.0.1", nw_dst="11.0.0.1", tp_src = 12345, tp_dst=80)):
+        ofp_match(in_port=1, dl_type=0x88cc, dl_src=EthAddr("00:00:00:00:00:01"), dl_dst=EthAddr("00:00:00:00:00:02")),
+        ofp_match(in_port=1, dl_type=0x0806, dl_src=EthAddr("00:00:00:00:00:01"), dl_dst=EthAddr("00:00:00:00:00:02"), nw_src="10.0.0.1", nw_dst="11.0.0.1"),
+        ofp_match(in_port=1, dl_type=0x0800, dl_src=EthAddr("00:00:00:00:00:01"), dl_dst=EthAddr("00:00:00:00:00:02"), dl_vlan=5, nw_proto=6, nw_src="10.0.0.1", nw_dst="11.0.0.1", tp_src = 12345, tp_dst=80)):
       for actions in self.some_actions:
         for command in ( OFPFC_ADD, OFPFC_DELETE, OFPFC_DELETE_STRICT, OFPFC_MODIFY_STRICT, OFPFC_MODIFY_STRICT ):
           for attrs in ( {}, { 'buffer_id' : 123 }, { 'idle_timeout': 5, 'hard_timeout': 10 } ):
