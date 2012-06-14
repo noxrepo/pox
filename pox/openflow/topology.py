@@ -282,7 +282,6 @@ class OpenFlowSwitch (EventMixin, Switch):
 
   def _handle_con_FlowRemoved (self, event):
     self.raiseEvent(event)
-    self.flowTable.removeFlow(event)
     event.halt = False
 
   def findPortForEntity (self, entity):
@@ -305,6 +304,10 @@ class OpenFlowSwitch (EventMixin, Switch):
     return self._connection != None
   def name(self):
     return repr(self)
+    
+  def installFlow(self, **kw):
+    """ install a flow in the local flow table(NOM) as well as into the associated switch """
+    self.flow_table.install(TableEntry(**kw))
 
 def launch ():
   #if not core.hasComponent("openflow_topology"):
