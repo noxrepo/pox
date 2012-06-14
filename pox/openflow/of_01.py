@@ -505,6 +505,9 @@ class Connection (EventMixin):
   def fileno (self):
     return self.sock.fileno()
 
+  def is_disconnected(self):
+    return self.disconnected
+
   def disconnect (self, hard = False):
     """
     disconnect this Connection (usually not invoked manually).
@@ -713,6 +716,18 @@ class OpenFlow_01_Task (Task):
       try:
         while True:
           con = None
+          # Remove any connections which have been disconnected. This is possible
+          # in read or send below, for example, if the remote host hung up during
+          # send.
+          for con in sockets:
+            if con is not listener:
+              if con.is_disconnected():
+                log.info('Connection %s closed unexpectedly. Removing it.', str(con))
+                try:
+                  sockets.remove(con)
+                except:
+                  pass
+
           rlist, wlist, elist = yield Select(sockets, [], sockets, 5)
           if len(rlist) == 0 and len(wlist) == 0 and len(elist) == 0:
             """
