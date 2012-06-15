@@ -2366,7 +2366,7 @@ class ofp_flow_stats (object):
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 48 + len(self.match())):
+    if (len(binaryString) < 48 + len(self.match)):
       return binaryString
     (self.length, self.table_id, pad) = struct.unpack_from("!HBB", binaryString, 0)
     self.match.unpack(binaryString[4:])
@@ -2513,6 +2513,7 @@ class ofp_aggregate_stats (object):
     outstr += prefix + 'byte_count: ' + str(self.byte_count) + '\n'
     outstr += prefix + 'flow_count: ' + str(self.flow_count) + '\n'
     return outstr
+ofp_aggregate_stats_reply = ofp_aggregate_stats
 
 class ofp_table_stats (object):
   def __init__ (self, **kw):
