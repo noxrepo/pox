@@ -39,6 +39,7 @@ def sort_fdlists(rl,wl,xl) :
             sorted(xl, key=key)
         )
 
+@unittest.skipUnless(sys.platform.startswith("linux"), "requires Linux")
 class EpollSelectTest(unittest.TestCase):
   def setUp(self):
     self.es = EpollSelect()
