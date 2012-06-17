@@ -287,7 +287,7 @@ def pre_startup ():
   process_options()
 
   if enable_openflow:
-    pox.openflow.connection_arbiter.launch() # Default OpenFlow launch
+    pox.openflow.launch() # Default OpenFlow launch
 
   if custom_log_config:
     setup_logging(custom_log_config, True)

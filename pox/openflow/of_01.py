@@ -29,8 +29,6 @@ import datetime
 from pox.lib.socketcapture import CaptureSocket
 import pox.openflow.debug
 from pox.openflow.util import make_type_to_class_table
-from pox.openflow.connection_arbiter import *
-
 from pox.openflow import *
 
 log = core.getLogger()
