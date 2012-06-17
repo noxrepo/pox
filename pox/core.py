@@ -185,9 +185,14 @@ class POXCore (EventMixin):
     self.components = {}
 
     self.version = (0,0,0)
-    print "{0} / Copyright 2011 James McCauley".format(self.version_string)
+    print self.banner
 
     self.scheduler = recoco.Scheduler(daemon=True)
+
+  @property
+  def banner (self):
+    return "{0} / Copyright 2011-2012 James McCauley, et al.".format(
+     self.version_string)
 
   @property
   def version_string (self):
@@ -260,15 +265,20 @@ class POXCore (EventMixin):
       self.raiseEvent(DownEvent())
       log.info("Down.")
 
+  def _get_python_version (self):
+    try:
+      import platform
+      return "{impl} ({vers}/{build})".format(
+       impl=platform.python_implementation(),
+       vers=platform.python_version(),
+       build=platform.python_build()[1].replace("  "," "))
+    except:
+      return "Unknown Python"
+
   def goUp (self):
     log.debug(self.version_string + " going up...")
 
-    import platform
-    py = "{impl} ({vers}/{build})".format(
-     impl=platform.python_implementation(),
-     vers=platform.python_version(),
-     build=platform.python_build()[1].replace("  "," "))
-    log.debug("Running on " + py)
+    log.debug("Running on " + self._get_python_version)
 
     self.raiseEvent(GoingUpEvent())
     log.info(self.version_string + " is up.")
