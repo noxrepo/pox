@@ -278,7 +278,7 @@ class POXCore (EventMixin):
   def goUp (self):
     log.debug(self.version_string + " going up...")
 
-    log.debug("Running on " + self._get_python_version)
+    log.debug("Running on " + self._get_python_version())
 
     self.raiseEvent(GoingUpEvent())
     log.info(self.version_string + " is up.")
