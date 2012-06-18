@@ -23,6 +23,8 @@
 # is a good idea if you're using Python from MacPorts, for example.
 # We fall back to just "python" and hope that works.
 
+#TODO: Make runnable by itself (paths need adjusting, etc.).
+
 ''''echo -n
 export OPT="-u -O"
 export FLG=""
@@ -47,6 +49,7 @@ import logging.config
 import os
 import sys
 import traceback
+import time
 
 from pox.core import core
 import pox.openflow
@@ -308,7 +311,6 @@ class POXOptions (Options):
     self.verbose = False
     self.enable_openflow = True
     self.log_config = None
-    self.deadlock = False # Deadlock detection
 
   def _set_h (self, given_name, name, value):
     self._set_help(given_name, name, value)
@@ -427,6 +429,9 @@ def _setup_logging ():
 
 
 def boot ():
+  """
+  Start up POX.
+  """
 
   # Add pox directory to path
   sys.path.append(os.path.abspath(os.path.join(sys.path[0], 'pox')))
@@ -453,7 +458,6 @@ def boot ():
     print "and you are welcome to redistribute it under certain conditions."
     print "Type 'help(pox.license)' for details."
     import pox.license
-    import time
     time.sleep(1)
     import code
     sys.ps1 = "POX> "
@@ -463,23 +467,12 @@ def boot ():
     code.interact('Ready.', local=l)
   else:
     try:
-      import time
       import inspect
       
       while True:
-        if _options.deadlock:
-          frames = sys._current_frames()
-          for key in frames:
-            frame = frames[key]
-            print inspect.getframeinfo(frame)
-            outer_frames = inspect.getouterframes(frame)
-            for i in range(0, len(outer_frames)): 
-              print "     " + str(inspect.getframeinfo(outer_frames[i][0]))
-
         time.sleep(5)
     except:
-      if _options.deadlock:
-        traceback.print_exc(file=sys.stdout)
+      pass
     #core.scheduler._thread.join() # Sleazy
 
   try:
