@@ -125,7 +125,6 @@ class LearningSwitch (EventMixin):
         msg.match = of.ofp_match.from_packet(packet)
         msg.idle_timeout = duration[0]
         msg.hard_timeout = duration[1]
-        msg.actions.append(of.ofp_action_output(port = port))
         msg.buffer_id = event.ofp.buffer_id
         self.connection.send(msg)
       elif event.ofp.buffer_id != -1:
