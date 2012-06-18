@@ -1,3 +1,20 @@
+# Copyright 2011 Andreas Wundsam
+#
+# This file is part of POX.
+#
+# POX is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# POX is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+
 import inspect
 
 import pox.openflow.libopenflow_01 as of
@@ -8,6 +25,22 @@ _slave_blacklist = set([of.ofp_flow_mod, of.ofp_packet_out, of.ofp_port_mod, of.
 _messages_for_all = set([of.ofp_port_status])
 
 class NXSwitchImpl(SwitchImpl):
+  """ Extension of the SwichImpl software switch that supports the nicira (NX) vendor extension from
+      OpenVSwitch that allows the switch to connect to multiple controllers at the same time.
+
+      In the beginning, all controllers start out as equals (ROLE_OTHER). Through the NX vendor message
+      role_request, one controller can be promoted to ROLE_MASTER, in which case all other controllers
+      are downgraded to slave status.
+
+      The switch doesn't accept state-mutating messages (e.g., FLOW_MOD, see _slave_blacklist) from
+      slave controllers.
+
+      Messages are distributed to controllers according to their type:
+       - symmetric message replies are sent to the controller that initiated them (e.g., STATS_REQUEST -> REPLY)
+       - port_status messages are distributed to all controllers
+       - all other messages are distributed to the master controller, or if non is present, any controller
+         in ROLE_OTHER
+  """
   def __init__(self, *args, **kw):
     SwitchImpl.__init__(self, *args, **kw)
     self.role_by_conn={}

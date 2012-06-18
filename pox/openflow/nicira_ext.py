@@ -1,3 +1,20 @@
+# Copyright 2011 Andreas Wundsam
+#
+# This file is part of POX.
+#
+# POX is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# POX is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+
 import struct
 
 from pox.lib.util import initHelper
@@ -13,6 +30,9 @@ ROLE_MASTER = 1
 ROLE_SLAVE = 2
 
 class nx_data(object):
+  """ base class for the data field of Nicira vendor extension
+      commands. Picked from the floodlight source code.
+  """
   def __init__ (self, **kw):
     self.subtype = 0
     self.length = 4
@@ -53,6 +73,7 @@ class nx_data(object):
     return outstr
 
 class role_data(nx_data):
+  """ base class for the data field of nx role requests."""
   def __init__ (self, subtype, **kw):
     nx_data.__init__(self)
     self.subtype = subtype
@@ -99,10 +120,12 @@ class role_data(nx_data):
     return outstr
 
 class role_request_data(role_data):
+  """ Role request. C->S """
   def __init__ (self, **kw):
     role_data.__init__(self, ROLE_REQUEST, **kw)
 
 class role_reply_data(role_data):
+  """ Role reply S->C """
   def __init__ (self, **kw):
     role_data.__init__(self, ROLE_REPLY, **kw)
 
