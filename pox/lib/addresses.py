@@ -82,31 +82,23 @@ class EthAddr (object):
     strings, long integers, etc.
     """
     # Always stores as a 6 character string
-    if isinstance(addr, int) or isinstance(addr, long):
-      addr = long(addr)
-      # Store the long as an array of 6 bytes
-      # Struct puts the least significant byte at [0] though!
-      # And Murphy puts the least significant byte at [-1]
-      # So we pack ourselves one byte at a time
-      val = []
-      for _ in range(6):
-        # This may not be machine-independent...
-        val.insert(0, struct.pack("B", (addr & 0xFF)))
-        addr >>= 8
-      self._value = ''.join(val)
-    elif isinstance(addr, bytes) or isinstance(addr, unicode):
+    if isinstance(addr, bytes) or isinstance(addr, unicode):
       if len(addr) == 17 or len(addr) == 12 or addr.count(':') == 5:
         # hex
         if len(addr) == 17:
           if addr[2::3] != ':::::' and addr[2::3] != '-----':
             raise RuntimeError("Bad format for ethernet address")
-          # TODOC: I have no clue what this is doing
+          # Address of form xx:xx:xx:xx:xx:xx
+          # Pick out the hex digits only
           addr = ''.join((addr[x*3:x*3+2] for x in xrange(0,6)))
         elif len(addr) == 12:
           pass
         else:
+          # Assume it's hex digits but they may not all be in two-digit
+          # groupings (e.g., xx:x:x:xx:x:x). This actually comes up.
           addr = ''.join(["%02x" % (int(x,16),) for x in addr.split(":")])
-        # TODOC: I have no clue what this is doing
+        # We should now have 12 hex digits (xxxxxxxxxxxx).
+        # Convert to 6 raw bytes.
         addr = b''.join((chr(int(addr[x*2:x*2+2], 16)) for x in range(0,6)))
       elif len(addr) == 6:
         # raw
@@ -123,18 +115,6 @@ class EthAddr (object):
     else:
       raise RuntimeError("Expected ethernet address to be a string of 6 raw bytes or some hex")
 
-  def isGlobal (self):
-    """
-    Returns True if this is a globally unique (OUI enforced) address.
-    """
-    return not self.isLocal()
-
-  def isLocal (self):
-    """
-    Returns True if this is a locally-administered (non-global) address.
-    """
-    return True if (ord(self._value[0]) & 2) else False
-
   def isBridgeFiltered (self):
     """
     Returns True if this is IEEE 802.1D MAC Bridge Filtered MAC Group Address,
@@ -147,14 +127,6 @@ class EthAddr (object):
     	and (ord(self._value[3]) == 0x00)
     	and (ord(self._value[4]) == 0x00)
     	and (ord(self._value[5]) <= 0x0F))
-
-  @property
-  def is_local (self):
-    return self.isLocal()
-
-  @property
-  def is_global (self):
-    return self.isGlobal()
 
   def isGlobal (self):
     """
@@ -191,22 +163,6 @@ class EthAddr (object):
     Returns the address as a 6-long bytes object.
     """
     return self._value
-
-  def toInt (self):
-    '''
-    Returns the address as an (unsigned) integer
-    '''
-    value = 0
-    # Struct puts the least significant (bit|byte) leftmost, 
-    # but Murphy puts least significant (bit|byte) rightmost
-    # So we unpack ourselves, one byte at a time
-    # most-significant byte is leftmost (self._value[0])
-    for i in range(len(self._value)):
-      byte_shift = 5-i
-      byte = self._value[i]
-      byte_value = struct.unpack("B", byte)[0]
-      value += (byte_value << (8*byte_shift))
-    return value
 
   def toTuple (self):
     """
