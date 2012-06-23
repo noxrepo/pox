@@ -143,7 +143,7 @@ def launch ():
       if event is None:
         # Only do this the first time
         log.warning("Deferring firing up LogMessengerListener because Messenger isn't up yet")
-        core.addListenerByName("ComponentRegistered", realStart, once=True)
+      core.addListenerByName("ComponentRegistered", realStart, once=True)
       return
     if not core.hasComponent(LogMessengerListener.__name__):
       core.registerNew(LogMessengerListener)
