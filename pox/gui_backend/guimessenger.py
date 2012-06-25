@@ -67,41 +67,19 @@ class GuiMessengerService (EventMixin):
     self.connection = connection
     self.listenTo(connection)
     
+    self.myEncoder = NOMEncoder()
+    
   def _handle_topology_Update(self, event, *args, **kw):
-    e = event.event
-    if e is EntityJoin:
+    if event.event is EntityJoin:
       entity = args[0]
-      if isinstance (entity, Switch):
-        self._addSwitch(entity.dpid)
-      elif isinstance (entity, Host):
-        self._addHost(entity.mac.toStr())
-      elif isinstance (entity, Link):
-        self._addLink(entity.node1, entity.port1, entity.node2, entity.port2)
-        
-  def _addSwitch(self, dpid):
+      self._addEntity(entity)
+      
+  def _addEntity(self, object):
     msg = {}
     msg["type"] = "topology"
     msg["command"] = "add"
-    msg["node_id"] = [dpid]
-    msg["node_type"] = "switch"
-    self.connection.send(msg)
-  
-  def _addHost(self, mac, object=None):
-    msg = {}
-    msg["type"] = "topology"
-    msg["command"] = "add"
-    msg["node_id"] = [mac]
-    msg["node_type"] = "host"
-    msg["object"] = object
-    self.connection.send(msg)
-  
-  def _addLink(self, node1, port1, node2, port2):
-    msg = {}
-    msg["type"] = "topology"
-    msg["command"] = "add"
-    msg["links"] = [{"src id":node1, "src port":port1,\
-                                "dst id":node2, "dst port":port2 }]
-    msg["node_type"] = "host"####
+    jsonobject = self.myEncoder.encode(object)
+    msg["jsonobject"] = jsonobject
     self.connection.send(msg)
     
   def _handle_MessageReceived (self, event, msg):
@@ -115,13 +93,12 @@ class GuiMessengerService (EventMixin):
             # Dispatch message
             if r["type"] == "topology":
               if r["command"]=="requestall":
-                nom = buildjsonNOM()
-                for s in nom["switches"]:
-                  self._addSwitch(s["dpid"])
-                for h in nom["hosts"]:
-                  self._addHost(h["mac"])
-                for l in nom["links"]:
-                  self._addLink(l["node1"], l["port1"], l["node2"], l["port2"])
+                entities = []
+                entities.extend(core.topology.getEntitiesOfType(Switch))
+                entities.extend(core.topology.getEntitiesOfType(Host))
+                entities.extend(core.topology.getEntitiesOfType(Link))
+                for e in entities:
+                  self._addEntity(e)
             elif r["type"] == "monitoring":
               self.raiseEvent(MonitoringEvent(msg))
             elif r["type"] == "spanning_tree":
