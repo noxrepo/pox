@@ -202,7 +202,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     BarrierIn,
   ])
 
-  def __init__ (self, dpid):
+  def __init__ (self, dpid=None, **kw):
     Switch.__init__(self)#, id=dpid)
     EventMixin.__init__(self)
     self.dpid = dpid
@@ -212,7 +212,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     self._connection = None
     self._listeners = []
     self._reconnectTimeout = None # Timer for reconnection
-    self.xid_generator = xid_generator( ((dpid & 0x7FFF) << 16) + 1)
+    self._xid_generator = xid_generator( ((self.dpid & 0x7FFF) << 16) + 1)
 
   def _setConnection (self, connection, ofp=None):
     ''' ofp - a FeaturesReply message '''
