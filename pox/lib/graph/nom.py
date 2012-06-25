@@ -52,8 +52,6 @@ class EntityLeave (EntityEvent):
   """
   pass
 
-
-
 class SwitchEvent (EntityEvent): pass
 
 class SwitchJoin (SwitchEvent):
@@ -104,7 +102,6 @@ class LinkEvent (Event):
       return self.link.port2
     return None
 
-
 class Update (Event):
   """
   Fired by Topology whenever anything has changed
@@ -129,11 +126,13 @@ class Host (Entity):
   """
   A generic Host entity.
   """
-  def __init__(self, mac, ip=None, location=None):
+  def __init__(self, macstr=None, ip=None, location=None, **kw):
     Entity.__init__(self) 
-    self.macstr = mac # this string is used as a key for topology.find()
-    self.mac = EthAddr(mac)
-    self.ip = ip
+    if macstr:
+      self.mac = EthAddr(macstr)
+      self.macstr = self.mac.toStr() # this is used as a key for topology.find()
+    if ip:
+      self.ip = IPAddr(ip)
     self.location = location
     '''
     This is an example of what can be added by a component that does
@@ -172,7 +171,6 @@ class Port (Entity):
     self.hwAddr = EthAddr(hwAddr)
     self.name = name
 
-
 class Link (Entity):
   """
   A generic Link entity.
@@ -187,6 +185,18 @@ class Link (Entity):
   def __repr__ (self):
     return "<Link (%s:%s <-> %s:%s)" % (self.node1 , self.port1,
                                         self.node2, self.port2)
+class AccessLink (Link):
+  """
+  A Link connecting a host to a switch.
+  """
+  def __init__(self, node1, port1, hostmac):
+    Entity.__init__(self) 
+    self.node1 = node1
+    self.port1 = port1
+    self.hostmac = hostmac
+    
+  def __repr__ (self):
+    return "<Link (%s:%s <-> %s)" % (self.node1 , self.port1, self.hostmac)    
 
 class NOM (Graph, EventMixin):
   __eventMixin_events = [
