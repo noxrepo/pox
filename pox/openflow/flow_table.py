@@ -241,18 +241,18 @@ class NOMFlowTable(EventMixin):
   REMOVE_STRICT = OFPFC_DELETE_STRICT
   TIME_OUT = 2
 
-  def __init__(self, switch):
+  def __init__(self, switch=None, **kw):
     EventMixin.__init__(self)
     self.flow_table = FlowTable()
     self.switch = switch
 
     # a list of pending flow table entries : tuples (ADD|REMOVE, entry)
-    self.pending = []
+    self._pending = []
 
     # a map of pending barriers barrier_xid-> ([entry1,entry2])
-    self.pending_barrier_to_ops = {}
+    self._pending_barrier_to_ops = {}
     # a map of pending barriers per request entry -> (barrier_xid, time)
-    self.pending_op_to_barrier = {}
+    self._pending_op_to_barrier = {}
 
     self.listenTo(switch)
 
@@ -277,7 +277,7 @@ class NOMFlowTable(EventMixin):
 
   @property
   def num_pending(self):
-    return len(self.pending)
+    return len(self._pending)
 
   def __len__(self):
     return len(self.flow_table)
@@ -288,11 +288,11 @@ class NOMFlowTable(EventMixin):
 
     for entry in entries:
       if(command == NOMFlowTable.REMOVE):
-        self.pending = filter(lambda(command, pentry): not (command == NOMFlowTable.ADD and entry.matches_with_wildcards(pentry)), self.pending)
+        self._pending = filter(lambda(command, pentry): not (command == NOMFlowTable.ADD and entry.matches_with_wildcards(pentry)), self._pending)
       elif(command == NOMFlowTable.REMOVE_STRICT):
-        self.pending = filter(lambda(command, pentry): not (command == NOMFlowTable.ADD and entry == pentry), self.pending)
+        self._pending = filter(lambda(command, pentry): not (command == NOMFlowTable.ADD and entry == pentry), self._pending)
 
-      self.pending.append( (command, entry) )
+      self._pending.append( (command, entry) )
 
     self._sync_pending()
 
@@ -302,30 +302,30 @@ class NOMFlowTable(EventMixin):
 
     # resync the switch
     if clear:
-      self.pending_barrier_to_ops = {}
-      self.pending_op_to_barrier = {}
-      self.pending = filter(lambda(op): op[0] == NOMFlowTable.ADD, self.pending)
+      self._pending_barrier_to_ops = {}
+      self._pending_op_to_barrier = {}
+      self._pending = filter(lambda(op): op[0] == NOMFlowTable.ADD, self._pending)
 
       self.switch.send(ofp_flow_mod(command=OFPFC_DELETE, match=ofp_match()))
       self.switch.send(ofp_barrier_request())
 
-      todo = map(lambda(e): (NOMFlowTable.ADD, e), self.flow_table.entries) + self.pending
+      todo = map(lambda(e): (NOMFlowTable.ADD, e), self.flow_table.entries) + self._pending
     else:
-      todo = [ op for op in self.pending
-          if op not in self.pending_op_to_barrier or (self.pending_op_to_barrier[op][1] + NOMFlowTable.TIME_OUT) < time.time ]
+      todo = [ op for op in self._pending
+          if op not in self._pending_op_to_barrier or (self._pending_op_to_barrier[op][1] + NOMFlowTable.TIME_OUT) < time.time ]
 
     for op in todo:
-      fmod_xid = self.switch.xid_generator.next()
+      fmod_xid = self.switch._xid_generator.next()
       flow_mod = op[1].to_flow_mod(xid=fmod_xid, command=op[0], flags=op[1].flags | OFPFF_SEND_FLOW_REM)
       self.switch.send(flow_mod) 
 
-    barrier_xid = self.switch.xid_generator.next()
+    barrier_xid = self.switch._xid_generator.next()
     self.switch.send(ofp_barrier_request(xid=barrier_xid))
     now = time.time()
-    self.pending_barrier_to_ops[barrier_xid] = todo
+    self._pending_barrier_to_ops[barrier_xid] = todo
 
     for op in todo:
-      self.pending_op_to_barrier[op] = (barrier_xid, now) #this hangs
+      self._pending_op_to_barrier[op] = (barrier_xid, now) #this hangs
 
 
   def _handle_SwitchConnectionUp(self, event):
@@ -334,24 +334,24 @@ class NOMFlowTable(EventMixin):
 
   def _handle_SwitchConnectionDown(self, event):
     # connection down. too bad for our unconfirmed entries
-    self.pending_barrier_to_ops = {}
-    self.pending_op_to_barrier = {}
+    self._pending_barrier_to_ops = {}
+    self._pending_op_to_barrier = {}
 
   def _handle_BarrierIn(self, barrier):
     # yeah. barrier in. time to sync some of these flows
-    if barrier.xid in self.pending_barrier_to_ops:
+    if barrier.xid in self._pending_barrier_to_ops:
       added = []
       removed = []
-      #print "barrier in: pending for barrier: %d: %s" % (barrier.xid, self.pending_barrier_to_ops[barrier.xid])
-      for op in self.pending_barrier_to_ops[barrier.xid]:
+      #print "barrier in: pending for barrier: %d: %s" % (barrier.xid, self._pending_barrier_to_ops[barrier.xid])
+      for op in self._pending_barrier_to_ops[barrier.xid]:
         (command, entry) = op
         if(command == NOMFlowTable.ADD):
           self.flow_table.add_entry(entry)
           added.append(entry)
         else:
           removed.extend(self.flow_table.remove_matching_entries(entry.match, entry.priority, strict=command == NOMFlowTable.REMOVE_STRICT))
-        self.pending.remove(op)
-      del self.pending_barrier_to_ops[barrier.xid]
+        self._pending.remove(op)
+      del self._pending_barrier_to_ops[barrier.xid]
       self.raiseEvent(FlowTableModification(added = added, removed=removed))
       return EventHalt
     else:
@@ -361,11 +361,8 @@ class NOMFlowTable(EventMixin):
     """ process a flow removed event -- remove the matching flow from the table. """
     flow_removed = event.ofp
     for entry in self.flow_table.entries:
-      print flow_removed.match
-      print entry.match
-      print "(MATCH)" if flow_removed.match == entry.match else "(NO MATCH)"
       if(flow_removed.match == entry.match and flow_removed.priority == entry.priority):
-        print "REMOVING MATCHING ENTRY FROM NOM"
+        #print "Removing matching entry from NOM"
         self.flow_table.remove_entry(entry)
         self.raiseEvent(FlowTableModification(removed=[entry]))
         return EventHalt
