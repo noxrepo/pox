@@ -249,6 +249,12 @@ class HostTracker (EventMixin):
         newHost = Host(mac.toStr(), None, (dpid, inport))
       self.topology.addEntity(newHost)
       self.raiseEventNoErrors(HostJoin, newHost)
+      
+      # Create new access link and add it on the NOM
+      newLink = AccessLink(dpid, inport, newHost.macstr)
+      self.topology.addEntity(newLink)
+      self.raiseEventNoErrors(LinkEvent, True, newLink)
+      
     elif host.location != (dpid, inport):    
       # there is already an entry of host with that MAC, but host has moved
       # should we raise a HostMoved event (at the end)?
@@ -265,6 +271,8 @@ class HostTracker (EventMixin):
       switch = core.topology.getEntityByID(dpid)
       port = inport
       host.location = (switch, port)
+      
+      # TODO, remove old access link from NOM and add new one
     
     return
 
