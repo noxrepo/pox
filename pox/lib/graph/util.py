@@ -20,6 +20,7 @@ Various NOM utility functions
 """
 from pox.core import core
 from pox.lib.graph.nom import Switch, Host, Link
+#from pox.lib.addresses import *
 import json
 
 def saveNOM(target="nom"):
@@ -83,3 +84,51 @@ def buildjsonNOM():
                   "node2":link.node2,"port2":link.port2})
   jsonNOM["links"] = links
   return jsonNOM
+
+
+def encode_host(host):
+  pass
+
+class NOMEncoder(json.JSONEncoder):
+    
+  jsontypes = (dict, list, tuple, str, unicode, int, long, float, True,
+                 False, None)
+  
+  def default(self, obj, visited=None, level=None):
+    # Convert objects to a dictionary of their representation
+    if not visited:
+      visited = []
+    if id(obj) in visited and not type(obj) in self.jsontypes:
+      return
+    else:
+      visited.append(id(obj))
+    d = {'__class__':obj.__class__.__name__,'__module__':obj.__module__,}
+    for k, v in obj.__dict__.items():
+      if k[0] == '_':
+        continue
+      f = [x for x in visited if isinstance(x, type(v)) and not type(v) in self.jsontypes]
+      if id(v) not in f:
+        visited.append(id(v))
+        d[k] = v if (type(v) in self.jsontypes or v == None) else self.default(v, visited)
+    return d
+
+import importlib
+      
+class NOMDecoder(json.JSONDecoder):
+    
+  def __init__(self):
+    json.JSONDecoder.__init__(self, object_hook=self.dict_to_object)
+
+  def dict_to_object(self, d):
+    if '__class__' in d:
+      class_name = d.pop('__class__')
+      module_name = d.pop('__module__')
+      module = importlib.import_module(module_name)
+      class_ = getattr(module, class_name)
+      #print 'CLASS:', class_
+      args = dict( (key.encode('ascii'), value) for key, value in d.items())
+      #print 'INSTANCE ARGS:', args
+      inst = class_(**args)
+    else:
+      inst = d
+    return inst
