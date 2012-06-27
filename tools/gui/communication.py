@@ -152,6 +152,4 @@ class Listener(QtCore.QThread):
                 elif msg["type"] == "flowtracer":
                     self.p.flowtracer_received_signal.emit(msg)
                 elif msg["type"] == "log":
-                    print "GOT LOG"
-                    print msg
                     self.p.log_received_signal.emit(msg)
