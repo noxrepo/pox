@@ -20,6 +20,12 @@ from views.spanningtree import STP_View
 from views.samplerouting import Sample_Routing_View
 from views.flowtracer import Flow_Tracer_View
 
+# there should be a better way to to a relative import for the following
+# (have pox/tests/tools the same package)
+import sys, itertools, os
+sys.path.append(os.path.join(os.path.dirname(__file__), *itertools.repeat("..", 2)))
+from pox.lib.graph.nom import Host as NOMHost, Switch as NOMSwitch, Link as NOMLink, AccessLink as NOMAccessLink
+from pox.lib.graph.util import NOMDecoder
 
 class Node(QtGui.QGraphicsItem):
     '''
@@ -211,11 +217,11 @@ class Node(QtGui.QGraphicsItem):
     def mouseReleaseEvent(self, event):
         if event.button() == QtCore.Qt.RightButton:
             popup = QtGui.QMenu()
-            # Switch Details Menu
+            # Node Details Menu
             if self.type == "switch":
                 popup.addAction("Show &Flow Table", self.query_flow_stats)
                 popup.addSeparator()
-                popup.addMenu(self.nodeDetails)
+                #popup.addMenu(self.nodeDetails)
                 popup.addSeparator()
                 # Build new stats menu (move to init and build once?)
                 statsMenu = QtGui.QMenu( '&Get Switch Stats' )
@@ -317,7 +323,7 @@ class Node(QtGui.QGraphicsItem):
         self.stillHover = True
         
         # refresh nodeDetails menu
-        self.nodeDetails = QtGui.QMenu('&Switch Details')
+        self.nodeDetails = QtGui.QMenu('&Node Details')
         if self.type == "switch":
             self.nodeDetails.addAction('Datapath ID: 0x%s' % self.id)
             self.nodeDetails.addAction('Table Size: '+ '')
@@ -376,7 +382,7 @@ class Link(QtGui.QGraphicsItem):
         # Link details menu
         self.linkDetails = QtGui.QMenu('&Link Details')
         self.linkDetails.addAction('Link ID: %s'%self.uid)
-        self.linkDetails.addAction("Ends: %i:%i - %i:%i"%(self.source.id,
+        self.linkDetails.addAction("Ends: %s:%s - %s:%s"%(self.source.id,
                                    self.sport, self.dest.id, self.dport))
         self.linkDetails.addAction('Capacity: ')
 
@@ -696,6 +702,8 @@ class TopologyView(QtGui.QGraphicsView):
                 (self.got_topo_msg)
         self.updateAllSignal.connect(self.updateAll)
         
+        self.myDecoder = NOMDecoder()
+        
         # Dictionaries holding node and link QGraphicsItems
         self.nodes = {}
         self.links = {}
@@ -718,16 +726,69 @@ class TopologyView(QtGui.QGraphicsView):
         '''
         Ask topology for updated nodes and links sets
         '''
-        msg = {}
-        msg["_mux"] = "gui"
-        msg["type"] = "topology"
-        msg["command"] = "requestall"
+        msg = {"_mux":"gui", "type":"topology", "command":"requestall"}
         self.topologyInterface.send(msg)
     
     def got_topo_msg(self, msg):
         '''
         Handle received links/nodes message 
         '''
+        if msg["command"] == "add":
+            if not "jsonobject" in msg:
+                raise RuntimeError("Got ADD command without jsonobject")
+            jsonobj = msg["jsonobject"]
+            obj = self.myDecoder.decode(jsonobj)
+            if isinstance(obj, NOMHost):
+                nodeID = obj.macstr
+                if nodeID not in self.nodes.keys():
+                    nodeItem = Node(self, nodeID, "host")
+                    self.nodes[nodeID] = nodeItem
+                    self.addNode(nodeItem)
+                    self.positionNodes([nodeItem])
+            elif isinstance(obj, NOMSwitch):
+                nodeID = obj.dpid
+                if nodeID not in self.nodes.keys():
+                    nodeItem = Node(self, nodeID, "switch")
+                    self.nodes[nodeID] = nodeItem
+                    self.addNode(nodeItem)
+                    self.positionNodes([nodeItem])
+            elif isinstance(obj, NOMLink):
+                # If it is an AccessLink
+                if isinstance(obj, NOMAccessLink):
+                    srcid = obj.node1
+                    dstid = obj.hostmac
+                    key = str(srcid)+'-'+str(dstid)
+                    
+                    # Create new linkItem
+                    linkid = len(self.links)
+                    linkItem = Link(self, self.nodes[srcid], self.nodes[dstid],\
+                        obj.port1, 1, linkid) 
+                # If it is a switch-switch link
+                else:
+                    '''
+                    The backend advertises 1 link for each direction
+                    We'll add a single object for a biderectional link
+                    We'll always use 'minend-maxend' as the key
+                    '''
+                    srcid = obj.node1
+                    dstid = obj.node2
+                    minend = str(min(srcid,dstid))
+                    maxend = str(max(srcid,dstid))
+                    key = minend+'-'+maxend
+                    
+                    if key in self.links:
+                        return
+                    
+                    # Create new linkItem
+                    linkid = len(self.links)
+                    linkItem = Link(self, self.nodes[srcid], self.nodes[dstid],\
+                        obj.port1, obj.port2, linkid) 
+                    self.links[key]=linkItem
+                
+                # Add it to the Scene
+                self.addLink(linkItem)
+        
+        """
         if "node_id" in msg:
             if msg["command"] == "add":
                 nodes = msg["node_id"]
@@ -762,11 +823,11 @@ class TopologyView(QtGui.QGraphicsView):
                 # Populate Links
                 linkid = len(self.links)
                 for link in links:
-                    """
+                    '''
                     Lavi advertises 1 link for each direction
                     We'll add a single object for a biderectional link
                     We'll always use 'minend-maxend' as the key
-                    """
+                    '''
                     srcid = link["src id"]
                     dstid = link["dst id"]
                     minend = str(min(srcid,dstid))
@@ -807,15 +868,27 @@ class TopologyView(QtGui.QGraphicsView):
                         
                     else:    
                         print "Attempted to removed inexistent link:", key
-        
+            """
         self.updateAll()
+    
+    def addNode(self, newNode):
+        '''
+        Add new node to topology Scene
+        '''
+        self.topoScene.addItem(newNode)
     
     def addNodes(self, new_nodes):
         '''
-        Add nodes to topology Scene
+        Add list of nodes to topology Scene
         '''
         for nodeItem in new_nodes:
-            self.topoScene.addItem(nodeItem)
+            self.addNode(nodeItem)
+            
+    def addLink(self, newLink):
+        '''
+        Add new link to topology Scene
+        '''
+        self.topoScene.addItem(newLink)
             
     def addLinks(self, new_links):
         '''
