@@ -76,11 +76,16 @@ class EthAddr (object):
   """
   An Ethernet (MAC) address type.
   """
-  def __init__ (self, addr):
+  def __init__ (self, addr=None, **kw):
     """
     Understands Ethernet address is various forms.  Hex strings, raw byte
     strings, long integers, etc.
     """
+    # For automatic intantiation from serialized object
+    if '_value' in kw:
+      self._value = kw['_value']
+      return
+      
     # Always stores as a 6 character string
     if isinstance(addr, int) or isinstance(addr, long):
       addr = long(addr)
@@ -244,13 +249,17 @@ class IPAddr (object):
   """
   Represents an IPv4 address.
   """
-  def __init__ (self, addr, networkOrder = False):
+  def __init__ (self, addr=None, networkOrder = False, **kw):
     """ Can be initialized with several formats.
         If addr is an int/long, then it is assumed to be in host byte order
         unless networkOrder = True
         Stored in network byte order as a signed int
     """
-
+    # For automatic intantiation from serialized object
+    if '_value' in kw:
+      self._value = kw['_value']
+      return
+      
     # Always stores as a signed network-order int
     if isinstance(addr, str) or isinstance(addr, bytes):
       if len(addr) != 4:

@@ -31,7 +31,6 @@ from pox.lib.packet.udp import udp
 from pox.lib.packet.tcp import tcp
 from pox.lib.packet.icmp import icmp
 from pox.lib.packet.arp import arp
-from pox.lib.packet.mpls import mpls
 
 from pox.lib.addresses import *
 from pox.lib.util import assert_type

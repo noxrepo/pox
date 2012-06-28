@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 '''
-NOX GUI
+POX GUI
 This file creates the main application window, sets up the layout and invokes
 the GUI's widgets.
 The left panel (log) is used for displaying context-specific information.
-The right panel (topology) is an interactive display of the topology
-The bottom right pane (console) is a frontend for communication with
-jsonmessenger.
+The right panel (topology) is an interactive display of the topology.
 
 @author Kyriakos Zarifis (kyr.zarifis@gmail.com)
 '''
@@ -20,7 +18,6 @@ from PyQt4 import QtGui, QtCore
 import gui.log as log
 import gui.info as info
 import gui.topology as topology
-import gui.console as console
 import gui.Popup as Popup
 import gui.settings as settings
 from gui.communication import Communication
@@ -48,6 +45,8 @@ class MainWindow(QtGui.QMainWindow):
             self.usage()
             sys.exit(2)
 
+        self.mininet_address = None
+        
         #Get options
         self.backend_port = 7790 #GuiMessenger port
         for opt,arg in opts:
@@ -83,7 +82,6 @@ class MainWindow(QtGui.QMainWindow):
         self.logWidget = log.LogWidget(self)
         self.infoWidget = info.InfoWidget(self)
         self.topoWidget = topology.TopoWidget(self)
-        self.consoleWidget = console.ConsoleWidget(self)
         
                 
         # Initialize communication with backend messengers
@@ -102,7 +100,6 @@ class MainWindow(QtGui.QMainWindow):
 
         self.rightvbox = QtGui.QVBoxLayout()
         self.rightvbox.addWidget(self.topoWidget)
-        self.rightvbox.addWidget(self.consoleWidget)
         self.right = QtGui.QWidget()
         self.right.setLayout(self.rightvbox)
 
@@ -134,11 +131,6 @@ class MainWindow(QtGui.QMainWindow):
         switch_to_split.setShortcut('Ctrl+3')
         switch_to_split.setStatusTip('Switch to split view')
         self.connect(switch_to_split, QtCore.SIGNAL('triggered()'), self.show_split)
-
-        toggle_console = QtGui.QAction(QtGui.QIcon('gui/icons/split.png'),'Show/Hide Console',self)
-        toggle_console.setShortcut('Ctrl+4')
-        toggle_console.setStatusTip('Show/Hide Console')
-        self.connect(toggle_console, QtCore.SIGNAL('triggered()'), self.toggle_show_console)
 
         exit = QtGui.QAction(QtGui.QIcon('gui/icons/exit.png'), 'Exit', self)
         exit.setShortcut('Ctrl+Q')
@@ -179,7 +171,6 @@ class MainWindow(QtGui.QMainWindow):
         view_menu.addAction(switch_to_log)
         view_menu.addAction(switch_to_topo)
         view_menu.addAction(switch_to_split)
-        view_menu.addAction(toggle_console)
         id_size_menu = view_menu.addMenu('ID size')
         id_size_menu.addAction(set_node_id_size_small)
         id_size_menu.addAction(set_node_id_size_normal)
@@ -203,8 +194,6 @@ class MainWindow(QtGui.QMainWindow):
         toolbar.addAction(switch_to_topo)
         toolbar.addAction(switch_to_split)
         toolbar.addAction(exit)
-        
-        self.toggle_show_console()
 
     def center(self):
         screen = QtGui.QDesktopWidget().screenGeometry()
@@ -276,13 +265,6 @@ class MainWindow(QtGui.QMainWindow):
         #self.topoWidget.topologyView.update()
         self.topoWidget.topologyView.scaleView(0.5)
         self.topoWidget.topologyView.scaleView(2)
-
-
-    def toggle_show_console(self):
-        if self.consoleWidget.isHidden():
-            self.consoleWidget.show()
-        else:
-            self.consoleWidget.hide()
 
 app = QtGui.QApplication(sys.argv)
 app.setWindowIcon(QtGui.QIcon('gui/icons/logo.ico'))

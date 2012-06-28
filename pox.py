@@ -295,10 +295,6 @@ def pre_startup ():
   return True
 
 def post_startup ():
-  #core.register("openflow_topology", pox.openflow.openflowtopology.OpenFlowTopology())
-  #core.register("topology", pox.topology.topology.Topology())
-  #core.register("openflow_discovery", pox.openflow.discovery.Discovery())
-  #core.register("switch", pox.dumb_l3_switch.dumb_l3_switch.dumb_l3_switch())
 
   if enable_openflow:
     pox.openflow.of_01.launch() # Usually, we launch of_01
