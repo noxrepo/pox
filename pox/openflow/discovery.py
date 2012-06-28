@@ -198,8 +198,21 @@ class Discovery (EventMixin):
       msg = of.ofp_flow_mod(match = of.ofp_match(dl_type = ethernet.LLDP_TYPE,
                                                  dl_dst = NDP_MULTICAST))
       msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
+      
+      
+      #msg.hard_timeout = 5
+      msg.flags = 1
+      """
+      
       event.connection.send(msg)
-
+      
+      """
+      # Install through NOM
+      dp = core.topology.getEntityByID(event.dpid)
+      dp.installFlow(priority=msg.priority, cookie=msg.cookie, \
+          idle_timeout=msg.idle_timeout, hard_timeout=msg.hard_timeout, \
+          match=msg.match, actions=msg.actions)
+      
     self._dps.add(event.dpid)
     self._sender.addSwitch(event.dpid, [(p.port_no, p.hw_addr)
                                         for p in event.ofp.ports])
@@ -378,9 +391,11 @@ class Discovery (EventMixin):
     for link in links:
       del self.adjacency[link]
       self.raiseEvent(LinkEvent, False, link)
+      
       # TODO: Remove it from the NOM
-
-
+      #l = self.topology.getEntitiesOfType(Link, node1=, node2=)
+      #self.topology.removeEntity(l)
+      
   def isSwitchOnlyPort (self, dpid, port):
     """ Returns True if (dpid, port) designates a port that has any
     neighbor switches"""
