@@ -322,6 +322,34 @@ class IPAddr (object):
     object.__setattr__(self, a, v)
 
 
+def netmask_to_cidr (dq):
+  """
+  Takes a netmask as either an IPAddr or a string, and returns the number
+  of network bits.  e.g., 255.255.255.0 -> 24
+  Raise exception if subnet mask is not CIDR-compatible.
+  """
+  if isinstance(dq, str):
+    dq = IPAddr(dq)
+  v = dq.toUnsigned(networkOrder=False)
+  c = 0
+  while v & 0x80000000:
+    c += 1
+    v <<= 1
+  v = v & 0xffFFffFF
+  if v != 0:
+    raise RuntimeError("Netmask %s is not CIDR-compatible" % (dq,))
+  return c
+
+
+def cidr_to_netmask (bits):
+  """
+  Takes a number of network bits, and returns the corresponding netmask
+  as an IPAddr.  e.g., 24 -> 255.255.255.0
+  """
+  v = (1 << bits) - 1
+  v = v << (32-bits)
+  return IPAddr(v, networkOrder = False)
+
 
 def parseCIDR (addr, infer=True):
   """
@@ -368,6 +396,7 @@ def parseCIDR (addr, infer=True):
   assert wild >= 0 and wild <= 32
   return check(IPAddr(addr[0]), wild)
 
+
 def inferNetMask (addr):
   """
   Uses network classes to guess the number of wildcard bits, and returns
@@ -391,6 +420,7 @@ def inferNetMask (addr):
     return 0 # exact match
   # Must be a Class E (Experimental)
     return 0
+
 
 IP_ANY = IPAddr("0.0.0.0")
 IP_BROADCAST = IPAddr("255.255.25.255")
