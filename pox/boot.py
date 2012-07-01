@@ -428,6 +428,40 @@ def _setup_logging ():
                               disable_existing_loggers=True)
 
 
+class Interactive (object):
+  """
+  This is how other applications can interact with the interpreter.
+
+  At the moment, it's really limited.
+  """
+  def __init__ (self):
+    core.register("Interactive", self)
+
+    import pox.license
+    self.variables = dict(locals())
+    self.variables['core'] = core
+
+    self.running = False
+
+  def interact (self):
+    """ Begin user interaction """
+
+    _monkeypatch_console()
+
+    print "This program comes with ABSOLUTELY NO WARRANTY.  This program " \
+          "is free software,"
+    print "and you are welcome to redistribute it under certain conditions."
+    print "Type 'help(pox.license)' for details."
+    time.sleep(1)
+
+    import code
+    sys.ps1 = "POX> "
+    sys.ps2 = " ... "
+    self.running = True
+    code.interact('Ready.', local=self.variables)
+    self.running = False
+
+
 def boot ():
   """
   Start up POX.
@@ -450,26 +484,14 @@ def boot ():
     traceback.print_exc()
     return
 
+  interactive = Interactive()
   if _options.cli:
-    _monkeypatch_console()
-
-    print "This program comes with ABSOLUTELY NO WARRANTY.  This program " \
-          "is free software,"
-    print "and you are welcome to redistribute it under certain conditions."
-    print "Type 'help(pox.license)' for details."
-    import pox.license
-    time.sleep(1)
-    import code
-    sys.ps1 = "POX> "
-    sys.ps2 = " ... "
-    l = dict(locals())
-    l['core'] = core
-    code.interact('Ready.', local=l)
+    interactive.interact()
   else:
     try:
       import inspect
       
-      while True:
+      while core.running:
         time.sleep(5)
     except:
       pass
