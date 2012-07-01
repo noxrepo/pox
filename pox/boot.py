@@ -100,12 +100,12 @@ def _do_import (name):
       else:
         # This means we found the module we were looking for, but one
         # of its dependencies was missing.
-        showFail()
+        show_fail()
         return False
     except:
       # There was some other sort of exception while trying to load the
       # module.  Just print a trace and call it a day.
-      showFail()
+      show_fail()
       return False
 
   return do_import2(name, ["pox." + name, name])
@@ -471,6 +471,8 @@ def boot ():
   sys.path.append(os.path.abspath(os.path.join(sys.path[0], 'pox')))
   sys.path.append(os.path.abspath(os.path.join(sys.path[0], 'ext')))
 
+  interactive = Interactive()
+
   try:
     if _do_launch(sys.argv[1:]):
       _post_startup()
@@ -484,7 +486,6 @@ def boot ():
     traceback.print_exc()
     return
 
-  interactive = Interactive()
   if _options.cli:
     interactive.interact()
   else:
