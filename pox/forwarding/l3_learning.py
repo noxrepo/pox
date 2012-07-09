@@ -32,9 +32,10 @@ from pox.core import core
 import pox
 log = core.getLogger()
 
-from pox.lib.packet.ethernet import ethernet
+from pox.lib.packet.ethernet import ethernet, ETHER_BROADCAST
 from pox.lib.packet.ipv4 import ipv4
 from pox.lib.packet.arp import arp
+from pox.lib.addresses import IPAddr, EthAddr
 
 import pox.openflow.libopenflow_01 as of
 
@@ -72,11 +73,20 @@ class Entry (object):
     return not self.__eq__(other)
 
   def isExpired (self):
+    if self.port == of.OFPP_NONE: return False
     return time.time() > self.timeout
 
 
+def dpid_to_mac (dpid):
+  return EthAddr("%012x" % (dpid & 0xffFFffFFffFF,))
+
+
 class l3_switch (EventMixin):
-  def __init__ (self):
+  def __init__ (self, fakeways = []):
+    # These are "fake gateways" -- we'll answer ARPs for them with MAC
+    # of the switch they're connected to.
+    self.fakeways = set(fakeways)
+
     # For each switch, we map IP addresses to Entries
     self.arpTable = {}
 
@@ -97,6 +107,9 @@ class l3_switch (EventMixin):
     if dpid not in self.arpTable:
       # New switch -- create an empty table
       self.arpTable[dpid] = {}
+      for fake in self.fakeways:
+        self.arpTable[dpid][IPAddr(fake)] = Entry(of.OFPP_NONE,
+         dpid_to_mac(dpid))
 
     if packet.type == ethernet.LLDP_TYPE:
       # Ignore LLDP packets
@@ -119,6 +132,7 @@ class l3_switch (EventMixin):
         # We have info about what port to send it out on...
 
         prt = self.arpTable[dpid][dstaddr].port
+        mac = self.arpTable[dpid][dstaddr].mac
         if prt == inport:
           log.warning("%i %i not sending packet for %s back out of the input port" % (
            dpid, inport, str(dstaddr)))
@@ -126,13 +140,44 @@ class l3_switch (EventMixin):
           log.debug("%i %i installing flow for %s => %s out port %i" % (dpid,
             inport, str(packet.next.srcip), str(dstaddr), prt))
 
+          actions = []
+          actions.append(of.ofp_action_dl_addr(type=of.OFPAT_SET_DL_DST,dl_addr=mac))
+          actions.append(of.ofp_action_output(port = prt))
+          match = of.ofp_match.from_packet(packet, inport)
+          match.dl_src = None # Wildcard source MAC
+
           msg = of.ofp_flow_mod(command=of.OFPFC_ADD,
                                 idle_timeout=FLOW_IDLE_TIMEOUT,
                                 hard_timeout=of.OFP_FLOW_PERMANENT,
                                 buffer_id=event.ofp.buffer_id,
-                                action=of.ofp_action_output(port = prt),
+                                actions=actions,
                                 match=of.ofp_match.from_packet(packet, inport))
           event.connection.send(msg.pack())
+      else:
+        # We don't know this destination.  So... let's ARP for it!
+        # Ultimately, this should result in it responding and us learning
+        # where it is.
+        r = arp()
+        r.hwtype = r.HW_TYPE_ETHERNET
+        r.prototype = r.PROTO_TYPE_IP
+        r.hwlen = 6
+        r.protolen = r.protolen
+        r.opcode = r.REQUEST
+        r.hwdst = ETHER_BROADCAST
+        r.protodst = dstaddr
+        r.hwsrc = packet.src
+        r.protosrc = packet.next.srcip
+        e = ethernet(type=ethernet.ARP_TYPE, src=packet.src,
+                     dst=ETHER_BROADCAST)
+        e.set_payload(r)
+        log.debug("%i %i ARPing for %s on behalf of %s" % (dpid, inport,
+         str(r.protodst), str(r.protosrc)))
+        msg = of.ofp_packet_out()
+        msg.data = e.pack()
+        msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+        msg.in_port = inport
+        event.connection.send(msg)
+        return
 
     elif isinstance(packet.next, arp):
       a = packet.next
@@ -171,7 +216,7 @@ class l3_switch (EventMixin):
                   r.protodst = a.protosrc
                   r.protosrc = a.protodst
                   r.hwsrc = self.arpTable[dpid][a.protodst].mac
-                  e = ethernet(type=packet.type, src=r.hwsrc, dst=a.hwsrc)
+                  e = ethernet(type=packet.type, src=dpid_to_mac(dpid), dst=a.hwsrc)
                   e.set_payload(r)
                   log.debug("%i %i answering ARP for %s" % (dpid, inport,
                    str(r.protosrc)))
@@ -199,6 +244,8 @@ class l3_switch (EventMixin):
     return
 
 
-def launch ():
-  core.registerNew(l3_switch)
+def launch (fakeways=""):
+  fakeways = fakeways.replace(","," ").split()
+  fakeways = [IPAddr(x) for x in fakeways]
+  core.registerNew(l3_switch, fakeways)
 
