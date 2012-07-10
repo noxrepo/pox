@@ -246,7 +246,7 @@ class ofp_command_test(unittest.TestCase):
       return "|".join(parts)
 
     def test_wildcards(match, expected):
-      (packed,) = struct.unpack_from("!L", match.pack())
+      (packed,) = struct.unpack_from("!L", match.pack(flow_mod=True))
       self.assertEquals(packed, expected, "packed: %s <> expected: %s" % (show_wildcards(packed), show_wildcards(expected)))
 
     # no dl type specified -> wildcards for nw/dl are cleared
