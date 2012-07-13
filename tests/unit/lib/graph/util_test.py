@@ -39,17 +39,47 @@ class EncoderTest(unittest.TestCase):
     assert (host.ip.toStr()=="10.0.0.11")
     assert (host.location==[1,2])
   
+  def test_encode_ofp_match(self):
+    """ test that Matches can be json encoded """
+    m = ofp_match(dl_type=0x88cc, dl_src=EthAddr("00:00:00:00:00:02"))
+    
+    myEncoder = NOMEncoder(encoding="ISO-8859-1")
+    encoded_match = myEncoder.encode(m)
+    #print m
+    print encoded_match
+    assert m.dl_src.toStr() == "00:00:00:00:00:02"
+  
+  def test_encode_table_entry(self):
+    """ test that TableEntries can be json encoded """
+    te = TableEntry(priority=5, cookie=0xDEADBEEF, match=ofp_match(), actions=[ofp_action_output(port=1)])
+    assert te.priority == 5 
+  
   def test_encode_of_switch(self):
     """ test that switches can be json encoded """
     switch = OpenFlowSwitch(1512)
-    #tableEntries = []
-    #tableEntries.append(TableEntry(priority=5, cookie=0xDEADBEEF, match=ofp_match(), actions=[ofp_action_output(port=1)]))
-    #tableEntries.append(TableEntry.from_flow_mod(ofp_flow_mod(priority=5, cookie=0x31415926, actions=[ofp_action_output(port=5)])))
-    #switch.flow_table.entries = tableEntries
     
     myEncoder = NOMEncoder()
     encoded_switch = myEncoder.encode(switch)
     assert "\"dpid\": 1512" in encoded_switch
+    
+  def test_decode_ofp_match(self):
+    encoded_match = "{\
+\"_nw_proto\": 0, \"wildcards\": 3672315, \"__module__\": \"pox.openflow.libopenflow_01\",\
+\"_dl_dst\": {\"__module__\": \"pox.lib.addresses\", \"__class__\": \"EthAddr\",\
+\"value\": \"\u0000\u0000\u0000\u0000\u0000\u0001\"},\
+\"_nw_src\": {\"__module__\": \"pox.lib.addresses\", \"__class__\": \"IPAddr\",\
+\"value\": 197121}, \"_tp_dst\": 0, \"_dl_vlan_pcp\": 0, \"__class__\": \"ofp_match\",\
+\"dl_type\": 35020, \"_dl_vlan\": 0, \"_in_port\": 0, \"_nw_dst\": 0, \"_nw_tos\": 0,\
+\"_dl_src\": {\"__module__\": \"pox.lib.addresses\", \"__class__\": \"EthAddr\",\
+\"value\": \"\u0000\u0000\u0000\u0000\u0000\u0002\"}, \"_dl_type\": 0, \"_tp_src\": 0}"  
+    
+    myDecoder = NOMDecoder()
+    match = myDecoder.decode(encoded_match)
+    assert (match.dl_type == 0x88cc)
+    assert (match.dl_src.toStr() == "00:00:00:00:00:02")
+    
+  def test_decode_table_entry(self):
+    pass
     
   def test_decode_of_switch(self):
     """ test that switches can be decoded """
