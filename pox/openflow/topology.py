@@ -213,8 +213,8 @@ class OpenFlowSwitch (EventMixin, Switch):
     EventMixin.__init__(self)
     self.dpid = dpid
     #self.ports = {}
-    self.flow_table = NOMFlowTable(self)
-    self.capabilities = 0
+    self.flow_table = kw.get('flow_table', NOMFlowTable(self))
+    self.capabilities = kw.get('capabilities', 0)
     self._connection = None
     self._listeners = []
     self._reconnectTimeout = None # Timer for reconnection
