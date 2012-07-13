@@ -108,12 +108,12 @@ class NOMEncoder(json.JSONEncoder):
         continue
       f = [x for x in visited if isinstance(x, type(v)) and not type(v) in self.jsontypes]
       if id(v) not in f:
-        visited.append(id(v))
         d[k] = v if (type(v) in self.jsontypes or v == None) else self.default(v, visited)
+        visited.append(id(v))
     return d
 
 import importlib
-      
+
 class NOMDecoder(json.JSONDecoder):
     
   def __init__(self):
