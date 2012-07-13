@@ -81,7 +81,7 @@ class FlowTableTest(unittest.TestCase):
           ):
       t=table()
       t.remove_matching_entries(match, priority=priority, strict=strict)
-      self.assertEqual([e.cookie for e in t._table], remaining)
+      self.assertEqual([e.cookie for e in t.table], remaining)
 
   def test_remove_expired_entries(self):
     """ test that flow can get expired as time passes """
@@ -106,8 +106,8 @@ class SwitchFlowTableTest(unittest.TestCase):
     """ test that simple insertion of a flow works"""
     t = SwitchFlowTable()
     t.process_flow_mod(ofp_flow_mod(priority=5, cookie=0x31415926, actions=[ofp_action_output(port=5)]))
-    self.assertEqual(len(t._table), 1)
-    e = t._table[0]
+    self.assertEqual(len(t.table), 1)
+    e = t.table[0]
     self.assertEqual(e.priority, 5)
     self.assertEqual(e.cookie, 0x31415926)
     self.assertEqual(e.actions, [ ofp_action_output(port=5)])
