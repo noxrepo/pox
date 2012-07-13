@@ -36,7 +36,7 @@ class TableEntry (object):
   Note: the current time can either be specified explicitely with the optional 'now' parameter or is taken from time.time()
   """
 
-  def __init__(self,priority=OFP_DEFAULT_PRIORITY, cookie = 0, idle_timeout=0, hard_timeout=0, flags=0, match=ofp_match(), actions=[], buffer_id=-1, now=None):
+  def __init__(self,priority=OFP_DEFAULT_PRIORITY, cookie = 0, idle_timeout=0, hard_timeout=0, flags=0, match=ofp_match(), actions=[], buffer_id=-1, now=None, **kw):
     # overriding __new__ instead of init to make fields optional. There's probably a better way to do this.
     if now==None: now = time.time()
     self.counters = {
@@ -45,14 +45,15 @@ class TableEntry (object):
         'bytes': 0,
         'packets': 0
     }
-    self.priority = priority
-    self.cookie = cookie
-    self.idle_timeout = idle_timeout
-    self.hard_timeout = hard_timeout
-    self.flags = flags
-    self.match = match
-    self.actions = actions
-    self.buffer_id = buffer_id
+    self.priority = kw.get('priority', priority)
+    self.cookie = kw.get('cookie', cookie)
+    self.idle_timeout = kw.get('idle_timeout', idle_timeout)
+    self.hard_timeout = kw.get('hard_timeout', hard_timeout)
+    self.flags = kw.get('flags', flags)
+    self.match = kw.get('match', match)
+    #print kw['match']
+    self.actions = kw.get('actions', actions)
+    self.buffer_id = kw.get('buffer_id', buffer_id)
 
   @staticmethod
   def from_flow_mod(flow_mod):
@@ -133,7 +134,7 @@ class FlowTable (EventMixin):
   General model of a flow table. Maintains an ordered list of flow entries, and finds
   matching entries for packets and other entries. Supports expiration of flows.
   """
-  def __init__(self):
+  def __init__(self, **kw):
     EventMixin.__init__(self)
     # For now we represent the table as a multidimensional array.
     #
@@ -142,35 +143,35 @@ class FlowTable (EventMixin):
     #    ...                        ]
     # 
     # Implies O(N) lookup for now. TODO: fix
-    self._table = []
+    self.table = kw.get('table', [])
 
   @property
   def entries(self):
-    return self._table
+    return self.table
 
   def __len__(self):
-    return len(self._table)
+    return len(self.table)
 
   def add_entry(self, entry):
     if not isinstance(entry, TableEntry):
       raise "Not an Entry type"
-    self._table.append(entry)
+    self.table.append(entry)
 
     # keep table sorted by descending priority, with exact matches always going first
     # note: python sort is stable
-    self._table.sort(key=lambda(e): (e.priority if e.match.is_wildcarded else (1<<16) + 1), reverse=True)
+    self.table.sort(key=lambda(e): (e.priority if e.match.is_wildcarded else (1<<16) + 1), reverse=True)
 
     self.raiseEvent(FlowTableModification(added=[entry]))
 
   def remove_entry(self, entry):
     if not isinstance(entry, TableEntry):
       raise "Not an Entry type"
-    self._table.remove(entry)
+    self.table.remove(entry)
     self.raiseEvent(FlowTableModification(removed=[entry]))
 
   def entries_for_port(self, port_no):
     entries = []
-    for entry in self._table:
+    for entry in self.table:
       actions = entry.actions
       if len(actions) > 0:
         last_action = actions[-1]
@@ -181,25 +182,25 @@ class FlowTable (EventMixin):
     return entries
 
   def matching_entries(self, match, priority=0, strict=False, out_port=None):
-    return [ entry for entry in self._table if entry.is_matched_by(match, priority, strict, out_port) ]
+    return [ entry for entry in self.table if entry.is_matched_by(match, priority, strict, out_port) ]
 
   def flow_stats(self, match, out_port=None, now=None):
     return ( e.flow_stats() for e in self.matching_entries(match=match, strict=False, out_port=out_port))
 
   def expired_entries(self, now=None):
-    return [ entry for entry in self._table if entry.is_expired(now) ]
+    return [ entry for entry in self.table if entry.is_expired(now) ]
 
   def remove_expired_entries(self, now=None):
     remove_flows = self.expired_entries(now)
     for entry in remove_flows:
-        self._table.remove(entry)
+        self.table.remove(entry)
     self.raiseEvent(FlowTableModification(removed=remove_flows))
     return remove_flows
 
   def remove_matching_entries(self, match, priority=0, strict=False):
     remove_flows = self.matching_entries(match, priority, strict)
     for entry in remove_flows:
-        self._table.remove(entry)
+        self.table.remove(entry)
     self.raiseEvent(FlowTableModification(removed=remove_flows))
     return remove_flows
 
@@ -208,7 +209,7 @@ class FlowTable (EventMixin):
     on the given in_port, or None if no matching entry is found. """
     packet_match = ofp_match.from_packet(packet, in_port)
 
-    for entry in self._table:
+    for entry in self.table:
       if entry.match.matches_with_wildcards(packet_match, consider_other_wildcards=False):
         return entry
     else:
@@ -234,7 +235,7 @@ class SwitchFlowTable(FlowTable):
     elif flow_mod.command == OFPFC_MODIFY or flow_mod.command == OFPFC_MODIFY_STRICT:
       is_strict = (flow_mod.command == OFPFC_MODIFY_STRICT)
       modified = []
-      for entry in self._table:
+      for entry in self.table:
         # update the actions field in the matching flows
         if(entry.is_matched_by(flow_mod.match, priority=flow_mod.priority, strict=is_strict)):
           entry.actions = flow_mod.actions
@@ -264,8 +265,8 @@ class NOMFlowTable(EventMixin):
 
   def __init__(self, switch=None, **kw):
     EventMixin.__init__(self)
-    self.flow_table = FlowTable()
-    self.switch = switch
+    self.flow_table = kw.get('flow_table', FlowTable())
+    self.switch = kw.get('switch', switch)
 
     # a list of pending flow table entries : tuples (ADD|REMOVE, entry)
     self._pending = []
