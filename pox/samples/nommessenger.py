@@ -17,6 +17,7 @@
 
 from pox.core import core
 from pox.messenger.messenger import *
+from pox.lib.graph.util import *
 
 class NomMessenger (object):
   """
@@ -28,6 +29,8 @@ class NomMessenger (object):
   def __init__ (self):
     core.messenger.addListener(MessageReceived, self._handle_global_MessageReceived, weak=True)
     self._targetName = "nommessenger"
+    
+    self.myEncoder = NOMEncoder()
 
   def _handle_global_MessageReceived (self, event, msg):
     try:
@@ -51,7 +54,16 @@ class NomMessenger (object):
         print self._targetName, "- GOODBYE!"
         event.con.close()
       if type(r) is dict and "getnom" in r:
-        event.con.send(core.topology.getEntitiesOfType())
+        #
+        #msg = {}
+        nom = {"switches":[], "hosts":[], "links":[]}
+        for s in core.topology.getEntitiesOfType(Switch):
+          nom["switches"].append(self.myEncoder.encode(s))
+        for h in core.topology.getEntitiesOfType(Host):
+          nom["hosts"].append(self.myEncoder.encode(h))
+        for l in core.topology.getEntitiesOfType(Link):
+          nom["links"].append(self.myEncoder.encode(l))
+        event.con.send(nom)
     else:
       print self._targetName, "- conversation finished"
 
