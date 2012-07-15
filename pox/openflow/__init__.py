@@ -37,6 +37,7 @@ NOTE: This module is usually automatically loaded by pox.py
 """
 
 from pox.lib.revent import *
+from pox.lib.util import dpidToStr
 import libopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
 
@@ -310,7 +311,10 @@ class OpenFlowNexus (EventMixin):
       self._connections[dpid].send(data)
       return True
     else:
-      print "Couldn't send to", dpid, "because we're not connected to it!"
+      import logging
+      log = logging.getLogger("openflow")
+      log.warn("Couldn't send to %s because we're not connected to it!" %
+               (dpidToStr(dpid),))
       return False
 
   def _handle_DownEvent (self, event):
