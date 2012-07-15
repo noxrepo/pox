@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -36,6 +36,7 @@ from pox.lib.packet.ethernet import ethernet, ETHER_BROADCAST
 from pox.lib.packet.ipv4 import ipv4
 from pox.lib.packet.arp import arp
 from pox.lib.addresses import IPAddr, EthAddr
+from pox.lib.util import str_to_bool
 
 import pox.openflow.libopenflow_01 as of
 
@@ -82,10 +83,18 @@ def dpid_to_mac (dpid):
 
 
 class l3_switch (EventMixin):
-  def __init__ (self, fakeways = []):
+  def __init__ (self, fakeways = [], arp_for_unknowns = False):
     # These are "fake gateways" -- we'll answer ARPs for them with MAC
     # of the switch they're connected to.
     self.fakeways = set(fakeways)
+
+    # If this is true and we see a packet for an unknown
+    # host, we'll ARP for it.
+    self.arp_for_unknowns = arp_for_unknowns
+
+    # (IP,dpid) -> expire_time
+    # We use this to keep from spamming ARPs
+    self.outstanding_arps = {}
 
     # For each switch, we map IP addresses to Entries
     self.arpTable = {}
@@ -153,10 +162,20 @@ class l3_switch (EventMixin):
                                 actions=actions,
                                 match=of.ofp_match.from_packet(packet, inport))
           event.connection.send(msg.pack())
-      else:
+      elif self.arp_for_unknowns:
         # We don't know this destination.  So... let's ARP for it!
         # Ultimately, this should result in it responding and us learning
         # where it is.
+
+        # First, let's expire things from our outstanding ARP list...
+        self.outstanding_arps = {k:v for k,v in
+         self.outstanding_arps.iteritems() if v > time.time()}
+        if (dpid,dstaddr) in self.outstanding_arps:
+          # Oop, we've already done this one recently.
+          return
+
+        self.outstanding_arps[(dpid,dstaddr)] = time.time() + 4
+
         r = arp()
         r.hwtype = r.HW_TYPE_ETHERNET
         r.prototype = r.PROTO_TYPE_IP
@@ -177,7 +196,6 @@ class l3_switch (EventMixin):
         msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
         msg.in_port = inport
         event.connection.send(msg)
-        return
 
     elif isinstance(packet.next, arp):
       a = packet.next
@@ -241,11 +259,13 @@ class l3_switch (EventMixin):
         msg.buffer_id = event.ofp.buffer_id
       event.connection.send(msg.pack())
 
-    return
 
-
-def launch (fakeways=""):
+def launch (fakeways="", arp_for_unknowns=None):
   fakeways = fakeways.replace(","," ").split()
   fakeways = [IPAddr(x) for x in fakeways]
-  core.registerNew(l3_switch, fakeways)
+  if arp_for_unknowns is None:
+    arp_for_unknowns = len(fakeways) > 0
+  else:
+    arp_for_unknowns = str_to_bool(arp_for_unknowns)
+  core.registerNew(l3_switch, fakeways, arp_for_unknowns)
 
