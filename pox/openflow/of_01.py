@@ -153,10 +153,12 @@ def handle_PACKET_IN (con, msg): #A
 #    con.ofnexus.raiseEventNoErrors(PacketIn(con, msg, p))
 
 def handle_ERROR_MSG (con, msg): #A
-  log.error(str(con) + " OpenFlow Error:\n" +
-            msg.show(str(con) + " Error: ").strip())
-  con.ofnexus.raiseEventNoErrors(ErrorIn, con, msg)
-  con.raiseEventNoErrors(ErrorIn, con, msg)
+  err = ErrorIn(con, msg)
+  con.ofnexus.raiseEventNoErrors(err)
+  con.raiseEventNoErrors(err)
+  if err.should_log:
+    log.error(str(con) + " OpenFlow Error:\n" +
+              msg.show(str(con) + " Error: ").strip())
 
 def handle_BARRIER (con, msg):
   con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)

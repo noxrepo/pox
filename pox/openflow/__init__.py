@@ -175,6 +175,7 @@ class ErrorIn (Event):
     self.connection = connection
     self.ofp = ofp
     self.xid = ofp.xid
+    self.should_log = True # If this remains True, an error will be logged
 
   def asString (self):
     return self.ofp.show()
