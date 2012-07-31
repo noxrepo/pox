@@ -426,6 +426,7 @@ class ofp_match (object):
 #      match.mpls_label = 0
 #      match.mpls_tc = 0
     if isinstance(p, vlan):
+      match.dl_type = p.eth_type
       match.dl_vlan = p.id
       match.dl_vlan_pcp = p.pcp
       p = p.next
