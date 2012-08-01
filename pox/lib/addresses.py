@@ -79,7 +79,7 @@ class EthAddr (object):
   def __init__ (self, addr):
     """
     Understands Ethernet address is various forms.  Hex strings, raw byte
-    strings, long integers, etc.
+    strings, etc.
     """
     # Always stores as a 6 character string
     if isinstance(addr, bytes) or isinstance(addr, unicode):
