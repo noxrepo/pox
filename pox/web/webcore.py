@@ -160,7 +160,7 @@ class CoreHandler (SplitRequestHandler):
          for x in self.args.matches]
     m.sort()
     for v in m:
-      r += "<li>%s - %s %s</li>\n" % tuple(v)
+      r += "<li><a href='{0}'>{0}</a> - {1} {2}</li>\n".format(*v)
     r += "</ul></body></html>\n"
 
     self.send_response(200)
@@ -509,6 +509,7 @@ def launch (address='', port=8000, debug=False, static=False):
 
   def run ():
     try:
+      log.debug("Listening on %s:%i" % httpd.socket.getsockname())
       httpd.serve_forever()
     except:
       pass
