@@ -36,7 +36,8 @@ from pox.lib.packet.ethernet import ethernet, ETHER_BROADCAST
 from pox.lib.packet.ipv4 import ipv4
 from pox.lib.packet.arp import arp
 from pox.lib.addresses import IPAddr, EthAddr
-from pox.lib.util import str_to_bool
+from pox.lib.util import str_to_bool, dpidToStr
+from pox.lib.recoco import Timer
 
 import pox.openflow.libopenflow_01 as of
 
@@ -50,6 +51,11 @@ FLOW_IDLE_TIMEOUT = 10
 # Timeout for ARP entries
 ARP_TIMEOUT = 60 * 2
 
+# Maximum number of packet to buffer on a switch for an unknown IP
+MAX_BUFFERED_PER_IP = 5
+
+# Maximum time to hang on to a buffer for an unknown IP in seconds
+MAX_BUFFER_TIME = 5
 
 
 class Entry (object):
@@ -96,10 +102,54 @@ class l3_switch (EventMixin):
     # We use this to keep from spamming ARPs
     self.outstanding_arps = {}
 
+    # (IP,dpid) -> [(expire_time,buffer_id,in_port), ...]
+    # These are buffers we've gotten at this datapath for this IP which
+    # we can't deliver because we don't know where they go.
+    self.lost_buffers = {}
+
     # For each switch, we map IP addresses to Entries
     self.arpTable = {}
 
+    # This timer handles expiring stuff
+    self._expire_timer = Timer(5, self._handle_expiration, recurring=True)
+
     self.listenTo(core)
+
+  def _handle_expiration (self):
+    # Called by a timer so that we can remove old items.
+    empty = []
+    for k,v in self.lost_buffers.iteritems():
+      ip,dpid = k
+      expires_at,buffer_id,in_port = v
+
+      for item in list(v):
+        if expires_at < time.time():
+          # This packet is old.  Tell this switch to drop it.
+          v.remove(item)
+          po = of.ofp_packet_out(buffer_id = buffer_id, in_port = in_port)
+          core.openflow.sendToDPID(dpid, po)
+      if len(v) == 0: empty.append(k)
+
+    # Remove empty buffer bins
+    for k in empty:
+      del self.lost_buffers[k]
+
+  def _send_lost_buffers (self, dpid, ipaddr, macaddr, port):
+    """
+    We may have "lost" buffers -- packets we got but didn't know
+    where to send at the time.  We may know now.  Try and see.
+    """
+    if (dpid,ipaddr) in self.lost_buffers:
+      # Yup!
+      bucket = self.lost_buffers[(dpid,ipaddr)]
+      del self.lost_buffers[(dpid,ipaddr)]
+      log.debug("Sending %i buffered packets to %s from %s"
+                % (len(bucket),ipaddr,dpidToStr(dpid)))
+      for _,buffer_id,in_port in bucket:
+        po = of.ofp_packet_out(buffer_id=buffer_id,in_port=in_port)
+        po.actions.append(of.ofp_action_dl_addr.set_dst(macaddr))
+        po.actions.append(of.ofp_action_output(port = port))
+        core.openflow.sendToDPID(dpid, po)
 
   def _handle_GoingUpEvent (self, event):
     self.listenTo(core.openflow)
@@ -125,12 +175,16 @@ class l3_switch (EventMixin):
       return
 
     if isinstance(packet.next, ipv4):
-      log.debug("%i %i IP %s => %s", dpid,inport,str(packet.next.srcip),str(packet.next.dstip))
+      log.debug("%i %i IP %s => %s", dpid,inport,
+                packet.next.srcip,packet.next.dstip)
+
+      # Send any waiting packets...
+      self._send_lost_buffers(dpid, packet.next.srcip, packet.src, inport)
 
       # Learn or update port/MAC info
       if packet.next.srcip in self.arpTable[dpid]:
         if self.arpTable[dpid][packet.next.srcip] != (inport, packet.src):
-          log.info("%i %i RE-learned %s", dpid,inport,str(packet.next.srcip))
+          log.info("%i %i RE-learned %s", dpid,inport,packet.next.srcip)
       else:
         log.debug("%i %i learned %s", dpid,inport,str(packet.next.srcip))
       self.arpTable[dpid][packet.next.srcip] = Entry(inport, packet.src)
@@ -143,14 +197,14 @@ class l3_switch (EventMixin):
         prt = self.arpTable[dpid][dstaddr].port
         mac = self.arpTable[dpid][dstaddr].mac
         if prt == inport:
-          log.warning("%i %i not sending packet for %s back out of the input port" % (
-           dpid, inport, str(dstaddr)))
+          log.warning("%i %i not sending packet for %s back out of the " +
+                      "input port" % (dpid, inport, str(dstaddr)))
         else:
-          log.debug("%i %i installing flow for %s => %s out port %i" % (dpid,
-            inport, str(packet.next.srcip), str(dstaddr), prt))
+          log.debug("%i %i installing flow for %s => %s out port %i"
+                    % (dpid, inport, packet.next.srcip, dstaddr, prt))
 
           actions = []
-          actions.append(of.ofp_action_dl_addr(type=of.OFPAT_SET_DL_DST,dl_addr=mac))
+          actions.append(of.ofp_action_dl_addr.set_dst(mac))
           actions.append(of.ofp_action_output(port = prt))
           match = of.ofp_match.from_packet(packet, inport)
           match.dl_src = None # Wildcard source MAC
@@ -160,20 +214,34 @@ class l3_switch (EventMixin):
                                 hard_timeout=of.OFP_FLOW_PERMANENT,
                                 buffer_id=event.ofp.buffer_id,
                                 actions=actions,
-                                match=of.ofp_match.from_packet(packet, inport))
+                                match=of.ofp_match.from_packet(packet,
+                                                               inport))
           event.connection.send(msg.pack())
       elif self.arp_for_unknowns:
-        # We don't know this destination.  So... let's ARP for it!
-        # Ultimately, this should result in it responding and us learning
-        # where it is.
+        # We don't know this destination.
+        # First, we track this buffer so that we can try to resend it later
+        # if we learn the destination, second we ARP for the destination,
+        # which should ultimately result in it responding and us learning
+        # where it is
 
-        # First, let's expire things from our outstanding ARP list...
+        # Add to tracked buffers
+        if (dpid,dstaddr) not in self.lost_buffers:
+          self.lost_buffers[(dpid,dstaddr)] = []
+        bucket = self.lost_buffers[(dpid,dstaddr)]
+        entry = (time.time() + MAX_BUFFER_TIME,event.ofp.buffer_id,inport)
+        bucket.append(entry)
+        while len(bucket) > MAX_BUFFERED_PER_IP: del bucket[0]
+
+        # Expire things from our outstanding ARP list...
         self.outstanding_arps = {k:v for k,v in
          self.outstanding_arps.iteritems() if v > time.time()}
+
+        # Check if we've already ARPed recently
         if (dpid,dstaddr) in self.outstanding_arps:
           # Oop, we've already done this one recently.
           return
 
+        # And ARP...
         self.outstanding_arps[(dpid,dstaddr)] = time.time() + 4
 
         r = arp()
@@ -214,6 +282,9 @@ class l3_switch (EventMixin):
             else:
               log.debug("%i %i learned %s", dpid,inport,str(a.protosrc))
             self.arpTable[dpid][a.protosrc] = Entry(inport, packet.src)
+
+            # Send any waiting packets...
+            self._send_lost_buffers(dpid, a.protosrc, packet.src, inport)
 
             if a.opcode == arp.REQUEST:
               # Maybe we can answer
