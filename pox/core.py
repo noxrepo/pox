@@ -299,7 +299,7 @@ class POXCore (EventMixin):
 
       #log.info("%i things still waiting on %i components"
       #         % (names, waiting_for))
-      log.info("Still waiting on %i component(s)" % (len(waiting_for),))
+      log.warn("Still waiting on %i component(s)" % (len(waiting_for),))
 
     log.info(self.version_string + " is up.")
 
@@ -349,6 +349,16 @@ class POXCore (EventMixin):
     """
     Calls a callback when components are ready.
     """
+    if isinstance(components, basestring):
+      components = [components]
+    elif isinstance(components, set):
+      components = list(components)
+    else:
+      try:
+        _ = components[0]
+        components = list(components)
+      except:
+        components = [components]
     if name is None: name = str(callback) #TODO: Improve. (e.g. module name)
     entry = (callback, name, components, args, kw)
     self._waiters.append(entry)
