@@ -708,7 +708,7 @@ class OpenFlow_01_Task (Task):
     listener.listen(16)
     sockets.append(listener)
 
-    log.debug("Listening for connections on %s:%s" %
+    log.debug("Listening on %s:%s" %
               (self.address, self.port))
 
     con = None
