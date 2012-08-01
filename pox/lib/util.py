@@ -149,9 +149,15 @@ def strToDPID (s):
   """
   Convert a DPID in the canonical string form into a long int.
   """
+  if s.lower().startswith("0x"):
+    s = s[2:]
   s = s.replace("-", "").split("|", 2)
   a = int(s[0], 16)
-  b = 0
+  if a > 0xffFFffFFffFF:
+    b = a >> 48
+    a &= 0xffFFffFFffFF
+  else:
+    b = 0
   if len(s) == 2:
     b = int(s[1])
   return a | (b << 48)
@@ -160,7 +166,6 @@ def dpidToStr (dpid, alwaysLong = False):
   """
   Convert a DPID from a long into into the canonical string form.
   """
-  """ In flux. """
   if type(dpid) is long or type(dpid) is int:
     # Not sure if this is right
     dpid = struct.pack('!Q', dpid)
