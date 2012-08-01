@@ -491,13 +491,7 @@ class SplitThreadedServer(ThreadingMixIn, HTTPServer):
                      {'root':local_path}, True);
 
 
-def launch (address='', port=8000, debug=False, static=False):
-  if debug:
-    log.setLevel("DEBUG")
-    log.debug("Debugging enabled")
-  elif log.isEnabledFor("DEBUG"):
-    log.setLevel("INFO")
-
+def launch (address='', port=8000, static=False):
   httpd = SplitThreadedServer((address, int(port)), SplitterRequestHandler)
   core.register("WebServer", httpd)
   httpd.set_handler("/", CoreHandler, httpd, True)
