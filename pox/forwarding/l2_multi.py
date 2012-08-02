@@ -217,7 +217,8 @@ class Switch (EventMixin):
     def flood ():
       """ Floods the packet """
       msg = of.ofp_packet_out()
-      msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+      # Use OFPP_ALL instead of OFPP_FLOOD - FLOOD is optional, ALL is mandatory
+      msg.actions.append(of.ofp_action_output(port = of.OFPP_ALL))
       msg.buffer_id = event.ofp.buffer_id
       msg.in_port = event.port
       self.connection.send(msg)

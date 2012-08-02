@@ -42,7 +42,8 @@ def _handle_PacketIn (event):
   # packet out all ports (except the one it came in on!) and
   # hope the destination is out there somewhere. :)
   msg = of.ofp_packet_out()
-  msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+  # Use OFPP_ALL instead of OFPP_FLOOD - FLOOD is optional, ALL is mandatory
+  msg.actions.append(of.ofp_action_output(port = of.OFPP_ALL))
   msg.buffer_id = event.ofp.buffer_id # Resend the incoming packet
   msg.in_port = event.port # Don't flood out the incoming port
   event.connection.send(msg)
