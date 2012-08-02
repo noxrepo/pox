@@ -105,7 +105,8 @@ class LearningSwitch (EventMixin):
       if time.time() - self.connection.connect_time > FLOOD_DELAY:
         # Only flood if we've been connected for a little while...
         #log.debug("%i: flood %s -> %s", event.dpid, packet.src, packet.dst)
-        msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+        # Use OFPP_ALL instead of OFPP_FLOOD - FLOOD is optional, ALL is mandatory
+        msg.actions.append(of.ofp_action_output(port = of.OFPP_ALL))
       else:
         pass
         #log.info("Holding down flood for %s", dpidToStr(event.dpid))

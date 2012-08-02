@@ -80,7 +80,8 @@ class FloodPacketCommand(PacketOutCommand):
   def __init__(self, inport, packet, buf, bufid=None):
     PacketOutCommand.__init__(self)
     self.action.len = 8
-    self.action.port = of.OFPP_FLOOD
+    # Use OFPP_ALL instead of OFPP_FLOOD - FLOOD is optional, ALL is mandatory
+    self.action.port = of.OFPP_ALL
     
     self.packet_out.in_port = inport
     self.packet_out.actions_len = len(self.action.pack())
