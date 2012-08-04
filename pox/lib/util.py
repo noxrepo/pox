@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -410,6 +410,27 @@ def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
       backoff_seconds <<= 1
   return sock
 
+
+def fields_of (obj, primitives_only=False, primitives_and_composites_only=False):
+  """
+  Returns key/value pairs of things that seem like public fields of an object.
+  """
+  r = []
+  for k in dir(obj):
+    if k.startswith('_'): continue
+    v = getattr(obj, k)
+    if hasattr(v, '__call__'): continue
+    if primitives_only:
+      if not isinstance(v, (int, long, basestring, float, bool)):
+        continue
+    elif primitives_and_composites_only:
+      if not isinstance(v, (int, long, basestring, float, bool, set,
+                            dict, list)):
+        continue
+    r.append((k,v))
+  return r
+
+
 if __name__ == "__main__":
   def cb (t,k,v): print v
   l = DirtyList([10,20,30,40,50])
@@ -418,4 +439,3 @@ if __name__ == "__main__":
   l.append(3)
 
   print l
-
