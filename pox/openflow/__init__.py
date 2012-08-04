@@ -275,6 +275,7 @@ class OpenFlowNexus (EventMixin):
     FlowRemoved,
     PacketIn,
     BarrierIn,
+    ErrorIn,
     RawStatsReply,
     SwitchDescReceived,
     FlowStatsReceived,
