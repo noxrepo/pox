@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 # Copyright 2008 (C) Nicira, Inc.
 #
 # This file is part of POX.
@@ -35,9 +35,10 @@ ETHER_ANY            = EthAddr(b"\x00\x00\x00\x00\x00\x00")
 ETHER_BROADCAST      = EthAddr(b"\xff\xff\xff\xff\xff\xff")
 BRIDGE_GROUP_ADDRESS = EthAddr(b"\x01\x80\xC2\x00\x00\x00")
 LLDP_MULTICAST       = EthAddr(b"\x01\x80\xc2\x00\x00\x0e")
-PAE_MULTICAST        = EthAddr(b'\x01\x80\xc2\x00\x00\x03') # 802.1x Port Access Entity
+PAE_MULTICAST        = EthAddr(b'\x01\x80\xc2\x00\x00\x03') # 802.1x Port Access
+                                                            #  Entity
 NDP_MULTICAST        = EthAddr(b'\x01\x23\x20\x00\x00\x01') # Nicira discovery
-                                                   # multicast
+                                                            #  multicast
 
 class ethernet(packet_base):
   "Ethernet packet struct"
@@ -46,14 +47,26 @@ class ethernet(packet_base):
 
   MIN_LEN = 14
 
-  IP_TYPE   = 0x0800
-  ARP_TYPE  = 0x0806
-  RARP_TYPE = 0x8035
-  VLAN_TYPE = 0x8100
-  LLDP_TYPE = 0x88cc
-  PAE_TYPE  = 0x888e           # 802.1x Port Access Entity
+  IP_TYPE    = 0x0800
+  ARP_TYPE   = 0x0806
+  RARP_TYPE  = 0x8035
+  VLAN_TYPE  = 0x8100
+  LLDP_TYPE  = 0x88cc
+  PAE_TYPE   = 0x888e           # 802.1x Port Access Entity
   MPLS_UNICAST_TYPE = 0x8847
   MPLS_MULTICAST_TYPE = 0x8848
+  IPv6_TYPE  = 0x86dd
+  PPP_TYPE   = 0x880b
+  LWAPP_TYPE = 0x88bb
+  GSMP_TYPE  = 0x880c
+  IPX_TYPE   = 0x8137
+  IPX_TYPE   = 0x8137
+  WOL_TYPE   = 0x0842
+  TRILL_TYPE = 0x22f3
+  JUMBO_TYPE = 0x8870
+  SCSI_TYPE  = 0x889a
+  ATA_TYPE   = 0x88a2
+  QinQ_TYPE  = 0x9100
 
   type_parsers = {}
 
@@ -93,7 +106,8 @@ class ethernet(packet_base):
     self.raw = raw
     alen = len(raw)
     if alen < ethernet.MIN_LEN:
-      self.msg('warning eth packet data too short to parse header: data len %u' % alen)
+      self.msg('warning eth packet data too short to parse header: data len %u'
+               % (alen,))
       return
 
     self.dst = EthAddr(raw[:6])
