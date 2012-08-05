@@ -66,6 +66,10 @@ def handle_HELLO (con, msg): #S
   msg = of.ofp_features_request()
   con.send(msg.pack())
 
+def handle_ECHO_REPLY (con, msg):
+  #con.msg("Got echo reply")
+  pass
+
 def handle_ECHO_REQUEST (con, msg): #S
   reply = msg
   
@@ -103,11 +107,10 @@ def handle_FEATURES_REPLY (con, msg):
   def finish_connecting (event):
     if event.xid != barrier.xid:
       con.dpid = None
-      con.err("Failed connect for " + pox.lib.util.dpidToStr(
-              msg.datapath_id))
+      con.err("Failed connect")
       con.disconnect()
     else:
-      con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
+      con.info("Connected")
       import time
       con.connect_time = time.time()
       #for p in msg.ports: print(p.show())
@@ -235,6 +238,7 @@ handlers = []
 handlerMap = {
   of.OFPT_HELLO : handle_HELLO,
   of.OFPT_ECHO_REQUEST : handle_ECHO_REQUEST,
+  of.OFPT_ECHO_REPLY : handle_ECHO_REPLY,
   of.OFPT_PACKET_IN : handle_PACKET_IN,
   of.OFPT_FEATURES_REPLY : handle_FEATURES_REPLY,
   of.OFPT_PORT_STATUS : handle_PORT_STATUS,
@@ -664,7 +668,8 @@ class Connection (EventMixin):
       handler(self, s)
 
   def __str__ (self):
-    return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
+    #return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
+    return "[%s %i]" % (pox.lib.util.dpidToStr(self.dpid), self.ID)
 
 
 def wrap_socket (new_sock):
