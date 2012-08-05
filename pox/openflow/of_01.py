@@ -107,10 +107,10 @@ def handle_FEATURES_REPLY (con, msg):
   def finish_connecting (event):
     if event.xid != barrier.xid:
       con.dpid = None
-      con.err("Failed connect")
+      con.err("failed connect")
       con.disconnect()
     else:
-      con.info("Connected")
+      con.info("connected")
       import time
       con.connect_time = time.time()
       #for p in msg.ports: print(p.show())
@@ -510,41 +510,29 @@ class Connection (EventMixin):
     return self.sock.fileno()
 
   def close (self):
-    if not self.disconnected:
-      self.info("closing connection")
-    else:
-      #self.msg("closing connection")
-      pass
-    try:
-      self.sock.shutdown(socket.SHUT_RDWR)
-    except:
-      pass
+    self.disconnect('closed')
     try:
       self.sock.close()
     except:
       pass
 
-  def disconnect (self):
+  def disconnect (self, msg = 'disconnected'):
     """
     disconnect this Connection (usually not invoked manually).
     """
+    already = False
     if self.disconnected:
       self.err("already disconnected!")
-    self.msg("disconnecting")
+      already = True
+    self.msg(msg)
     self.disconnected = True
     try:
       self.ofnexus._disconnect(self.dpid)
     except:
       pass
-    """
-    try:
-      if self.dpid != None:
-        self.ofnexus.raiseEvent(ConnectionDown(self))
-    except:
-      self.err("ConnectionDown event caused exception")
-    """
-    if self.dpid != None:
-      self.ofnexus.raiseEventNoErrors(ConnectionDown(self))
+    if self.dpid is not None and not already:
+      self.ofnexus.raiseEventNoErrors(ConnectionDown, self)
+      self.raiseEventNoErrors(ConnectionDown, self)
 
     try:
       #deferredSender.kill(self)
