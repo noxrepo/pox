@@ -657,7 +657,11 @@ class Connection (EventMixin):
 
   def __str__ (self):
     #return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
-    return "[%s %i]" % (pox.lib.util.dpidToStr(self.dpid), self.ID)
+    if self.dpid is None:
+      d = str(self.dpid)
+    else:
+      d = pox.lib.util.dpidToStr(self.dpid)
+    return "[%s %i]" % (d, self.ID)
 
 
 def wrap_socket (new_sock):
