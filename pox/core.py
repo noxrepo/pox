@@ -383,6 +383,9 @@ class POXCore (EventMixin):
     Calls the callback, removes from _waiters, and returns True if
     all are satisfied.
     """
+    if entry not in self._waiters:
+      # Already handled
+      return
     callback, name, components, args_, kw_ = entry
     for c in components:
       if not self.hasComponent(c):
