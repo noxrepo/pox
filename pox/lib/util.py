@@ -411,7 +411,8 @@ def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
   return sock
 
 
-def fields_of (obj, primitives_only=False, primitives_and_composites_only=False):
+def fields_of (obj, primitives_only=False, primitives_and_composites_only=False,
+               allow_caps=False):
   """
   Returns key/value pairs of things that seem like public fields of an object.
   """
@@ -420,6 +421,7 @@ def fields_of (obj, primitives_only=False, primitives_and_composites_only=False)
     if k.startswith('_'): continue
     v = getattr(obj, k)
     if hasattr(v, '__call__'): continue
+    if not allow_caps and k.upper() == k: continue
     if primitives_only:
       if not isinstance(v, (int, long, basestring, float, bool)):
         continue
