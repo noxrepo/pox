@@ -359,7 +359,19 @@ class POXCore (EventMixin):
         components = list(components)
       except:
         components = [components]
-    if name is None: name = str(callback) #TODO: Improve. (e.g. module name)
+    if name is None:
+      #TODO: Use inspect here instead
+      name = getattr(callback, 'func_name')
+      if name is None:
+        name = str(callback)
+      else:
+        name += "()"
+        if hasattr(callback, 'im_class'):
+          name = getattr(callback.im_class,'__name__', '') + '.' + name
+      if hasattr(callback, '__module__'):
+        # Is this a good idea?  If not here, we should do it in the
+        # exception printing in try_waiter().
+        name += " in " + callback.__module__
     entry = (callback, name, components, args, kw)
     self._waiters.append(entry)
     self._try_waiter(entry)
@@ -381,7 +393,14 @@ class POXCore (EventMixin):
         callback(*args_,**kw_)
     except:
       import traceback
-      traceback.print_exc()
+      msg = "Exception while trying to notify " + name
+      import inspect
+      try:
+        msg += " at " + inspect.getfile(callback)
+        msg += ":" + str(inspect.getsourcelines(callback)[1])
+      except:
+        pass
+      log.exception(msg)
     return True
 
   def _try_waiters (self):
