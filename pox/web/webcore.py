@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -68,6 +68,7 @@ except ImportError:
     from StringIO import StringIO
 
 log = core.getLogger()
+weblog = log.getChild("server")
 
 def _setAttribs (parent, child):
   attrs = ['command', 'request_version', 'close_connection',
@@ -125,14 +126,14 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
     return method()
 
   def log_request (self, code = '-', size = '-'):
-    log.debug(self.prefix + (':"%s" %s %s' % 
+    weblog.debug(self.prefix + (':"%s" %s %s' %
               (self.requestline, str(code), str(size))))
 
   def log_error (self, fmt, *args):
-    log.error(self.prefix + ':' + (fmt % args))
+    weblog.error(self.prefix + ':' + (fmt % args))
 
   def log_message (self, fmt, *args):
-    log.info(self.prefix + ':' + (fmt % args))
+    weblog.info(self.prefix + ':' + (fmt % args))
 
 
 class CoreHandler (SplitRequestHandler):
@@ -141,10 +142,17 @@ class CoreHandler (SplitRequestHandler):
   """
   def do_GET (self):
     """Serve a GET request."""
+    if self.path != "/":
+      self.send_error(404, "File not found on CoreHandler")
+      return
+
     self.send_info(True)
 
   def do_HEAD (self):
     """Serve a HEAD request."""
+    if self.path != "/":
+      self.send_error(404, "File not found on CoreHandler")
+      return
     self.self_info(False)
 
   def send_info (self, isGet = False):
@@ -396,14 +404,14 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
     BaseHTTPRequestHandler.__init__(self, *args, **kw)
 
   def log_request (self, code = '-', size = '-'):
-    log.debug('splitter:"%s" %s %s',
-              self.requestline, str(code), str(size))
+    weblog.debug('splitter:"%s" %s %s',
+                 self.requestline, str(code), str(size))
 
   def log_error (self, fmt, *args):
-    log.error('splitter:' + fmt % args)
+    weblog.error('splitter:' + fmt % args)
 
   def log_message (self, fmt, *args):
-    log.info('splitter:' + fmt % args)
+    weblog.info('splitter:' + fmt % args)
 
   def handle_one_request(self):
     self.raw_requestline = self.rfile.readline()
@@ -498,8 +506,27 @@ def launch (address='', port=8000, static=False):
   #httpd.set_handler("/foo", StaticContentHandler, {'root':'.'}, True)
   #httpd.set_handler("/f", StaticContentHandler, {'root':'pox'}, True)
   #httpd.set_handler("/cgis", SplitCGIRequestHandler, "pox/web/www_root")
-  if static:
+  if static is True:
     httpd.add_static_dir('static', 'www_root', relative=True)
+  elif static is False:
+    pass
+  else:
+    static = static.split(",")
+    for entry in static:
+      if entry.lower() == "":
+        httpd.add_static_dir('static', 'www_root', relative=True)
+        continue
+      if ':' not in entry:
+        directory = entry
+        prefix = os.path.split(directory)
+        if prefix[1] == '':
+          prefix = os.path.split(prefix[0])
+        prefix = prefix[1]
+        assert prefix != ''
+      else:
+        prefix,directory = entry.split(":")
+      directory = os.path.expanduser(directory)
+      httpd.add_static_dir(prefix, directory, relative=False)
 
   def run ():
     try:
