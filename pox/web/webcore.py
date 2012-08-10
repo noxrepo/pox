@@ -136,26 +136,42 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
     weblog.info(self.prefix + ':' + (fmt % args))
 
 
+_favicon = ("47494638396110001000c206006a5797927bc18f83ada9a1bfb49ceabda"
+ + "4f4ffffffffffff21f904010a0007002c000000001000100000034578badcfe30b20"
+ + "1c038d4e27a0f2004e081e2172a4051942abba260309ea6b805ab501581ae3129d90"
+ + "1275c6404b80a72f5abcd4a2454cb334dbd9e58e74693b97425e07002003b")
+_favicon = ''.join([chr(int(_favicon[n:n+2],16))
+                   for n in xrange(0,len(_favicon),2)])
+
 class CoreHandler (SplitRequestHandler):
   """
   A default page to say hi from POX.
   """
   def do_GET (self):
     """Serve a GET request."""
-    if self.path != "/":
-      self.send_error(404, "File not found on CoreHandler")
-      return
-
-    self.send_info(True)
+    self.do_content(True)
 
   def do_HEAD (self):
     """Serve a HEAD request."""
-    if self.path != "/":
-      self.send_error(404, "File not found on CoreHandler")
-      return
-    self.self_info(False)
+    self.do_content(False)
 
-  def send_info (self, isGet = False):
+  def do_content (self, is_get):
+    if self.path == "/":
+      self.send_info(is_get)
+    elif self.path.startswith("/favicon."):
+      self.send_favicon(is_get)
+    else:
+      self.send_error(404, "File not found on CoreHandler")
+
+  def send_favicon (self, is_get = False):
+    self.send_response(200)
+    self.send_header("Content-type", "image/gif")
+    self.send_header("Content-Length", str(len(_favicon)))
+    self.end_headers()
+    if is_get:
+      self.wfile.write(_favicon)
+
+  def send_info (self, is_get = False):
     r = "<html><head><title>POX</title></head>\n"
     r += "<body>\n<h1>POX Webserver</h1>\n<h2>Components</h2>\n"
     r += "<ul>"
@@ -175,7 +191,7 @@ class CoreHandler (SplitRequestHandler):
     self.send_header("Content-type", "text/html")
     self.send_header("Content-Length", str(len(r)))
     self.end_headers()
-    if isGet:
+    if is_get:
       self.wfile.write(r)
 
 
