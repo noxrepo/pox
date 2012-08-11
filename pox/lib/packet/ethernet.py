@@ -55,7 +55,7 @@ class ethernet(packet_base):
   PAE_TYPE   = 0x888e           # 802.1x Port Access Entity
   MPLS_UNICAST_TYPE = 0x8847
   MPLS_MULTICAST_TYPE = 0x8848
-  IPv6_TYPE  = 0x86dd
+  IPV6_TYPE  = 0x86dd
   PPP_TYPE   = 0x880b
   LWAPP_TYPE = 0x88bb
   GSMP_TYPE  = 0x880c
