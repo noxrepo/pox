@@ -158,7 +158,7 @@ class LearningSwitch (EventMixin):
         log.debug("installing flow for %s.%i -> %s.%i" %
                   (packet.src, event.port, packet.dst, port))
         msg = of.ofp_flow_mod()
-        msg.match = of.ofp_match.from_packet(packet)
+        msg.match = of.ofp_match.from_packet(packet, event.port)
         msg.idle_timeout = 10
         msg.hard_timeout = 30
         msg.actions.append(of.ofp_action_output(port = port))
