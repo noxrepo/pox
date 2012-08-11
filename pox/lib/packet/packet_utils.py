@@ -49,7 +49,7 @@ _ethtype_to_str[0x22f3] = 'TRILL'
 _ethtype_to_str[0x8870] = 'JUMBO'
 _ethtype_to_str[0x889a] = 'SCSI' # SCSI Over Ethernet
 _ethtype_to_str[0x88a2] = 'ATA' # ATA Over Ethernet
-_ethtype_to_str[0x9100] = 'QinQ'
+_ethtype_to_str[0x9100] = 'QINQ'
 
 
 # IP protocol to string

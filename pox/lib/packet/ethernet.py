@@ -66,7 +66,7 @@ class ethernet(packet_base):
   JUMBO_TYPE = 0x8870
   SCSI_TYPE  = 0x889a
   ATA_TYPE   = 0x88a2
-  QinQ_TYPE  = 0x9100
+  QINQ_TYPE  = 0x9100
 
   type_parsers = {}
 
