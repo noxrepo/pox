@@ -411,25 +411,31 @@ def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
   return sock
 
 
+_scalar_types = (int, long, basestring, float, bool)
+
+def is_scalar (v):
+ return isinstance(v, _scalar_types)
+
 def fields_of (obj, primitives_only=False, primitives_and_composites_only=False,
                allow_caps=False):
   """
   Returns key/value pairs of things that seem like public fields of an object.
   """
-  r = []
+  r = {}
   for k in dir(obj):
     if k.startswith('_'): continue
     v = getattr(obj, k)
     if hasattr(v, '__call__'): continue
     if not allow_caps and k.upper() == k: continue
     if primitives_only:
-      if not isinstance(v, (int, long, basestring, float, bool)):
+      if not isinstance(v, _scalar_types):
         continue
     elif primitives_and_composites_only:
       if not isinstance(v, (int, long, basestring, float, bool, set,
                             dict, list)):
         continue
-    r.append((k,v))
+    #r.append((k,v))
+    r[k] = v
   return r
 
 
