@@ -49,7 +49,6 @@ automatically destroyed when they no longer contain any members.
 
 from pox.lib.revent.revent import *
 from pox.core import core as core
-import weakref
 import json
 import time
 import random
