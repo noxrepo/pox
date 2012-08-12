@@ -405,10 +405,16 @@ class ofp_queue_prop_min_rate (object):
 
 ##2.3 Flow Match Structures
 class ofp_match (object):
+  adjust_wildcards = True # Set to true to "fix" outgoing wildcards
+
   @classmethod
   def from_packet (cls, packet, in_port = None):
-    """ get a match that matches this packet, asuming it came in on in_port in_port
-    @param packet an instance of 'ethernet'
+    """
+    Constructs an exact match for the given packet
+
+    @param in_port The switch port the packet arrived on if you want
+                   the resulting match to have its in_port set
+    @param packet  A pox.packet.ethernet instance
     """
     assert_type("packet", packet, ethernet, none_ok=False)
 
@@ -533,7 +539,6 @@ class ofp_match (object):
 
   def set_nw_src (self, *args, **kw):
     a = self._make_addr(*args, **kw)
-      # self.internal_links.add(Link(edge, edge.ports[port_no], host, host.interfaces[0]))
     if a == None:
       self._nw_src = ofp_match_data['nw_src'][0]
       self.wildcards &= ~OFPFW_NW_SRC_MASK
@@ -618,7 +623,11 @@ class ofp_match (object):
         raise RuntimeError(self._assert())
 
     packed = ""
-    packed += struct.pack("!LH", self._wire_wildcards(self.wildcards) if flow_mod else self.wildcards, self.in_port or 0)
+    if self.adjust_wildcards and flow_mod:
+      wc = self._wire_wildcards(self.wildcards)
+    else:
+      wc = self.wildcards
+    packed += struct.pack("!LH", wc, self.in_port or 0)
     if self.dl_src == None:
       packed += EMPTY_ETH.toRaw()
     elif type(self.dl_src) is bytes:
@@ -739,8 +748,8 @@ class ofp_match (object):
     (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = struct.unpack_from("!LLHH", binaryString, 28)
     self._nw_src = IPAddr(self._nw_src)
     self._nw_dst = IPAddr(self._nw_dst)
-#    if USE_MPLS_MATCH:
-#      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IBxxx", binaryString, 40)
+    #if USE_MPLS_MATCH:
+    #  self.mpls_label,self.mpls_tc = struct.unpack_from("!IBxxx", binaryString, 40)
     self.wildcards = self._normalize_wildcards(self._unwire_wildcards(wildcards) if flow_mod else wildcards) # Overide
     return binaryString[self.__len__():]
 
