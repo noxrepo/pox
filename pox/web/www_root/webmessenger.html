@@ -8,21 +8,23 @@
 
   <script>
    var conn = null;
+   var log_channel = null;
 
    function helloLog ()
    {
-     conn.send({"hello":"logger"});
+     log_channel = conn.get_channel("log_" + (Math.random()));
+     log_channel.on_rx = function (msg)
+     {
+       msg = JSON.stringify(msg);
+       document.getElementById('output').innerHTML += "<br />" + msg;
+     };
      if (console) console.log("Turning logging on...");
-   }
-
-   function append (msg)
-   {
-     document.getElementById('output').innerHTML += "<br />" + msg;
    }
 
    function communicate ()
    {
-     conn = new WebMessenger(function (msg) { append(JSON.stringify(msg)); });
+     conn = new WebMessenger();
+     conn.autorestart = true;
      conn.connect();
    }
   </script>
