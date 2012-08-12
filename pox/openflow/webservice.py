@@ -216,7 +216,10 @@ class OFRequestHandler (JSONRPCHandler):
 
 def launch (username='', password=''):
   def _launch ():
-    core.WebServer.set_handler("/OF/",OFRequestHandler,{},True)
+    cfg = {}
+    if len(username) and len(password):
+      cfg['auth'] = lambda u, p: (u == username) and (p == password)
+    core.WebServer.set_handler("/OF/",OFRequestHandler,cfg,True)
 
   core.call_when_ready(_launch, ["WebServer","openflow"],
                        name = "openflow.webservice")
