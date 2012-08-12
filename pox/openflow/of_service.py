@@ -151,7 +151,10 @@ class OFBot (ChannelBot):
       self.reply(event,**{'type':'set_table','xid':sr.xid})
 
     except:
-      log.exception("Exception in set_table")
+      #log.exception("Exception in get_flow_stats")
+      log.debug("Exception in get_flow_stats - %s:%s",
+                sys.exc_info()[0].__name__,
+                sys.exc_info()[1])
       self.reply(event,
                  exception="%s: %s" % (sys.exc_info()[0],sys.exc_info()[1]),
                  traceback=traceback.format_exc())
@@ -185,7 +188,10 @@ class OFBot (ChannelBot):
       self.reply(event,**{'type':'set_table','xid':xid})
 
     except:
-      log.exception("Exception in set_table")
+      #log.exception("Exception in set_table")
+      log.debug("Exception in set_table - %s:%s",
+                sys.exc_info()[0].__name__,
+                sys.exc_info()[1])
       self.reply(event,
                  exception="%s: %s" % (sys.exc_info()[0],sys.exc_info()[1]),
                  traceback=traceback.format_exc())
@@ -211,5 +217,9 @@ def launch (nexus = "MessengerNexus"):
 
     # Just stick one in a channel
     OFBot("of_01")
+
+    # For now, just register something arbitrary so that we can use
+    # this for dependencies
+    core.register(nexus + "_of_service", object())
 
   core.call_when_ready(_launch, [nexus, "openflow"])
