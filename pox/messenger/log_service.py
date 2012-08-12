@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -15,9 +15,23 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+This is a messenger service for working with the log.
+
+It does two things:
+  a) Listen on the "log" channel.  You can send messages to this
+     channel with keys lowerLevels/RaiseLevels/setLevels to adjust
+     global log levels.  See _process_commands() for more info.
+  b) You can join any channel named log_<something> (your session
+     ID is a good choice for the something), and a LogBot will
+     join it.  This will result in receiving log messages.  In
+     your join message (or afterwards), you can configure levels,
+     the message formats, etc.  See LogService for more details.
+"""
+
 from pox.core import core
-from pox.messenger.messenger import *
-from pox.lib.revent import autoBindEvents
+from pox.messenger import *
+from pox.lib.revent.revent import autoBindEvents
 import logging
 import traceback
 
@@ -30,42 +44,102 @@ _attributes = [
   'relativeCreated','thread','threadName','args',
 ]
 
-class LogMessenger (logging.Handler):
+
+class LogFilter (object):
   """
-  A Python logging.Handler that is a messenger service
+  Filters messages from the web server component
+
+  It's a nasty situation when you're using the HTTP messenger transport
+  to view the log when in debug mode, as every webserver log message
+  creates a messenger message which creates a webserver message, ...
+
+  This just turns off debug messages from the webserver.
+  """
+  def filter (self, record):
+    if record.levelno != logging.DEBUG: return True
+    if record.name == "web.webcore.server": return False
+    return True
+
+
+class LogHandler (logging.Handler):
+  """
+  A Python logging.Handler for the messenger
 
   Accepts dictionaries with configuration info:
-  KEY         VALUE
-  level       Minimum log level to output (probably one of CRITICAL, ERROR,
-              WARNING, INFO or DEBUG)
-  format      fmt argument to logging.Formatter
-  dateFormat  datefmt argument to logging.Formatter
-  json        true if you want a bunch of attributes from the LogRecord to be
-              included.  In some cases, these are stringized versions since the
-              originals are objects and we don't pickle/jsonpickle them.
+  KEY            VALUE
+  level          Minimum log level to output (probably one of CRITICAL,
+                 ERROR, WARNING, INFO or DEBUG)
+  format         fmt argument to logging.Formatter
+  dateFormat     datefmt argument to logging.Formatter
+  json           true if you want a bunch of attributes from the LogRecord to
+                 be included.  In some cases these are stringized since  the
+                 originals are objects and we don't pickle/jsonpickle them.
+  subsystems     A list of logger names to listen to.  A "null"/None entry in
+                 the list means the root logger (which is also the default).
+  add_subsystems A list of ADDITIONAL subsystems to listen to.
   """
-  def __init__ (self, connection, params):
+  #NOTE: We take advantage of the fact that the default value for the
+  #      argument to getLogger() is None.  This is currently true, but
+  #      isn't documented, so it might change in the future (though I
+  #      don't see why it would!).  Doing this "the right way" results
+  #      in much uglier code.
+
+  def __init__ (self, channel, params):
     logging.Handler.__init__(self)
-    self.connection = connection
-    connection._newlines = params.get("newlines", True) == True #HACK
+    self._channel = channel
+    self.addFilter(LogFilter())
     self._json = False
     self._format = False # Not valid, should never be set
     self._dateFormat = None
+    self.subsystems = []
     if "format" not in params:
       params["format"] = None # Force update
-    self._processParameters(params)
-    if "opaque" in params:
-      self._opaque = params["opaque"]
-    else:
-      self._opaque = None
-    logging.getLogger().addHandler(self)
-    self._listeners = autoBindEvents(self, connection) #GC?  Weak?
+    if 'subsystems' not in params:
+      self._add_subsystems([None])
 
-  def _processParameters (self, params):
+    self._process_parameters(params)
+
+  def _add_subsystems (self, subsystems):
+    """
+    Add log subsystems to listen to
+    """
+    for subsystem in subsystems:
+      if subsystem in self.subsystems: continue
+      try:
+        logging.getLogger(subsystem).addHandler(self)
+        self.subsystems.append(subsystem)
+      except:
+        pass
+
+  def _drop_subsystems (self):
+    """
+    Stop listening to all log subsystems
+    """
+    for subsystem in self.subsystems:
+      logging.getLogger(subsystem).removeHandler(self)
+    self.subsystems = []
+
+  def _process_parameters (self, params):
     if "level" in params:
       self.setLevel(params["level"])
+    if "subsystems" in params:
+      self._drop_subsystems()
+      self._add_subsystems(params['subsystems'])
+    if 'add_subsystems' in params:
+      self._add_subsystems(params['add_subsystems'])
+    if 'remove_subsystems' in params:
+      #TODO
+      log.error('remove_subsystems unimplemented')
     if "json" in params:
       self._json = params['json']
+    if "setLevels" in params:
+      levels = params['setLevels']
+      if isinstance(levels, dict):
+        for k,v in levels.iteritems():
+          l = core.getLogger(k)
+          l.setLevel(v)
+      else:
+        core.getLogger().setLevel(levels)
 
     doFormat = False
     if "format" in params:
@@ -82,21 +156,11 @@ class LogMessenger (logging.Handler):
     if doFormat:
       self.setFormatter(logging.Formatter(self._format, self._dateFormat))
 
-  def _handle_MessageReceived (self, event, msg):
-    if event.con.isReadable():
-      r = event.con.read()
-      if type(r) is dict:
-        self._processParameters(r)
-        if "bye" in r:
-          event.con.close()
-
-  def _handle_ConnectionClosed (self, event):
-    logging.getLogger().removeHandler(self)
+  def _close (self):
+    self._drop_subsystems()
 
   def emit (self, record):
     o = {'message' : self.format(record)}
-    if self._opaque is not None:
-      o.update(self._opaque)
     #o['message'] = record.getMessage()
     if self._json:
       for attr in _attributes:
@@ -107,46 +171,89 @@ class LogMessenger (logging.Handler):
                          str(record.exc_info[1]),
                          traceback.format_tb(record.exc_info[2],1)]
         o['exc'] = traceback.format_exception(*record.exc_info)
-    o['type'] = 'log'
-    self.connection.send(o, default=str)
+    self._channel.send(o)
 
-class LogMessengerListener (object):
+
+def _process_commands (msg):
   """
-  Takes care of spawning individual LogMessengers
-
-  Hello message is like:
-  {"hello":"log"}
-  You can also include any of the config parameters for LogMessenger
-  (like "level").
+  Processes logger commands
   """
-  def __init__ (self):
-    core.messenger.addListener(MessageReceived, self._handle_global_MessageReceived)
+  def get (key):
+    r = msg.get(key)
+    if r is not None:
+      if not isinstance(r, list):
+        r = {None:r}
+    else:
+      return {}
+    return r
 
-  def _handle_global_MessageReceived (self, event, msg):
-    try:
-      json = False
-      if msg['hello'] == 'log':
-        # It's for me!
-        try:
-          LogMessenger(event.con, msg)
-          event.claim()
-          return True # Stop processing this message
-        except:
-          traceback.print_exc()
-    except:
-      pass
+  lowerLevels = get("lowerLevels") # less verbose
+  raiseLevels = get("raiseLevels") # more verbose
+  setLevels = get("setLevels")
+
+  for k,v in lowerLevels.iteritems():
+    logger = core.getLogger(k)
+    level = logging._checkLevel(v)
+    if not l.isEnabledFor(level+1):
+      logger.setLevel(v)
+
+  for k,v in raiseLevels.iteritems():
+    logger = core.getLogger(k)
+    if not l.isEnabledFor(v):
+      logger.setLevel(v)
+
+  for k,v in setLevels.iteritems():
+    logger = core.getLogger(k)
+    logger.setLevel(v)
+
+  message = msg.get("message", None)
+  if message:
+    level = msg.get("level", "DEBUG")
+    if isinstance(level, basestring):
+      import logging
+      if not level.isalpha():
+        level = logging.DEBUG
+      else:
+        level = level.upper()
+        level = getattr(logging, level, logging.DEBUG)
+    sub = msg.get("subsystem", "<external>")
+    logging.getLogger(sub).log(level, message)
 
 
-def launch ():
-  def realStart (event=None):
-    if not core.hasComponent("messenger"):
-      if event is None:
-        # Only do this the first time
-        log.warning("Deferring firing up LogMessengerListener because Messenger isn't up yet")
-      core.addListenerByName("ComponentRegistered", realStart, once=True)
-      return
-    if not core.hasComponent(LogMessengerListener.__name__):
-      core.registerNew(LogMessengerListener)
-      log.info("Up...")
+class LogBot (ChannelBot):
+  def _init (self, extra):
+    self._handler = None
 
-  realStart()
+  def _join (self, event, con, msg):
+    #self.reply(event, hello = "Hello, %s!" % (con,))
+    if self._handler is not None:
+      log.warning("Multiple clients on channel " + self.channel.name)
+    else:
+      self._handler = LogHandler(self.channel, msg)
+
+  def _leave (self, con, empty):
+    if empty:
+      self._handler._close()
+      self._handler = None
+
+  def _unhandled (self, event):
+    _process_commands(event.msg)
+    self._handler._process_parameters(event.msg)
+
+
+def _handle_new_channel (event):
+  if event.channel.name.startswith("log_"):
+    # New channel named log_<something>?  Add a log bot.
+    LogBot(event.channel)
+
+def launch (nexus = "MessengerNexus"):
+  def start (nexus):
+    # One bot for default log channel
+    real_nexus = core.components[nexus]
+    LogBot(real_nexus.get_channel('log'))
+
+    # This will create new channels on demand
+    real_nexus.addListener(ChannelCreate, _handle_new_channel)
+
+  core.call_when_ready(start, nexus, args=[nexus])
+

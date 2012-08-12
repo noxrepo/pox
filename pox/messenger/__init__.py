@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -19,199 +19,251 @@
 The POX Messenger system.
 
 
-The Messenger is a way to build services in POX that can be consumed by
-external clients.
+The Messenger system is a way to build services in POX that can be
+consumed by external clients.
 
 Sometimes a controller might need to interact with the outside world.
 Sometimes you need to integrate with an existing piece of software and
 maybe you don't get to choose how you communicate with it.  Other times,
-you have the opportunity and burden of rolling your own.  The Messenger
-is meant to help you with the latter case.
+you have the opportunity and burden of rolling your own.  The Messenger 
+system is meant to help you with the latter case.
 
-In short, the POX Messenger is a system for communicating between NOX and
+In short, channels are a system for communicating between POX and
 external programs by exchanging messages encoded in JSON.  It is intended
-to be quite general, and supports multiple communication models (for
-example, you can use it for pub/sub, virtual circuits, broadcasts...).
-It is also transport-independent (as of this writing, it supports a
-straightforward TCP socket transport and an HTTP transport).
+to be quite general, both in the communication models it supports and in
+the transports is supports (as of this writing, it supports a
+straightforward TCP socket transport and an HTTP transport).  Any
+service written to use the Messenger should theoretically be usable via
+any transport.
 
 *Connections* are somehow established when a client connects via some
-*Transport*, and this causes a ConnectionStarted event on MessengerHub.
-Messages sent by the client at this point raise a MessageReceived event
-on MessengerHub, and a disconnection will raise ConnectionClosed.  A
-listener of ConnectionStarted or MessageReceived messages may use the
-Connection's send() method to send a message back to the client, or may
-store the Connection to send() a reply later (e.g., to implement a pubsub
-communication model).
+*Transport*.  The server can individually send messages to a specific client.
+A client can send messages to a *Channel* on the server.  A client can also
+become a member of a channel, after which it will receive any messages
+the server sends to that channel.  There is always a default channel with
+no name.
 
-Incoming messages are often intended to be received only be specific
-services.  To make this happen, a service can create a Target object
-specifying name for the target, and then listen to events on this
-specific Target object (e.g., MessageReceived, ConnectionClosed).
-Then clients can include a TARGET key in their messages with the
-value set to be the target name (or a list of target names, or null to
-broadcast through MessengerHub).  Messages which have specified an
-available TARGET will only appear as messages on the corresponding Target
-object -- not on MessengerHub itself.  Messages with a TARGET that is
-not available will continue to show up on MessengerHub.
-
-There are also times when a service would like to do a lot communication
-with a client over a specific connection.  In this case, the service can
-"claim" a connection (via the .claim() method of the event) and listen
-to it directly.  After being claimed, the connection will no longer
-raise events on the MessengerHub.  This allows for connection-oriented
-communication patterns.
-
-Generally, listeners will listen to MessageReceived events and respond
-to those.  However, it is also possible to set a connection to buffer
-the messages it receives, and it can be polled later.
+Channels can either be permanent or temporary.  Temporary channels are
+automatically destroyed when they no longer contain any members.
 """
 
-
-from pox.lib.revent import *
-from pox.lib.recoco import *
-import pox.core
+from pox.lib.revent.revent import *
 from pox.core import core as core
-
-try:
-  from weakref import WeakSet
-except:
-  # python 2.6 compatibility
-  from weakrefset import WeakSet
+import weakref
 import json
+import time
+import random
+import hashlib
+from base64 import b32encode
 
-log = pox.core.getLogger()
+log = core.getLogger()
 
 # JSON decoder used by default
 defaultDecoder = json.JSONDecoder()
 
-class MessengerListening(Event):
-  pass
 
-class ConnectionClosed (Event):
-  def __init__ (self, connection):
+class ChannelJoin (Event):
+  """ Fired on a channel when a client joins. """
+  def __init__ (self, connection, channel, msg = {}):
     Event.__init__(self)
     self.con = connection
-
-class MessengerListening(Event):
-  pass
-
-class ConnectionStarted (Event):
-  def __init__ (self, connection):
-    Event.__init__(self)
-    self.con = connection
-    self._claimed = False
-
-  def claim (self):
-    #assert self._claimed == False
-    self._claimed = True
-    self.halt = True
-    return self.con
-
-
-class MessageReceived (Event):
-  def __init__ (self, connection, msg):
-    Event.__init__(self)
-    self.con = connection
-    self._claimed = False
+    self.channel = channel
     self.msg = msg
 
-  def claim (self):
-    assert self._claimed == False
-    self._claimed = True
-    self.halt = True
-    return self.con
+class ConnectionClosed (Event):
+  """ Fired on a connection when it closes. """
+  def __init__ (self, connection):
+    Event.__init__(self)
+    self.con = connection
+
+class ChannelLeave (Event):
+  """ Fired on a channel when a client leaves. """
+  def __init__ (self, connection, channel):
+    Event.__init__(self)
+    self.con = connection
+    self.channel = channel
+
+class ChannelCreate (Event):
+  """ Fired on a Nexus when a channel is created. """
+  def __init__ (self, channel):
+    Event.__init__(self)
+    self.channel = channel
+
+class ChannelDestroy (Event):
+  """
+  Fired on the channel and its Nexus right before a channel is destroyed.
+  Set .keep = True to keep the channel after all.
+  """
+  def __init__ (self, channel):
+    Event.__init__(self)
+    self.channel = channel
+    self.keep = False
+
+class ChannelDestroyed (Event):
+  """
+  Fired on the channel and its Nexus right after a channel is destroyed.
+  """
+  def __init__ (self, channel):
+    Event.__init__(self)
+    self.channel = channel
+
+class MissingChannel (Event):
+  """
+  Fired on a Nexus when a message has been received to a non-existant channel.
+  You can create the channel in response to this.
+  """
+  def __init__ (self, connection, channel_name, msg):
+    Event.__init__(self)
+    self.con = connection
+    self.channel_name = channel_name
+    self.msg = msg
+
+class MessageReceived (Event):
+  """
+  Fired by a channel when a message has been receieved.
+
+  Always fired on the Connection itself.  Also fired on the corresponding
+  Channel object as specified by the CHANNEL key.
+
+  The listener looks like:
+  def _handle_MessageReceived (event, msg):
+  """
+  def __init__ (self, connection, channel, msg):
+    Event.__init__(self)
+    self.con = connection
+    self.msg = msg
+    self.channel = channel
+
+  def is_to_channel (self, channel):
+    """
+    Returns True if this message is to the given channel
+    """
+    if isinstance(channel, Channel):
+      channel = channel.name
+    if channel == self.channel: return True
+    if channel in self.channel: return True
+    return False
 
   def _invoke (self, handler, *args, **kw):
-    # Special handling.  If the handler doesn't return any disposition, then
-    # we look to see if they read the message.  If so, we stop processing
-    # this event now.
-    l = len(self.con._msgs) # Sleazy
-    r = handler(self, self.msg, *args, **kw)
-    if r is not None:
-      return r
-    if len(self.con._msgs) < l:
-      # Looks like they read it.  Stop processing.
-      return EventHalt
+    # Special handling -- pass the message
+    return handler(self, self.msg, *args, **kw)
 
 
-class Target (object):
-  pass
-  #TODO
+def _get_nexus (nexus):
+  if nexus is None: nexus = "MessengerNexus"
+  if isinstance(nexus, str):
+    if not core.hasComponent(nexus):
+      #TODO: Wait for channel Nexus
+      s = "MessengerNexus %s is not available" % (nexus,)
+      log.error(s)
+      raise RuntimeError(s)
+    return getattr(core, nexus)
+  assert isinstance(nexus, MessengerNexus)
+  return nexus
 
 
-class MessengerConnection (EventMixin):
+class Transport (object):
+  def __init__ (self, nexus):
+    self._nexus = _get_nexus(nexus)
+
+  def _forget (self, connection):
+    """ Forget about a connection """
+    raise RuntimeError("Not implemented")
+
+ 
+class Connection (EventMixin):
+  """
+  Superclass for Connections.
+
+  This could actually be a bit thinner, if someone wants to clean it up.
+
+  Maintains the state and handles message parsing and dispatch for a
+  single connection.
+  """
   _eventMixin_events = set([
     MessageReceived,
     ConnectionClosed,
   ])
 
-  ID = "INVALID ID"
-
-  def __init__ (self, source=None, ID = None):
+  def __init__ (self, transport):
+    """
+    transport is the source of the connection (e.g, TCPTransport).
+    """
     EventMixin.__init__(self)
-    self._isConnected = True
-    self._buf = bytes()
-    self._msgs = []
-    self._source = source
+    self._is_connected = True
+    self._transport = transport
     self._newlines = False
-    self.buffered = False
-    if ID is not None:
-      self.ID = ID
 
-    claimed = False
-    e = core.messenger.raiseEventNoErrors(ConnectionStarted, self)
-    if e is not None:
-      claimed = e._claimed
+    # Transports that don't do their own encapsulation can use _recv_raw(),
+    # which uses this.  (Such should probably be broken into a subclass.)
+    self._buf = bytes()
 
-    if not claimed:
-      # Unclaimed events get forwarded to here too
-      self.addListener(MessageReceived, self._defaultMessageReceived, priority=-1) # Low priority
+    key,num = self._transport._nexus.generate_session()
+    self._session_id,self._session_num = key,num
+
+  def _send_welcome (self):
+    """
+    Send a message to a client so they know they're connected
+    """
+    self.send({"CHANNEL":"","cmd":"welcome","session_id":self._session_id})
 
   def _close (self):
-    # Called internally
-    if self._isConnected is False: return
-    if self._source:
-      self._source._forget(self)
-    self._isConnected = False
+    """
+    Called internally to shut the connection down.
+    """
+    if self._is_connected is False: return
+    self._transport._forget(self)
+    self._is_connected = False
+    for name,chan in self._transport._nexus._channels.items():
+      chan._remove_member(self)
     self.raiseEventNoErrors(ConnectionClosed, self)
-    self.raiseEventNoErrors(MessageReceived, self, None)
-    core.messenger.raiseEventNoErrors(ConnectionClosed, self)
+    #self._transport._nexus.raiseEventNoErrors(ConnectionClosed, self)
 
-  def send (self, whatever, **kw):
-    if self._isConnected is False: return False
-    s = json.dumps(whatever, **kw)
+  def send (self, whatever):
+    """
+    Send data over the connection.
+
+    It will first be encoded into JSON, and optionally followed with
+    a newline.  Ultimately, it will be passed to send_raw() to actually
+    be sent.
+    """
+    if self._is_connected is False: return False
+    s = json.dumps(whatever, default=str)
     if self._newlines: s += "\n"
-    self.sendRaw(s)
+    self.send_raw(s)
     return True
 
-  def sendRaw (self, data):
+  def send_raw (self, data):
+    """
+    This method should actually send data out over the connection.
+
+    Subclasses need to implement this.
+    """
     raise RuntimeError("Not implemented")
 
-  def isConnected (self):
-    return self._isConnected
+  @property
+  def is_connected (self):
+    """
+    True if this Connection is still connected.
+    """
+    return self._is_connected
 
-  def isReadable (self):
-    return len(self._msgs) > 0
+  def _rx_message (self, msg):
+    """
+    Raises events when a complete message is available.
 
-  def peek (self, default = None):
-    return self.read(default = default, peek=True)
+    Subclasses may want to call this when they have a new message
+    available.  See _recv_raw().
+    """
+    e = self.raiseEventNoErrors(MessageReceived,self,msg.get('CHANNEL'),msg)
+    self._transport._nexus._rx_message(self, msg)
 
-  def read (self, default = None, peek = False):
-    if len(self._msgs) == 0: return default
-    if peek:
-      return self._msgs[0]
-    else:
-      return self._msgs.pop(0)
-
-  def _recv_msg (self, msg):
-    #print self,"recv:",msg
-    self._msgs.append(msg)
-    self.raiseEventNoErrors(MessageReceived, self, msg)
-    if not self.buffered:
-      del self._msgs[:]
-
-  def _recv_raw (self, data):
+  def _rx_raw (self, data):
+    """
+    If your subclass receives a stream instead of discrete messages, this
+    method can parse out individual messages and call _recv_msg() when
+    it has full messages.
+    """
     if len(data) == 0: return
     if len(self._buf) == 0:
       if data[0].isspace():
@@ -226,127 +278,386 @@ class MessengerConnection (EventMixin):
         msg, l = defaultDecoder.raw_decode(self._buf)
       except:
         # Need more data before it's a valid message
-        # (.. or the stream is corrupt and things will never be okay ever again)
+        # (.. or the stream is corrupt and things will never be okay
+        # ever again)
         return
 
       self._buf = self._buf[l:]
       if len(self._buf) != 0 and self._buf[0].isspace():
         self._buf = self._buf.lstrip()
-      self._recv_msg(msg)
+      self._rx_message(msg)
 
   def __str__ (self):
-    # Subclasses probably want to change this
-    return "<" + self.__class__.__name__ + "/" + self.ID + ">"
-
-  def _defaultMessageReceived (self, event, msg):
-    #print self,"default recv:",msg
-    #TODO: make sure this actually works. I have never tried re-raising an event.
-    core.messenger.raiseEventNoErrors(event)
-    if event._claimed:
-      # Someone claimed this connection -- stop forwarding it globally
-      return EventRemove
+    """
+    Subclasses should implement better versions of this.
+    """
+    return "<%s/%s/%i>" % (self.__class__.__name__, self._session_id,
+                           self._session_num)
 
   def close (self):
+    """
+    Close the connection.
+    """
     self._close()
 
 
-class TCPMessengerConnection (MessengerConnection, Task):
-  def __init__ (self, source=None, socket=None):
-    self._socket = socket
-    MessengerConnection.__init__(self, source, ID=str(id(self))) #TODO: better ID
-    Task.__init__(self)
+class Channel (EventMixin):
+  """
+  Allows one to easily listen to only messages that have a CHANNEL key
+  with a specific name.
 
-    #self.start()
-
-  def _close (self):
-    super(TCPMessengerConnection, self)._close()
-    try:
-      self._socket.shutdown(socket.SHUT_RDWR)
-    except:
-      pass
-
-  def sendRaw (self, data):
-    try:
-      l = self._socket.send(data)
-      if l == len(data): return
-    except:
-      pass
-    #TODO: do something more graceful!
-    self._close()
-
-  def run (self):
-    log.debug("%s started" % (self,))
-    while self.isConnected():
-      d = yield Recv(self._socket)
-      if d is None or len(d) == 0:
-        break
-      self._recv_raw(d)
-    self._close()
-    log.debug("%s stopped" % (self,))
-
-  #TODO: __str__ with port numbers, etc
-
-#TODO: a queued listener base class (like for HTTP)
-
-
-class MessengerHub (EventMixin):
+  Generally you will not create these classes directly, but by calling
+  getChannel() on the ChannelNexus.
+  """
   _eventMixin_events = set([
-    ConnectionStarted,  # Immediately when a connection goes up
-    ConnectionClosed,   # When a connection goes down
-    MessageReceived,    # For unclaimed messages
-    MessengerListening, # The TCP listening port is up
+    MessageReceived,
+    ChannelJoin,          # Immedaitely when a connection goes up
+    ChannelLeave,         # When a connection goes down
+    ChannelDestroy,
+    ChannelDestroyed,
   ])
+
+  def __init__ (self, name, nexus = None, temporary = False):
+    """
+    name is the name for the channel (i.e., the value for the messages'
+    CHANNEL key).
+    nexus is the specific MessengerNexus with which this channel is to be
+    associated (defaults to core.MessengerNexus).
+    """
+    EventMixin.__init__(self)
+    assert isinstance(name, basestr)
+    self._name = name
+
+    self._nexus = _get_nexus(nexus)
+    self._nexus._channels[name] = self
+
+    self.temporary = temporary
+
+    self._members = set() # Member Connections
+
+  @property
+  def name (self):
+    return self._name
+
+  def _destroy (self):
+    """ Remove channel """
+    e = self.raiseEvent(ChannelDestroy, self)
+    if e:
+      if e.keep: return False
+      self._nexus.raiseEvent(e)
+      if e.keep: return False
+
+    del self._nexus._channels[self._name]
+
+    # We can't just do the follow because then listeners
+    # can't tell if the channel is now empty...
+    #for sub in set(self._members):
+    #  sub.raiseEvent(ChannelLeave, sub, self)
+    #
+    #self._members.clear()
+    # .. so do the following really straightforward...
+    for sub in set(self._members):
+      self._remove_member(sub, allow_destroy = False)
+
+    e = ChannelDestroyed(self)
+    self.raiseEvent(e)
+    self._nexus.raiseEvent(e)
+
+  def _add_member (self, con, msg = {}):
+    if con in self._members: return
+    self._members.add(con)
+    self.raiseEvent(ChannelJoin, con, self, msg)
+
+  def _remove_member (self, con, allow_destroy = True):
+    if con not in self._members: return
+    self._members.remove(con)
+    self.raiseEvent(ChannelLeave, con, self)
+
+    if not allow_destroy: return
+
+    if self.temporary is True:
+      if len(self._members) == 0:
+        self._destroy()
+
+  def send (self, msg):
+    d = dict(msg)
+    d['CHANNEL'] = self._name
+    for r in self._members:
+      if not r.is_connected: continue
+      r.send(d)
+
+  def __str__ (self):
+    return "<Channel " + self.name + ">"
+
+
+def reply (_msg, **kw):
+  if not isinstance(_msg, dict):
+    # We'll also take an event...
+    _msg = _msg.msg
+  kw['CHANNEL'] = _msg.get('CHANNEL')
+  if 'XID' in _msg: kw['XID'] = _msg.get('XID')
+  return kw
+
+
+class ChannelBot (object):
+  """
+  A very simple framework for writing "bots" that respond to messages
+  on a channel.
+  """
+  def __init__ (self, channel, nexus = None, weak = False, extra = {}):
+    self._startup(channel, nexus, weak, extra)
+
+  def _startup (self, channel, nexus = None, weak = False, extra = {}):
+    self._nexus = _get_nexus(nexus)
+    if isinstance(channel, Channel):
+      self.channel = channel
+    else:
+      self.channel = self._nexus.get_channel(channel, create=True)
+    self.listeners = self.channel.addListeners(self, weak = weak)
+    self.prefixes = None
+
+    self._init(extra)
+
+    if self.prefixes is None:
+      self.prefixes = []
+      for n in dir(self):
+        if n.startswith("_exec_"):
+          n = n.split("_")[2]
+          self.prefixes.append(n)
+
+  def _handle_ChannelDestroyed (self, event):
+    self.channel.removeListeners(self.listeners)
+    self._destroyed()
+
+  def _handle_ChannelJoin (self, event):
+    self._join(event, event.con, event.msg)
+
+  def _handle_ChannelLeave (self, event):
+    self._leave(event.con, len(self.channel._members) == 0)
+
+  def _handle_MessageReceived (self, event, msg):
+    for prefix in self.prefixes:
+      if prefix in event.msg:
+        cmd = "_exec_%s_%s" % (prefix, str(event.msg[prefix]))
+        if hasattr(self, cmd):
+          getattr(self, cmd)(event)
+          return #TODO: Return val?
+
+    for prefix in self.prefixes:
+      if prefix in event.msg:
+        cmd = "_exec_" + prefix
+        if hasattr(self, cmd):
+          getattr(self, cmd)(event, msg[prefix])
+          return #TODO: Return val?
+
+    self._unhandled(event)
+
+  def _unhandled (self, event):
+    """ Called when no command found """
+    pass
+
+  def _join (self, event, connection, msg):
+    """ Called when a connection joins """
+    pass
+
+  def _leave (self, connection, empty):
+    """
+    Called when a connection leaves
+
+    If channel now has no members, empty is True
+    """
+    pass
+
+  def _destroyed (self):
+    """ Called when channel is destroyed """
+    pass
+
+  def _init (self, extra):
+    """
+    Called during initialization
+    'extra' is any additional information passed in when initializing
+    the bot.  In particular, this may be the message that goes along
+    with its invitation into a channel.
+    """
+    pass
+
+  def reply (__self, __event, **kw):
+    """
+    Unicast reply to a specific message.
+    """
+    __event.con.send(reply(__event, **kw))
+
+  def send (__self, __msg={}, **kw):
+    """
+    Send a message to all members of this channel.
+    """
+    m = {}
+    m.update(__msg)
+    m.update(kw)
+    __self.channel.send(m)
+
+
+class DefaultChannelBot (ChannelBot):
+  def _init (self, extra):
+    self._bots = {}
+
+  def add_bot (self, bot, name = None):
+    """
+    Registers a bot (an instance of ChannelBot) so that it can be
+    invited to other channels.
+    """
+    assert isinstance(bot, ChannelBot)
+    if name is None:
+      name = bot.__name__
+    self._bots[name] = bot
+
+  def _exec_newlines_False (self, event):
+    event.con._newlines = False
+
+  def _exec_newlines_True (self, event):
+    event.con._newlines = True
+
+  def _exec_cmd_invite (self, event):
+    """
+    Invites a bot that has been registered with add_bot() to a channel.
+
+    Note that you can invite a bot to an empty (new) temporary channel.
+    It will stay until the first member leaves.
+    """
+    botname = event.msg.get('bot')
+    botclass = self._bots.get(botname)
+    channel = event.msg.get('channel')
+    chan = self._nexus.get_channel(channel, create=True, temporary=True)
+    if chan is None:
+      #TODO: send an error
+      log.warning("A bot was invited to a nonexistent channel (%s)"
+                  % (channel,))
+      return
+    if botclass is None:
+      #TODO: send an error
+      log.warning("A nonexistent bot (%s) was invited to a channel"
+                  % (botname,))
+      return
+    bot = botclass(channel, self._nexus)
+
+  def _unhandled (self, event):
+    log.warn("Default channel got unknown command: "
+              + str(event.msg.get('cmd')))
+
+  def _exec_cmd_new_channel (self, event):
+    """ Generates a new channel with random name """
+    prefix = event.msg.get('prefix', 'temp') + "_"
+    import random
+    while True:
+      # Sloppy
+      r = random.randint(1, 100000)
+      n = prefix + str(r)
+      if r not in self._nexus._channels:
+        break
+    ch = self._nexus.get_channel(n, create=True, temporary=True)
+    ch._add_member(event.con, event.msg)
+    self.reply(event, new_channel = n)
+
+  def _exec_cmd_join_channel (self, event):
+    """ Joins/creates a channel """
+    ch = self._nexus.get_channel(event.msg['channel'])
+    if ch is None: return
+    ch._add_member(event.con, event.msg)
+
+  def _exec_cmd_leave_channel (self, event):
+    ch = self._nexus.get_channel(event.msg['channel'])
+    if ch is None: return
+    ch._remove_member(event.con)
+
+  def _exec_test (self, event, value):
+    log.info("Default channel got: " + str(value))
+    self.reply(event, test = value.upper())
+
+
+class MessengerNexus (EventMixin):
+  """
+  Transports, Channels, etc. are all associated with a MessengerNexus.
+  Typically, there is only one, and it is registered as
+  pox.core.MessengerNexus
+  """
+
+  _eventMixin_events = set([
+    MissingChannel,     # When a msg arrives to nonexistent channel
+    ChannelDestroy,
+    ChannelDestroyed,
+    ChannelCreate,
+  ])
+
   def __init__ (self):
     EventMixin.__init__(self)
-    self.connections = WeakSet()
+    self._channels = {} # name -> Channel
+    self.default_bot = DefaultChannelBot("", self)
+    self._next_ses = 1
+    self._session_salt = str(time.time())
+
+  def generate_session (self):
+    """
+    Return a new session ID tuple (key, num)
+
+    The key is a unique and not-trivial-to-guess alphanumeric value
+    associated with the session.
+    The num is a unique numerical value associated with the session.
+    """
+    r = self._next_ses
+    self._next_ses += 1
+
+    key = str(random.random()) + str(time.time()) + str(r)
+    key += str(id(key)) + self._session_salt
+
+    key = b32encode(hashlib.md5(key).digest()).upper().replace('=','')
+   
+    def alphahex (r):
+      """ base 16 on digits 'a' through 'p' """
+      r=hex(r)[2:].lower()
+      return ''.join(chr((10 if ord(x) >= 97 else 49) + ord(x)) for x in r)
+
+    key = alphahex(r) + key
+
+    return key,r
+
+  def get_channel (self, name, create = True, temporary = False):
+    if name is None: name = ""
+    if name in self._channels:
+      return self._channels[name]
+    elif create:
+      c = Channel(name, self, temporary = temporary)
+      self.raiseEvent(ChannelCreate, c)
+      return c
+    else:
+      return None
+
+  def _rx_message (self, con, msg):
+    """
+    Dispatches messages to listeners of this nexus and to its Channels.
+    Called by Connections.
+    """
+    ret = False
+    assert isinstance(msg, dict)
+    if isinstance(msg, dict):
+      channels = msg.get('CHANNEL')
+      if channels is None:
+        channels = [""]
+      if not isinstance(channels, list):
+        channels = [channels]
+      for cname in channels:
+        channel = self.get_channel(cname, create=False)
+        if channel is None:
+          e = self.raiseEvent(MissingChannel, con, cname, msg)
+          if e is not None: cname = e.channel_name
+          channel = self.get_channel(cname, create=False)
+        if channel is not None:
+          #print "raise on", channel
+          channel.raiseEvent(MessageReceived, con, channel, msg)
+          ret = True
+    return ret
 
 
-#TODO: make a superclass source
-class TCPMessengerSource (Task):
-  def __init__ (self, address = "0.0.0.0", port = 7790):
-    port = int(port)
-    Task.__init__(self)
-    self._addr = (address,port)
-    self._connections = set()
 
-  def _forget (self, connection):
-    """ Forget about a connection (because it has closed) """
-    if connection in self._connections:
-      #print "forget about",connection
-      self._connections.remove(connection)
+def launch ():
+  core.registerNew(MessengerNexus)
 
-  def run (self):
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    listener.bind(self._addr)
-    listener.listen(0)
-
-    log.debug("Listening for connections on %s:%i" % (self._addr))
-    core.messenger.raiseEventNoErrors(MessengerListening())
-
-    con = None
-    while core.running:
-      try:
-        rlist, wlist, elist = yield Select([listener])
-        if len(rlist) == 0:
-          # Must have been interrupted
-          break
-
-        rc = TCPMessengerConnection(self, listener.accept()[0])
-        self._connections.add(rc)
-        rc.start()
-      except:
-        traceback.print_exc()
-        break
-
-    try:
-      listener.close()
-    except:
-      pass
-    log.debug("No longer listening for connections")
-
-
-def launch (tcp_address = "0.0.0.0", tcp_port = 7790):
-  core.register("messenger", MessengerHub())
-  t = TCPMessengerSource(tcp_address, tcp_port)
-  core.addListener(pox.core.GoingUpEvent, lambda event: t.start())
