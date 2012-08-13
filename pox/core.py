@@ -439,13 +439,15 @@ class POXCore (EventMixin):
     """
     if components is None:
       components = set()
+    elif isinstance(components, basestring):
+      components = set([components])
     else:
       components = set(components)
 
     for c in dir(sink):
       if not c.startswith("_handle_"): continue
-      if c.count("_") != 3: continue
-      c = c.split("_")[2]
+      if c.count("_") < 3: continue
+      c = '_'.join(c.split("_")[2:-1])
       components.add(c)
 
 
