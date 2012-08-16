@@ -248,6 +248,8 @@ def fix_parsed (m):
   """
   Translate parsed packet data to dicts and stuff
   """
+  if m is None:
+    return {"type":"raw","data":[]}
   if isinstance(m, basestring):
     return {"type":"raw","data":[ord(b) for b in m]}
   assert isinstance(m, packet_base)
