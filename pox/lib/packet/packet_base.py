@@ -104,7 +104,7 @@ class packet_base (object):
         """
         Find the specified protocol layer based on its class type or name.
         """
-        if not isinstance(proto, str):
+        if not isinstance(proto, basestring):
             proto = proto.__name__
         if self.__class__.__name__ == proto and self.parsed:
             return self
