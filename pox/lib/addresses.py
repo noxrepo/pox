@@ -82,8 +82,11 @@ class EthAddr (object):
     strings, etc.
     """
     # Always stores as a 6 character string
-    if isinstance(addr, bytes) or isinstance(addr, unicode):
-      if len(addr) == 17 or len(addr) == 12 or addr.count(':') == 5:
+    if isinstance(addr, bytes) or isinstance(addr, basestring):
+      if len(addr) == 6:
+        # raw
+        pass
+      elif len(addr) == 17 or len(addr) == 12 or addr.count(':') == 5:
         # hex
         if len(addr) == 17:
           if addr[2::3] != ':::::' and addr[2::3] != '-----':
@@ -100,9 +103,6 @@ class EthAddr (object):
         # We should now have 12 hex digits (xxxxxxxxxxxx).
         # Convert to 6 raw bytes.
         addr = b''.join((chr(int(addr[x*2:x*2+2], 16)) for x in range(0,6)))
-      elif len(addr) == 6:
-        # raw
-        pass
       else:
         raise RuntimeError("Expected ethernet address string to be 6 raw bytes or some hex")
       self._value = addr
@@ -228,7 +228,7 @@ class IPAddr (object):
     """
 
     # Always stores as a signed network-order int
-    if isinstance(addr, str) or isinstance(addr, bytes):
+    if isinstance(addr, basestring) or isinstance(addr, bytes):
       if len(addr) != 4:
         # dotted quad
         self._value = struct.unpack('i', socket.inet_aton(addr))[0]
@@ -328,7 +328,7 @@ def netmask_to_cidr (dq):
   of network bits.  e.g., 255.255.255.0 -> 24
   Raise exception if subnet mask is not CIDR-compatible.
   """
-  if isinstance(dq, str):
+  if isinstance(dq, basestring):
     dq = IPAddr(dq)
   v = dq.toUnsigned(networkOrder=False)
   c = 0
