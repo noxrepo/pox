@@ -92,7 +92,18 @@ class vlan(packet_base):
             self.next = ethernet.type_parsers[self.eth_type]\
              (raw=raw[vlan.MIN_LEN:],prev=self)
 
-    def hdr(self, payload):
+    @property
+    def type (self):
+        """
+        This is just an alias for eth_type.
+
+        It's annoying that the ethertype on an ethernet packet is in the
+        'type' attribute, and for vlan it's in the 'eth_type' attribute.
+        We should probably normalize this. For now, we at least have this.
+        """
+        return self.eth_type
+
+    def hdr (self, payload):
         pcpid  = self.pcp << 13
         pcpid |= self.c   << 12
         pcpid |= self.id

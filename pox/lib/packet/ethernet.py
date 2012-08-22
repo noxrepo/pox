@@ -68,6 +68,8 @@ class ethernet(packet_base):
   ATA_TYPE   = 0x88a2
   QINQ_TYPE  = 0x9100
 
+  INVALID_TYPE = 0xffff
+
   type_parsers = {}
 
   def __init__(self, raw=None, prev=None, **kw):
@@ -129,6 +131,24 @@ class ethernet(packet_base):
   def getNameForType (ethertype):
     """ Returns a string name for a numeric ethertype """
     return ethtype_to_str(ethertype)
+
+  @property
+  def effective_ethertype (self):
+    """
+    Get the "effective" ethertype of a packet.
+
+    This means that if the payload is something like a VLAN or SNAP header,
+    we want the type from that deeper header.  This is kind of ugly here in
+    the packet library, but it should make user code somewhat simpler.
+    """
+    if self.type == ethernet.VLAN_TYPE:
+      try:
+        if not self.payload.parsed:
+          return ethernet.INVALID_TYPE
+        return self.payload.type
+      except:
+        return ethernet.INVALID_TYPE
+    return self.type
 
   def __str__(self):
     s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self.dst)),':',

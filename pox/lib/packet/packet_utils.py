@@ -50,6 +50,7 @@ _ethtype_to_str[0x8870] = 'JUMBO'
 _ethtype_to_str[0x889a] = 'SCSI' # SCSI Over Ethernet
 _ethtype_to_str[0x88a2] = 'ATA' # ATA Over Ethernet
 _ethtype_to_str[0x9100] = 'QINQ'
+_ethtype_to_str[0xffff] = 'BAD'
 
 
 # IP protocol to string
