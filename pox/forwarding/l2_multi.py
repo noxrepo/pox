@@ -236,7 +236,7 @@ class Switch (EventMixin):
     loc = (self, event.port) # Place we saw this ethaddr
     oldloc = mac_map.get(packet.src) # Place we last saw this ethaddr
 
-    if packet.type == packet.LLDP_TYPE:
+    if packet.effective_ethertype == packet.LLDP_TYPE:
       drop()
       return
 
