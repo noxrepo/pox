@@ -30,6 +30,7 @@ from pox.lib.revent import *
 from collections import defaultdict
 from pox.openflow.discovery import Discovery
 from pox.lib.util import dpidToStr
+import time
 
 log = core.getLogger()
 
@@ -44,6 +45,9 @@ mac_map = {}
 
 # [sw1][sw2] -> (distance, intermediate)
 path_map = defaultdict(lambda:defaultdict(lambda:(None,None)))
+
+# Time to not flood in seconds
+FLOOD_HOLDDOWN = 5
 
 
 def _calc_paths ():
@@ -146,6 +150,7 @@ class Switch (EventMixin):
     self.ports = None
     self.dpid = None
     self._listeners = None
+    self._connected_at = None
 
   def __repr__ (self):
     return dpidToStr(self.dpid)
@@ -216,6 +221,8 @@ class Switch (EventMixin):
   def _handle_PacketIn (self, event):
     def flood ():
       """ Floods the packet """
+      if self.is_holding_down:
+        log.warning("Not flooding -- holddown active")
       msg = of.ofp_packet_out()
       msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
       msg.buffer_id = event.ofp.buffer_id
@@ -297,6 +304,14 @@ class Switch (EventMixin):
     log.debug("Connect %s" % (connection,))
     self.connection = connection
     self._listeners = self.listenTo(connection)
+    self._connected_at = time.time()
+
+  @property
+  def is_holding_down (self):
+    if self._connected_at is None: return True
+    if time.time() - self._connected_at > FLOOD_HOLDDOWN:
+      return False
+    return True
 
   def _handle_ConnectionDown (self, event):
     self.disconnect()
@@ -330,6 +345,7 @@ class l2_multi (EventMixin):
     #NOTE: This could be radically improved! (e.g., not *ALL* paths break)
     clear = of.ofp_flow_mod(match=of.ofp_match(),command=of.OFPFC_DELETE)
     for sw in switches.itervalues():
+      if sw.connection is None: continue
       sw.connection.send(clear)
     path_map.clear()
 
