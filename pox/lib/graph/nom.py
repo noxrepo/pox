@@ -52,6 +52,56 @@ class EntityLeave (EntityEvent):
   """
   pass
 
+class SwitchEvent (EntityEvent): pass
+
+class SwitchJoin (SwitchEvent):
+  """
+  As opposed to ConnectionUp, SwitchJoin occurs over large time scales
+  (e.g. an administrator physically moving a switch).
+  """
+  def __init__ (self, switch):
+    Event.__init__(self)
+    self.switch = switch
+
+class SwitchLeave (SwitchEvent):
+  """
+  As opposed to ConnectionDown, SwitchLeave occurs over large time scales
+  (e.g. an administrator physically moving a switch).
+  """
+  pass
+
+class SwitchConnectionUp(SwitchEvent):
+  def __init__(self, switch, connection):
+    SwitchEvent.__init__(self, switch)
+    self.switch = switch
+    self.connection = connection
+
+class SwitchConnectionDown(SwitchEvent): pass
+
+class HostEvent (EntityEvent): pass
+
+class HostJoin (HostEvent): 
+  def __init__(self, host):
+    HostEvent.__init__(self, host)
+    
+class HostLeave (HostEvent):
+  def __init__(self, host):
+    HostEvent.__init__(self, host)
+
+class LinkEvent (Event):
+  def __init__ (self, add, link):
+    Event.__init__(self)
+    self.link = link
+    self.added = add
+    self.removed = not add
+
+  def portForDPID (self, dpid):
+    if self.link.dpid1 == dpid:
+      return self.link.port1
+    if self.link.dpid2 == dpid:
+      return self.link.port2
+    return None
+
 class Update (Event):
   """
   Fired by Topology whenever anything has changed
@@ -76,8 +126,37 @@ class Host (Entity):
   """
   A generic Host entity.
   """
-  def __init__(self):
-    Entity.__init__(self)
+  def __init__(self, macstr=None, ip=None, location=None, **kw):
+    Entity.__init__(self) 
+    if macstr:
+      self.mac = EthAddr(macstr)
+      self.macstr = self.mac.toStr() # this is used as a key for topology.find()
+    if ip:
+      self.ip = IPAddr(ip)
+    self.location = location
+    '''
+    This is an example of what can be added by a component that does
+    os fingerprinting and replaces a generic to-be-added Host object with one
+    that has this field as an extension
+    '''
+    #self.os =
+  
+  def setLocation(self, switch, port):
+    '''
+    Sets the location where the host is currently connected
+    as a (switch, port) tuple
+    '''
+    self.location = (switch, port)
+  
+  def getLocation(self):
+    '''
+    Returns the location where the host is currently connected
+    as a (switch, port) tuple
+    '''
+    return (switch, port)
+    
+  def __repr__ (self):
+    return "<Host " + self.mac.toStr() + ">"
 
 class Switch (Entity):
   """
@@ -85,14 +164,39 @@ class Switch (Entity):
   e.g. pox.openflow.topology.OpenFlowSwitch
   """
 
-"""
 class Port (Entity):
   def __init__ (self, num, hwAddr, name):
     Entity.__init__(self)
     self.number = num
     self.hwAddr = EthAddr(hwAddr)
     self.name = name
-"""
+
+class Link (Entity):
+  """
+  A generic Link entity.
+  """
+  def __init__(self, node1, port1, node2, port2):
+    Entity.__init__(self) 
+    self.node1 = node1
+    self.port1 = port1
+    self.node2 = node2
+    self.port2 = port2
+    
+  def __repr__ (self):
+    return "<Link (%s:%s <-> %s:%s)" % (self.node1 , self.port1,
+                                        self.node2, self.port2)
+class AccessLink (Link):
+  """
+  A Link connecting a host to a switch.
+  """
+  def __init__(self, node1, port1, hostmac):
+    Entity.__init__(self) 
+    self.node1 = node1
+    self.port1 = port1
+    self.hostmac = hostmac
+    
+  def __repr__ (self):
+    return "<Link (%s:%s <-> %s)" % (self.node1 , self.port1, self.hostmac)    
 
 class NOM (Graph, EventMixin):
   __eventMixin_events = [
@@ -106,7 +210,6 @@ class NOM (Graph, EventMixin):
     Graph.__init__(self)
     EventMixin.__init__(self)
     self._eventMixin_addEvents(self.__eventMixin_events)
-    self._entities = {}
     self.log = core.getLogger(self.__class__.__name__)
 
   def getEntityByID (self, ID, fail=False):
@@ -114,7 +217,9 @@ class NOM (Graph, EventMixin):
     Raises an exception if fail is True and the entity doesn't exist
     See also: The 'entity' property.
     """
-    r = self.find(Or(Equal('DPID', ID),Equal(F('ID'), ID)))
+    r = self.find(Equal(F('dpid'), ID))
+    # Or is not working atm, so we only match dpids
+    #r = self.find(Or(Equal(F('dpid'), ID),Equal(F('id'), ID)))
     if len(r) == 0:
       if fail:
         raise RuntimeError("No entity with ID " + str(ID))
@@ -134,11 +239,10 @@ class NOM (Graph, EventMixin):
     if entity in self:
       raise RuntimeError("Entity exists")
     self.add(entity)
-    self.log.info(str(entity) + " joined")
     self.raiseEvent(EntityJoin, entity)
 
   def getEntitiesOfType (self, t=Entity, subtypes=True):
-    if subtypes is False:
+    if subtypes:
       return self.find(is_a=t)
     else:
       return self.find(type=t)
@@ -150,7 +254,7 @@ class NOM (Graph, EventMixin):
     """
     rv = EventMixin.raiseEvent(self, event, *args, **kw)
     if type(event) is not Update:
-      EventMixin.raiseEvent(self, Update(event))
+      EventMixin.raiseEvent(self, Update(event), *args, **kw)
     return rv
 
   def __str__(self):

@@ -76,11 +76,16 @@ class EthAddr (object):
   """
   An Ethernet (MAC) address type.
   """
-  def __init__ (self, addr):
+  def __init__ (self, addr=None, **kw):
     """
     Understands Ethernet address is various forms.  Hex strings, raw byte
     strings, long integers, etc.
     """
+    # For automatic intantiation from serialized object
+    if 'value' in kw:
+      self.value = kw['value']
+      return
+      
     # Always stores as a 6 character string
     if isinstance(addr, int) or isinstance(addr, long):
       addr = long(addr)
@@ -93,7 +98,7 @@ class EthAddr (object):
         # This may not be machine-independent...
         val.insert(0, struct.pack("B", (addr & 0xFF)))
         addr >>= 8
-      self._value = ''.join(val)
+      self.value = ''.join(val)
     elif isinstance(addr, bytes) or isinstance(addr, unicode):
       if len(addr) == 17 or len(addr) == 12 or addr.count(':') == 5:
         # hex
@@ -113,27 +118,15 @@ class EthAddr (object):
         pass
       else:
         raise RuntimeError("Expected ethernet address string to be 6 raw bytes or some hex")
-      self._value = addr
+      self.value = addr
     elif isinstance(addr, EthAddr):
-      self._value = addr.toRaw()
+      self.value = addr.toRaw()
     elif type(addr) == list or (hasattr(addr, '__len__') and len(addr) == 6 and hasattr(addr, '__iter__')):
-      self._value = b''.join( (chr(x) for x in addr) )
+      self.value = b''.join( (chr(x) for x in addr) )
     elif addr is None:
-      self._value = b'\x00' * 6
+      self.value = b'\x00' * 6
     else:
       raise RuntimeError("Expected ethernet address to be a string of 6 raw bytes or some hex")
-
-  def isGlobal (self):
-    """
-    Returns True if this is a globally unique (OUI enforced) address.
-    """
-    return not self.isLocal()
-
-  def isLocal (self):
-    """
-    Returns True if this is a locally-administered (non-global) address.
-    """
-    return True if (ord(self._value[0]) & 2) else False
 
   def isBridgeFiltered (self):
     """
@@ -141,20 +134,12 @@ class EthAddr (object):
     01-80-C2-00-00-00 to 01-80-C2-00-00-0F. MAC frames that have a destination MAC address
     within this range are not relayed by MAC bridges conforming to IEEE 802.1D
     """
-    return  ((ord(self._value[0]) == 0x01)
-    	and (ord(self._value[1]) == 0x80)
-    	and (ord(self._value[2]) == 0xC2)
-    	and (ord(self._value[3]) == 0x00)
-    	and (ord(self._value[4]) == 0x00)
-    	and (ord(self._value[5]) <= 0x0F))
-
-  @property
-  def is_local (self):
-    return self.isLocal()
-
-  @property
-  def is_global (self):
-    return self.isGlobal()
+    return  ((ord(self.value[0]) == 0x01)
+    	and (ord(self.value[1]) == 0x80)
+    	and (ord(self.value[2]) == 0xC2)
+    	and (ord(self.value[3]) == 0x00)
+    	and (ord(self.value[4]) == 0x00)
+    	and (ord(self.value[5]) <= 0x0F))
 
   def isGlobal (self):
     """
@@ -166,7 +151,7 @@ class EthAddr (object):
     """
     Returns True if this is a locally-administered (non-global) address.
     """
-    return True if (ord(self._value[0]) & 2) else False
+    return True if (ord(self.value[0]) & 2) else False
 
   @property
   def is_local (self):
@@ -180,7 +165,7 @@ class EthAddr (object):
     """
     Returns True if this is a multicast address.
     """
-    return True if (ord(self._value[0]) & 1) else False
+    return True if (ord(self.value[0]) & 1) else False
 
   @property
   def is_multicast (self):
@@ -190,7 +175,7 @@ class EthAddr (object):
     """
     Returns the address as a 6-long bytes object.
     """
-    return self._value
+    return self.value
 
   def toInt (self):
     '''
@@ -200,10 +185,10 @@ class EthAddr (object):
     # Struct puts the least significant (bit|byte) leftmost, 
     # but Murphy puts least significant (bit|byte) rightmost
     # So we unpack ourselves, one byte at a time
-    # most-significant byte is leftmost (self._value[0])
-    for i in range(len(self._value)):
+    # most-significant byte is leftmost (self.value[0])
+    for i in range(len(self.value)):
       byte_shift = 5-i
-      byte = self._value[i]
+      byte = self.value[i]
       byte_value = struct.unpack("B", byte)[0]
       value += (byte_value << (8*byte_shift))
     return value
@@ -213,7 +198,7 @@ class EthAddr (object):
     Returns a 6-entry long tuple where each entry is the numeric value
     of the corresponding byte of the address.
     """
-    return tuple((ord(x) for x in self._value))
+    return tuple((ord(x) for x in self.value))
 
   def toStr (self, separator = ':', resolveNames  = False): #TODO: show OUI info from packet lib
     """
@@ -222,7 +207,7 @@ class EthAddr (object):
     If resolveNames is True, it may return company names based on
     the OUI. (Currently unimplemented)
     """
-    return separator.join(('%02x' % (ord(x),) for x in self._value))
+    return separator.join(('%02x' % (ord(x),) for x in self.value))
 
   def __str__ (self):
     return self.toStr()
@@ -230,23 +215,23 @@ class EthAddr (object):
   def __cmp__ (self, other):
     try:
       if type(other) == EthAddr:
-        other = other._value
+        other = other.value
       elif type(other) == bytes:
         pass
       else:
-        other = EthAddr(other)._value
-      if self._value == other:
+        other = EthAddr(other).value
+      if self.value == other:
         return 0
-      if self._value < other:
+      if self.value < other:
         return -1
-      if self._value > other:
+      if self.value > other:
         return -1
       raise RuntimeError("Objects can not be compared?")
     except:
       return -other.__cmp__(self)
 
   def __hash__ (self):
-    return self._value.__hash__()
+    return self.value.__hash__()
 
   def __repr__ (self):
     return self.__class__.__name__ + "('" + self.toStr() + "')"
@@ -264,25 +249,29 @@ class IPAddr (object):
   """
   Represents an IPv4 address.
   """
-  def __init__ (self, addr, networkOrder = False):
+  def __init__ (self, addr=None, networkOrder = False, **kw):
     """ Can be initialized with several formats.
         If addr is an int/long, then it is assumed to be in host byte order
         unless networkOrder = True
         Stored in network byte order as a signed int
     """
-
+    # For automatic intantiation from serialized object
+    if 'value' in kw:
+      self.value = kw['value']
+      return
+      
     # Always stores as a signed network-order int
     if isinstance(addr, str) or isinstance(addr, bytes):
       if len(addr) != 4:
         # dotted quad
-        self._value = struct.unpack('i', socket.inet_aton(addr))[0]
+        self.value = struct.unpack('i', socket.inet_aton(addr))[0]
       else:
-        self._value = struct.unpack('i', addr)[0]
+        self.value = struct.unpack('i', addr)[0]
     elif isinstance(addr, IPAddr):
-      self._value = addr._value
+      self.value = addr.value
     elif isinstance(addr, int) or isinstance(addr, long):
       addr = addr & 0xffFFffFF # unsigned long
-      self._value = struct.unpack("!i", struct.pack(('!' if networkOrder else '') + "I", addr))[0]
+      self.value = struct.unpack("!i", struct.pack(('!' if networkOrder else '') + "I", addr))[0]
     else:
       raise RuntimeError("Unexpected IP address format")
 
@@ -297,15 +286,15 @@ class IPAddr (object):
   def toSigned (self, networkOrder = False):
     """ Return the address as a signed int """
     if networkOrder:
-      return self._value
-    v = socket.htonl(self._value & 0xffFFffFF)
+      return self.value
+    v = socket.htonl(self.value & 0xffFFffFF)
     return struct.unpack("i", struct.pack("I", v))[0]
 
   def toRaw (self):
     """
     Returns the address as a four-character byte string.
     """
-    return struct.pack("i", self._value)
+    return struct.pack("i", self.value)
 
   def toUnsigned (self, networkOrder = False):
     """
@@ -313,8 +302,8 @@ class IPAddr (object):
     default) byte order.
     """
     if not networkOrder:
-      return socket.htonl(self._value & 0xffFFffFF)
-    return self._value & 0xffFFffFF
+      return socket.htonl(self.value & 0xffFFffFF)
+    return self.value & 0xffFFffFF
 
   def toStr (self):
     """ Return dotted quad representation """
@@ -347,12 +336,12 @@ class IPAddr (object):
     try:
       if not isinstance(other, IPAddr):
         other = IPAddr(other)
-      return cmp(self._value, other._value)
+      return cmp(self.value, other.value)
     except:
       return -other.__cmp__(self)
 
   def __hash__ (self):
-    return self._value.__hash__()
+    return self.value.__hash__()
 
   def __repr__ (self):
     return self.__class__.__name__ + "('" + self.toStr() + "')"
@@ -447,8 +436,8 @@ if __name__ == '__main__':
   for v in [('255.0.0.1',True), (0xff000001, True), (0x010000ff, False)]:
     print "== " + str(v) + " ======================="
     a = IPAddr(v[0],v[1])
-    print a._value,-16777215
-    #print hex(a._value),'ff000001'
+    print a.value,-16777215
+    #print hex(a.value),'ff000001'
     print str(a),'255.0.0.1'
     print hex(a.toUnsigned()),'010000ff'
     print hex(a.toUnsigned(networkOrder=True)),'ff000001'

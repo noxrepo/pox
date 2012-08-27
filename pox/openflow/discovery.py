@@ -37,6 +37,7 @@ from pox.lib.packet.lldp          import ttl, system_description
 import pox.openflow.libopenflow_01 as of
 from pox.lib.util                 import dpidToStr
 from pox.core import core
+from pox.lib.graph.nom import *
 
 import struct
 import array
@@ -150,20 +151,6 @@ class LLDPSender (object):
     return po.pack()
 
 
-class LinkEvent (Event):
-  def __init__ (self, add, link):
-    Event.__init__(self)
-    self.link = link
-    self.added = add
-    self.removed = not add
-
-  def portForDPID (self, dpid):
-    if self.link.dpid1 == dpid:
-      return self.link.port1
-    if self.link.dpid2 == dpid:
-      return self.link.port2
-    return None
-
 
 class Discovery (EventMixin):
   """
@@ -189,6 +176,8 @@ class Discovery (EventMixin):
     self._sender = LLDPSender()
     Timer(TIMEOUT_CHECK_PERIOD, self._expireLinks, recurring=True)
 
+    self.topology = core.topology
+
     if core.hasComponent("openflow"):
       self.listenTo(core.openflow)
     else:
@@ -209,8 +198,21 @@ class Discovery (EventMixin):
       msg = of.ofp_flow_mod(match = of.ofp_match(dl_type = ethernet.LLDP_TYPE,
                                                  dl_dst = NDP_MULTICAST))
       msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
+      
+      
+      #msg.hard_timeout = 5
+      msg.flags = 1
+      """
+      
       event.connection.send(msg)
-
+      
+      """
+      # Install through NOM
+      dp = core.topology.getEntityByID(event.dpid)
+      dp.installFlow(priority=msg.priority, cookie=msg.cookie, \
+          idle_timeout=msg.idle_timeout, hard_timeout=msg.hard_timeout, \
+          match=msg.match, actions=msg.actions)
+      
     self._dps.add(event.dpid)
     self._sender.addSwitch(event.dpid, [(p.port_no, p.hw_addr)
                                         for p in event.ofp.ports])
@@ -366,27 +368,34 @@ class Discovery (EventMixin):
 
     # print 'LLDP packet in from',chassid,' port',str(portid)
 
-    link = Discovery.Link(originatorDPID, originatorPort, event.dpid,
-                          event.port)
+    link = Discovery.Link(originatorDPID,originatorPort, event.dpid,event.port)
 
     if link not in self.adjacency:
       self.adjacency[link] = time.time()
       log.info('link detected: %s.%i -> %s.%i' %
                (dpidToStr(link.dpid1), link.port1,
                 dpidToStr(link.dpid2), link.port2))
-      self.raiseEventNoErrors(LinkEvent, True, link)
+      #self.raiseEventNoErrors(LinkEvent, True, link)
+      
+      # Create NOM link and add it to the NOM
+      newLink = Link(originatorDPID, originatorPort, event.dpid, event.port)
+      self.topology.addEntity(newLink)
+      self.raiseEventNoErrors(LinkEvent, True, newLink)
     else:
       # Just update timestamp
       self.adjacency[link] = time.time()
-
+      
     return EventHalt # Probably nobody else needs this event
 
   def _deleteLinks (self, links):
     for link in links:
       del self.adjacency[link]
       self.raiseEvent(LinkEvent, False, link)
-
-
+      
+      # TODO: Remove it from the NOM
+      #l = self.topology.getEntitiesOfType(Link, node1=, node2=)
+      #self.topology.removeEntity(l)
+      
   def isSwitchOnlyPort (self, dpid, port):
     """ Returns True if (dpid, port) designates a port that has any
     neighbor switches"""

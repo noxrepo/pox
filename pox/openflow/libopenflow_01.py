@@ -31,7 +31,6 @@ from pox.lib.packet.udp import udp
 from pox.lib.packet.tcp import tcp
 from pox.lib.packet.icmp import icmp
 from pox.lib.packet.arp import arp
-from pox.lib.packet.mpls import mpls
 
 from pox.lib.addresses import *
 from pox.lib.util import assert_type
@@ -471,7 +470,7 @@ class ofp_match (object):
           # Not IP or ARP
           self.nw_src = IPAddr(0)
           self.nw_dst = IPAddr(0)
-          self.nw_proto = 0
+          eelf.nw_proto = 0
         self.nw_tos = 0
         self.tp_src = 0
         self.tp_dst = 0
@@ -500,7 +499,7 @@ class ofp_match (object):
     # This is basically initHelper(), but tweaked slightly since this
     # class does some magic of its own.
     for k,v in kw.iteritems():
-      if not hasattr(self, '_'+k):
+      if not hasattr(self, '_'+k) and not hasattr(self, k):
         raise TypeError(self.__class__.__name__ + " constructor got "
           + "unexpected keyword argument '" + k + "'")
       setattr(self, k, v)
@@ -615,7 +614,7 @@ class ofp_match (object):
         raise RuntimeError(self._assert())
 
     packed = ""
-    packed += struct.pack("!LH", self.wildcards, self.in_port or 0)
+    packed += struct.pack("!LH", self._wire_wildcards(self.wildcards), self.in_port or 0)
     if self.dl_src == None:
       packed += EMPTY_ETH.toRaw()
     elif type(self.dl_src) is bytes:
@@ -628,17 +627,25 @@ class ofp_match (object):
       packed += self.dl_dst
     else:
       packed += self.dl_dst.toRaw()
+
+    def check_ip(val):
+      return (val or 0) if self.dl_type == 0x0800 else 0
+    def check_ip_or_arp(val):
+      return (val or 0) if self.dl_type == 0x0800 or self.dl_type == 0x0806 else 0
+    def check_tp(val):
+      return (val or 0) if self.dl_type == 0x0800 and self.nw_proto in (1,6,17) else 0
+
     packed += struct.pack("!HB", self.dl_vlan or 0, self.dl_vlan_pcp or 0)
     packed += _PAD # Hardcode padding
-    packed += struct.pack("!HBB", self.dl_type or 0, self.nw_tos or 0, self.nw_proto or 0)
+    packed += struct.pack("!HBB", self.dl_type or 0, check_ip(self.nw_tos), check_ip_or_arp(self.nw_proto))
     packed += _PAD2 # Hardcode padding
     def fix (addr):
       if addr is None: return 0
       if type(addr) is int: return addr & 0xffFFffFF
       if type(addr) is long: return addr & 0xffFFffFF
       return addr.toUnsigned()
-    packed += struct.pack("!LLHH", fix(self.nw_src), fix(self.nw_dst),
-                          self.tp_src or 0, self.tp_dst or 0)
+    packed += struct.pack("!LLHH", check_ip_or_arp(fix(self.nw_src)), check_ip_or_arp(fix(self.nw_dst)),
+                          check_tp(self.tp_src), check_tp(self.tp_dst))
 #    if USE_MPLS_MATCH:
 #        packed += struct.pack("!IBxxx", self.mpls_label or 0, self.mpls_tc or 0)
     return packed
@@ -654,6 +661,60 @@ class ofp_match (object):
       wildcards &= ~OFPFW_NW_DST_MASK
       wildcards |= (32 << OFPFW_NW_DST_SHIFT)
     return wildcards
+
+  def _wire_wildcards(self, wildcards):
+    """ Normallize the wildcard bits to the openflow wire representation. Note this
+        atrocity from the OF1.1 spec:
+        Protocol-specific fields within ofp_match will be ignored within
+        a single table when the corresponding protocol is not specified in the
+        match. The MPLS match fields will be ignored unless the Ethertype is
+        specified as MPLS. Likewise, the IP header and transport header fields
+        will be ignored unless the Ethertype is specified as either IPv4 or
+        ARP. The tp_src and tp_dst fields will be ignored unless the network
+        protocol specified is as TCP, UDP or SCTP. Fields that are ignored
+        don't need to be wildcarded and should be set to 0.
+    """
+    if self.dl_type == 0x0800:
+        # IP
+        if  self.nw_proto not in (1,6,17):
+          # not TCP/UDP/ICMP -> Clear TP wildcards for the wire
+          return wildcards & ~(OFPFW_TP_SRC | OFPFW_TP_DST)
+        else:
+          return wildcards
+    elif self.dl_type == 0x0806:
+        # ARP: clear NW_TOS / TP wildcards for the wire
+        return wildcards & ~( OFPFW_NW_TOS | OFPFW_TP_SRC | OFPFW_TP_DST)
+    else:
+        # not even IP. Clear NW/TP wildcards for the wire
+        return wildcards & ~( OFPFW_NW_TOS | OFPFW_NW_PROTO | OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK | OFPFW_TP_SRC | OFPFW_TP_DST)
+
+
+  def _unwire_wildcards(self, wildcards):
+    """ Normallize the wildcard bits from the openflow wire representation. Note this
+        atrocity from the OF1.1 spec:
+        Protocol-specific fields within ofp_match will be ignored within
+        a single table when the corresponding protocol is not specified in the
+        match. The MPLS match fields will be ignored unless the Ethertype is
+        specified as MPLS. Likewise, the IP header and transport header fields
+        will be ignored unless the Ethertype is specified as either IPv4 or
+        ARP. The tp_src and tp_dst fields will be ignored unless the network
+        protocol specified is as TCP, UDP or SCTP. Fields that are ignored
+        don't need to be wildcarded and should be set to 0.
+    """
+    if self._dl_type == 0x0800:
+        # IP
+        if  self._nw_proto not in (1,6,17):
+          # not TCP/UDP/ICMP -> Set TP wildcards for the object
+          return wildcards | (OFPFW_TP_SRC | OFPFW_TP_DST)
+        else:
+          return wildcards
+    elif self._dl_type == 0x0806:
+        # ARP: Set NW_TOS / TP wildcards for the object
+        return wildcards  | ( OFPFW_NW_TOS | OFPFW_TP_SRC | OFPFW_TP_DST)
+    else:
+        # not even IP. Set NW/TP wildcards for the object
+        return wildcards  | ( OFPFW_NW_TOS | OFPFW_NW_PROTO | OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK | OFPFW_TP_SRC | OFPFW_TP_DST)
+
 
   @property
   def is_wildcarded (self):
@@ -676,7 +737,7 @@ class ofp_match (object):
     self._nw_dst = IPAddr(self._nw_dst)
 #    if USE_MPLS_MATCH:
 #      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IBxxx", binaryString, 40)
-    self.wildcards = self._normalize_wildcards(wildcards) # Overide
+    self.wildcards = self._normalize_wildcards(self._unwire_wildcards(wildcards)) # Overide
     return binaryString[self.__len__():]
 
   def __len__ (self):
@@ -2366,7 +2427,7 @@ class ofp_flow_stats (object):
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 48 + len(self.match())):
+    if (len(binaryString) < 48 + len(self.match)):
       return binaryString
     (self.length, self.table_id, pad) = struct.unpack_from("!HBB", binaryString, 0)
     self.match.unpack(binaryString[4:])
@@ -2513,6 +2574,7 @@ class ofp_aggregate_stats (object):
     outstr += prefix + 'byte_count: ' + str(self.byte_count) + '\n'
     outstr += prefix + 'flow_count: ' + str(self.flow_count) + '\n'
     return outstr
+ofp_aggregate_stats_reply = ofp_aggregate_stats
 
 class ofp_table_stats (object):
   def __init__ (self, **kw):

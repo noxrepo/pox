@@ -25,6 +25,9 @@ def launch (**kw):
   pox.py web.webcore log.level --web.webcore=INFO
   """
   for k,v in kw.iteritems():
+    if v is True:
+      # This means they did something like log.level --DEBUG
+      v = k
+      k = "" # Root logger
     core.getLogger(k).setLevel(v)
-
 

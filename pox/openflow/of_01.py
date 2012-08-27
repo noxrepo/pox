@@ -505,20 +505,28 @@ class Connection (EventMixin):
   def fileno (self):
     return self.sock.fileno()
 
-  def disconnect (self, hard = False):
+  def close (self):
+    if not self.disconnected:
+      self.info("closing connection")
+    else:
+      #self.msg("closing connection")
+      pass
+    try:
+      self.sock.shutdown(socket.SHUT_RDWR)
+    except:
+      pass
+    try:
+      self.sock.close()
+    except:
+      pass
+
+  def disconnect (self):
     """
     disconnect this Connection (usually not invoked manually).
-
-    'hard' is usually used under error conditions, and means we don't care
-    about closing it gracefully; we just want it closed.  This could be done
-    more elegantly.
     """
-    if self.disconnected and not hard:
+    if self.disconnected:
       self.err("already disconnected!")
-    if hard:
-      self.info("disconnected")
-    else:
-      self.msg("disconnecting")
+    self.msg("disconnecting")
     self.disconnected = True
     try:
       self.ofnexus._disconnect(self.dpid)
@@ -540,12 +548,7 @@ class Connection (EventMixin):
     except:
       pass
     try:
-      if hard:
-        self.sock.shutdown(socket.SHUT_RDWR)
-        self.sock.close()
-      else:
-        self.sock.close()
-      pass
+      self.sock.shutdown(socket.SHUT_RDWR)
     except:
       pass
     try:
@@ -730,7 +733,7 @@ class OpenFlow_01_Task (Task):
               raise RuntimeError("Error on listener socket")
             else:
               try:
-                con.disconnect(True)
+                con.close()
               except:
                 pass
               try:
@@ -751,7 +754,7 @@ class OpenFlow_01_Task (Task):
               #print str(newcon) + " connected"
             else:
               if con.read() is False:
-                con.disconnect(True)
+                con.close()
                 sockets.remove(con)
       except exceptions.KeyboardInterrupt:
         break
@@ -769,7 +772,7 @@ class OpenFlow_01_Task (Task):
           log.error("Exception on OpenFlow listener.  Aborting.")
           break
         try:
-          con.disconnect(True)
+          con.close()
         except:
           pass
         try:

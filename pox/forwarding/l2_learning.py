@@ -125,7 +125,6 @@ class LearningSwitch (EventMixin):
         msg.match = of.ofp_match.from_packet(packet)
         msg.idle_timeout = duration[0]
         msg.hard_timeout = duration[1]
-        msg.actions.append(of.ofp_action_output(port = port))
         msg.buffer_id = event.ofp.buffer_id
         self.connection.send(msg)
       elif event.ofp.buffer_id != -1:
@@ -164,8 +163,16 @@ class LearningSwitch (EventMixin):
         msg.hard_timeout = 30
         msg.actions.append(of.ofp_action_output(port = port))
         msg.buffer_id = event.ofp.buffer_id # 6a
+        
+        '''
         self.connection.send(msg)
-
+        '''
+        #Install through NOM
+        dpid = self.connection.dpid
+        dp = core.topology.getEntityByID(dpid)
+        dp.installFlow(priority=msg.priority, cookie=msg.cookie, \
+            idle_timeout=msg.idle_timeout, hard_timeout=msg.hard_timeout, \
+            match=msg.match, actions=msg.actions)
 class l2_learning (EventMixin):
   """
   Waits for OpenFlow switches to connect and makes them learning switches.

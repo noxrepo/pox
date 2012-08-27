@@ -18,6 +18,11 @@
 
 #import networkx as nx
 import pox.lib.graph.minigraph as nx
+try:
+  from weakref import WeakSet
+except:
+  # python 2.6 compatibility
+  from weakrefset import WeakSet
 from collections import defaultdict
 from copy import copy
 
@@ -114,8 +119,104 @@ class Link (object):
 def _void ():
   return None
 
+class Node (object):
+  _next_num = 1
+
+  def __init__ (self):
+    self._num = self.__class__._next_num
+    self.__class__._next_num += 1
+
+  @property
+  def _g (self):
+    #TODO: Remove this
+    return self._parent_graph
+
+  @property
+  def neighbors (self):
+    return self._g.neighbors(self)
+
+  @property
+  def ports (self):
+    """
+    Map of local_port -> (other, other_port)
+    """
+    ports = defaultdict(_void)
+    for n1,n2,k,d in self._g._g.edges(data=True, keys=True):
+      p = d[LINK]
+      assert n1 is self
+      assert ports.get(p[self]) is None
+      ports[p[self][1]] = p.other(self)
+    return ports
+
+  def disconnect_port (self, num):
+    self._g.disconnect_port((self,num))
+
+  def disconnect_all (self):
+    for n in self.neighbors:
+      self.disconnect_node(n)
+
+  def disconnect_node (self, n):
+    """
+    n can be a node or a (node,port)
+    Returns number of nodes disconnected
+    """
+    if isinstance(n, Node):
+      c = 0
+      for k,v in self.ports.iteritems():
+        if v[0] == n:
+          self.disconnect_port(k)
+          c += 1
+      return c
+    else:
+      for k,v in self.ports.iteritems():
+        if v[0] == n[0]:
+          if v[1] == n[1]:
+            self.disconnect_port(k)
+            return 1
+      return 0
+
+  def find_ports (self, n, pairs=False):
+    """
+    Gets the list of ports connected to a node.
+    n can be the other node or a (node,port)
+    if pairs is True, returns (self_port,other_port).
+    otherwise, just returns the port on this side.
+    """
+    np = None
+    if type(n) is tuple:
+      np = n
+      n = n[0]
+
+    r = []
+    for k,v in self.ports.iteritems():
+      if v[0] is n:
+        if np is None or np == v:
+          if pairs:
+            r.append((k,v[1]))
+          else:
+            r.append(k)
+    return r
+
+  def connected_to (self, n):
+    return len(self.find_ports(n)) > 0
+
+  def find_port (self, n, pairs=False, error=True):
+    p = self.find_ports(n, pairs)
+    if len(p) == 0:
+      if error:
+        raise RuntimeError("%s is not connected to %s" % (self, n))
+      return None
+    return p[0]
+
+
+  def __repr__ (self):
+    return "#" + str(self._num)
+
+
 class LeaveException (RuntimeError):
   pass
+
+
 
 class Operator (object):
   def __repr__ (self):
@@ -218,7 +319,9 @@ class UnaryOp (Operator):
   def _apply (self, attr):
     raise RuntimeError("Unimplemented")
 
-class BinaryOp (Operator):
+# TODO: There is a bug here
+# Probably BinaryOp and NodeOp need to become aware of LeaveException
+class BinaryOp (Operator): 
   def __init__ (self, left, right):
     if isinstance(left, Operator):
       self._left = left 
@@ -243,7 +346,7 @@ class BinaryOp (Operator):
     else:
       return "%s(%s, %s)" % (self.__class__.__name__, self._left, self._right)
 
-class Or (BinaryOp):
+class Or (BinaryOp): 
   _symbol = "or"
   def _apply (self, l, r):
     return l or r
@@ -252,6 +355,18 @@ class And (BinaryOp):
   _symbol = "and"
   def _apply (self, l, r):
     return l and r
+
+"""
+class Equal (BinaryOp):
+  _symbol = "=="
+  def _apply (self, l, r):
+    return l == r
+
+class Is (BinaryOp):
+  _symbol = "is"
+  def _apply (self, l, r):
+    return l is r
+"""
 
 class LessThan (BinaryOp):
   _symbol = "<"
@@ -294,6 +409,8 @@ class Index (BinaryOp):
   def __repr__ (self):
     return "%s[%s]" % (self._left, self._right)
 
+# TODO: There is a bug here
+# Probably BinaryOp and NodeOp need to become aware of LeaveException
 _dummy = object()
 class NodeOp (Operator):
   """
@@ -403,28 +520,26 @@ class Member (BinaryOp):
 class Graph (object):
   def __init__ (self):
     self._g = nx.MultiGraph()
-    self.node_port = {}
 
   def __contains__ (self, n):
-    return n in self._g
+    return n in self._g.nodes() or n in self._g.edges()
 
   def add (self, node):
+    assert not hasattr(node, '_parent_graph') or node._parent_graph in [None, self]
     self._g.add_node(node)
-    self.node_port[node] = {}
+    node._parent_graph = self
 
   def remove (self, node):
     self._g.remove_node(node)
 
   def neighbors (self, n):
-    return self._g.neighbors(n)
+    return nx.MultiGraph.neighbors(self._g, n)
 
-  def find_port (self, node1, node2):
-    for n1, n2, k, d in self._g.edges([node1, node2], data=True, keys=True):
-      return (d[LINK][node1][1], d[LINK][node2][1])
-    return None
-  
-  def connected(self, node1, node2):
-    return (self.find_port(node1, node2) != None)
+  def find_ports (self, n1, *arg, **kw):
+    return n1.find_ports(*arg, **kw)
+
+  def find_port (self, n1, *arg, **kw):
+    return n1.find_port(*arg, **kw)
 
   def disconnect_port (self, np):
     """
@@ -432,37 +547,46 @@ class Graph (object):
     """
     assert type(np) is tuple
     remove = []
-    if self.port_for_node(np[0], np[1]) is None:
-      return 0
-    for n1,n2,k,d in self._g.edges([np[0], self.node_port[np[0]][np[1]][0]], data=True, keys=True):
+    for n1,n2,k,d in self._g.edges(np[0], data=True, keys=True):
       if np in d[LINK]:
         remove.append((n1,n2,k))
-        del self.node_port[n1][d[LINK][n1][1]]
-        del self.node_port[n2][d[LINK][n2][1]]
     for e in remove:
       #print "remove",e
       self._g.remove_edge(*e)
     return len(remove)
 
   def unlink (self, np1, np2):
+    try:
+      n1 = np1[0]
+      p1 = np1[1]
+    except:
+      n1 = np1
+      p1 = None
+    try:
+      n2 = np2[0]
+      p2 = np2[1]
+    except:
+      n2 = np2
+      p2 = None
+
     count = 0
-    if isinstance(np1, tuple):
-      count = disconnect_port(np1) 
-    elif isinstance(np2, tuple):
-      count = disconnect_port(np2)
-    else:
-      for n1, n2, k, d in self._g.edges([np1, np2], data=True, keys=True):
-        self._g.remove_edge(n1,n2,k)
-        del self.node_port[n1][d[LINK][n1][1]]
-        del self.node_port[n2][d[LINK][n2][1]]
-        count = count + 1
+    assert n1._g is self
+    ports = n1.find_ports(n2, pairs=True)
+    for p in ports:
+      if p1 is not None:
+        if p1 != p[0]: continue
+      if p2 is not None:
+        if p2 != p[1]: continue
+      count += self.disconnect_port((n1,p[0]))
+      #TODO: Can optimize for exact removal?
     return count
 
-  def link (self, np1, np2):
+  def link (self, np1, np2, allow_multiple=False):
     """
     Links two nodes on given ports
     np1 is (node1, port1)
     np2 is (node2, port2)
+    if allow_multiple, you can connect multiple to same port
     """
     #FIXME: the portless variation doesn't really make sense with
     #       allow_multiples yet.
@@ -484,60 +608,37 @@ class Graph (object):
           break
     self._g.add_node(np1[0])
     self._g.add_node(np2[0])
-    self.disconnect_port(np1)
-    self.disconnect_port(np2)
+    if not allow_multiple:
+      self.disconnect_port(np1)
+      self.disconnect_port(np2)
     self._g.add_edge(np1[0],np2[0],link=Link(np1,np2))
-    self.node_port[np1[0]][np1[1]] = np2
-    self.node_port[np2[0]][np2[1]] = np1
 
   def find_links (self, query1=None, query2=()):
     # No idea if new link query stuff works.
+
     if query2 is None: query2 = query1
     if query1 == (): query1 = None
     if query2 == (): query2 = None
+
     o = set()
     for n1,n2,k,d in self._g.edges(data=True, keys=True):
       l = d[LINK]
       ok = False
       if query1 is None or self._test_node(l[0][0], args=(query1,), link=l):
+#        print "pass",l[0],query1
         if query2 is None or self._test_node(l[1][0], args=(query2,), link=l):
+#          print "pass",l[1],query2
           ok = True
       if not ok and (query1 != query2):
         if query2 is None or self._test_node(l[0][0], args=(query2,), link=l):
+#          print "pass",l[0],query2
           if query1 is None or self._test_node(l[1][0], args=(query1,), link=l):
+#            print "pass",l[1],query1
             ok = True
             l = l.flip()
       if ok:
         o.add(l)
     return list(o)
-
-  def ports_for_node (self, node):
-    """
-    Map of local port -> (other, other_port)
-    """
-    ports = defaultdict(_void)
-    for n1, n2, k, d in self._g.edges([node], data=True, keys=True):
-      p = d[LINK]
-      assert n1 is node
-      assert ports.get(p[node]) is None
-      ports[p[node][1]] = p.other(node)
-    return ports
- 
-  def port_for_node(self, node, port):
-    assert node in self.node_port
-    return self.node_port[node].get(port)
-
-  def disconnect_nodes(self, node1, node2):
-    """ Disconnect node1 from node2. Either of node1 or node2
-      can be a node, or a (node, port) pair
-      Returns number of nodes disconnected
-    """
-    self.unlink(node1, node2)
-  
-  def disconnect_node(self, node1):
-    """ Disconnecte node from all neighbours """
-    for neighbor in self.neighbors(node1):
-      self.disconnect_nodes(node1, neighbor)
 
   def get_one_link (self, query1=None, query2=(), **kw):
     return self.get_link(query1, query2, one=True, **kw)
@@ -557,11 +658,11 @@ class Graph (object):
       has_default = False
     one = False
     if 'one' in kw:
-      one = kw['one']
       del kw['one']
+      one = True
     assert len(kw) == 0
     r = self.find_links(query1, query2)
-    if len(r) > 1 and one:
+    if len(r) > 1 and one is True:
       raise RuntimeError("More than one match")
     elif len(r) == 0:
       if has_default:
@@ -573,31 +674,63 @@ class Graph (object):
     # Really bad implementation.  We can easily scape early.
     return len(self.find_links(query1, query2)) > 0
 
-  def _test_node (self, n, args=(), kw={}, link=None):
+  def _test_node (self, n, args=(), kw={}, debug=False, link=None):
     #TODO: Should use a special value for unspecified n2
     for k,v in kw.iteritems():
       if k == "is_a":
-        if not isinstance(n,v): return False
+        if not isinstance(n,v): return
       elif k == "type":
-        if type(n) is not v: return False
+        if type(n) is not v: return
       else:
-        if not hasattr(n, k): return False
-        if getattr(n, k) != v: return False
+        if not hasattr(n, k): return
+        if getattr(n, k) != v: return
     for a in args:
+      if debug: print ">>",a,
       try:
         if not a(n, link):
-          return False
+          if debug: print " -> ",False
+          return
       except LeaveException:
-        return False
+        if debug: print " ...  Skip"
+        return
+      if debug: print " -> ",True
     return True
 
   def find (self, *args, **kw):
+    debug = False#True
     r = []
     def test (n):
-      return self._test_node(n, args, kw)
+      return self._test_node(n, args, kw, debug)
+    """
+    def test (n):
+      for k,v in kw:
+        if k == "is_a":
+          if not isinstance(n,v): return
+        elif k == "type":
+          if type(n) is not kind: return
+        else:
+          if not hasattr(n, k): return
+          if getattr(n, k) != v: return
+      for a in args:
+        if debug: print ">>",a,
+        try:
+          if not a(n):
+            if debug: print " -> ",False
+            return
+        except LeaveException:
+          if debug: print " ...  Skip"
+          return
+        if debug: print " -> ",True
+      return True
+    """
+
     for n in self._g.nodes():
+      if debug: print ">", n
       if test(n):
+        if debug: print ">> YES"
         r.append(n)
+      else:
+        if debug: print ">> NO"
     return r
 
   def get_one (self, *args, **kw):
@@ -622,7 +755,7 @@ class Graph (object):
       del kw['one']
       one = True
     r = self.find(*args,**kw)
-    if len(r) > 1 and one:
+    if len(r) > 1 and one is True:
       raise RuntimeError("More than one match")
     elif len(r) == 0:
       if has_default:
@@ -637,37 +770,12 @@ class Graph (object):
   def __len__ (self):
     return len(self._g)
 
-def test():
-  class Node1 (object):
-    _next_num = 0
-    def __init__ (self):
-      self._num = self.__class__._next_num
-      self.__class__._next_num += 1
-  
-    def __repr__ (self):
-      return "Node1 #" + str(self._num)
 
-  class Node2 (object):
-    _next_num = 0
-    def __init__ (self):
-      self._num = self.__class__._next_num
-      self.__class__._next_num += 1
-  
-    def __repr__ (self):
-      return "Node2 #" + str(self._num)
 
-  class Node3 (Node1):
-    _next_num = 0
-    def __init__ (self):
-      self._num = self.__class__._next_num
-      self.__class__._next_num += 1
-  
-    def __repr__ (self):
-      return "Node3 #" + str(self._num)
-  g = Graph()
-  n1 = Node1();n1.label=1
-  n2 = Node2();n2.label=2
-  n3 = Node3();n3.label=3
+if __name__ == "__main__":
+  n1 = Node();n1.label=1
+  n2 = Node();n2.label=2
+  n3 = Node();n3.label=3
 
   g.add(n1)
   g.add(n2)
@@ -675,31 +783,8 @@ def test():
   g.link((n1,0),(n2,0))
   g.link((n1,1),(n3,0))
 
-  print g.find(is_a=Node1)
-  print g.find(is_a=Node2)
-  print g.find(type=Node1)
-  print g.find(type=Node3)
   print g.find_links()
-  print "=== NEIGHBORS ==="
-  print g.neighbors(n1)
-  print g.find_port(n1, n2)
-  print g.connected(n1, n3)
-  print g.ports_for_node(n3)
 
-  print [(n, x[0], x[1][0], x[1][1]) for n in g.find(is_a=Node1) for x in g.ports_for_node(n).iteritems() ]
-  
-  g.disconnect_nodes(n1, n3)
-  
-  print g.find_links()
-  g.link((n2, 1), (n3, 1))
-  g.link((n1,1), (n3, 0))
-  g.link((n1,0), (n2, 0))
-  print g.find_links()
-  g.disconnect_node(n3)
-  print g.find_links()
   import code
   code.interact(local=locals())
  
-
-if __name__ == "__main__":
-  test()
