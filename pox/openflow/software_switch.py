@@ -10,9 +10,9 @@ Date November 2009
 Created by ykk
 """
 
-# TODO: Don't have SwitchImpl take a socket object... Should really have a
+# TODO: Don't have SoftwareSwitch take a socket object... Should really have a
 # OF_01 like task that listens for socket connections, creates a new socket,
-# wraps it in a ControllerConnection object, and calls SwitchImpl._handle_ConnectionUp
+# wraps it in a ControllerConnection object, and calls SoftwareSwitch._handle_ConnectionUp
 
 from pox.lib.util import assert_type
 from pox.lib.revent import Event, EventMixin
@@ -41,7 +41,7 @@ class DpPacketOut (Event):
 def _default_port_list(num_ports=4, prefix=0):
   return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x" % (prefix % 255, i))) for i in range(1, num_ports+1)]
 
-class SwitchImpl(EventMixin):
+class SoftwareSwitch(EventMixin):
   _eventMixin_events = set([DpPacketOut])
 
   # ports is a list of ofp_phy_ports
@@ -502,7 +502,7 @@ class SwitchImpl(EventMixin):
       packet = handler_map[action.type](action, packet)
 
   def __repr__(self):
-    return "SwitchImpl(dpid=%d, num_ports=%d)" % (self.dpid, len(self.ports))
+    return "SoftwareSwitch(dpid=%d, num_ports=%d)" % (self.dpid, len(self.ports))
 
 class ControllerConnection (object):
   # Unlike of_01.Connection, this is persistent (at least until we implement a proper

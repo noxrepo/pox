@@ -7,7 +7,7 @@ from copy import copy
 sys.path.append(os.path.dirname(__file__) + "/../../..")
 
 from pox.openflow.libopenflow_01 import *
-from pox.openflow.switch_impl import *
+from pox.openflow.software_switch import *
 
 def extract_num(buf, start, length):
   """ extracts a number from a raw byte string. Assumes network byteorder  """

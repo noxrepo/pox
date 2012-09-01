@@ -19,12 +19,12 @@ import inspect
 
 import pox.openflow.libopenflow_01 as of
 import pox.openflow.nicira_ext as nx
-from pox.openflow.switch_impl import SwitchImpl, ControllerConnection
+from pox.openflow.software_switch import SoftwareSwitch, ControllerConnection
 
 _slave_blacklist = set([of.ofp_flow_mod, of.ofp_packet_out, of.ofp_port_mod, of.ofp_barrier_request])
 _messages_for_all = set([of.ofp_port_status])
 
-class NXSwitchImpl(SwitchImpl):
+class NXSoftwareSwitch(SoftwareSwitch):
   """ Extension of the SwichImpl software switch that supports the nicira (NX) vendor extension from
       OpenVSwitch that allows the switch to connect to multiple controllers at the same time.
 
@@ -42,7 +42,7 @@ class NXSwitchImpl(SwitchImpl):
          in ROLE_OTHER
   """
   def __init__(self, *args, **kw):
-    SwitchImpl.__init__(self, *args, **kw)
+    SoftwareSwitch.__init__(self, *args, **kw)
     self.role_by_conn={}
     self.connections = []
     self.connection_in_action = None
@@ -137,4 +137,4 @@ class NXSwitchImpl(SwitchImpl):
       except NotImplemented:
         self.send_error(connection)
     else:
-      return SwitchImpl._receive_vendor(self, vendor)
+      return SoftwareSwitch._receive_vendor(self, vendor)

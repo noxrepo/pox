@@ -8,7 +8,7 @@ from copy import copy
 sys.path.append(os.path.dirname(__file__) + "/../../..")
 
 from pox.openflow.libopenflow_01 import *
-from pox.openflow.switch_impl import *
+from pox.openflow.software_switch import *
 
 class MockConnection(object):
   def __init__(self):
@@ -26,11 +26,11 @@ class MockConnection(object):
   def send(self, msg):
     self.received.append(msg)
 
-class SwitchImplTest(unittest.TestCase):
+class SoftwareSwitchTest(unittest.TestCase):
 
   def setUp(self):
     self.conn = MockConnection()
-    self.switch = SwitchImpl(1, name="sw1")
+    self.switch = SoftwareSwitch(1, name="sw1")
     self.switch.set_connection(self.conn)
     self.packet = ethernet(src=EthAddr("00:00:00:00:00:01"), dst=EthAddr("00:00:00:00:00:02"),
             payload=ipv4(srcip=IPAddr("1.2.3.4"), dstip=IPAddr("1.2.3.5"),
