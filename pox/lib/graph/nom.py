@@ -27,7 +27,7 @@ class EntityEvent (Event):
   def __init__ (self, entity):
     Event.__init__(self)
     self.entity = entity
-    
+
 class EntityJoin (EntityEvent):
   """
   An entity has been added.
@@ -42,7 +42,7 @@ class EntityJoin (EntityEvent):
 
 class EntityLeave (EntityEvent):
   """
-  An entity has been removed 
+  An entity has been removed
 
   Note that if there is a more specific leave event defined for a particular
   entity, (e.g., SwitchLeave), this event will not be fired.
@@ -80,10 +80,10 @@ class SwitchConnectionDown(SwitchEvent): pass
 
 class HostEvent (EntityEvent): pass
 
-class HostJoin (HostEvent): 
+class HostJoin (HostEvent):
   def __init__(self, host):
     HostEvent.__init__(self, host)
-    
+
 class HostLeave (HostEvent):
   def __init__(self, host):
     HostEvent.__init__(self, host)
@@ -111,10 +111,10 @@ class Update (Event):
     self.event = event
 
 class Entity (Node):
-  """ 
-  Note that the Entity class is intentionally simple; It only serves as a 
+  """
+  Note that the Entity class is intentionally simple; It only serves as a
   convenient SuperClass type.
-  
+
   It's up to subclasses to implement specific functionality (e.g.
   OpenFlow1.0 switch functionality).  The purpose of this design decision
   is to prevent protocol specific details from being leaked into this
@@ -127,7 +127,7 @@ class Host (Entity):
   A generic Host entity.
   """
   def __init__(self, macstr=None, ip=None, location=None, **kw):
-    Entity.__init__(self) 
+    Entity.__init__(self)
     if macstr:
       self.mac = EthAddr(macstr)
       self.macstr = self.mac.toStr() # this is used as a key for topology.find()
@@ -140,21 +140,21 @@ class Host (Entity):
     that has this field as an extension
     '''
     #self.os =
-  
+
   def setLocation(self, switch, port):
     '''
     Sets the location where the host is currently connected
     as a (switch, port) tuple
     '''
     self.location = (switch, port)
-  
+
   def getLocation(self):
     '''
     Returns the location where the host is currently connected
     as a (switch, port) tuple
     '''
     return (switch, port)
-    
+
   def __repr__ (self):
     return "<Host " + self.mac.toStr() + ">"
 
@@ -176,12 +176,12 @@ class Link (Entity):
   A generic Link entity.
   """
   def __init__(self, node1, port1, node2, port2):
-    Entity.__init__(self) 
+    Entity.__init__(self)
     self.node1 = node1
     self.port1 = port1
     self.node2 = node2
     self.port2 = port2
-    
+
   def __repr__ (self):
     return "<Link (%s:%s <-> %s:%s)" % (self.node1 , self.port1,
                                         self.node2, self.port2)
@@ -190,13 +190,19 @@ class AccessLink (Link):
   A Link connecting a host to a switch.
   """
   def __init__(self, node1, port1, hostmac):
-    Entity.__init__(self) 
+    Entity.__init__(self)
     self.node1 = node1
     self.port1 = port1
     self.hostmac = hostmac
-    
+
   def __repr__ (self):
-    return "<Link (%s:%s <-> %s)" % (self.node1 , self.port1, self.hostmac)    
+    return "<Link (%s:%s <-> %s)" % (self.node1 , self.port1, self.hostmac)
+
+class Controller (Entity):
+  ''' Used for tracking distributed controllers '''
+  def __init__(self, name, handshake_complete=False):
+    self.name = name
+    self.handshake_complete = handshake_complete
 
 class NOM (Graph, EventMixin):
   __eventMixin_events = [
@@ -205,7 +211,7 @@ class NOM (Graph, EventMixin):
 
     Update
   ]
-  
+
   def __init__ (self):
     Graph.__init__(self)
     EventMixin.__init__(self)

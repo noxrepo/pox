@@ -13,7 +13,7 @@
 from pox.core import core, UpEvent
 from pox.lib.revent.revent import EventMixin
 import pox.messenger.messenger as messenger
-import pox.topology.topology as topology
+import pox.lib.graph.nom as nom
 
 import sys
 import threading
@@ -26,7 +26,7 @@ from collections import namedtuple
 
 UpdateACK = namedtuple('UpdateACK', 'xid controller_name')
 
-class DistributedController(EventMixin, topology.Controller):
+class DistributedController(EventMixin, nom.Controller):
   """
   Keeps a copy of the Nom in its cache. Arbitrary controller applications
   can be implemented on top of NomClient through inheritance. Mutating calls to
@@ -53,17 +53,17 @@ class DistributedController(EventMixin, topology.Controller):
     pre: name is unique across the network
     """
     EventMixin.__init__(self)
-    # We are a "controller" entity in pox.topology.
-    # (Actually injecting ourself into pox.topology is handled
+    # We are a "controller" entity in pox.nom.
+    # (Actually injecting ourself into pox.nom is handled
     # by nom_server)
-    topology.Controller.__init__(self, name)
+    nom.Controller.__init__(self, name)
     self.name = name
     self.log = core.getLogger(name)
-    # Construct an empty topology
-    # The "master" copy topology will soon be merged into this guy
-    self.topology = topology.Topology("topo:%s" % self.name)
+    # Construct an empty nom
+    # The "master" copy nom will soon be merged into this guy
+    self.nom = nom.nom("topo:%s" % self.name)
     # Register subclass' event handlers
-    self.listenTo(self.topology, "topology")
+    self.listenTo(self.nom, "nom")
 
     self._server_connection = None
     self._queued_commits = []
@@ -123,22 +123,22 @@ class DistributedController(EventMixin, topology.Controller):
     """
     xid, id2entity = update
     self.log.debug("nom_update %d" % xid)
-    self.topology.deserializeAndMerge(id2entity)
+    self.nom.deserializeAndMerge(id2entity)
 
     update_ack = UpdateACK(xid, self.name)
     self._server_connection.send({"nom_update_ack":update_ack})
     self.log.debug("Sent nom_update_ack %d, %s" % update_ack)
 
-    # TODO: react to the change in the topology, by firing queued events to
+    # TODO: react to the change in the nom, by firing queued events to
     # subclass' ?
     return True
 
   def commit_nom_change(self):
     self.log.debug("Committing NOM update")
     if self._server_connection:
-      self._server_connection.send({"put":self.topology.serialize()})
+      self._server_connection.send({"put":self.nom.serialize()})
     else:
       self.log.debug("Queuing nom commit")
-      self._queued_commits.append(copy.deepcopy(self.topology))
+      self._queued_commits.append(copy.deepcopy(self.nom))
 
     # TODO: need to commit nom changes whenever the learning switch updates its state...

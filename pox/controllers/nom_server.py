@@ -6,7 +6,7 @@ import pox.openflow.libopenflow_01 as of
 from pox.lib.revent import *
 from pox.lib.recoco import *
 from pox.messenger.messenger import *
-import pox.topology.topology as topology
+import pox.lib.graph.nom as nom
 
 from collections import namedtuple
 
@@ -43,7 +43,7 @@ class NomServer (EventMixin):
   _core_name = name
 
   # The set of components we depend on. These must be loaded before we can begin.i
-  _wantComponents = set(['topology'])
+  _wantComponents = set(['nom'])
 
   def __init__(self):
     # Pre: core.messenger is registered
@@ -57,7 +57,7 @@ class NomServer (EventMixin):
     self.next_nom_update_id = 0
 
     # TODO: the following code is highly redundant with controller.rb
-    self.topology = None
+    self.nom = None
     if not core.listenToDependencies(self, self._wantComponents):
       # If dependencies aren't loaded, register event handlers for ComponentRegistered
       self.listenTo(core)
@@ -109,14 +109,14 @@ class NomServer (EventMixin):
       self._finish_initialization()
 
   def _finish_initialization(self):
-    self.topology = core.components['topology']
+    self.nom = core.components['nom']
     log.info("nom_server: initialization completed")
 
   def register_client(self, client_name, connection):
     log.info("register %s" % client_name)
     self.registered[client_name] = connection
-    # TODO: can we assume that topology is booted?
-    self.topology.addEntity(topology.Controller(client_name))
+    # TODO: can we assume that nom is booted?
+    self.nom.addEntity(nom.Controller(client_name))
 
   def unregister_client(self, client):
     pass
@@ -128,7 +128,7 @@ class NomServer (EventMixin):
 
   def get(self, conn):
     log.info("get")
-    serialized = self.topology.serialize()
+    serialized = self.nom.serialize()
     xid = self._next_update_xid()
     update = NomUpdate(xid, serialized)
     conn.send({"nom_update":update})
@@ -137,21 +137,21 @@ class NomServer (EventMixin):
   def put(self, id2entity):
     # TODO: does nom_server need to send back an ACK?
     log.info("put")
-    self.topology.deserializeAndMerge(id2entity)
+    self.nom.deserializeAndMerge(id2entity)
     # TODO: optimization: don't send upate to the original sender
-    # TODO: rather than send a snapshot of the entire Topology, use
+    # TODO: rather than send a snapshot of the entire nom, use
     #       an rsync-like stream of Updates
     for client_name in self.registered.keys():
       log.debug("invalidating/updating %s" % client_name)
       connection = self.registered[client_name]
-      # Push out the new topology
+      # Push out the new nom
       self.get(connection)
 
   def update_ack(self, update_ack):
     xid, controller_name = update_ack
-    controller = self.topology.getEntityByID(controller_name)
+    controller = self.nom.getEntityByID(controller_name)
     controller.handshake_completed()
-    self.topology.raiseEvent(topology.Update())
+    self.nom.raiseEvent(nom.Update())
     # TODO: do something else with the ACK
 
 def launch():

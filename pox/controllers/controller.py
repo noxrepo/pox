@@ -16,35 +16,35 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 from pox.core import core
-import pox.topology.topology as topology
+import pox.lib.graph.nom as nom
 from pox.lib.revent import *
 
 name = "controller"
 log = core.getLogger(name)
 
-class Controller (EventMixin, topology.Controller):
+class Controller (EventMixin, nom.Controller):
   """
-  Generic Controller Application Superclass. Loads up topology and
-  registers subclasse's handlers with topology et al.
+  Generic Controller Application Superclass. Loads up nom and
+  registers subclasse's handlers with nom et al.
   """
 
   _core_name = name
 
   # The set of components we depend on. These must be loaded before we can begin.
-  _wantComponents = set(['topology'])
+  _wantComponents = set(['nom'])
 
   def __init__(self):
     EventMixin.__init__(self)
-    topology.Controller.__init__(self, "controller", handshake_complete=True)
+    nom.Controller.__init__(self, "controller", handshake_complete=True)
 
     if not core.listenToDependencies(self, self._wantComponents):
       # If dependencies aren't fully loaded, register event handlers for ComponentRegistered
       self.listenTo(core)
     else:
-      core.topology.addEntity(self)
+      core.nom.addEntity(self)
 
   def _handle_ComponentRegistered (self, event):
     """ Checks whether the newly registered component is one of our dependencies """
     if core.listenToDependencies(self, self._wantComponents):
-      core.topology.addEntity(self)
+      core.nom.addEntity(self)
       return EventRemove
