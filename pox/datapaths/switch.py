@@ -75,6 +75,9 @@ class SoftwareSwitch(EventMixin):
       self.ports[port.port_no] = port
       self.port_stats[port.port_no] = ofp_port_stats(port_no=port.port_no)
 
+    # set of port numbers that are currently down
+    self.down_port_nos = set()
+
     ## (OpenFlow Handler map)
     self.ofp_handlers = {
        # Reactive handlers
@@ -92,7 +95,7 @@ class SoftwareSwitch(EventMixin):
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
        # TODO: many more packet types to process
     }
-    
+
     self._connection = None
 
     ##Capabilities
@@ -179,7 +182,7 @@ class SoftwareSwitch(EventMixin):
 
   def _receive_stats_request(self, ofp):
     self.log.debug("Get stats request %s %s " % (self.name, str(ofp)))
- 
+
     def desc_stats(ofp):
       return ofp_desc_stats(mfr_desc="BadAssEmulatedPoxSwitch(TM)",
                             hw_desc="your finest emulated asics",
@@ -266,7 +269,7 @@ class SoftwareSwitch(EventMixin):
       xid = self.xid_count.next()
     msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
                         data = packet.pack())
-    
+
     self.send(msg)
 
   def send_echo(self, xid=0):
@@ -275,7 +278,7 @@ class SoftwareSwitch(EventMixin):
     self.log.debug("Send echo %s" % self.name)
     msg = ofp_echo_request()
     self.send(msg)
-    
+
   def send_port_status(self, port, reason):
     '''
     port is an ofp_phy_port
@@ -312,16 +315,15 @@ class SoftwareSwitch(EventMixin):
     port_no = port.port_no
     if port_no not in self.ports:
       raise RuntimeError("port_no %d not in %s's ports" % (port_no, str(self)))
-    # Hmmm, is deleting the port the correct behavior?
-    del self.ports[port_no]
+    self.down_port_nos.add(port_no)
     self.send_port_status(port, OFPPR_DELETE)
-    
+
   def bring_port_up(self, port):
     ''' Bring the given port up, and send a port_status message to the controller '''
     port_no = port.port_no
-    if port_no in self.ports:
-      raise RuntimeError("port_no %d already in %s's ports" % (port_no, str(self)))
-    self.ports[port_no] = port
+    if port_no not in self.down_port_nos:
+      raise RuntimeError("port_no %d not down in switch %s" % (port_no, str(self)))
+    self.down_port_nos.remove(port_no)
     self.send_port_status(port, OFPPR_ADD)
 
   # ==================================== #
@@ -338,6 +340,8 @@ class SoftwareSwitch(EventMixin):
         port_no = port_no.port_no
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
+      if port_no in self.down_port_nos:
+        raise RuntimeError("output port %x currently down!" % port_no)
       self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
     if out_port < OFPP_MAX:
@@ -354,7 +358,6 @@ class SoftwareSwitch(EventMixin):
       self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_ACTION)
     else:
       raise("Unsupported virtual output port: %x" % out_port)
-
 
   def _buffer_packet(self, packet, in_port=None):
     """ Find a free buffer slot to buffer the packet in. """
@@ -385,7 +388,7 @@ class SoftwareSwitch(EventMixin):
       self._output_packet(packet, action.port, in_port)
       return packet
     def set_vlan_id(action, packet):
-      if not isinstance(packet.next, vlan): 
+      if not isinstance(packet.next, vlan):
         packet.next = vlan(prev = packet.next)
         packet.next.eth_type = packet.type
         packet.type = ethernet.VLAN_TYPE
@@ -399,7 +402,7 @@ class SoftwareSwitch(EventMixin):
       packet.pcp = action.vlan_pcp
       return packet
     def strip_vlan(action, packet):
-      if isinstance(packet.next, vlan): 
+      if isinstance(packet.next, vlan):
         packet.type = packet.next.eth_type
         packet.next = packet.next.next
       return packet
@@ -486,7 +489,7 @@ class SoftwareSwitch(EventMixin):
         OFPAT_SET_TP_SRC: set_tp_src,
         OFPAT_SET_TP_DST: set_tp_dst,
         OFPAT_ENQUEUE: enqueue,
-        OFPAT_PUSH_MPLS: push_mpls_tag, 
+        OFPAT_PUSH_MPLS: push_mpls_tag,
         OFPAT_POP_MPLS: pop_mpls_tag,
         OFPAT_SET_MPLS_LABEL: set_mpls_label,
         OFPAT_SET_MPLS_TC: set_mpls_tc,
