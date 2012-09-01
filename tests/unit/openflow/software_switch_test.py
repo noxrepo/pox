@@ -126,7 +126,7 @@ class SoftwareSwitchTest(unittest.TestCase):
     event = received[0]
     self.assertEqual(event.port.port_no,3)
     self.assertEqual(event.packet, self.packet)
-    
+
   def test_take_port_down(self):
     c = self.conn
     s = self.switch
@@ -134,21 +134,22 @@ class SoftwareSwitchTest(unittest.TestCase):
     p = self.switch.ports.values()[0]
     s.take_port_down(p)
     new_num_ports = len(self.switch.ports)
-    self.assertTrue(new_num_ports == original_num_ports - 1, "Should have removed the port")
+    self.assertTrue(p.port_no in self.switch.down_port_nos,
+                    "Should have added port_no to down ports")
     self.assertEqual(len(c.received), 1)
     self.assertTrue(isinstance(c.last, ofp_port_status),
           "should have received port_status but got %s" % c.last)
     self.assertTrue(c.last.reason == OFPPR_DELETE)
-  
+
   def test_bring_port_up(self):
     c = self.conn
     s = self.switch
-    original_num_ports = len(self.switch.ports)
-    p = ofp_phy_port(port_no=1234)
+    p = ofp_phy_port(port_no=1)
+    s.take_port_down(p)
     s.bring_port_up(p)
-    new_num_ports = len(self.switch.ports)
-    self.assertTrue(new_num_ports == original_num_ports + 1, "Should have added the port")
-    self.assertEqual(len(c.received), 1)
+    self.assertFalse(p.port_no in self.switch.down_port_nos,
+                     "Should have removed the port from down_port_nos")
+    self.assertEqual(len(c.received), 2)
     self.assertTrue(isinstance(c.last, ofp_port_status),
           "should have received port_status but got %s" % c.last)
     self.assertTrue(c.last.reason == OFPPR_ADD)
