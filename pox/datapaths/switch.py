@@ -321,9 +321,7 @@ class SoftwareSwitch(EventMixin):
   def bring_port_up(self, port):
     ''' Bring the given port up, and send a port_status message to the controller '''
     port_no = port.port_no
-    if port_no not in self.down_port_nos:
-      raise RuntimeError("port_no %d not down in switch %s" % (port_no, str(self)))
-    self.down_port_nos.remove(port_no)
+    self.down_port_nos.reject(port_no)
     self.send_port_status(port, OFPPR_ADD)
 
   # ==================================== #
