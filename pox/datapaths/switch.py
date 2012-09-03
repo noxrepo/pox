@@ -321,7 +321,7 @@ class SoftwareSwitch(EventMixin):
   def bring_port_up(self, port):
     ''' Bring the given port up, and send a port_status message to the controller '''
     port_no = port.port_no
-    self.down_port_nos.reject(port_no)
+    self.down_port_nos.discard(port_no)
     self.send_port_status(port, OFPPR_ADD)
 
   # ==================================== #
