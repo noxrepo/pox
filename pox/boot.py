@@ -438,8 +438,17 @@ class Interactive (object):
     core.register("Interactive", self)
 
     import pox.license
+    import sys
     self.variables = dict(locals())
     self.variables['core'] = core
+
+    class pox_exit (object):
+      def __call__ (self, code = 0):
+        core.quit()
+        sys.exit(code)
+      def __repr__ (self):
+        return "Use exit() or Ctrl-D (i.e. EOF) to exit POX"
+    self.variables['exit'] = pox_exit()
 
     self.running = False
 
