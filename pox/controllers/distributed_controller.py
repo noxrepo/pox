@@ -61,7 +61,7 @@ class DistributedController(EventMixin, nom.Controller):
     self.log = core.getLogger(name)
     # Construct an empty nom
     # The "master" copy nom will soon be merged into this guy
-    self.nom = nom.nom("topo:%s" % self.name)
+    self.nom = nom.NOM("topo:%s" % self.name)
     # Register subclass' event handlers
     self.listenTo(self.nom, "nom")
 
