@@ -201,6 +201,7 @@ class AccessLink (Link):
 class Controller (Entity):
   ''' Used for tracking distributed controllers '''
   def __init__(self, name, handshake_complete=False):
+    Entity.__init__(self)
     self.name = name
     self.handshake_complete = handshake_complete
 
