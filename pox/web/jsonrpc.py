@@ -101,7 +101,6 @@ class JSONRPCHandler (SplitRequestHandler):
 
     self.auth_function = self.args.get('auth', None)
     self.auth_realm = self.args.get('auth_realm', "JSONRPC")
-    if self.auth_realm: assert self.auth_function is not None
 
     self._qx = self.args.get('qx', self._qx)
 
