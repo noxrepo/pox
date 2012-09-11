@@ -324,7 +324,7 @@ class Channel (EventMixin):
     associated (defaults to core.MessengerNexus).
     """
     EventMixin.__init__(self)
-    assert isinstance(name, basestr)
+    assert isinstance(name, basestring)
     self._name = name
 
     self._nexus = _get_nexus(nexus)
@@ -403,6 +403,10 @@ class ChannelBot (object):
   A very simple framework for writing "bots" that respond to messages
   on a channel.
   """
+
+  def __str__ (self):
+    return "<%s@%s>" % (self.__class__.__name__, self.channel)
+
   def __init__ (self, channel, nexus = None, weak = False, extra = {}):
     self._startup(channel, nexus, weak, extra)
 
@@ -505,7 +509,7 @@ class DefaultChannelBot (ChannelBot):
     Registers a bot (an instance of ChannelBot) so that it can be
     invited to other channels.
     """
-    assert isinstance(bot, ChannelBot)
+    assert issubclass(bot, ChannelBot)
     if name is None:
       name = bot.__name__
     self._bots[name] = bot
@@ -526,6 +530,11 @@ class DefaultChannelBot (ChannelBot):
     botname = event.msg.get('bot')
     botclass = self._bots.get(botname)
     channel = event.msg.get('channel')
+    new_channel = False
+    if channel is None:
+      new_channel = True
+      channel = self._gen_channel_name(event.msg.get("prefix", "temp"))
+
     chan = self._nexus.get_channel(channel, create=True, temporary=True)
     if chan is None:
       #TODO: send an error
@@ -538,14 +547,16 @@ class DefaultChannelBot (ChannelBot):
                   % (botname,))
       return
     bot = botclass(channel, self._nexus)
+    if new_channel:
+      self.reply(event, new_channel = new_channel)
 
   def _unhandled (self, event):
     log.warn("Default channel got unknown command: "
               + str(event.msg.get('cmd')))
 
-  def _exec_cmd_new_channel (self, event):
-    """ Generates a new channel with random name """
-    prefix = event.msg.get('prefix', 'temp') + "_"
+  def _gen_channel_name (self, prefix = "temp"):
+    """ Makes up a channel name """
+    prefix += "_"
     import random
     while True:
       # Sloppy
@@ -553,13 +564,20 @@ class DefaultChannelBot (ChannelBot):
       n = prefix + str(r)
       if r not in self._nexus._channels:
         break
+    return n
+
+  def _exec_cmd_new_channel (self, event):
+    """ Generates a new channel with random name """
+    prefix = event.msg.get('prefix', 'temp')
+    n = self._gen_channel_name(prefix)
     ch = self._nexus.get_channel(n, create=True, temporary=True)
     ch._add_member(event.con, event.msg)
     self.reply(event, new_channel = n)
 
   def _exec_cmd_join_channel (self, event):
     """ Joins/creates a channel """
-    ch = self._nexus.get_channel(event.msg['channel'])
+    temp = event.msg.get('temporary', True) # Default temporary!
+    ch = self._nexus.get_channel(event.msg['channel'], temporary=temp)
     if ch is None: return
     ch._add_member(event.con, event.msg)
 
