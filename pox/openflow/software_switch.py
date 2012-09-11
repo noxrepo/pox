@@ -590,6 +590,10 @@ class ControllerConnection (object):
   def close(self):
     self.io_worker.close()
 
+  def get_controller_id(self):
+    ''' Return a tuple of the controller's (address, port) we are connected to'''
+    return self.io_worker.socket.getpeername()
+
   def __str__ (self):
     return "[Con " + str(self.ID) + "]"
 
