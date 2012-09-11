@@ -235,7 +235,6 @@ def doLaunch ():
 cli = True
 verbose = False
 enable_openflow = True
-debug = False
 deadlock = False
 custom_log_config = None
 
@@ -255,14 +254,6 @@ def _opt_no_cli (v):
 def _opt_verbose (v):
   global verbose
   verbose = str(v).lower() == "true"
-
-def _opt_debug (v):
-  global debug
-  debug = str(v).lower() == "true"
-  if debug:
-    # debug implies no openflow 
-    _opt_no_openflow(True)
-    _opt_no_cli(True)
 
 def _opt_log_config (v):
   global custom_log_config
@@ -295,10 +286,6 @@ def pre_startup ():
   return True
 
 def post_startup ():
-  #core.register("openflow_topology", pox.openflow.openflowtopology.OpenFlowTopology())
-  #core.register("topology", pox.topology.topology.Topology())
-  #core.register("openflow_discovery", pox.openflow.discovery.Discovery())
-  #core.register("switch", pox.dumb_l3_switch.dumb_l3_switch.dumb_l3_switch())
 
   if enable_openflow:
     pox.openflow.of_01.launch() # Usually, we launch of_01

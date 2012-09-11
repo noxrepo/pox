@@ -2,7 +2,7 @@
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.openflow import PacketIn
-from pox.topology.topology import Switch, Entity
+from pox.lib.graph.nom import Switch, Entity
 from pox.lib.revent import EventMixin
 
 import pickle

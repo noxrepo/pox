@@ -26,11 +26,6 @@ def launch (distributed=False):
   """
   Starts a NOM-based L2 learning switch, along with the discovery and topology modules
   """
-  if type(distributed) == bool and distributed:
-    distributed = 1
-  elif type(distributed) == str:
-    distributed = int(distributed)
-
   import pox.openflow.connection_arbiter
   pox.openflow.connection_arbiter.launch()
 
@@ -45,19 +40,16 @@ def launch (distributed=False):
 
   from pox.core import core
   if distributed:
+    from socket import gethostname
     import pox.controllers.nom_server as nom_server
-    # creates listening tcp socket via messenger
-    # sends serialized master topology to connecting client controllers
-    nom_server.launch()
 
     import distributed_nom_l2_switch_controller
-    for id in range(0, distributed):
-      # TODO: no sure if I should be registering these with core
-      # (name conflict, and not suitable for emulation with true distrbuted controller)
-      # for now this is just to keep the controllers from being garbage collected
-      name = "controller#%d" % id
-      # each controller sends a get request to the nom_server on inititalization
-      core.register(name, distributed_nom_l2_switch_controller.nom_l2_switch_controller(name))
+    # TODO: no sure if I should be registering these with core
+    # (name conflict, and not suitable for emulation with true distrbuted controller)
+    # for now this is just to keep the controllers from being garbage collected
+    name = gethostname()
+    # each controller sends a get request to the nom_server on inititalization
+    core.register(name, distributed_nom_l2_switch_controller.nom_l2_switch_controller(name))
 
   else:
     # not distributed

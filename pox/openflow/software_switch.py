@@ -10,9 +10,9 @@ Date November 2009
 Created by ykk
 """
 
-# TODO: Don't have SwitchImpl take a socket object... Should really have a
+# TODO: Don't have SoftwareSwitch take a socket object... Should really have a
 # OF_01 like task that listens for socket connections, creates a new socket,
-# wraps it in a ControllerConnection object, and calls SwitchImpl._handle_ConnectionUp
+# wraps it in a ControllerConnection object, and calls SoftwareSwitch._handle_ConnectionUp
 
 from pox.lib.util import assert_type
 from pox.lib.revent import Event, EventMixin
@@ -41,7 +41,7 @@ class DpPacketOut (Event):
 def _default_port_list(num_ports=4, prefix=0):
   return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x" % (prefix % 255, i))) for i in range(1, num_ports+1)]
 
-class SwitchImpl(EventMixin):
+class SoftwareSwitch(EventMixin):
   _eventMixin_events = set([DpPacketOut])
 
   # ports is a list of ofp_phy_ports
@@ -75,6 +75,9 @@ class SwitchImpl(EventMixin):
       self.ports[port.port_no] = port
       self.port_stats[port.port_no] = ofp_port_stats(port_no=port.port_no)
 
+    # set of port numbers that are currently down
+    self.down_port_nos = set()
+
     ## (OpenFlow Handler map)
     self.ofp_handlers = {
        # Reactive handlers
@@ -92,7 +95,7 @@ class SwitchImpl(EventMixin):
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
        # TODO: many more packet types to process
     }
-    
+
     self._connection = None
 
     ##Capabilities
@@ -179,7 +182,7 @@ class SwitchImpl(EventMixin):
 
   def _receive_stats_request(self, ofp):
     self.log.debug("Get stats request %s %s " % (self.name, str(ofp)))
- 
+
     def desc_stats(ofp):
       return ofp_desc_stats(mfr_desc="BadAssEmulatedPoxSwitch(TM)",
                             hw_desc="your finest emulated asics",
@@ -266,7 +269,7 @@ class SwitchImpl(EventMixin):
       xid = self.xid_count.next()
     msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
                         data = packet.pack())
-    
+
     self.send(msg)
 
   def send_echo(self, xid=0):
@@ -275,7 +278,7 @@ class SwitchImpl(EventMixin):
     self.log.debug("Send echo %s" % self.name)
     msg = ofp_echo_request()
     self.send(msg)
-    
+
   def send_port_status(self, port, reason):
     '''
     port is an ofp_phy_port
@@ -312,15 +315,13 @@ class SwitchImpl(EventMixin):
     port_no = port.port_no
     if port_no not in self.ports:
       raise RuntimeError("port_no %d not in %s's ports" % (port_no, str(self)))
-    # Hmmm, is deleting the port the correct behavior?
-    del self.ports[port_no]
+    self.down_port_nos.add(port_no)
     self.send_port_status(port, OFPPR_DELETE)
-    
+
   def bring_port_up(self, port):
     ''' Bring the given port up, and send a port_status message to the controller '''
     port_no = port.port_no
-    if port_no in self.ports:
-      raise RuntimeError("port_no %d already in %s's ports" % (port_no, str(self)))
+    self.down_port_nos.discard(port_no)
     self.ports[port_no] = port
     self.send_port_status(port, OFPPR_ADD)
 
@@ -338,6 +339,8 @@ class SwitchImpl(EventMixin):
         port_no = port_no.port_no
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
+      if port_no in self.down_port_nos:
+        raise RuntimeError("output port %x currently down!" % port_no)
       self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
     if out_port < OFPP_MAX:
@@ -354,7 +357,6 @@ class SwitchImpl(EventMixin):
       self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_ACTION)
     else:
       raise("Unsupported virtual output port: %x" % out_port)
-
 
   def _buffer_packet(self, packet, in_port=None):
     """ Find a free buffer slot to buffer the packet in. """
@@ -385,7 +387,7 @@ class SwitchImpl(EventMixin):
       self._output_packet(packet, action.port, in_port)
       return packet
     def set_vlan_id(action, packet):
-      if not isinstance(packet.next, vlan): 
+      if not isinstance(packet.next, vlan):
         packet.next = vlan(prev = packet.next)
         packet.next.eth_type = packet.type
         packet.type = ethernet.VLAN_TYPE
@@ -399,7 +401,7 @@ class SwitchImpl(EventMixin):
       packet.pcp = action.vlan_pcp
       return packet
     def strip_vlan(action, packet):
-      if isinstance(packet.next, vlan): 
+      if isinstance(packet.next, vlan):
         packet.type = packet.next.eth_type
         packet.next = packet.next.next
       return packet
@@ -486,7 +488,7 @@ class SwitchImpl(EventMixin):
         OFPAT_SET_TP_SRC: set_tp_src,
         OFPAT_SET_TP_DST: set_tp_dst,
         OFPAT_ENQUEUE: enqueue,
-        OFPAT_PUSH_MPLS: push_mpls_tag, 
+        OFPAT_PUSH_MPLS: push_mpls_tag,
         OFPAT_POP_MPLS: pop_mpls_tag,
         OFPAT_SET_MPLS_LABEL: set_mpls_label,
         OFPAT_SET_MPLS_TC: set_mpls_tc,
@@ -502,7 +504,7 @@ class SwitchImpl(EventMixin):
       packet = handler_map[action.type](action, packet)
 
   def __repr__(self):
-    return "SwitchImpl(dpid=%d, num_ports=%d)" % (self.dpid, len(self.ports))
+    return "SoftwareSwitch(dpid=%d, num_ports=%d)" % (self.dpid, len(self.ports))
 
 class ControllerConnection (object):
   # Unlike of_01.Connection, this is persistent (at least until we implement a proper
@@ -587,6 +589,10 @@ class ControllerConnection (object):
 
   def close(self):
     self.io_worker.close()
+
+  def get_controller_id(self):
+    ''' Return a tuple of the controller's (address, port) we are connected to'''
+    return self.io_worker.socket.getpeername()
 
   def __str__ (self):
     return "[Con " + str(self.ID) + "]"

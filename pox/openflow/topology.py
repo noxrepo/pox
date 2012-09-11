@@ -34,9 +34,10 @@ from pox.core import core
 from pox.topology.topology import *
 from pox.openflow.discovery import *
 from pox.openflow.libopenflow_01 import xid_generator
-from pox.openflow.flow_table import NOMFlowTable
+from pox.openflow.flow_table import NOMFlowTable, TableEntry
 from pox.lib.util import dpidToStr
 from pox.lib.addresses import *
+from pox.lib.graph.nom import *
 
 import pickle
 import itertools
@@ -59,6 +60,15 @@ class OpenFlowTopology (EventMixin):
   # proactively; they must be specified on the command line (with the
   # exception of openflow which usally loads automatically)
   _wantComponents = set(['openflow','topology','openflow_discovery'])
+  
+  _eventMixin_events = set([
+    SwitchJoin, # Defined in graph.nom
+    SwitchLeave,
+    SwitchConnectionUp,
+    SwitchConnectionDown,
+  ])
+  
+  _core_name = "openflow_topology" # we want to be core.openflow_topology
 
   def __init__ (self):
     """ Note that self.topology is initialized in _resolveComponents """
@@ -74,8 +84,8 @@ class OpenFlowTopology (EventMixin):
     """
     if self.topology is None: return
     link = event.link
-    sw1 = self.topology.getEntityByID(link.dpid1)
-    sw2 = self.topology.getEntityByID(link.dpid2)
+    sw1 = self.topology.getEntityByID(link.node1)
+    sw2 = self.topology.getEntityByID(link.node2)
     if sw1 is None or sw2 is None: return
     if link.port1 not in sw1.ports or link.port2 not in sw2.ports: return
     if event.added:
@@ -84,7 +94,7 @@ class OpenFlowTopology (EventMixin):
     elif event.removed:
       sw1.ports[link.port1].entities.discard(sw2)
       sw2.ports[link.port2].entities.discard(sw1)
-
+  
   def _handle_ComponentRegistered (self, event):
     """
     A component was registered with pox.core. If we were dependent on it, 
@@ -92,23 +102,24 @@ class OpenFlowTopology (EventMixin):
     """
     if core.listenToDependencies(self, self._wantComponents):
       return EventRemove
-
+  
   def _handle_openflow_ConnectionUp (self, event):
     sw = self.topology.getEntityByID(event.dpid)
-    add = False
-    if sw is None:
-      sw = OpenFlowSwitch(event.dpid)
-      add = True
-    else:
+    if sw is not None:
       if sw._connection is not None:
         log.warn("Switch %s connected, but... it's already connected!" %
                  (dpidToStr(event.dpid),))
-    sw._setConnection(event.connection, event.ofp)
-    log.info("Switch " + dpidToStr(event.dpid) + " connected")
-    if add:
+      else:
+        log.info("Switch %s reconnected!" %
+                 (dpidToStr(event.dpid),))
+    else:
+      sw = OpenFlowSwitch(event.dpid)
+      log.info("Switch " + dpidToStr(event.dpid) + " connected")
       self.topology.addEntity(sw)
-      sw.raiseEvent(SwitchJoin, sw)
-
+      #sw.raiseEvent(SwitchConnectionUp(sw, event.connection))
+        
+    sw._setConnection(event.connection, event.ofp)
+    
   def _handle_openflow_ConnectionDown (self, event):
     sw = self.topology.getEntityByID(event.dpid)
     if sw is None:
@@ -183,7 +194,7 @@ class OpenFlowSwitch (EventMixin, Switch):
   below, and triggering mock events for those listeners.
   """
   _eventMixin_events = set([
-    SwitchJoin, # Defined in pox.topology
+    SwitchJoin, # Defined in graph.nom
     SwitchLeave,
     SwitchConnectionUp,
     SwitchConnectionDown,
@@ -194,20 +205,20 @@ class OpenFlowSwitch (EventMixin, Switch):
     BarrierIn,
   ])
 
-  def __init__ (self, dpid):
+  def __init__ (self, dpid=None, **kw):
+    Switch.__init__(self)#, id=dpid)
     if not dpid:
       raise AssertionError("OpenFlowSwitch should have dpid")
 
-    Switch.__init__(self, id=dpid)
     EventMixin.__init__(self)
     self.dpid = dpid
-    self.ports = {}
-    self.flow_table = NOMFlowTable(self)
-    self.capabilities = 0
+    #self.ports = {}
+    self.flow_table = kw.get('flow_table', NOMFlowTable(self))
+    self.capabilities = kw.get('capabilities', 0)
     self._connection = None
     self._listeners = []
     self._reconnectTimeout = None # Timer for reconnection
-    self.xid_generator = xid_generator( ((dpid & 0x7FFF) << 16) + 1)
+    self._xid_generator = xid_generator( ((self.dpid & 0x7FFF) << 16) + 1)
 
   def _setConnection (self, connection, ofp=None):
     ''' ofp - a FeaturesReply message '''
@@ -220,6 +231,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     if connection is None:
       self._reconnectTimeout = Timer(RECONNECT_TIMEOUT,
                                      self._timer_ReconnectTimeout)
+    
     if ofp is not None:
       # update capabilities
       self.capabilities = ofp.capabilities
@@ -234,6 +246,7 @@ class OpenFlowSwitch (EventMixin, Switch):
       for p in untouched:
         self.ports[p].exists = False
         del self.ports[p]
+    
     if connection is not None:
       self._listeners = self.listenTo(connection, prefix="con")
       self.raiseEvent(SwitchConnectionUp(switch=self, connection = connection))
@@ -275,7 +288,6 @@ class OpenFlowSwitch (EventMixin, Switch):
 
   def _handle_con_FlowRemoved (self, event):
     self.raiseEvent(event)
-    self.flowTable.removeFlow(event)
     event.halt = False
 
   def findPortForEntity (self, entity):
@@ -309,8 +321,13 @@ class OpenFlowSwitch (EventMixin, Switch):
   @property
   def name(self):
     return repr(self)
+    
+  def installFlow(self, **kw):
+    """ install a flow in the local flow table(NOM) as well as into the associated switch """
+    self.flow_table.install(TableEntry(**kw))
 
 
 def launch ():
-  if not core.hasComponent("openflow_topology"):
-    core.register("openflow_topology", OpenFlowTopology())
+  #if not core.hasComponent("openflow_topology"):
+  #  core.register("openflow_topology", OpenFlowTopology())
+  core.registerNew(OpenFlowTopology)

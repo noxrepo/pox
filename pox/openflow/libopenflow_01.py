@@ -31,7 +31,6 @@ from pox.lib.packet.udp import udp
 from pox.lib.packet.tcp import tcp
 from pox.lib.packet.icmp import icmp
 from pox.lib.packet.arp import arp
-from pox.lib.packet.mpls import mpls
 
 from pox.lib.addresses import *
 from pox.lib.util import assert_type
@@ -500,7 +499,7 @@ class ofp_match (object):
     # This is basically initHelper(), but tweaked slightly since this
     # class does some magic of its own.
     for k,v in kw.iteritems():
-      if not hasattr(self, '_'+k):
+      if not hasattr(self, '_'+k) and not hasattr(self, k):
         raise TypeError(self.__class__.__name__ + " constructor got "
           + "unexpected keyword argument '" + k + "'")
       setattr(self, k, v)
