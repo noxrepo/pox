@@ -30,7 +30,7 @@ import time
 log = core.getLogger()
 
 # We don't want to flood immediately when a switch connects.
-FLOOD_DELAY = 5
+FLOOD_DELAY = 1
 
 
 class LearningSwitch (EventMixin):
@@ -107,8 +107,9 @@ class LearningSwitch (EventMixin):
         #log.debug("%i: flood %s -> %s", event.dpid, packet.src, packet.dst)
         msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
       else:
+        log.info("DPID: %s : Holding down flood for - not connected for at least %i seconds", dpidToStr(event.dpid), FLOOD_DELAY)
         pass
-        #log.info("Holding down flood for %s", dpidToStr(event.dpid))
+
       msg.buffer_id = event.ofp.buffer_id
       msg.in_port = event.port
       self.connection.send(msg)
@@ -134,6 +135,7 @@ class LearningSwitch (EventMixin):
         self.connection.send(msg)
 
     self.macToPort[packet.src] = event.port # 1
+    log.debug("Installing entry: mac %s -> port %i" % (packet.src, event.port))
 
     if not self.transparent:
       if packet.type == packet.LLDP_TYPE or packet.dst.isBridgeFiltered(): # 2
@@ -144,19 +146,19 @@ class LearningSwitch (EventMixin):
       flood() # 3a
     else:
       if packet.dst not in self.macToPort: # 4
-        log.debug("Port for %s unknown -- flooding" % (packet.dst,))
+        log.debug("DPID %s: Port for %s unknown -- flooding" % (dpidToStr(event.dpid), packet.dst))
         flood() # 4a
       else:
         port = self.macToPort[packet.dst]
         if port == event.port: # 5
           # 5a
-          log.warning("Same port for packet from %s -> %s on %s.  Drop." %
-                      (packet.src, packet.dst, port), dpidToStr(event.dpid))
+          log.warning("DPID %s: Same port for packet from %s -> %s.  Drop." %
+                      (dpidToStr(event.dpid), packet.src, packet.dst, port) )
           drop(10)
           return
         # 6
-        log.debug("installing flow for %s.%i -> %s.%i" %
-                  (packet.src, event.port, packet.dst, port))
+        log.debug("DPID %s: installing flow for %s.%i -> %s.%i" %
+                  (dpidToStr(event.dpid), packet.src, event.port, packet.dst, port))
         msg = of.ofp_flow_mod()
         msg.match = of.ofp_match.from_packet(packet)
         msg.idle_timeout = 10

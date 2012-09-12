@@ -25,6 +25,9 @@ from libopenflow_01 import *
 from pox.lib.revent import *
 
 import time
+import logging
+
+log = logging.getLogger("FlowTable")
 
 # FlowTable Entries:
 #   match - ofp_match (13-tuple)
