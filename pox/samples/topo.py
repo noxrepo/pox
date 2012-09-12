@@ -24,5 +24,5 @@ def launch ():
   pox.topology.launch()
   import pox.openflow.topology
   pox.openflow.topology.launch()
-  import pox.openflow.discovery
-  pox.openflow.discovery.launch()
+#  import pox.openflow.discovery
+#  pox.openflow.discovery.launch()
