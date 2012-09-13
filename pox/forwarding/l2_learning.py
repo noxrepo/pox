@@ -57,7 +57,7 @@ class LearningSwitch (EventMixin):
   2) Is destination address a Bridge Filtered address, or is Ethertpe LLDP?
      * This step is ignored if transparent = True *
      Yes:
-        2a) Drop packet to avoid forwarding link-local traffic (LLDP, 802.1x)
+        2a) Drop packet -- don't forward link-local traffic (LLDP, 802.1x)
             DONE
   3) Is destination multicast?
      Yes:
