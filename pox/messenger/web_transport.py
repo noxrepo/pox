@@ -21,8 +21,8 @@ Connects the POX messenger bus to HTTP.
 Requires the "webserver" component.
 
 NOTE: The web_transport keeps its own session IDs.  Since it was first
-      written, though, though it could
-      easily now use the session IDs which are part of every Connection.
+      written, though, sessions IDs have become part of every
+      Connection, and we could (but are not) reuse those.
 """
 
 from SocketServer import ThreadingMixIn
