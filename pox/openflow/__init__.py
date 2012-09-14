@@ -299,6 +299,10 @@ class OpenFlowNexus (EventMixin):
 
     self.listenTo(core)
 
+  @property
+  def connections (self):
+    return self._connections.values()
+
   def getConnection (self, dpid):
     """
     Get the Connection object associated with a DPID.
