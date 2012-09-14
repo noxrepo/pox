@@ -85,25 +85,31 @@ class NXSoftwareSwitch(SoftwareSwitch):
     connection.send(err)
 
   def send(self, message):
+    connections_used = []
     if type(message) in _messages_for_all:
       for c in self.connections:
         c.send(message)
+        connections_used.append(c)
     elif self.connection_in_action:
       #self.log.info("Sending %s to active connection %d" % (str(message), self.connection_in_action.ID))
       self.connection_in_action.send(message)
+      connections_used.append(self.connection)
     else:
       masters = [c for c in self.connections if self.role_by_conn[c.ID] == nx.ROLE_MASTER]
       if len(masters) > 0:
         masters[0].send(message)
+        connections_used.append(masters[0])
       else:
         others = [c for c in self.connections if self.role_by_conn[c.ID] == nx.ROLE_OTHER]
         if len(others) > 0:
           self.next_other = self.next_other % len(others)
           #self.log.info("Sending %s to 'other' connection %d" % (str(message), self.next_other))
           others[self.next_other].send(message)
+          connections_used.append(others[self.next_other])
           self.next_other += 1
         else:
           self.log.info("Could not find any connection to send messages %s" % str(message))
+    return connections_used
 
   def set_io_worker(self, io_worker):
     conn = self.add_connection(ControllerConnection(io_worker, self.ofp_handlers))
