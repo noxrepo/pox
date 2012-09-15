@@ -12,7 +12,7 @@ Created by ykk
 
 # TODO: Don't have SoftwareSwitch take a socket object... Should really have a
 # OF_01 like task that listens for socket connections, creates a new socket,
-# wraps it in a ControllerConnection object, and calls SoftwareSwitch._handle_ConnectionUp
+# wraps it in a OFConnection object, and calls SoftwareSwitch._handle_ConnectionUp
 
 from pox.lib.util import assert_type
 from pox.lib.revent import Event, EventMixin
@@ -104,12 +104,27 @@ class SoftwareSwitch(EventMixin):
     else:
       self.capabilities = SwitchCapabilities(miss_send_len)
 
+  def on_message_received(self, connection, msg):
+    ofp_type = msg.header_type
+    if ofp_type not in self.ofp_handlers:
+      raise RuntimeError("No handler for ofp_type %s(%d)" % (ofp_type_map.get(ofp_type), ofp_type))
+    h = self.ofp_handlers[ofp_type]
+
+    # figure out wether the handler supports the 'connection' argument, if so attach it
+    # (handlers for NX extended switches sometimes need to know which connection a 
+    # particular message was received on)
+    argspec = inspect.getargspec(h)
+    if "connection" in argspec.args or argspec.keywords:
+      h(msg, connection=connection)
+    else:
+      h(msg)
+
   def set_io_worker(self, io_worker):
-    self._connection = ControllerConnection(io_worker, self.ofp_handlers)
+    self._connection = OFConnection(io_worker, self.on_message_received)
     return self._connection
 
   def set_connection(self, connection):
-    connection.ofp_handlers = self.ofp_handlers
+    connection.on_message_received = self.on_message_received
     self._connection = connection
 
   def send(self, message):
@@ -506,7 +521,14 @@ class SoftwareSwitch(EventMixin):
   def __repr__(self):
     return "SoftwareSwitch(dpid=%d, num_ports=%d)" % (self.dpid, len(self.ports))
 
-class ControllerConnection (object):
+class OFConnection (object):
+  """ A codec for OpenFlow messages. Decodes and encodes OpenFlow messages (ofp_message)
+      into byte arrays.
+
+      Wraps an io_worker that does the actual io work, and calls a receiver_callbac
+      function when a new message as arrived. 
+  """
+
   # Unlike of_01.Connection, this is persistent (at least until we implement a proper
   # recoco Connection Listener loop)
   # Globally unique identifier for the Connection instance
@@ -524,8 +546,8 @@ class ControllerConnection (object):
     self.io_worker = io_worker
     self.io_worker.set_receive_handler(self.read)
     self.error_handler = None
-    ControllerConnection.ID += 1
-    self.ID = ControllerConnection.ID
+    OFConnection.ID += 1
+    self.ID = OFConnection.ID
     self.log = logging.getLogger("ControllerConnection(id=%d)" % self.ID)
     ## OpenFlow Message map
     self.ofp_msgs = make_type_to_class_table()
@@ -547,19 +569,23 @@ class ControllerConnection (object):
     self.io_worker.send(data)
 
   def read (self, io_worker):
-    message = io_worker.peek_receive_buf()
-    while len(message) > 4:
-      # TODO: this is taken directly from of_01.Connection. The only difference is the
-      # event handlers. Refactor to reduce redundancy.
+    while True:
+      message = io_worker.peek_receive_buf()
+      if len(message) < 4:
+        break
+
       if ord(message[0]) != OFP_VERSION:
-        self.log.warning("Bad OpenFlow version (" + str(ord(message[0])) +
-                          ") on connection " + str(self))
-        return False
+        e = ValueError("Bad OpenFlow version (" + str(ord(message[0])) + ") on connection " + str(self))
+        if self.error_handler:
+          return self.error_handler(e)
+        else:
+          raise e
+
       # OpenFlow parsing occurs here:
       ofp_type = ord(message[1])
       packet_length = ord(message[2]) << 8 | ord(message[3])
       if packet_length > len(message):
-        return
+        break
 
       # msg.unpack implicitly only examines its own bytes, and not trailing
       # bytes
@@ -567,24 +593,16 @@ class ControllerConnection (object):
       msg_obj.unpack(message)
 
       io_worker.consume_receive_buf(packet_length)
-      # prime the next iteration of the loop
-      message = io_worker.peek_receive_buf()
 
+      # note: on_message_received is just a function, not a method
       try:
-        if ofp_type not in self.ofp_handlers:
-          raise RuntimeError("No handler for ofp_type %s(%d)" % (ofp_type_map.get(ofp_type), ofp_type))
-
-        h = self.ofp_handlers[ofp_type]
-        if "connection" in inspect.getargspec(h)[0]:
-          h(msg_obj, connection=self)
-        else:
-          h(msg_obj)
+        self.on_message_received(self, msg_obj)
       except Exception as e:
         if self.error_handler:
-          self.error_handler(e)
+          return self.error_handler(e)
         else:
-          self.log.exception(e)
-        return False
+          raise e
+
     return True
 
   def close(self):

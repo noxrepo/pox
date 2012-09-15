@@ -12,7 +12,6 @@ from pox.openflow.software_switch import *
 
 class MockConnection(object):
   def __init__(self):
-    self.ofp_handlers = {}
     self.received = []
 
   @property
@@ -20,7 +19,7 @@ class MockConnection(object):
     return self.received[-1]
 
   def to_switch(self, msg):
-    self.ofp_handlers[msg.header_type](msg)
+    self.on_message_received(self, msg)
 
   # from switch
   def send(self, msg):
