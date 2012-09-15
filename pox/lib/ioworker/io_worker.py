@@ -8,12 +8,50 @@ import sys
 import errno
 import logging
 import Queue
+import re
 import socket
 
 from pox.lib.util import assert_type, makePinger
 from pox.lib.recoco import Select, Task
 
 log = logging.getLogger()
+
+class LineIOWorker(object):
+  """ Wraps a IOWorker and delivers the data line by line """
+
+  new_line = re.compile(r"([^\r\n]*)(\r\n|\r|\n)")
+
+  def __init__(self, io_worker):
+    self.io_worker = io_worker
+    io_worker.set_receive_handler(self._receive_data)
+    self._on_line_received = lambda: None
+
+  def get_on_line_received(self):
+    return self._on_line_received
+
+  def set_on_line_received(self, on_line_received):
+    self._on_line_received = on_line_received
+
+  on_line_received = property(get_on_line_received, set_on_line_received)
+
+  def _receive_data(self, io_worker):
+    data = io_worker.peek_receive_buf()
+    length = 0
+
+    while True:
+      match = LineIOWorker.new_line.match(data)
+      if match is None:
+        break
+
+      self._on_line_received(self, match.group(1))
+      match_len = len(match.group(0))
+      length += match_len
+      data = data[match_len:]
+
+    io_worker.consume_receive_buf(length)
+
+  def send_line(self, line):
+    self.io_worker.send(line + "\n")
 
 class IOWorker(object):
   """ Generic IOWorker class. Defines the IO contract for our simulator. Fire and forget semantics for send.

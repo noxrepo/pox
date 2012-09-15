@@ -9,8 +9,29 @@ import unittest
 sys.path.append(os.path.join(os.path.dirname(__file__), *itertools.repeat("..", 3)))
 
 from pox.lib.mock_socket import MockSocket
-from pox.lib.ioworker.io_worker import IOWorker, RecocoIOLoop
+from pox.lib.ioworker.io_worker import IOWorker, RecocoIOLoop, LineIOWorker
 from nose.tools import eq_
+
+class MockIOWorker:
+  def set_receive_handler(self, handler):
+    self.handler = handler
+    self.buf = ""
+    self.sends = []
+
+  def send(self, data):
+    self.sends.append(data)
+
+  def receive(self, data):
+    self.buf += data
+    self.handler(self)
+
+  def peek_receive_buf(self):
+    return self.buf
+
+  def consume_receive_buf(self, l):
+    assert(len(self.buf)>=l)
+    self.buf = self.buf[l:]
+
 
 class IOWorkerTest(unittest.TestCase):
   def test_basic_send(self):
@@ -45,6 +66,36 @@ class IOWorkerTest(unittest.TestCase):
     # data has been consumed
     i._push_receive_data("hepp")
     self.assertEqual(self.data, "hepp")
+
+class LineIOWorkerTest(unittest.TestCase):
+  def test_send(self):
+    m = MockIOWorker()
+    l = LineIOWorker(m)
+    l.send_line("Hallo")
+    l.send_line("This is a test")
+    self.assertEqual(m.sends, [ "Hallo\n", "This is a test\n" ])
+
+  def test_receive_line_end(self):
+    for line_end in ('\r\n', '\n', '\r'):
+      rec_lines = []
+      on_line_received = lambda self, line: rec_lines.append(line)
+
+      m = MockIOWorker()
+      l = LineIOWorker(m)
+      l.on_line_received = on_line_received
+      # as long as line is not completed, no calls to received
+      m.receive("test")
+      self.assertEquals(rec_lines, [])
+      # line completed, junk at the end not send
+      m.receive("end{}somemore".format(line_end))
+      self.assertEquals(rec_lines, ["testend"])
+      # 2nd line completed, and a 3rd empty line
+      m.receive("more{}{}".format(line_end, line_end))
+      self.assertEquals(rec_lines, ["testend", "somemoremore", ""])
+      # a 4th empty line by itself
+      m.receive(line_end)
+      self.assertEquals(rec_lines, ["testend", "somemoremore", "", ""])
+
 
 
 class RecocoIOLoopTest(unittest.TestCase):
