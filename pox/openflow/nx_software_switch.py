@@ -46,12 +46,12 @@ class NXSoftwareSwitch(SoftwareSwitch):
     self.role_by_conn={}
     self.connections = []
     self.connection_in_action = None
-    # index of the next 'other' controller to get a message 
+    # index of the next 'other' controller to get a message
     # (for round robin of async messages)
     self.next_other = 0
 
   def on_message_received(self, connection, msg):
-    """ @overrides SoftwareSwitch.on_message_receiceved"""
+    """ @overrides SoftwareSwitch.on_message_received"""
 
     self.connection_in_action = connection
     if not self.check_rights(msg, connection):
@@ -99,10 +99,6 @@ class NXSoftwareSwitch(SoftwareSwitch):
         else:
           self.log.info("Could not find any connection to send messages %s" % str(message))
     return connections_used
-
-  def set_io_worker(self, io_worker):
-    conn = self.add_connection(OFConnection(io_worker, self.on_message_received))
-    return conn
 
   def add_connection(self, connection):
     self.role_by_conn[connection.ID] = nx.ROLE_OTHER
