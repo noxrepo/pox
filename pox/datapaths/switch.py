@@ -44,10 +44,12 @@ def _default_port_list(num_ports=4, prefix=0):
 class SoftwareSwitch(EventMixin):
   _eventMixin_events = set([DpPacketOut])
 
-  # ports is a list of ofp_phy_ports
-  def __init__(self, dpid, name=None, ports=4, miss_send_len=128,
-      n_buffers=100, n_tables=1, capabilities=None):
-    """Initialize switch"""
+  def __init__(self, dpid, name=None, ports=4,
+               miss_send_len=128, n_buffers=100, n_tables=1, capabilities=None):
+    '''
+    Initialize switch
+     - ports is a list of ofp_phy_ports
+    '''
     ##Datapath id of switch
     self.dpid = dpid
     ## Human-readable name of the switch
@@ -119,11 +121,10 @@ class SoftwareSwitch(EventMixin):
     else:
       h(msg)
 
-  def set_io_worker(self, io_worker):
-    self._connection = OFConnection(io_worker, self.on_message_received)
-    return self._connection
-
   def set_connection(self, connection):
+    '''
+    Set this switch's connection.
+    '''
     connection.on_message_received = self.on_message_received
     self._connection = connection
 
@@ -542,7 +543,7 @@ class OFConnection (object):
   def info (self, m):
     self.log.info(str(self) + " " + str(m))
 
-  def __init__ (self, io_worker, ofp_handlers):
+  def __init__ (self, io_worker):
     self.io_worker = io_worker
     self.io_worker.set_receive_handler(self.read)
     self.error_handler = None
@@ -551,8 +552,7 @@ class OFConnection (object):
     self.log = logging.getLogger("ControllerConnection(id=%d)" % self.ID)
     ## OpenFlow Message map
     self.ofp_msgs = make_type_to_class_table()
-    ## Hash from ofp_type -> handler(packet)
-    self.ofp_handlers = ofp_handlers
+    self.on_message_received = None
 
   def send (self, data):
     """
@@ -595,6 +595,9 @@ class OFConnection (object):
       io_worker.consume_receive_buf(packet_length)
 
       # note: on_message_received is just a function, not a method
+      if self.on_message_received is None:
+        raise RuntimeError("on_message_receieved hasn't been set yet!")
+
       try:
         self.on_message_received(self, msg_obj)
       except Exception as e:
