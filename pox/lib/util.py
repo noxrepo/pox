@@ -415,7 +415,7 @@ def parse_openflow_uri(uri):
   return a tuple (schema, host/interface, port). 
   raise ValueError if parsing fails
   """
-  parts = sync_uri.split(":")
+  parts = uri.split(":")
 
   if parts[0] == "tcp":
     if len(parts) != 3:
