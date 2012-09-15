@@ -18,10 +18,14 @@ from pox.lib.recoco import Select, Task
 log = logging.getLogger()
 
 class JSONIOWorker(object):
-  def __init__(self, io_worker):
+  def __init__(self, io_worker, on_json_received=None):
     self.worker = LineIOWorker(io_worker)
     self.worker.on_line_received = self._receive_line
-    self.on_json_received = lambda: None
+
+    if on_json_received is None:
+      on_json_received = lambda worker, json_hash: log.warn("Received json_hash: %s, but no delegate yet" % json_hash)
+
+    self.on_json_received = on_json_received
 
   def _receive_line(self, worker, line):
     print "REC LINE: %s" % line
