@@ -53,6 +53,9 @@ class LineIOWorker(object):
   def send_line(self, line):
     self.io_worker.send(line + "\n")
 
+  def close(self):
+    self.io_worker.close()
+
 class IOWorker(object):
   """ Generic IOWorker class. Defines the IO contract for our simulator. Fire and forget semantics for send.
       Received data is being queued until explicitely consumed by the client
