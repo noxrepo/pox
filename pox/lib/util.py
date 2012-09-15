@@ -405,6 +405,33 @@ def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
       backoff_seconds <<= 1
   return sock
 
+def parse_openflow_uri(uri):
+  """ 
+  parses an openflow URI of the format 
+     tcp:<host>:<port>
+   or
+    ptcp:[<interface>:]:<port>
+
+  return a tuple (schema, host/interface, port). 
+  raise ValueError if parsing fails
+  """
+  parts = sync_uri.split(":")
+
+  if parts[0] == "tcp":
+    if len(parts) != 3:
+      raise ValueError("Syntax for tcp sync uri: tcp:<host>:<port>")
+    return (parts[0], parts[1], int(parts[2]))
+  elif parts[0] == "ptcp":
+    if len(parts) == 2:
+      return (parts[0], None, int(parts[1]))
+    elif len(parts) == 3:
+      return (parts[0], parts[1], int(parts[2]))
+    else:
+      raise ValueError("Syntax for ptcp sync uris: ptcp:[<host>:]:port")
+  else:
+    raise ValueError("Unknown schema for sync uri: %s. Known: (tcp, ptcp)" % parts[0])
+
+
 if __name__ == "__main__":
   def cb (t,k,v): print v
   l = DirtyList([10,20,30,40,50])
