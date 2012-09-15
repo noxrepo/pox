@@ -19,7 +19,7 @@ import inspect
 
 import pox.openflow.libopenflow_01 as of
 import pox.openflow.nicira_ext as nx
-from pox.openflow.software_switch import SoftwareSwitch, ControllerConnection
+from pox.openflow.software_switch import SoftwareSwitch, OFConnection
 
 _slave_blacklist = set([of.ofp_flow_mod, of.ofp_packet_out, of.ofp_port_mod, of.ofp_barrier_request])
 _messages_for_all = set([of.ofp_port_status])
@@ -50,28 +50,17 @@ class NXSoftwareSwitch(SoftwareSwitch):
     # (for round robin of async messages)
     self.next_other = 0
 
-    self.beef_up_handlers()
+  def on_message_received(self, connection, msg):
+    """ @overrides SoftwareSwitch.on_message_receiceved"""
 
-  def beef_up_handlers(self):
-    self.orig_handlers = self.ofp_handlers
-    handlers = {}
-    for (command, handler) in self.orig_handlers.iteritems():
-      # note: python has lexical scoping. So I need to convert the
-      # handler variable to a parameter in order to capture the current value
-      def _handle(ofp, connection, handler=handler):
-        self.connection_in_action = connection
-        if not self.check_rights(ofp, connection):
-          self.log.warn("Message %s not allowed for slave controller %d" % (ofp, connection.ID))
-          self.send_error(connection)
-        else:
-          if "connection" in inspect.getargspec(handler)[0]:
-            handler(ofp, connection=connection)
-          else:
-            handler(ofp)
-        self.connection_in_action = None
-      handlers[command] = _handle
-    self.log.info(str(handlers))
-    self.ofp_handlers = handlers
+    self.connection_in_action = connection
+    if not self.check_rights(msg, connection):
+      self.log.warn("Message %s not allowed for slave controller %d" % (ofp, connection.ID))
+      self.send_error(connection)
+    else:
+      SoftwareSwitch.on_message_received(self, connection, msg)
+
+    self.connection_in_action = None
 
   def check_rights(self, ofp, connection):
     if self.role_by_conn[connection.ID] != nx.ROLE_SLAVE:
@@ -93,7 +82,7 @@ class NXSoftwareSwitch(SoftwareSwitch):
     elif self.connection_in_action:
       #self.log.info("Sending %s to active connection %d" % (str(message), self.connection_in_action.ID))
       self.connection_in_action.send(message)
-      connections_used.append(self.connection)
+      connections_used.append(self.connection_in_action)
     else:
       masters = [c for c in self.connections if self.role_by_conn[c.ID] == nx.ROLE_MASTER]
       if len(masters) > 0:
@@ -112,11 +101,12 @@ class NXSoftwareSwitch(SoftwareSwitch):
     return connections_used
 
   def set_io_worker(self, io_worker):
-    conn = self.add_connection(ControllerConnection(io_worker, self.ofp_handlers))
+    conn = self.add_connection(OFConnection(io_worker, self.on_message_received))
     return conn
 
   def add_connection(self, connection):
     self.role_by_conn[connection.ID] = nx.ROLE_OTHER
+    connection.on_message_received = self.on_message_received
     self.connections.append(connection)
     return connection
 
