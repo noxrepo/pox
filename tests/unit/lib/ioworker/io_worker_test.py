@@ -2,6 +2,7 @@
 ### auto generate sha1: 26c6550c27d0274b9338b2b85891aeaf01146ed8
 
 import itertools
+import json
 import os.path
 import sys
 import unittest
@@ -9,7 +10,7 @@ import unittest
 sys.path.append(os.path.join(os.path.dirname(__file__), *itertools.repeat("..", 3)))
 
 from pox.lib.mock_socket import MockSocket
-from pox.lib.ioworker.io_worker import IOWorker, RecocoIOLoop, LineIOWorker
+from pox.lib.ioworker.io_worker import IOWorker, RecocoIOLoop, LineIOWorker, JSONIOWorker
 from nose.tools import eq_
 
 class MockIOWorker:
@@ -96,6 +97,61 @@ class LineIOWorkerTest(unittest.TestCase):
       m.receive(line_end)
       self.assertEquals(rec_lines, ["testend", "somemoremore", "", ""])
 
+class JSONIOWorkerTest(unittest.TestCase):
+  data = {'hello': 'this is a test\nwith some tricks', 'array': ['an', 1, 'array' ] }
+  data2 = ['another message', None, ["just", "to", "annoy", "people"]]
+  floodlight_data = {"name":"role","value":"MASTER","fingerPrint":"role=MASTER","type":"ASYNC","time":{"seconds":1347830756,"microSeconds":474865},"xid":1,"messageClass":"StateChange"}
+  floodlight_json_str = r'{"name":"role","value":"MASTER","fingerPrint":"role=MASTER","type":"ASYNC","time":{"seconds":1347830756,"microSeconds":474865},"xid":1,"messageClass":"StateChange"}'
+
+
+  def test_send(self):
+    _eq = self.assertEquals
+
+    m = MockIOWorker()
+    j = JSONIOWorker(m)
+    j.send(self.data)
+
+    _eq(1, len(m.sends))
+    _eq(self.data, json.loads(m.sends[0]))
+    j.send(self.data2)
+    _eq(2, len(m.sends))
+    _eq(self.data2, json.loads(m.sends[1]))
+    j.send(self.floodlight_data)
+    _eq(3, len(m.sends))
+    _eq(self.floodlight_data, json.loads(m.sends[2]))
+    # some integrity check on the whole byte array representation
+    all = "".join(m.sends)
+    _eq(3, all.count('\n'))
+    _eq(True, all.endswith('\n'))
+
+  def test_receive(self):
+    _eq = self.assertEquals
+
+    class JSONReceiver(object):
+      def __init__(self):
+        self.recs = []
+        self.rec_count = 0
+
+      def __call__(self, worker, json):
+        self.recs.append(json)
+        self.rec_count += 1
+
+    m = MockIOWorker()
+    j = JSONIOWorker(m)
+    receiver = JSONReceiver()
+    j.on_json_received = receiver
+
+    # no newline -> not received yet
+    m.receive(self.floodlight_json_str)
+    _eq(0, receiver.rec_count)
+    m.receive('\n')
+    _eq(1, receiver.rec_count)
+    _eq(receiver.recs.pop(0), self.floodlight_data)
+    # 2 messages at the same time
+    m.receive("%s\n%s\n" %  (json.dumps(self.data), json.dumps(self.data2)))
+    _eq(3, receiver.rec_count)
+    _eq(receiver.recs.pop(0), self.data)
+    _eq(receiver.recs.pop(0), self.data2)
 
 
 class RecocoIOLoopTest(unittest.TestCase):

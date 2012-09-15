@@ -6,6 +6,7 @@ Created on Feb 25, 2012
 import exceptions
 import sys
 import errno
+import json
 import logging
 import Queue
 import re
@@ -15,6 +16,24 @@ from pox.lib.util import assert_type, makePinger
 from pox.lib.recoco import Select, Task
 
 log = logging.getLogger()
+
+class JSONIOWorker(object):
+  def __init__(self, io_worker):
+    self.worker = LineIOWorker(io_worker)
+    self.worker.on_line_received = self._receive_line
+    self.on_json_received = lambda: None
+
+  def _receive_line(self, worker, line):
+    print "REC LINE: %s" % line
+    json_hash = json.loads(line)
+    self.on_json_received(self, json_hash)
+
+  def send(self, json_object):
+    self.worker.send_line(json.dumps(json_object))
+
+  def close(self):
+    self.worker.close()
+
 
 class LineIOWorker(object):
   """ Wraps a IOWorker and delivers the data line by line """
