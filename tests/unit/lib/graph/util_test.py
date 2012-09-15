@@ -26,7 +26,7 @@ class EncoderTest(unittest.TestCase):
   def test_decode_host(self):
     encoded_host = "{\
 \"__module__\": \"pox.lib.graph.nom\", \"macstr\": \"c4:2c:03:0c:15:33\",\
-\"ip\": {\"_value\": 184549386, \"__module__\": \"pox.lib.addresses\",\
+\"ip\": {\"value\": 184549386, \"__module__\": \"pox.lib.addresses\",\
 \"__class__\": \"IPAddr\"},\
 \"__class__\": \"Host\", \"_num\": 1,\
 \"mac\": {\"_value\": \"\u00c4,\u0003f\u00153\",\
