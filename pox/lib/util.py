@@ -397,7 +397,7 @@ def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
       sock.connect( (address, port) )
       break
     except socket.error as e:
-      print >>sys.stderr, "%s. Backing off %d seconds ..." % (str(e), backoff_seconds)
+      print >>sys.stderr, "Error connecting to %s:%d -- %s. Backing off %d seconds ..." % (address, port, str(e), backoff_seconds)
       if backoff_seconds >= max_backoff_seconds:
         raise RuntimeError("Could not connect to controller %s:%d" % (address, port))
       else:
