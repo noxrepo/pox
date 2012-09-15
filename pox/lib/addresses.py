@@ -259,7 +259,10 @@ class IPAddr (object):
     if 'value' in kw:
       self.value = kw['value']
       return
-      
+
+    if addr is None:
+      raise ValueError("IPAddress: addr required")
+
     # Always stores as a signed network-order int
     if isinstance(addr, str) or isinstance(addr, bytes):
       if len(addr) != 4:
@@ -273,7 +276,7 @@ class IPAddr (object):
       addr = addr & 0xffFFffFF # unsigned long
       self.value = struct.unpack("!i", struct.pack(('!' if networkOrder else '') + "I", addr))[0]
     else:
-      raise RuntimeError("Unexpected IP address format")
+      raise RuntimeError("Unexpected IP address format (don't know how to handle class %s)" % type(addr))
 
   def toSignedN (self):
     """ A shortcut """
