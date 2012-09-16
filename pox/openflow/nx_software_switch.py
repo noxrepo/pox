@@ -102,7 +102,7 @@ class NXSoftwareSwitch(SoftwareSwitch):
 
   def add_connection(self, connection):
     self.role_by_conn[connection.ID] = nx.ROLE_OTHER
-    connection.on_message_received = self.on_message_received
+    connection.set_message_handler(self.on_message_received)
     self.connections.append(connection)
     return connection
 

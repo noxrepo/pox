@@ -18,6 +18,9 @@ class MockConnection(object):
   def last(self):
     return self.received[-1]
 
+  def set_message_handler(self, handler):
+    self.on_message_received = handler
+
   def to_switch(self, msg):
     self.on_message_received(self, msg)
 
