@@ -125,7 +125,7 @@ class SoftwareSwitch(EventMixin):
     '''
     Set this switch's connection.
     '''
-    connection.on_message_received = self.on_message_received
+    connection.set_message_handler(self.on_message_received)
     self._connection = connection
 
   def send(self, message):
@@ -553,6 +553,9 @@ class OFConnection (object):
     ## OpenFlow Message map
     self.ofp_msgs = make_type_to_class_table()
     self.on_message_received = None
+
+  def set_message_handler(self, handler):
+    self.on_message_received = handler
 
   def send (self, data):
     """
