@@ -36,7 +36,6 @@ class NomMessenger (object):
     self.myEncoder = NOMEncoder()
 
   def _handle_global_MessageReceived (self, event, msg):
-    log.info("handle_global_MessageReceived: "+msg)
     try:
       n = msg['hello']
       if n == self._targetName:
