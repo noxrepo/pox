@@ -98,6 +98,7 @@ class IOWorker(object):
     self.send_buf += data
 
   def _push_receive_data(self, new_data):
+    print("IOWorker._push_receive_data: new_data=%s" % repr(new_data))
     # notify client of new received data. called by a Select loop
     self.receive_buf += new_data
     self._on_data_receive(self)
