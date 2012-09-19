@@ -123,7 +123,9 @@ class IOWorker(object):
     # Throw out the first l bytes of the send buffer
     # Called by Select loop
     assert(len(self.send_buf)>=l)
+    print "IOWorker._consume_send_buf: _consuming %d bytes of send_buf is %s" % (l, repr(self.send_buf))
     self.send_buf = self.send_buf[l:]
+    print "IOWorker._consume_send_buf: send_buf is now %s" % repr(self.send_buf)
 
   def close(self):
     """ Close this socket """
