@@ -216,17 +216,21 @@ class RecocoIOLoop(Task):
 
         if self.pinger in rlist :
           self.pinger.pongAll()
-          rlist.remove(self.pinger)
+          rlist.discard(self.pinger)
 
         for worker in elist:
           worker.close()
           if worker in self._workers:
-            self._workers.remove(worker)
+            self._workers.discard(worker)
 
         for worker in rlist:
           try:
             data = worker.socket.recv(self._BUF_SIZE)
-            worker._push_receive_data(data)
+            if data:
+              worker._push_receive_data(data)
+            else:
+              worker.close()
+              self._workers.discard(worker)
           except socket.error as (s_errno, strerror):
             log.error("Socket error: " + strerror)
             worker.close()
