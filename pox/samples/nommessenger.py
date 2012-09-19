@@ -19,6 +19,8 @@ from pox.core import core
 from pox.messenger.messenger import *
 from pox.lib.graph.util import *
 
+log = pox.core.getLogger()
+
 class NomMessenger (object):
   """
   The NomMessenger grabs a current JSON representation of the NOM and sends it
@@ -27,12 +29,14 @@ class NomMessenger (object):
   '{"hello":"nommessenger"}' and '{"getnom":0}'
   """
   def __init__ (self):
+    log.info("initializing")
     core.messenger.addListener(MessageReceived, self._handle_global_MessageReceived, weak=True)
     self._targetName = "nommessenger"
     
     self.myEncoder = NOMEncoder()
 
   def _handle_global_MessageReceived (self, event, msg):
+    log.info("handle_global_MessageReceived: "+msg)
     try:
       n = msg['hello']
       if n == self._targetName:
