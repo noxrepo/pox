@@ -95,6 +95,7 @@ class IOWorker(object):
   def send(self, data):
     """ send data from the client side. fire and forget. """
     assert_type("data", data, [bytes], none_ok=False)
+    print "IOWorker.send: sending %s (send_buf is %s)" % (repr(data), repr(self.send_buf))
     self.send_buf += data
 
   def _push_receive_data(self, new_data):
