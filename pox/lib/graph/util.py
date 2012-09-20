@@ -27,7 +27,7 @@ def saveNOM(target="nom"):
   jsonNOM = buildjsonNOM()
   f = open(target, 'w')
   json.dump(jsonNOM, f)
-  
+
 def loadNOM(source="nom"):
   f = open(source, 'r')
   jsonNOM = json.load(f)
@@ -37,46 +37,30 @@ def buildjsonNOM():
   # Create a JSON message describing the NOM
   jsonNOM = {}
   # make sure core.topology is running
-  
+
   # Add Switches
   switches = []
   for sw in core.topology.getEntitiesOfType(Switch):
     rules = []
     for rule in sw.flow_table.entries:
       match = {}
-      match['nw_proto'] = rule.match.nw_proto
-      match['wildcards'] = rule.match.wildcards
-      match['dl_type'] = rule.match.dl_type
-      if rule.match.dl_src:
-        match['dl_src'] = rule.match.dl_src.toInt()
-      if rule.match.dl_dst:
-        match['dl_dst'] = rule.match.dl_dst.toInt()
-      if rule.match.nw_src:
-        match['nw_src'] = rule.match.nw_src.toUnsigned()
-      if rule.match.nw_src:
-       match['nw_dst'] = rule.match.nw_dst.toUnsigned()
-      match['in_port'] = rule.match.in_port
-      match['tp_src'] = rule.match.tp_src
-      match['tp_dst'] = rule.match.tp_dst
-      match['dl_vlan'] = rule.match.dl_vlan
-      match['dl_vlan_pcp'] = rule.match.dl_vlan_pcp
-      match['nw_tos'] = rule.match.nw_tos
-      
+      encode_match(rule.match, match)
+
       actions = []
       for a in rule.actions:
         actions.append({"type":a.type, "port":a.port})
-        
-      rules.append({"match": match, "actions":actions}) 
+
+      rules.append({"match": match, "actions":actions})
     switches.append({"dpid":sw.dpid, "rules":rules})
-  
+
   jsonNOM["switches"] = switches
-  
+
   # Add Hosts
   hosts = []
   for host in core.topology.getEntitiesOfType(Host):
     hosts.append({"mac":host.mac.toStr()})
   jsonNOM["hosts"] = hosts
-  
+
   # Add Links
   links = []
   for link in core.topology.getEntitiesOfType(Link):
@@ -89,11 +73,29 @@ def buildjsonNOM():
 def encode_host(host):
   pass
 
+def encode_match(match, dictionary):
+  dictionary['nw_proto'] = match.nw_proto
+  dictionary['wildcards'] = match.wildcards
+  dictionary['dl_type'] = match.dl_type
+  if match.dl_src:
+    dictionary['dl_src'] = match.dl_src.toInt()
+  if match.dl_dst:
+    dictionary['dl_dst'] = match.dl_dst.toInt()
+  if match.nw_src:
+    dictionary['nw_src'] = match.nw_src.toUnsigned()
+  if match.nw_src:
+    dictionary['nw_dst'] = match.nw_dst.toUnsigned()
+  dictionary['in_port'] = match.in_port
+  dictionary['tp_src'] = match.tp_src
+  dictionary['tp_dst'] = match.tp_dst
+  dictionary['dl_vlan'] = match.dl_vlan
+  dictionary['dl_vlan_pcp'] = match.dl_vlan_pcp
+  dictionary['nw_tos'] = match.nw_tos
+
 class NOMEncoder(json.JSONEncoder):
-    
   jsontypes = (dict, list, tuple, str, unicode, int, long, float, True,
                  False, None)
-  
+
   def default(self, obj, visited=None, level=None):
     # Convert objects to a dictionary of their representation
     if not visited:
@@ -103,19 +105,24 @@ class NOMEncoder(json.JSONEncoder):
     else:
       visited.append(id(obj))
     d = {'__class__':obj.__class__.__name__,'__module__':obj.__module__,}
-    for k, v in obj.__dict__.items():
-      if k[0] == '_':
-        continue
-      f = [x for x in visited if isinstance(x, type(v)) and not type(v) in self.jsontypes]
-      if id(v) not in f:
-        d[k] = v if (type(v) in self.jsontypes or v == None) else self.default(v, visited)
-        visited.append(id(v))
+    # We have to special case ofp_match, since it has some crazy bearded
+    # wizard magic with private member variables
+    if d['__class__'] == 'ofp_match':
+      encode_match(obj, d)
+    else:
+      for k, v in obj.__dict__.items():
+        if k[0] == '_':
+          continue
+        f = [x for x in visited if isinstance(x, type(v)) and not type(v) in self.jsontypes]
+        if id(v) not in f:
+          d[k] = v if (type(v) in self.jsontypes or v == None) else self.default(v, visited)
+          visited.append(id(v))
     return d
 
 import importlib
 
 class NOMDecoder(json.JSONDecoder):
-    
+
   def __init__(self):
     json.JSONDecoder.__init__(self, object_hook=self.dict_to_object)
 
