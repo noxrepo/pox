@@ -137,7 +137,6 @@ class Scheduler (object):
                 daemon = False, useEpoll=False):
     self._ready = deque()
     self._hasQuit = False
-    self._selectHub = SelectHub(self, useEpoll=useEpoll)
     self._thread = None
     self._event = threading.Event()
 
@@ -151,7 +150,13 @@ class Scheduler (object):
       defaultScheduler = self
 
     if startInThread:
+      self.threaded = True
+      self._selectHub = SelectHub(self, useEpoll=useEpoll)
       self.runThreaded(daemon)
+    else:
+      self.threaded = False
+      self._selectHub = NonThreadedSelectHub(self, useEpoll=useEpoll)
+
 
   def __del__ (self):
     self._hasQuit = True
@@ -243,10 +248,20 @@ class Scheduler (object):
   def run (self):
     try:
       while self._hasQuit == False:
-        if len(self._ready) == 0:
-          self._event.wait(CYCLE_MAXIMUM) # Wait for a while
-          self._event.clear()
+        while len(self._ready) == 0:
+          if self.threaded:
+            # the threaded select hub is selecting on it's own and
+            # notifying us through self._event
+            # (and will dump stuff in our _ready queue
+            self._event.wait(CYCLE_MAXIMUM) # Wait for a while
+            self._event.clear()
+          else:
+            # the non-threaded SelectHub will only run when we tell it to.
+            # Good dog.
+            self._selectHub.select()
+
           if self._hasQuit: break
+
         r = self.cycle()
     finally:
       #print("Scheduler done")
@@ -287,10 +302,11 @@ class Scheduler (object):
     if isinstance(rv, BlockingOperation):
       try:
         rv.execute(t, self)
-      except:
+      except Exception as e:
         print("Task", t, "caused exception during a blocking operation and " +
               "was de-scheduled")
         traceback.print_exc()
+        raise e
     elif rv is False:
       # Just unschedule/sleep
       #print "Unschedule", t, rv
@@ -486,42 +502,158 @@ class Send (BlockingOperation):
     scheduler._selectHub.registerSelect(task, None, [self._fd], [self._fd])
 
 #TODO: just merge this in with Scheduler?
-class SelectHub (object):
+class NonThreadedSelectHub (object):
   """
   This class is a single select() loop that handles all Select() requests for
   a scheduler as well as timed wakes (i.e., Sleep()).
   """
   def __init__ (self, scheduler, useEpoll=False):
     # We store tuples of (elapse-time, task)
-    self._sleepers = [] # Sleeping items stored as a heap
+    self._scheduler = scheduler
+    self.epoll = EpollSelect() if useEpoll else None
+    self.tasks = {}
+
+  def select (self):
+    rets = {}
+
+    #print("SelectHub cycle")
+    timeout = None
+
+    #NOTE: Everything you select on eventually boils down to file descriptors,
+    #      which are unique, obviously.  It might be possible to leverage this
+    #      to reduce hashing cost (i.e. by picking a really good hashing
+    #      function), though this is complicated by wrappers, etc...
+    rl = {}
+    wl = {}
+    xl = {}
+
+    timeout = None
+    timeoutTask = None
+
+    now = time.time()
+
+    expired = None
+
+    for t,trl,twl,txl,tto in self.tasks.itervalues():
+      print ("Handling: %s" % (t))
+      if tto != None:
+        if tto <= now:
+          # Already expired
+          if expired is None: expired = []
+          expired.append(t)
+          if tto-now > 0.1: print("preexpired",tto,now,tto-now)
+          continue
+        tt = tto - now
+        if tt < timeout or timeout is None:
+          timeout = tt
+          timeoutTask = t
+
+      if trl:
+        for i in trl: rl[i] = t
+      if twl:
+        for i in twl: wl[i] = t
+      if txl:
+        for i in txl: xl[i] = t
+
+    if expired:
+      for t in expired:
+        self._return(t, ([],[],[]))
+      return
+
+    if timeout is None: timeout = CYCLE_MAXIMUM
+    if self.epoll:
+      ro, wo, xo = self.epoll.select( rl.keys(), # + [self._pinger],
+                                wl.keys(),
+                                xl.keys(), timeout )
+    else:
+      ro, wo, xo = select.select( rl.keys(), # + [self._pinger],
+                                wl.keys(),
+                                xl.keys(), timeout )
+
+    if len(ro) == 0 and len(wo) == 0 and len(xo) == 0 and timeoutTask != None:
+      # IO is idle - dispatch timers / release timeouts
+      self._return(timeoutTask, ([],[],[]))
+    else:
+      # We have IO events
+      # At least one thread is going to be resumed
+      for i in ro:
+        task = rl[i]
+        if task not in rets: rets[task] = ([],[],[])
+        rets[task][0].append(i)
+      for i in wo:
+        task = wl[i]
+        if task not in rets: rets[task] = ([],[],[])
+        rets[task][1].append(i)
+      for i in xo:
+        task = xl[i]
+        if task not in rets: rets[task] = ([],[],[])
+        rets[task][2].append(i)
+
+      for t,v in rets.iteritems():
+        self._return(t, v)
+
+
+  def registerSelect (self, task, rlist = None, wlist = None, xlist = None,
+                      timeout = None, timeIsAbsolute = False):
+
+    if task in self.tasks:
+      raise ValueError("Task %s already scheduled" % task)
+
+    if not timeIsAbsolute:
+      if timeout != None:
+        timeout += time.time()
+
+    self.tasks[task] = (task, rlist, wlist, xlist, timeout)
+    self._cycle()
+
+  def _cycle (self):
+    """
+    Cycle the wait thread so that new timers or FDs can be picked up
+    """
+    # self._pinger.ping()
+    # nothing to see here. move on
+    pass
+
+  def registerTimer (self, task, timeToWake, timeIsAbsolute = False):
+    """
+    Register a task to be wakened up interval units in the future.
+    It means timeToWake seconds in the future if absoluteTime is False.
+    """
+    return self.registerSelect(task, None, None, None, timeToWake,
+                               timeIsAbsolute)
+
+  def _return (self, sleepingTask, returnVal):
+    del self.tasks[sleepingTask]
+    sleepingTask.rv = returnVal
+    self._scheduler.fast_schedule(sleepingTask)
+
+
+#TODO: just merge this in with Scheduler?
+class SelectHub (object):
+  """
+  This class is a single select() loop that handles all Select() requests for
+  a scheduler as well as timed wakes (i.e., Sleep()).
+  """
+  def __init__ (self, scheduler, useEpoll=False, threaded=False):
+    # We store tuples of (elapse-time, task)
     self._incoming = Queue() # Threadsafe queue for new items
 
     self._scheduler = scheduler
     self._pinger = pox.lib.util.makePinger()
     self.epoll = EpollSelect() if useEpoll else None
 
-    self._ready = False
-
-    self._thread = Thread(target = self._threadProc)
-    self._thread.daemon = True
-    self._thread.start()
-
-    # Ugly busy wait for initialization
-    #while self._ready == False:
+    if threaded:
+      self._thread = Thread(target = self._threadProc)
+      self._thread.daemon = True
+      self._thread.start()
 
   def _threadProc (self):
     tasks = {}
-    timeouts = []
     rets = {}
 
     while self._scheduler._hasQuit == False:
       #print("SelectHub cycle")
-
-      if len(timeouts) == 0:
-        timeout = None
-      else:
-        timeout = self._sleepers[0][0] - time.time()
-        if timeout < 0: timeout = 0
+      timeout = None
 
       #NOTE: Everything you select on eventually boils down to file descriptors,
       #      which are unique, obviously.  It might be possible to leverage this

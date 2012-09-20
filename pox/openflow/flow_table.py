@@ -342,6 +342,8 @@ class NOMFlowTable(EventMixin):
     for op in todo:
       fmod_xid = self.switch._xid_generator.next()
       flow_mod = op[1].to_flow_mod(xid=fmod_xid, command=op[0], flags=op[1].flags | OFPFF_SEND_FLOW_REM)
+      log.info("NOMFlowTable: _sync_pending: send flow_mod %s" % (flow_mod))
+
       self.switch.send(flow_mod) 
 
     barrier_xid = self.switch._xid_generator.next()

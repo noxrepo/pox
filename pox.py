@@ -349,6 +349,8 @@ def main ():
     traceback.print_exc()
     return
 
+  core.scheduler.run()
+
   if cli:
     print "This program comes with ABSOLUTELY NO WARRANTY.  This program is " \
           "free software,"
