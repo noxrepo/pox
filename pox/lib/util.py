@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -149,9 +149,15 @@ def strToDPID (s):
   """
   Convert a DPID in the canonical string form into a long int.
   """
+  if s.lower().startswith("0x"):
+    s = s[2:]
   s = s.replace("-", "").split("|", 2)
   a = int(s[0], 16)
-  b = 0
+  if a > 0xffFFffFFffFF:
+    b = a >> 48
+    a &= 0xffFFffFFffFF
+  else:
+    b = 0
   if len(s) == 2:
     b = int(s[1])
   return a | (b << 48)
@@ -160,7 +166,6 @@ def dpidToStr (dpid, alwaysLong = False):
   """
   Convert a DPID from a long into into the canonical string form.
   """
-  """ In flux. """
   if type(dpid) is long or type(dpid) is int:
     # Not sure if this is right
     dpid = struct.pack('!Q', dpid)
@@ -405,6 +410,35 @@ def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
       backoff_seconds <<= 1
   return sock
 
+
+_scalar_types = (int, long, basestring, float, bool)
+
+def is_scalar (v):
+ return isinstance(v, _scalar_types)
+
+def fields_of (obj, primitives_only=False, primitives_and_composites_only=False,
+               allow_caps=False):
+  """
+  Returns key/value pairs of things that seem like public fields of an object.
+  """
+  r = {}
+  for k in dir(obj):
+    if k.startswith('_'): continue
+    v = getattr(obj, k)
+    if hasattr(v, '__call__'): continue
+    if not allow_caps and k.upper() == k: continue
+    if primitives_only:
+      if not isinstance(v, _scalar_types):
+        continue
+    elif primitives_and_composites_only:
+      if not isinstance(v, (int, long, basestring, float, bool, set,
+                            dict, list)):
+        continue
+    #r.append((k,v))
+    r[k] = v
+  return r
+
+
 if __name__ == "__main__":
   def cb (t,k,v): print v
   l = DirtyList([10,20,30,40,50])
@@ -413,4 +447,3 @@ if __name__ == "__main__":
   l.append(3)
 
   print l
-

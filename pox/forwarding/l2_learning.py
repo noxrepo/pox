@@ -57,7 +57,7 @@ class LearningSwitch (EventMixin):
   2) Is destination address a Bridge Filtered address, or is Ethertpe LLDP?
      * This step is ignored if transparent = True *
      Yes:
-        2a) Drop packet to avoid forwarding link-local traffic (LLDP, 802.1x)
+        2a) Drop packet -- don't forward link-local traffic (LLDP, 802.1x)
             DONE
   3) Is destination multicast?
      Yes:
@@ -158,7 +158,7 @@ class LearningSwitch (EventMixin):
         log.debug("installing flow for %s.%i -> %s.%i" %
                   (packet.src, event.port, packet.dst, port))
         msg = of.ofp_flow_mod()
-        msg.match = of.ofp_match.from_packet(packet)
+        msg.match = of.ofp_match.from_packet(packet, event.port)
         msg.idle_timeout = 10
         msg.hard_timeout = 30
         msg.actions.append(of.ofp_action_output(port = port))

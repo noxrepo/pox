@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -17,7 +17,12 @@
 
 """
 Connects the POX messenger bus to HTTP.
+
 Requires the "webserver" component.
+
+NOTE: The web_transport keeps its own session IDs.  Since it was first
+      written, though, sessions IDs have become part of every
+      Connection, and we could (but are not) reuse those.
 """
 
 from SocketServer import ThreadingMixIn
@@ -32,19 +37,18 @@ import json
 
 from pox.lib.recoco import Timer
 
-from pox.messenger.messenger import MessengerConnection
+from pox.messenger import Connection, Transport
 
 from pox.core import core
 
-from webcore import *
+from pox.web.webcore import *
 
 log = core.getLogger()
 
 
-class HTTPMessengerConnection (MessengerConnection):
-  def __init__ (self, source, session_key):
-    MessengerConnection.__init__(self, source, ID=str(id(self))) #TODO: better ID
-    self.session_key = session_key
+class HTTPConnection (Connection):
+  def __init__ (self, transport):
+    Connection.__init__(self, transport)
     self._messages = []
     self._cond = threading.Condition()
     self._quitting = False
@@ -57,9 +61,11 @@ class HTTPMessengerConnection (MessengerConnection):
 
     self._touched = time.time()
 
+    self._send_welcome()
+
   def _check_timeout (self):
     if (time.time() - self._touched) > 120:
-      log.info("Session " + self.session_key + " timed out")
+      log.info("Session " + str(self) + " timed out")
       self._close()
 
   def _new_tx_seq (self):
@@ -76,25 +82,24 @@ class HTTPMessengerConnection (MessengerConnection):
     return True
 
   def _close (self):
-    super(HTTPMessengerConnection, self)._close()
+    super(HTTPConnection, self)._close()
     #TODO: track request sockets and cancel them?
     self._quitting = True
 
-  def sendRaw (self, data):
+  def send_raw (self, data):
     self._cond.acquire()
     self._messages.append(data)
     self._cond.notify()
     self._cond.release()
 
-  def _do_recv_msg (self, items):
-    #print ">>",items
+  def _do_rx_message (self, items):
     for item in items:
-      self._recv_msg(item)
+      self._rx_message(item)
 
 
-class HTTPMessengerSource (object):
-  def __init__ (self):
-    self._session_key_salt = str(time.time()) + "POX"
+class HTTPTransport (Transport):
+  def __init__ (self, nexus = None):
+    Transport.__init__(self, nexus)
     self._connections = {}
     #self._t = Timer(5, self._check_timeouts, recurring=True)
     self._t = Timer(60*2, self._check_timeouts, recurring=True)
@@ -104,22 +109,16 @@ class HTTPMessengerSource (object):
       c._check_timeout()
 
   def _forget (self, connection):
-    if connection.session_key in self._connections:
-      del self._connections[connection.session_key]
+    # From MessengerTransport
+    if connection._session_id in self._connections:
+      del self._connections[connection._session_id]
     else:
       #print "Failed to forget", connection
       pass
 
   def create_session (self):
-    key = None
-    while True:
-      key = str(random.random()) + self._session_key_salt
-      key += str(id(key))
-      key = base64.encodestring(hashlib.md5(key).digest()).replace('=','').replace('+','').replace('/','').strip()
-      if key not in self._connections:
-        break
-    ses = HTTPMessengerConnection(self, key)
-    self._connections[key] = ses
+    ses = HTTPConnection(self)
+    self._connections[ses._session_id] = ses
     return ses
 
   def get_session (self, key):
@@ -134,7 +133,7 @@ class CometRequestHandler (SplitRequestHandler):
 #    super(CometRequestHandler, self).__init__(*args, **kw)
 
   def _init (self):
-    self.source = self.args['source']
+    self.transport = self.args['transport']
     self.auth_function = self.args.get('auth', None)
 
   def _doAuth (self):
@@ -162,9 +161,9 @@ class CometRequestHandler (SplitRequestHandler):
       #TODO: return some bad response and log
       return None
     if session_key == "new":
-      hmh = self.source.create_session()
+      hmh = self.transport.create_session()
     else:
-      hmh = self.source.get_session(session_key)
+      hmh = self.transport.get_session(session_key)
     #print session_key, hmh.session_key
     return hmh
 
@@ -189,31 +188,31 @@ class CometRequestHandler (SplitRequestHandler):
       data = json.loads(self.rfile.read(int(l)))
     payload = data['data']
     # We send null payload for timeout poking and initial setup
-    if payload is not None:
+    if 'seq' in data:
       if not hmh._check_rx_seq(data['seq']):
         # Bad seq!
-        data = '{"seq":-1,"ses":"%s"}' % (hmh.session_key,)
+        data = '{"seq":-1,"ses":"%s"}' % (hmh._session_id,)
         self.send_response(400, "Bad sequence number")
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", len(data))
         self.send_header("X-POX-Messenger-Sequence-Number", "-1")
-        if self.auth_function: self.send_header("WWW-Authenticate",  'Basic realm="POX"')
+        if self.auth_function: self.send_header("WWW-Authenticate",
+                                                'Basic realm="POX"')
         self.end_headers()
         self.wfile.write(data)
         hmh._close()
         return
-      core.callLater(hmh._do_recv_msg, payload)
-    else:
-      #print "KeepAlive", hmh
-      pass
+      if payload is not None:
+        core.callLater(hmh._do_rx_message, payload)
 
     try:
-      data = '{"seq":-1,"ses":"%s"}' % (hmh.session_key,)
+      data = '{"seq":-1,"ses":"%s"}' % (hmh._session_id,)
       self.send_response(200, "OK")
       self.send_header("Content-Type", "application/json")
       self.send_header("Content-Length", len(data))
       self.send_header("X-POX-Messenger-Sequence-Number", "-1")
-      if self.auth_function: self.send_header("WWW-Authenticate",  'Basic realm="POX"')
+      if self.auth_function: self.send_header("WWW-Authenticate",
+                                              'Basic realm="POX"')
       self.end_headers()
       self.wfile.write(data)
     except:
@@ -243,12 +242,13 @@ class CometRequestHandler (SplitRequestHandler):
     if hmh._quitting:
       #NOTE: we don't drain the messages first, but maybe we should?
       try:
-        data = '{"seq":-1,"ses":"%s"}' % (hmh.session_key,)
+        data = '{"seq":-1,"ses":"%s"}' % (hmh._session_id,)
         self.send_response(200, "OK")
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", len(data))
         self.send_header("X-POX-Messenger-Sequence-Number", "-1")
-        if self.auth_function: self.send_header("WWW-Authenticate",  'Basic realm="POX"')
+        if self.auth_function: self.send_header("WWW-Authenticate",
+                                                'Basic realm="POX"')
         self.end_headers()
         self.wfile.write(data)
       except:
@@ -258,35 +258,36 @@ class CometRequestHandler (SplitRequestHandler):
 
     num_messages = min(20, len(hmh._messages))
     data = hmh._messages[:num_messages]
+    old_seq = hmh._tx_seq
     seq = hmh._new_tx_seq()
-    data = '{"seq":%i,"ses":"%s","data":[%s]}' % (seq, hmh.session_key, ','.join(data))
+    data = '{"seq":%i,"ses":"%s","data":[%s]}' % (seq, hmh._session_id,
+                                                  ','.join(data))
     try:
       self.send_response(200, "OK")
       self.send_header("Content-Type", "application/json")
       self.send_header("Content-Length", len(data))
       self.send_header("X-POX-Messenger-Sequence-Number", str(seq))
-      if self.auth_function: self.send_header("WWW-Authenticate",  'Basic realm="POX"')
+      if self.auth_function: self.send_header("WWW-Authenticate",
+                                              'Basic realm="POX"')
       self.end_headers()
       self.wfile.write(data)
       del hmh._messages[:num_messages]
-      hmh._first_seq += num_messages
-      hmh._message_count = 0
     except:
-      pass
+      hmh._tx_seq = old_seq
     hmh._cond.release()
 
 
 def launch (username='', password=''):
-  if not core.hasComponent("WebServer"):
-    log.error("WebServer is required but unavailable")
-    return
+  def _launch ():
+    transport = core.registerNew(HTTPTransport)
 
-  source = core.registerNew(HTTPMessengerSource)
+    # Set up config info
+    config = {"transport":transport}
+    if len(username) and len(password):
+      config['auth'] = lambda u, p: (u == username) and (p == password)
 
-  # Set up config info
-  config = {"source":source}
-  if len(username) and len(password):
-    config['auth'] = lambda u, p: (u == username) and (p == password)
+    core.WebServer.set_handler("/_webmsg/",CometRequestHandler,config,True)
 
-  core.WebServer.set_handler("/_webmsg/", CometRequestHandler, config, True)
+  core.call_when_ready(_launch, ["WebServer","MessengerNexus"],
+                       name = "webmessenger")
 

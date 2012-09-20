@@ -111,6 +111,13 @@ class Link (object):
   def __repr__ (self):
     return "Link(%s, %s)" % (self[0], self[1])
 
+
+class Node (object):
+  pass
+  #TODO: Add back in some convenience methods that call real methods
+  #      on the parent graph?  Or just remove?
+
+
 def _void ():
   return None
 

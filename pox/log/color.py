@@ -198,7 +198,9 @@ def launch (entire=False):
       oldlevelname = record.levelname
       if color is not None:
         record.levelname = _color(color, record.levelname)
-      return _proc(old_format(record), oldlevelname)
+      r = _proc(old_format(record), oldlevelname)
+      record.levelname = oldlevelname
+      return r
   dlf.format = new_format
 
   if windows_hack:

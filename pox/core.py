@@ -103,6 +103,7 @@ def getLogger (name=None, moreFrames=0):
   return l
 
 
+# Working around something (don't remember what)
 log = (lambda : getLogger())()
 
 from pox.lib.revent import *
@@ -185,9 +186,16 @@ class POXCore (EventMixin):
     self.components = {}
 
     self.version = (0,0,0)
-    print "{0} / Copyright 2011 James McCauley".format(self.version_string)
+    print self.banner
 
     self.scheduler = recoco.Scheduler(daemon=True)
+
+    self._waiters = [] # List of waiting components
+
+  @property
+  def banner (self):
+    return "{0} / Copyright 2011-2012 James McCauley, et al.".format(
+     self.version_string)
 
   @property
   def version_string (self):
@@ -260,19 +268,40 @@ class POXCore (EventMixin):
       self.raiseEvent(DownEvent())
       log.info("Down.")
 
+  def _get_python_version (self):
+    try:
+      import platform
+      return "{impl} ({vers}/{build})".format(
+       impl=platform.python_implementation(),
+       vers=platform.python_version(),
+       build=platform.python_build()[1].replace("  "," "))
+    except:
+      return "Unknown Python"
+
   def goUp (self):
     log.debug(self.version_string + " going up...")
 
-    import platform
-    py = "{impl} ({vers}/{build})".format(
-     impl=platform.python_implementation(),
-     vers=platform.python_version(),
-     build=platform.python_build()[1].replace("  "," "))
-    log.debug("Running on " + py)
+    log.debug("Running on " + self._get_python_version())
 
     self.raiseEvent(GoingUpEvent())
-    log.info(self.version_string + " is up.")
+
     self.raiseEvent(UpEvent())
+
+    if len(self._waiters):
+      waiting_for = set()
+      for entry in self._waiters:
+        _, name, components, _, _ = entry
+        components = [c for c in components if not self.hasComponent(c)]
+        waiting_for.update(components)
+        log.debug("%s still waiting for: %s"
+                  % (name, " ".join(components)))
+      names = set([n for _,n,_,_,_ in self._waiters])
+
+      #log.info("%i things still waiting on %i components"
+      #         % (names, waiting_for))
+      log.warn("Still waiting on %i component(s)" % (len(waiting_for),))
+
+    log.info(self.version_string + " is up.")
 
   def hasComponent (self, name):
     """
@@ -297,49 +326,144 @@ class POXCore (EventMixin):
     self.register(name, obj)
     return obj
 
-  def register (self, name, component):
+  def register (self, name, component=None):
     """
     Makes the object "component" available as pox.core.core.name.
+
+    If only one argument is specified, the given argument is registered
+    using its class name as the name.
     """
     #TODO: weak references?
+    if component is None:
+      component = name
+      name = component.__class__.__name__
+
     if name in self.components:
       log.warn("Warning: Registered '%s' multipled times" % (name,))
     self.components[name] = component
     self.raiseEventNoErrors(ComponentRegistered, name, component)
+    self._try_waiters()
     
-  def listenToDependencies(self, sink, components):
+  def call_when_ready (self, callback, components=[], name=None, args=(),
+                       kw={}):
     """
-    If a component depends on having other components
-    registered with core before it can boot, it can use this method to 
-    check for registration, and listen to events on those dependencies.
-    
-    Note that event handlers named with the _handle* pattern in the sink must
-    include the name of the desired source as a prefix. For example, if topology is a
-    dependency, a handler for topology's SwitchJoin event must be labeled:
-       def _handle_topology_SwitchJoin(...)
-    
-    sink - the component waiting on dependencies
-    components - a list of dependent component names
-    
-    Returns whether all of the desired components are registered.
+    Calls a callback when components are ready.
     """
-    if components == None or len(components) == 0:
-      return True
-  
-    got = set()
-    for c in components:
-      if self.hasComponent(c):
-        setattr(sink, c, getattr(self, c))
-        sink.listenTo(getattr(self, c), prefix=c)
-        got.add(c)
+    if isinstance(components, basestring):
+      components = [components]
+    elif isinstance(components, set):
+      components = list(components)
+    else:
+      try:
+        _ = components[0]
+        components = list(components)
+      except:
+        components = [components]
+    if name is None:
+      #TODO: Use inspect here instead
+      name = getattr(callback, 'func_name')
+      if name is None:
+        name = str(callback)
       else:
-        setattr(sink, c, None)
-    for c in got:
-      components.remove(c)
-    if len(components) == 0:
-      log.debug(sink.__class__.__name__ + " ready")
-      return True
-    return False
+        name += "()"
+        if hasattr(callback, 'im_class'):
+          name = getattr(callback.im_class,'__name__', '') + '.' + name
+      if hasattr(callback, '__module__'):
+        # Is this a good idea?  If not here, we should do it in the
+        # exception printing in try_waiter().
+        name += " in " + callback.__module__
+    entry = (callback, name, components, args, kw)
+    self._waiters.append(entry)
+    self._try_waiter(entry)
+
+  def _try_waiter (self, entry):
+    """
+    Tries a waiting callback.
+
+    Calls the callback, removes from _waiters, and returns True if
+    all are satisfied.
+    """
+    if entry not in self._waiters:
+      # Already handled
+      return
+    callback, name, components, args_, kw_ = entry
+    for c in components:
+      if not self.hasComponent(c):
+        return False
+    self._waiters.remove(entry)
+    try:
+      if callback is not None:
+        callback(*args_,**kw_)
+    except:
+      import traceback
+      msg = "Exception while trying to notify " + name
+      import inspect
+      try:
+        msg += " at " + inspect.getfile(callback)
+        msg += ":" + str(inspect.getsourcelines(callback)[1])
+      except:
+        pass
+      log.exception(msg)
+    return True
+
+  def _try_waiters (self):
+    """
+    Tries to satisfy all component-waiting callbacks
+    """
+    changed = True
+    
+    while changed:
+      changed = False
+      for entry in list(self._waiters):
+        if self._try_waiter(entry):
+          changed = True
+
+  def listen_to_dependencies (self, sink, components=None, attrs=True):
+    """
+    Look through *sink* for handlers named like _handle_component_event.
+    Use that to build a list of components, and append any components
+    explicitly specified by *components*.
+
+    When all the referenced components are registered, do the following:
+    1) Set up all the event listeners
+    2) Call "_all_dependencies_met" on *sink* if it exists
+    3) If attrs=True, set attributes on *sink* for each component
+       (e.g, sink._openflow_ would be set to core.openflow)
+    
+    For example, if topology is a dependency, a handler for topology's
+    SwitchJoin event must be defined as so:
+       def _handle_topology_SwitchJoin (self, ...):
+
+    *NOTE*: The semantics of this function changed somewhat in the
+            Summer 2012 milestone, though its intention remains the same.
+    """
+    if components is None:
+      components = set()
+    elif isinstance(components, basestring):
+      components = set([components])
+    else:
+      components = set(components)
+
+    for c in dir(sink):
+      if not c.startswith("_handle_"): continue
+      if c.count("_") < 3: continue
+      c = '_'.join(c.split("_")[2:-1])
+      components.add(c)
+
+
+    def done (sink, components, attrs):
+      if attrs:
+        for c in components:
+          setattr(sink, "_%s_" % (c,), getattr(self, c))
+      for c in components:
+        if hasattr(getattr(self, c), "_eventMixin_events"):
+          getattr(self, c).addListeners(sink, prefix=c)
+      getattr(sink, "_all_dependencies_met", lambda : None)()
+
+
+    self.call_when_ready(done, components, name=sink.__class__.__name__,
+                         args=(sink,components,attrs))
+
 
   def __getattr__ (self, name):
     if name not in self.components:

@@ -266,14 +266,8 @@ class Discovery (EventMixin):
 
     packet = event.parsed
 
-    if packet.type != ethernet.LLDP_TYPE: return
+    if packet.effective_ethertype != ethernet.LLDP_TYPE: return
     if packet.dst != NDP_MULTICAST: return
-
-    if not packet.next:
-      log.error("lldp packet could not be parsed")
-      return
-
-    assert isinstance(packet.next, lldp)
 
     if self.explicit_drop:
       if event.ofp.buffer_id != -1:
@@ -283,7 +277,11 @@ class Discovery (EventMixin):
         msg.in_port = event.port
         event.connection.send(msg)
 
-    lldph = packet.next
+    lldph = packet.find(lldp)
+    if lldph is None or not lldph.parsed:
+      log.error("lldp packet could not be parsed")
+      return
+
     if  len(lldph.tlvs) < 3 or \
       (lldph.tlvs[0].tlv_type != lldp.CHASSIS_ID_TLV) or\
       (lldph.tlvs[1].tlv_type != lldp.PORT_ID_TLV) or\

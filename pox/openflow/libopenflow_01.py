@@ -51,6 +51,8 @@ MAX_XID = 0x7fFFffFF
 _nextXID = 1
 #USE_MPLS_MATCH = False
 
+#TODO: Refactor generateXID and xid_generator
+
 def generateXID ():
   global _nextXID
   r = _nextXID
@@ -403,10 +405,16 @@ class ofp_queue_prop_min_rate (object):
 
 ##2.3 Flow Match Structures
 class ofp_match (object):
+  adjust_wildcards = True # Set to true to "fix" outgoing wildcards
+
   @classmethod
   def from_packet (cls, packet, in_port = None):
-    """ get a match that matches this packet, asuming it came in on in_port in_port
-    @param packet an instance of 'ethernet'
+    """
+    Constructs an exact match for the given packet
+
+    @param in_port The switch port the packet arrived on if you want
+                   the resulting match to have its in_port set
+    @param packet  A pox.packet.ethernet instance
     """
     assert_type("packet", packet, ethernet, none_ok=False)
 
@@ -531,7 +539,6 @@ class ofp_match (object):
 
   def set_nw_src (self, *args, **kw):
     a = self._make_addr(*args, **kw)
-      # self.internal_links.add(Link(edge, edge.ports[port_no], host, host.interfaces[0]))
     if a == None:
       self._nw_src = ofp_match_data['nw_src'][0]
       self.wildcards &= ~OFPFW_NW_SRC_MASK
@@ -616,7 +623,11 @@ class ofp_match (object):
         raise RuntimeError(self._assert())
 
     packed = ""
-    packed += struct.pack("!LH", self._wire_wildcards(self.wildcards) if flow_mod else self.wildcards, self.in_port or 0)
+    if self.adjust_wildcards and flow_mod:
+      wc = self._wire_wildcards(self.wildcards)
+    else:
+      wc = self.wildcards
+    packed += struct.pack("!LH", wc, self.in_port or 0)
     if self.dl_src == None:
       packed += EMPTY_ETH.toRaw()
     elif type(self.dl_src) is bytes:
@@ -737,8 +748,8 @@ class ofp_match (object):
     (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = struct.unpack_from("!LLHH", binaryString, 28)
     self._nw_src = IPAddr(self._nw_src)
     self._nw_dst = IPAddr(self._nw_dst)
-#    if USE_MPLS_MATCH:
-#      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IBxxx", binaryString, 40)
+    #if USE_MPLS_MATCH:
+    #  self.mpls_label,self.mpls_tc = struct.unpack_from("!IBxxx", binaryString, 40)
     self.wildcards = self._normalize_wildcards(self._unwire_wildcards(wildcards) if flow_mod else wildcards) # Overide
     return binaryString[self.__len__():]
 
@@ -2122,11 +2133,8 @@ class ofp_stats_request (ofp_header):
   def pack (self, assertstruct=True):
     self.length = len(self)
     if self.type is None:
-      if isinstance(self.body, ofp_flow_stats_request):
-        self.type = OFPST_FLOW
-      elif isinstance(self.body, ofp_aggregate_stats_request):
-        self.type = OFPST_AGGREGATE
-      elif self.body_data == b'':
+      self.type = _get_type(self.body)
+      if self.type is None:
         self.type = OFPST_DESC # Maybe shouldn't assume this?
     if(assertstruct):
       if(not self._assert()[0]):
@@ -2181,7 +2189,7 @@ class ofp_stats_reply (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.header_type = OFPT_STATS_REPLY
-    self.type = 0
+    self.type = None # Guess
     self.flags = 0
     self.body = b''
     self._body_data = (None, None)
@@ -2207,8 +2215,8 @@ class ofp_stats_reply (ofp_header):
     return self._body_data[1]
 
   def pack (self, assertstruct=True):
-    if type == None or type == 0 and type(self.body) in ofp_stats_reply_class_to_type_map:
-      self.type = ofp_stats_reply_class_to_type_map[type(self.body)]
+    if self.type == None:
+      self.type = _get_type(self.body)
 
     self.length = len(self)
     if(assertstruct):
@@ -2343,6 +2351,7 @@ class ofp_desc_stats (object):
     outstr += prefix + 'serial_num: ' + str(self.serial_num) + '\n'
     outstr += prefix + 'dp_desc: ' + str(self.dp_desc) + '\n'
     return outstr
+ofp_desc_stats_reply = ofp_desc_stats
 
 class ofp_flow_stats_request (object):
   def __init__ (self, **kw):
@@ -2387,7 +2396,7 @@ class ofp_flow_stats_request (object):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'match: \n'
-    self.match.show(prefix + '  ')
+    outstr += self.match.show(prefix + '  ')
     outstr += prefix + 'table_id: ' + str(self.table_id) + '\n'
     outstr += prefix + 'out_port: ' + str(self.out_port) + '\n'
     return outstr
@@ -2469,7 +2478,7 @@ class ofp_flow_stats (object):
     outstr += prefix + 'length: ' + str(self.length) + '\n'
     outstr += prefix + 'table_id: ' + str(self.table_id) + '\n'
     outstr += prefix + 'match: \n'
-    self.match.show(prefix + '  ')
+    outstr += self.match.show(prefix + '  ')
     outstr += prefix + 'duration_sec: ' + str(self.duration_sec) + '\n'
     outstr += prefix + 'duration_nsec: ' + str(self.duration_nsec) + '\n'
     outstr += prefix + 'priority: ' + str(self.priority) + '\n'
@@ -2482,6 +2491,7 @@ class ofp_flow_stats (object):
     for obj in self.actions:
       outstr += obj.show(prefix + '  ')
     return outstr
+ofp_flow_stats_reply = ofp_flow_stats
 
 class ofp_aggregate_stats_request (object):
   def __init__ (self, **kw):
@@ -2527,7 +2537,7 @@ class ofp_aggregate_stats_request (object):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'match: \n'
-    self.match.show(prefix + '  ')
+    outstr += self.match.show(prefix + '  ')
     outstr += prefix + 'table_id: ' + str(self.table_id) + '\n'
     outstr += prefix + 'out_port: ' + str(self.out_port) + '\n'
     return outstr
@@ -2642,6 +2652,7 @@ class ofp_table_stats (object):
     outstr += prefix + 'lookup_count: ' + str(self.lookup_count) + '\n'
     outstr += prefix + 'matched_count: ' + str(self.matched_count) + '\n'
     return outstr
+ofp_table_stats_reply = ofp_table_stats
 
 class ofp_port_stats_request (object):
   def __init__ (self, **kw):
@@ -2774,6 +2785,7 @@ class ofp_port_stats (object):
     outstr += prefix + 'rx_crc_err: ' + str(self.rx_crc_err) + '\n'
     outstr += prefix + 'collisions: ' + str(self.collisions) + '\n'
     return outstr
+ofp_port_stats_reply = ofp_port_stats
 
 class ofp_queue_stats_request (object):
   def __init__ (self, **kw):
@@ -2871,15 +2883,7 @@ class ofp_queue_stats (object):
     outstr += prefix + 'tx_packets: ' + str(self.tx_packets) + '\n'
     outstr += prefix + 'tx_errors: ' + str(self.tx_errors) + '\n'
     return outstr
-
-ofp_stats_reply_class_to_type_map = {
-    ofp_desc_stats : ofp_stats_types_rev_map['OFPST_DESC'],
-    ofp_flow_stats : ofp_stats_types_rev_map['OFPST_FLOW'],
-    ofp_aggregate_stats : ofp_stats_types_rev_map['OFPST_AGGREGATE'],
-    ofp_table_stats : ofp_stats_types_rev_map['OFPST_TABLE'],
-    ofp_port_stats : ofp_stats_types_rev_map['OFPST_PORT'],
-    ofp_queue_stats : ofp_stats_types_rev_map['OFPST_QUEUE']
-}
+ofp_queue_stats_reply = ofp_queue_stats
 
 
 ##3.6 Send Packet Message
@@ -3223,7 +3227,7 @@ class ofp_flow_removed (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'match: \n'
-    self.match.show(prefix + '  ')
+    outstr += self.match.show(prefix + '  ')
     outstr += prefix + 'cookie: ' + str(self.cookie) + '\n'
     outstr += prefix + 'priority: ' + str(self.priority) + '\n'
     outstr += prefix + 'reason: ' + str(self.reason) + '\n'
@@ -3878,6 +3882,29 @@ ofp_type_rev_map = {
   'OFPT_QUEUE_GET_CONFIG_REQUEST' : 20,
   'OFPT_QUEUE_GET_CONFIG_REPLY'   : 21,
 }
+
+def _get_type (o):
+  """
+  Gets the OpenFlow type for the given class or object.
+
+  For example, if o is an ofp_flow_mod, it returns
+  OFPT_FLOW_MOD (14).
+  """
+  #TODO: Replace with a more efficient version.  A
+  #      good way to do this might be to set a class
+  #      variable __type on initialization.
+  if o.__class__ is object:
+    c = o.__name__
+  else:
+    c = o.__class__.__name__
+  assert c.startswith("ofp_")
+  c = c.split("ofp_", 1)[1]
+  if (c.endswith("_stats_request") or c.endswith("_stats_reply") or
+      c.endswith("_stats")):
+    c = c.rsplit("_stats", 1)[0].upper()
+    c = "OFPST_" + c
+    return ofp_stats_types_rev_map.get(c)
+  #TODO: For non-stats
 
 # Table that maps an action type to a callable that creates that type
 # (This is filled in by _init after the globals have been created)

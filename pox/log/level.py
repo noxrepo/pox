@@ -17,7 +17,7 @@
 
 from pox.core import core
 
-def launch (**kw):
+def launch (__INSTANCE__=None, **kw):
   """
   Allows configuring log levels from the commandline.
 

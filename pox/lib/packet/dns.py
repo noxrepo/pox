@@ -227,6 +227,7 @@ class dns(packet_base):
           s += struct.pack("!HHIH", r.qtype, r.qclass, r.ttl, len(r.rddata))
           s += r.rddata
 
+        return s
 
     def parse(self, raw):
         assert isinstance(raw, bytes)

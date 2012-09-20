@@ -29,8 +29,6 @@ import datetime
 from pox.lib.socketcapture import CaptureSocket
 import pox.openflow.debug
 from pox.openflow.util import make_type_to_class_table
-from pox.openflow.connection_arbiter import *
-
 from pox.openflow import *
 
 log = core.getLogger()
@@ -67,6 +65,10 @@ def handle_HELLO (con, msg): #S
   # Send a features request
   msg = of.ofp_features_request()
   con.send(msg.pack())
+
+def handle_ECHO_REPLY (con, msg):
+  #con.msg("Got echo reply")
+  pass
 
 def handle_ECHO_REQUEST (con, msg): #S
   reply = msg
@@ -105,11 +107,10 @@ def handle_FEATURES_REPLY (con, msg):
   def finish_connecting (event):
     if event.xid != barrier.xid:
       con.dpid = None
-      con.err("Failed connect for " + pox.lib.util.dpidToStr(
-              msg.datapath_id))
+      con.err("failed connect")
       con.disconnect()
     else:
-      con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
+      con.info("connected")
       import time
       con.connect_time = time.time()
       #for p in msg.ports: print(p.show())
@@ -155,10 +156,12 @@ def handle_PACKET_IN (con, msg): #A
 #    con.ofnexus.raiseEventNoErrors(PacketIn(con, msg, p))
 
 def handle_ERROR_MSG (con, msg): #A
-  log.error(str(con) + " OpenFlow Error:\n" +
-            msg.show(str(con) + " Error: ").strip())
-  con.ofnexus.raiseEventNoErrors(ErrorIn, con, msg)
-  con.raiseEventNoErrors(ErrorIn, con, msg)
+  err = ErrorIn(con, msg)
+  con.ofnexus.raiseEventNoErrors(err)
+  con.raiseEventNoErrors(err)
+  if err.should_log:
+    log.error(str(con) + " OpenFlow Error:\n" +
+              msg.show(str(con) + " Error: ").strip())
 
 def handle_BARRIER (con, msg):
   con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)
@@ -235,6 +238,7 @@ handlers = []
 handlerMap = {
   of.OFPT_HELLO : handle_HELLO,
   of.OFPT_ECHO_REQUEST : handle_ECHO_REQUEST,
+  of.OFPT_ECHO_REPLY : handle_ECHO_REPLY,
   of.OFPT_PACKET_IN : handle_PACKET_IN,
   of.OFPT_FEATURES_REPLY : handle_FEATURES_REPLY,
   of.OFPT_PORT_STATUS : handle_PORT_STATUS,
@@ -506,41 +510,29 @@ class Connection (EventMixin):
     return self.sock.fileno()
 
   def close (self):
-    if not self.disconnected:
-      self.info("closing connection")
-    else:
-      #self.msg("closing connection")
-      pass
-    try:
-      self.sock.shutdown(socket.SHUT_RDWR)
-    except:
-      pass
+    self.disconnect('closed')
     try:
       self.sock.close()
     except:
       pass
 
-  def disconnect (self):
+  def disconnect (self, msg = 'disconnected'):
     """
     disconnect this Connection (usually not invoked manually).
     """
+    already = False
     if self.disconnected:
       self.err("already disconnected!")
-    self.msg("disconnecting")
+      already = True
+    self.msg(msg)
     self.disconnected = True
     try:
       self.ofnexus._disconnect(self.dpid)
     except:
       pass
-    """
-    try:
-      if self.dpid != None:
-        self.ofnexus.raiseEvent(ConnectionDown(self))
-    except:
-      self.err("ConnectionDown event caused exception")
-    """
-    if self.dpid != None:
-      self.ofnexus.raiseEventNoErrors(ConnectionDown(self))
+    if self.dpid is not None and not already:
+      self.ofnexus.raiseEventNoErrors(ConnectionDown, self)
+      self.raiseEventNoErrors(ConnectionDown, self)
 
     try:
       #deferredSender.kill(self)
@@ -664,7 +656,12 @@ class Connection (EventMixin):
       handler(self, s)
 
   def __str__ (self):
-    return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
+    #return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
+    if self.dpid is None:
+      d = str(self.dpid)
+    else:
+      d = pox.lib.util.dpidToStr(self.dpid)
+    return "[%s %i]" % (d, self.ID)
 
 
 def wrap_socket (new_sock):
@@ -708,7 +705,7 @@ class OpenFlow_01_Task (Task):
     listener.listen(16)
     sockets.append(listener)
 
-    log.debug("Listening for connections on %s:%s" %
+    log.debug("Listening on %s:%s" %
               (self.address, self.port))
 
     con = None

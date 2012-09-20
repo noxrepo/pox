@@ -33,9 +33,11 @@ wrong more than once).  In POX, the raw events are available, but you will
 generally just want to listen to the aggregate stats events which take
 care of this for you and are only fired when all data is available.
 
-NOTE: this module is automatically loaded by pox.py
+NOTE: This module is usually automatically loaded by pox.py
 """
+
 from pox.lib.revent import *
+from pox.lib.util import dpidToStr
 import libopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
 
@@ -173,6 +175,7 @@ class ErrorIn (Event):
     self.connection = connection
     self.ofp = ofp
     self.xid = ofp.xid
+    self.should_log = True # If this remains True, an error will be logged
 
   def asString (self):
     return self.ofp.show()
@@ -225,4 +228,119 @@ class ConnectionIn (Event):
     self.connection = connection
     self.dpid = connection.dpid
     self.nexus = None
+
+
+
+class OpenFlowConnectionArbiter (EventMixin):
+  """
+  Determines which OpenFlowNexus gets the switch.
+  Default implementation always just gives it to core.openflow
+  """
+  _eventMixin_events = set([
+    ConnectionIn,
+  ])
+  def __init__ (self, default = False):
+    """ default as False causes it to always use core.openflow """
+    self._default = default
+    self._fallback = None
+
+  def getNexus (self, connection):
+    e = ConnectionIn(connection)
+    self.raiseEventNoErrors(e)
+    if e.nexus is None:
+      e.nexus = self._default
+    if e.nexus is False:
+      if self._fallback is None:
+        try:
+          from pox.core import core
+          self._fallback = core.openflow
+        except:
+          raise RuntimeError("No OpenFlow nexus for new connection")
+      e.nexus = self._fallback
+    return e.nexus
+
+
+class OpenFlowNexus (EventMixin):
+  """
+  Main point of OpenFlow interaction.
+
+  There is usually just one instance of this class, registered as
+  core.openflow.  Most OpenFlow events fire here in addition to on their
+  specific connections.
+  """
+  _eventMixin_events = set([
+    ConnectionUp,
+    ConnectionDown,
+    PortStatus,
+    FlowRemoved,
+    PacketIn,
+    BarrierIn,
+    ErrorIn,
+    RawStatsReply,
+    SwitchDescReceived,
+    FlowStatsReceived,
+    AggregateFlowStatsReceived,
+    TableStatsReceived,
+    PortStatsReceived,
+    QueueStatsReceived,
+    FlowRemoved,
+  ])
+
+  # Bytes to send to controller when a packet misses all flows
+  miss_send_len = of.OFP_DEFAULT_MISS_SEND_LEN
+
+  # Enable/Disable clearing of flows on switch connect
+  clear_flows_on_connect = True
+
+  def __init__ (self):
+    self._connections = {} # DPID -> Connection
+
+    from pox.core import core
+
+    self.listenTo(core)
+
+  @property
+  def connections (self):
+    return self._connections.values()
+
+  def getConnection (self, dpid):
+    """
+    Get the Connection object associated with a DPID.
+    """
+    return self._connections.get(dpid, None)
+
+  def sendToDPID (self, dpid, data):
+    """
+    Send data to a specific DPID.
+    """
+    if dpid in self._connections:
+      self._connections[dpid].send(data)
+      return True
+    else:
+      import logging
+      log = logging.getLogger("openflow")
+      log.warn("Couldn't send to %s because we're not connected to it!" %
+               (dpidToStr(dpid),))
+      return False
+
+  def _handle_DownEvent (self, event):
+    for c in self._connections.values():
+      try:
+        c.disconnect()
+      except:
+        pass
+
+  def _connect (self, con):
+    self._connections[con.dpid] = con
+  def _disconnect (self, dpid):
+    if dpid in self._connections:
+      del self._connections[dpid]
+
+def launch (default_arbiter=True):
+  from pox.core import core
+  if core.hasComponent("openflow"):
+    return
+  if default_arbiter:
+    core.registerNew(OpenFlowConnectionArbiter)
+  core.register("openflow", OpenFlowNexus())
 

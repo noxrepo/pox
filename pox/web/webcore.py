@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -68,6 +68,7 @@ except ImportError:
     from StringIO import StringIO
 
 log = core.getLogger()
+weblog = log.getChild("server")
 
 def _setAttribs (parent, child):
   attrs = ['command', 'request_version', 'close_connection',
@@ -125,15 +126,22 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
     return method()
 
   def log_request (self, code = '-', size = '-'):
-    log.debug(self.prefix + (':"%s" %s %s' % 
+    weblog.debug(self.prefix + (':"%s" %s %s' %
               (self.requestline, str(code), str(size))))
 
   def log_error (self, fmt, *args):
-    log.error(self.prefix + ':' + (fmt % args))
+    weblog.error(self.prefix + ':' + (fmt % args))
 
   def log_message (self, fmt, *args):
-    log.info(self.prefix + ':' + (fmt % args))
+    weblog.info(self.prefix + ':' + (fmt % args))
 
+
+_favicon = ("47494638396110001000c206006a5797927bc18f83ada9a1bfb49ceabda"
+ + "4f4ffffffffffff21f904010a0007002c000000001000100000034578badcfe30b20"
+ + "1c038d4e27a0f2004e081e2172a4051942abba260309ea6b805ab501581ae3129d90"
+ + "1275c6404b80a72f5abcd4a2454cb334dbd9e58e74693b97425e07002003b")
+_favicon = ''.join([chr(int(_favicon[n:n+2],16))
+                   for n in xrange(0,len(_favicon),2)])
 
 class CoreHandler (SplitRequestHandler):
   """
@@ -141,13 +149,29 @@ class CoreHandler (SplitRequestHandler):
   """
   def do_GET (self):
     """Serve a GET request."""
-    self.send_info(True)
+    self.do_content(True)
 
   def do_HEAD (self):
     """Serve a HEAD request."""
-    self.self_info(False)
+    self.do_content(False)
 
-  def send_info (self, isGet = False):
+  def do_content (self, is_get):
+    if self.path == "/":
+      self.send_info(is_get)
+    elif self.path.startswith("/favicon."):
+      self.send_favicon(is_get)
+    else:
+      self.send_error(404, "File not found on CoreHandler")
+
+  def send_favicon (self, is_get = False):
+    self.send_response(200)
+    self.send_header("Content-type", "image/gif")
+    self.send_header("Content-Length", str(len(_favicon)))
+    self.end_headers()
+    if is_get:
+      self.wfile.write(_favicon)
+
+  def send_info (self, is_get = False):
     r = "<html><head><title>POX</title></head>\n"
     r += "<body>\n<h1>POX Webserver</h1>\n<h2>Components</h2>\n"
     r += "<ul>"
@@ -160,14 +184,14 @@ class CoreHandler (SplitRequestHandler):
          for x in self.args.matches]
     m.sort()
     for v in m:
-      r += "<li>%s - %s %s</li>\n" % tuple(v)
+      r += "<li><a href='{0}'>{0}</a> - {1} {2}</li>\n".format(*v)
     r += "</ul></body></html>\n"
 
     self.send_response(200)
     self.send_header("Content-type", "text/html")
     self.send_header("Content-Length", str(len(r)))
     self.end_headers()
-    if isGet:
+    if is_get:
       self.wfile.write(r)
 
 
@@ -396,14 +420,14 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
     BaseHTTPRequestHandler.__init__(self, *args, **kw)
 
   def log_request (self, code = '-', size = '-'):
-    log.debug('splitter:"%s" %s %s',
-              self.requestline, str(code), str(size))
+    weblog.debug('splitter:"%s" %s %s',
+                 self.requestline, str(code), str(size))
 
   def log_error (self, fmt, *args):
-    log.error('splitter:' + fmt % args)
+    weblog.error('splitter:' + fmt % args)
 
   def log_message (self, fmt, *args):
-    log.info('splitter:' + fmt % args)
+    weblog.info('splitter:' + fmt % args)
 
   def handle_one_request(self):
     self.raw_requestline = self.rfile.readline()
@@ -491,24 +515,38 @@ class SplitThreadedServer(ThreadingMixIn, HTTPServer):
                      {'root':local_path}, True);
 
 
-def launch (address='', port=8000, debug=False, static=False):
-  if debug:
-    log.setLevel("DEBUG")
-    log.debug("Debugging enabled")
-  elif log.isEnabledFor("DEBUG"):
-    log.setLevel("INFO")
-
+def launch (address='', port=8000, static=False):
   httpd = SplitThreadedServer((address, int(port)), SplitterRequestHandler)
   core.register("WebServer", httpd)
   httpd.set_handler("/", CoreHandler, httpd, True)
   #httpd.set_handler("/foo", StaticContentHandler, {'root':'.'}, True)
   #httpd.set_handler("/f", StaticContentHandler, {'root':'pox'}, True)
   #httpd.set_handler("/cgis", SplitCGIRequestHandler, "pox/web/www_root")
-  if static:
+  if static is True:
     httpd.add_static_dir('static', 'www_root', relative=True)
+  elif static is False:
+    pass
+  else:
+    static = static.split(",")
+    for entry in static:
+      if entry.lower() == "":
+        httpd.add_static_dir('static', 'www_root', relative=True)
+        continue
+      if ':' not in entry:
+        directory = entry
+        prefix = os.path.split(directory)
+        if prefix[1] == '':
+          prefix = os.path.split(prefix[0])
+        prefix = prefix[1]
+        assert prefix != ''
+      else:
+        prefix,directory = entry.split(":")
+      directory = os.path.expanduser(directory)
+      httpd.add_static_dir(prefix, directory, relative=False)
 
   def run ():
     try:
+      log.debug("Listening on %s:%i" % httpd.socket.getsockname())
       httpd.serve_forever()
     except:
       pass

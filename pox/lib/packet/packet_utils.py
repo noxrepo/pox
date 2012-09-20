@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 # Copyright 2008 (C) Nicira, Inc.
 #
 # This file is part of POX.
@@ -36,6 +36,22 @@ _ethtype_to_str[0x0806] = 'ARP'
 _ethtype_to_str[0x8035] = 'RARP'
 _ethtype_to_str[0x8100] = 'VLAN'
 _ethtype_to_str[0x88cc] = 'LLDP'
+_ethtype_to_str[0x888e] = 'PAE'
+_ethtype_to_str[0x8847] = 'MPLS'
+_ethtype_to_str[0x8848] = 'MPLSM' # Multicast
+_ethtype_to_str[0x86dd] = 'IPV6'
+_ethtype_to_str[0x880b] = 'PPP'
+_ethtype_to_str[0x88bb] = 'LWAPP'
+_ethtype_to_str[0x880c] = 'GSMP'
+_ethtype_to_str[0x8137] = 'IPX'
+_ethtype_to_str[0x0842] = 'WOL' # Wake On LAN
+_ethtype_to_str[0x22f3] = 'TRILL'
+_ethtype_to_str[0x8870] = 'JUMBO'
+_ethtype_to_str[0x889a] = 'SCSI' # SCSI Over Ethernet
+_ethtype_to_str[0x88a2] = 'ATA' # ATA Over Ethernet
+_ethtype_to_str[0x9100] = 'QINQ'
+_ethtype_to_str[0xffff] = 'BAD'
+
 
 # IP protocol to string
 _ipproto_to_str[0]  = 'IP'
@@ -73,15 +89,12 @@ def checksum (data, start = 0, skip_word = None):
     return ntohs(~start & 0xffff)
 
 def ethtype_to_str(t):
-    if t < 0x0600:
-        return "llc/%04x" % (t,)
-    if _ethtype_to_str.has_key(t):
-        return _ethtype_to_str[t]
-    else:
-        return "%x" % t
+  if t <= 0x05dc:
+    return "802.3/%04x" % (t,)
+  return _ethtype_to_str.get(t, "%04x" % (t,))
 
 def ipproto_to_str(t):
-    if _ipproto_to_str.has_key(t):
-        return _ipproto_to_str[t]
-    else:
-        return "%x" % t
+  if t in _ipproto_to_str:
+    return _ipproto_to_str[t]
+  else:
+    return "%02x" % (t,)

@@ -79,38 +79,30 @@ class EthAddr (object):
   def __init__ (self, addr):
     """
     Understands Ethernet address is various forms.  Hex strings, raw byte
-    strings, long integers, etc.
+    strings, etc.
     """
     # Always stores as a 6 character string
-    if isinstance(addr, int) or isinstance(addr, long):
-      addr = long(addr)
-      # Store the long as an array of 6 bytes
-      # Struct puts the least significant byte at [0] though!
-      # And Murphy puts the least significant byte at [-1]
-      # So we pack ourselves one byte at a time
-      val = []
-      for _ in range(6):
-        # This may not be machine-independent...
-        val.insert(0, struct.pack("B", (addr & 0xFF)))
-        addr >>= 8
-      self._value = ''.join(val)
-    elif isinstance(addr, bytes) or isinstance(addr, unicode):
-      if len(addr) == 17 or len(addr) == 12 or addr.count(':') == 5:
+    if isinstance(addr, bytes) or isinstance(addr, basestring):
+      if len(addr) == 6:
+        # raw
+        pass
+      elif len(addr) == 17 or len(addr) == 12 or addr.count(':') == 5:
         # hex
         if len(addr) == 17:
           if addr[2::3] != ':::::' and addr[2::3] != '-----':
             raise RuntimeError("Bad format for ethernet address")
-          # TODOC: I have no clue what this is doing
+          # Address of form xx:xx:xx:xx:xx:xx
+          # Pick out the hex digits only
           addr = ''.join((addr[x*3:x*3+2] for x in xrange(0,6)))
         elif len(addr) == 12:
           pass
         else:
+          # Assume it's hex digits but they may not all be in two-digit
+          # groupings (e.g., xx:x:x:xx:x:x). This actually comes up.
           addr = ''.join(["%02x" % (int(x,16),) for x in addr.split(":")])
-        # TODOC: I have no clue what this is doing
+        # We should now have 12 hex digits (xxxxxxxxxxxx).
+        # Convert to 6 raw bytes.
         addr = b''.join((chr(int(addr[x*2:x*2+2], 16)) for x in range(0,6)))
-      elif len(addr) == 6:
-        # raw
-        pass
       else:
         raise RuntimeError("Expected ethernet address string to be 6 raw bytes or some hex")
       self._value = addr
@@ -171,22 +163,6 @@ class EthAddr (object):
     Returns the address as a 6-long bytes object.
     """
     return self._value
-
-  def toInt (self):
-    '''
-    Returns the address as an (unsigned) integer
-    '''
-    value = 0
-    # Struct puts the least significant (bit|byte) leftmost, 
-    # but Murphy puts least significant (bit|byte) rightmost
-    # So we unpack ourselves, one byte at a time
-    # most-significant byte is leftmost (self._value[0])
-    for i in range(len(self._value)):
-      byte_shift = 5-i
-      byte = self._value[i]
-      byte_value = struct.unpack("B", byte)[0]
-      value += (byte_value << (8*byte_shift))
-    return value
 
   def toTuple (self):
     """
@@ -252,7 +228,7 @@ class IPAddr (object):
     """
 
     # Always stores as a signed network-order int
-    if isinstance(addr, str) or isinstance(addr, bytes):
+    if isinstance(addr, basestring) or isinstance(addr, bytes):
       if len(addr) != 4:
         # dotted quad
         self._value = struct.unpack('i', socket.inet_aton(addr))[0]
@@ -346,6 +322,34 @@ class IPAddr (object):
     object.__setattr__(self, a, v)
 
 
+def netmask_to_cidr (dq):
+  """
+  Takes a netmask as either an IPAddr or a string, and returns the number
+  of network bits.  e.g., 255.255.255.0 -> 24
+  Raise exception if subnet mask is not CIDR-compatible.
+  """
+  if isinstance(dq, basestring):
+    dq = IPAddr(dq)
+  v = dq.toUnsigned(networkOrder=False)
+  c = 0
+  while v & 0x80000000:
+    c += 1
+    v <<= 1
+  v = v & 0xffFFffFF
+  if v != 0:
+    raise RuntimeError("Netmask %s is not CIDR-compatible" % (dq,))
+  return c
+
+
+def cidr_to_netmask (bits):
+  """
+  Takes a number of network bits, and returns the corresponding netmask
+  as an IPAddr.  e.g., 24 -> 255.255.255.0
+  """
+  v = (1 << bits) - 1
+  v = v << (32-bits)
+  return IPAddr(v, networkOrder = False)
+
 
 def parseCIDR (addr, infer=True):
   """
@@ -392,6 +396,7 @@ def parseCIDR (addr, infer=True):
   assert wild >= 0 and wild <= 32
   return check(IPAddr(addr[0]), wild)
 
+
 def inferNetMask (addr):
   """
   Uses network classes to guess the number of wildcard bits, and returns
@@ -415,6 +420,7 @@ def inferNetMask (addr):
     return 0 # exact match
   # Must be a Class E (Experimental)
     return 0
+
 
 IP_ANY = IPAddr("0.0.0.0")
 IP_BROADCAST = IPAddr("255.255.25.255")
