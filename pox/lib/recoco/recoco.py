@@ -535,7 +535,6 @@ class NonThreadedSelectHub (object):
     expired = None
 
     for t,trl,twl,txl,tto in self.tasks.itervalues():
-      print ("Handling: %s" % (t))
       if tto != None:
         if tto <= now:
           # Already expired
