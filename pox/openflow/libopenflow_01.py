@@ -491,9 +491,8 @@ class ofp_match (object):
     return n
 
   def __init__ (self, **kw):
-    self.wildcards = 0
     for k,v in ofp_match_data.iteritems():
-      setattr(self, k, v[0])
+      setattr(self, '_' + k, v[0])
 
     self.wildcards = self._normalize_wildcards(OFPFW_ALL)
 
@@ -509,22 +508,22 @@ class ofp_match (object):
     if (self.wildcards & OFPFW_NW_DST_ALL) == OFPFW_NW_DST_ALL: return (None, 0)
 
     w = (self.wildcards & OFPFW_NW_DST_MASK) >> OFPFW_NW_DST_SHIFT
-    return (self.nw_dst,32-w if w <= 32 else 0)
+    return (self._nw_dst,32-w if w <= 32 else 0)
 
   def get_nw_src (self):
     if (self.wildcards & OFPFW_NW_SRC_ALL) == OFPFW_NW_SRC_ALL: return (None, 0)
 
     w = (self.wildcards & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT
-    return (self.nw_src,32-w if w <= 32 else 0)
+    return (self._nw_src,32-w if w <= 32 else 0)
 
   def set_nw_dst (self, *args, **kw):
     a = self._make_addr(*args, **kw)
     if a == None:
-      self.__dict__['nw_dst'] = ofp_match_data['nw_dst'][0]
+      self._nw_src = ofp_match_data['nw_dst'][0]
       self.wildcards &= ~OFPFW_NW_DST_MASK
       self.wildcards |= ofp_match_data['nw_dst'][1]
       return
-    self.__dict__['nw_dst'] = a[0]
+    self._nw_dst = a[0]
     self.wildcards &= ~OFPFW_NW_DST_MASK
     self.wildcards |= ((32-a[1]) << OFPFW_NW_DST_SHIFT)
 
@@ -532,11 +531,11 @@ class ofp_match (object):
     a = self._make_addr(*args, **kw)
       # self.internal_links.add(Link(edge, edge.ports[port_no], host, host.interfaces[0]))
     if a == None:
-      self.__dict__['nw_src'] = ofp_match_data['nw_src'][0]
+      self._nw_src = ofp_match_data['nw_src'][0]
       self.wildcards &= ~OFPFW_NW_SRC_MASK
       self.wildcards |= ofp_match_data['nw_src'][1]
       return
-    self.__dict__['nw_src'] = a[0]
+    self._nw_src = a[0]
     self.wildcards &= ~OFPFW_NW_SRC_MASK
     self.wildcards |= ((32-a[1]) << OFPFW_NW_SRC_SHIFT)
 
@@ -579,10 +578,10 @@ class ofp_match (object):
       return value
 
     if value is None:
-      self.__dict__[name] = value
+      setattr(self, '_' + name, ofp_match_data[name][0])
       self.wildcards |= ofp_match_data[name][1]
     else:
-      self.__dict__[name] = value
+      setattr(self, '_' + name, value)
       self.wildcards = self.wildcards & ~ofp_match_data[name][1]
 
     return value
@@ -595,7 +594,7 @@ class ofp_match (object):
       if name == 'nw_dst' or name == 'nw_src':
         # Special handling
         return getattr(self, 'get_' + name)()[0]
-      return self.__dict__[name]
+      return self.__dict__['_' + name]
     raise AttributeError("attribute not found: "+name)
 
   def _assert (self):
@@ -605,8 +604,8 @@ class ofp_match (object):
     #  return "self.dl_src is not of size 6"
     #if not isinstance(self._dl_dst, list):
     #  return "self.dl_dst is not list"
-    #if len(self.dl_dst) != 6:
-    #  return "self.dl_dst is not of size 6"
+    if len(self._dl_dst) != 6:
+      return "self.dl_dst is not of size 6"
     return None
 
   def pack (self, assertstruct=True, flow_mod=False):
@@ -702,14 +701,14 @@ class ofp_match (object):
         protocol specified is as TCP, UDP or SCTP. Fields that are ignored
         don't need to be wildcarded and should be set to 0.
     """
-    if self.dl_type == 0x0800:
+    if self._dl_type == 0x0800:
         # IP
-        if  self.nw_proto not in (1,6,17):
+        if  self._nw_proto not in (1,6,17):
           # not TCP/UDP/ICMP -> Set TP wildcards for the object
           return wildcards | (OFPFW_TP_SRC | OFPFW_TP_DST)
         else:
           return wildcards
-    elif self.dl_type == 0x0806:
+    elif self._dl_type == 0x0806:
         # ARP: Set NW_TOS / TP wildcards for the object
         return wildcards  | ( OFPFW_NW_TOS | OFPFW_TP_SRC | OFPFW_TP_DST)
     else:
@@ -728,14 +727,14 @@ class ofp_match (object):
   def unpack (self, binaryString, flow_mod=False):
     if (len(binaryString) < self.__len__()):
       return binaryString
-    (wildcards, self.in_port) = struct.unpack_from("!LH", binaryString, 0)
-    self.dl_src = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 6))
-    self.dl_dst = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 12))
-    (self.dl_vlan, self.dl_vlan_pcp) = struct.unpack_from("!HB", binaryString, 18)
-    (self.dl_type, self.nw_tos, self.nw_proto) = struct.unpack_from("!HBB", binaryString, 22)
-    (self.nw_src, self.nw_dst, self.tp_src, self.tp_dst) = struct.unpack_from("!LLHH", binaryString, 28)
-    self.nw_src = IPAddr(self.nw_src)
-    self.nw_dst = IPAddr(self.nw_dst)
+    (wildcards, self._in_port) = struct.unpack_from("!LH", binaryString, 0)
+    self._dl_src = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 6))
+    self._dl_dst = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 12))
+    (self._dl_vlan, self._dl_vlan_pcp) = struct.unpack_from("!HB", binaryString, 18)
+    (self._dl_type, self._nw_tos, self._nw_proto) = struct.unpack_from("!HBB", binaryString, 22)
+    (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = struct.unpack_from("!LLHH", binaryString, 28)
+    self._nw_src = IPAddr(self._nw_src)
+    self._nw_dst = IPAddr(self._nw_dst)
 #    if USE_MPLS_MATCH:
 #      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IBxxx", binaryString, 40)
     self.wildcards = self._normalize_wildcards(self._unwire_wildcards(wildcards) if flow_mod else wildcards) # Overide
