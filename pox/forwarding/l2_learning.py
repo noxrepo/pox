@@ -22,7 +22,6 @@ It is derived from one written live for an SDN crash course.
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
-from pox.lib.revent import *
 from pox.lib.util import dpidToStr
 from pox.lib.util import str_to_bool
 import time
@@ -33,7 +32,7 @@ log = core.getLogger()
 FLOOD_DELAY = 5
 
 
-class LearningSwitch (EventMixin):
+class LearningSwitch (object):
   """
   The learning switch "brain" associated with a single OpenFlow switch.
 
@@ -83,7 +82,8 @@ class LearningSwitch (EventMixin):
     self.macToPort = {}
 
     # We want to hear PacketIn messages, so we listen
-    self.listenTo(connection)
+    # to the connection
+    connection.addListeners(self)
 
     #log.debug("Initializing LearningSwitch, transparent=%s",
     #          str(self.transparent))
@@ -93,7 +93,7 @@ class LearningSwitch (EventMixin):
     Handles packet in messages from the switch to implement above algorithm.
     """
 
-    packet = event.parse()
+    packet = event.parsed
 
     def flood ():
       """ Floods the packet """
@@ -150,8 +150,8 @@ class LearningSwitch (EventMixin):
         port = self.macToPort[packet.dst]
         if port == event.port: # 5
           # 5a
-          log.warning("Same port for packet from %s -> %s on %s.  Drop." %
-                      (packet.src, packet.dst, port), dpidToStr(event.dpid))
+          log.warning("Same port for packet from %s -> %s on %s.%s.  Drop." %
+                      (packet.src, packet.dst, dpidToStr(event.dpid), port))
           drop(10)
           return
         # 6
@@ -165,12 +165,13 @@ class LearningSwitch (EventMixin):
         msg.buffer_id = event.ofp.buffer_id # 6a
         self.connection.send(msg)
 
-class l2_learning (EventMixin):
+
+class l2_learning (object):
   """
   Waits for OpenFlow switches to connect and makes them learning switches.
   """
   def __init__ (self, transparent):
-    self.listenTo(core.openflow)
+    core.openflow.addListeners(self)
     self.transparent = transparent
 
   def _handle_ConnectionUp (self, event):
