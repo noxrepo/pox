@@ -2656,7 +2656,7 @@ ofp_table_stats_reply = ofp_table_stats
 
 class ofp_port_stats_request (object):
   def __init__ (self, **kw):
-    self.port_no = 0
+    self.port_no = OFPP_NONE
     initHelper(self, kw)
 
   def _assert (self):
