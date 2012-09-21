@@ -67,6 +67,9 @@ def getLogger (name=None, moreFrames=0):
           del n[-1]
           name = '.'.join(n)
 
+    if name.startswith("ext."):
+      name = name.split("ext.",1)[1]
+
     if name.endswith(".__init__"):
       name = name.rsplit(".__init__",1)[0]
 
