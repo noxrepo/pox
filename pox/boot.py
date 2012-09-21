@@ -300,7 +300,6 @@ Notable POX options include:
   --verbose       Print more debugging information (especially useful for
                   problems on startup)
   --no-openflow   Don't automatically load the OpenFlow module
-  --no-cli        Don't bring up a Python interpreter
   --log-config=F  Load a Python log configuration file (if you include the
                   option without specifying F, it defaults to logging.cfg)
 
@@ -314,7 +313,7 @@ option to the of_01 component, and loading the l2_learning component like:
 
 class POXOptions (Options):
   def __init__ (self):
-    self.cli = True
+#    self.cli = True
     self.verbose = False
     self.enable_openflow = True
     self.log_config = None
@@ -334,8 +333,8 @@ class POXOptions (Options):
   def _set_no_openflow (self, given_name, name, value):
     self.enable_openflow = not str_to_bool(value)
 
-  def _set_no_cli (self, given_name, name, value):
-    self.cli = not str_to_bool(value)
+#  def _set_no_cli (self, given_name, name, value):
+#    self.cli = not str_to_bool(value)
 
   def _set_log_config (self, given_name, name, value):
     if value is True:
@@ -351,7 +350,7 @@ class POXOptions (Options):
       #TODO: Is this really an option we need/want?
       self.verbose = True
       self.enable_openflow = False
-      self.cli = False
+#      self.cli = False
 
 
 _options = POXOptions()
@@ -377,34 +376,6 @@ def _pre_startup ():
 def _post_startup ():
   if _options.enable_openflow:
     pox.openflow.of_01.launch() # Usually, we launch of_01
-
-
-def _monkeypatch_console ():
-  """
-  The readline in pypy (which is the readline from pyrepl) turns off output
-  postprocessing, which disables normal NL->CRLF translation.  An effect of
-  this is that output *from other threads* (like log messages) which try to
-  print newlines end up just getting linefeeds and the output is all stair-
-  stepped.  We monkeypatch the function in pyrepl which disables OPOST to
-  turn OPOST back on again.  This doesn't immediately seem to break
-  anything in the simple cases, and makes the console reasonable to use
-  in pypy.
-  """
-  try:
-    import termios
-    import sys
-    import pyrepl.unix_console
-    uc = pyrepl.unix_console.UnixConsole
-    old = uc.prepare
-    def prep (self):
-      old(self)
-      f = sys.stdin.fileno()
-      a = termios.tcgetattr(f)
-      a[1] |= 1 # Turn on postprocessing (OPOST)
-      termios.tcsetattr(f, termios.TCSANOW, a)
-    uc.prepare = prep
-  except:
-    pass
 
 
 def _setup_logging ():
@@ -435,49 +406,6 @@ def _setup_logging ():
                               disable_existing_loggers=True)
 
 
-class Interactive (object):
-  """
-  This is how other applications can interact with the interpreter.
-
-  At the moment, it's really limited.
-  """
-  def __init__ (self):
-    core.register("Interactive", self)
-
-    import pox.license
-    import sys
-    self.variables = dict(locals())
-    self.variables['core'] = core
-
-    class pox_exit (object):
-      def __call__ (self, code = 0):
-        core.quit()
-        sys.exit(code)
-      def __repr__ (self):
-        return "Use exit() or Ctrl-D (i.e. EOF) to exit POX"
-    self.variables['exit'] = pox_exit()
-
-    self.running = False
-
-  def interact (self):
-    """ Begin user interaction """
-
-    _monkeypatch_console()
-
-    print "This program comes with ABSOLUTELY NO WARRANTY.  This program " \
-          "is free software,"
-    print "and you are welcome to redistribute it under certain conditions."
-    print "Type 'help(pox.license)' for details."
-    time.sleep(1)
-
-    import code
-    sys.ps1 = "POX> "
-    sys.ps2 = " ... "
-    self.running = True
-    code.interact('Ready.', local=self.variables)
-    self.running = False
-
-
 def boot ():
   """
   Start up POX.
@@ -487,10 +415,13 @@ def boot ():
   sys.path.append(os.path.abspath(os.path.join(sys.path[0], 'pox')))
   sys.path.append(os.path.abspath(os.path.join(sys.path[0], 'ext')))
 
-  interactive = Interactive()
-
   try:
-    if _do_launch(sys.argv[1:]):
+    argv = sys.argv[1:]
+
+    # Always load cli (first!)
+    argv = "py --disable".split() + argv
+
+    if _do_launch(argv):
       _post_startup()
       core.goUp()
     else:
@@ -502,8 +433,8 @@ def boot ():
     traceback.print_exc()
     return
 
-  if _options.cli:
-    interactive.interact()
+  if core.Interactive.enabled:
+    core.Interactive.interact()
   else:
     try:
       import inspect
