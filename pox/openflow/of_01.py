@@ -524,7 +524,7 @@ class Connection (EventMixin):
     if self.disconnected:
       self.err("already disconnected!")
       already = True
-    self.msg(msg)
+    self.info(msg)
     self.disconnected = True
     try:
       self.ofnexus._disconnect(self.dpid)
