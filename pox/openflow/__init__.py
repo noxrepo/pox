@@ -335,6 +335,8 @@ class OpenFlowNexus (EventMixin):
   def _disconnect (self, dpid):
     if dpid in self._connections:
       del self._connections[dpid]
+      return True
+    return False
 
 def launch (default_arbiter=True):
   from pox.core import core
