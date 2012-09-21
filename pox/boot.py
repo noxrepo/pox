@@ -56,6 +56,10 @@ import pox.openflow
 import pox.openflow.of_01
 from pox.lib.util import str_to_bool
 
+try:
+  import __pypy__
+except ImportError:
+  __pypy__ = None
 
 def _do_import (name):
   """
@@ -95,11 +99,6 @@ def _do_import (name):
       s = sys.exc_info()[1].message.rsplit(" ", 1)
 
       # Sadly, PyPy isn't consistent with CPython here.
-      try:
-        import __pypy__
-      except ImportError:
-        __pypy__ = None
-
       if s[0] == "No module named" and (name.endswith(s[1]) or __pypy__):
         # It was the one we tried to import itself. (Case 1)
         # If we have other names to try, try them!
