@@ -198,6 +198,13 @@ class ofp_phy_port (object):
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
+
+  def __cmp__ (self, other):
+    if type(other) != type(self): return id(self)-id(other)
+    if self.port_no < other.port_no: return -1
+    if self.port_no > other.port_no: return 1
+    if self == other: return 0
+    return id(self)-id(other)
   
   def __hash__(self, *args, **kwargs):
     return self.port_no.__hash__() + self.hw_addr.toInt().__hash__() + \
@@ -3296,7 +3303,7 @@ class ofp_port_status (ofp_header):
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'reason: ' + str(self.reason) + '\n'
     outstr += prefix + 'desc: \n'
-    self.desc.show(prefix + '  ')
+    outstr += self.desc.show(prefix + '  ')
     return outstr
 
 ofp_port_reason_rev_map = {
