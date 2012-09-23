@@ -256,6 +256,9 @@ def makePinger ():
       except:
         pass
 
+    def __repr__ (self):
+      return "<%s %i/%i>" % (self.__class__.__name__, self._w, self._r)
+
   class SocketPinger (object):
     def __init__ (self, pair):
       self._w = pair[1]
@@ -269,6 +272,8 @@ def makePinger ():
       self._r.recv(1024)
     def fileno (self):
       return self._r.fileno()
+    def __repr__ (self):
+      return "<%s %s/%s>" % (self.__class__.__name__, self._w, self._r)
 
   #return PipePinger((os.pipe()[0],os.pipe()[1]))  # To test failure case
 
