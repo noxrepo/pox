@@ -135,7 +135,7 @@ def _do_launch (argv):
       components[arg].append(curargs)
       component_order.append(arg)
     else:
-      arg = arg.lstrip("-").split("=", 1)
+      arg = arg.lstrip("-").replace("-", "_").split("=", 1)
       if len(arg) == 1: arg.append(True)
       curargs[arg[0]] = arg[1]
 
