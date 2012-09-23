@@ -75,6 +75,13 @@ class Interactive (object):
 
     self.running = False
 
+#    def start (event):
+#      if core.Interactive.enabled is not True: return
+#      import threading
+#      t = threading.Thread(target=self.interact)
+#      t.start()
+#    core.addListenerByName("UpEvent", start)
+
   def interact (self):
     """ Begin user interaction """
 
@@ -93,11 +100,17 @@ class Interactive (object):
     self.running = True
     code.interact('Ready.', local=self.variables)
     self.running = False
-
+    core.quit()
 
 
 def launch (disable = False, __INSTANCE__ = None):
   if not core.hasComponent("Interactive"):
     Interactive()
+
+  import boot
+  if not disable:
+    boot.set_main_function(core.Interactive.interact)
+  else:
+    boot.set_main_function(None)
   core.Interactive.enabled = not disable
   pass

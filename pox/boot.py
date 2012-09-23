@@ -56,6 +56,9 @@ import pox.openflow
 import pox.openflow.of_01
 from pox.lib.util import str_to_bool
 
+# Function to run on main thread
+_main_thread_function = None
+
 try:
   import __pypy__
 except ImportError:
@@ -405,6 +408,20 @@ def _setup_logging ():
                               disable_existing_loggers=True)
 
 
+def set_main_function (f):
+  global _main_thread_function
+  if _main_thread_function == f: return True
+  if _main_thread_function is not None:
+    import logging
+    lg = logging.getLogger("boot")
+    lg.error("Could not set main thread function to: " + str(f))
+    lg.error("The main thread function is already "
+        + "taken by: " + str(_main_thread_function))
+    return False
+  _main_thread_function = f
+  return True
+
+
 def boot ():
   """
   Start up POX.
@@ -432,14 +449,13 @@ def boot ():
     traceback.print_exc()
     return
 
-  if core.Interactive.enabled:
-    core.Interactive.interact()
+  if _main_thread_function:
+    _main_thread_function()
   else:
+    #core.acquire()
     try:
-      import inspect
-      
       while core.running:
-        time.sleep(5)
+        time.sleep(10)
     except:
       pass
     #core.scheduler._thread.join() # Sleazy
