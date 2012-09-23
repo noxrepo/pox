@@ -83,6 +83,7 @@ def handle_FLOW_REMOVED (con, msg): #A
 def handle_FEATURES_REPLY (con, msg):
   connecting = con.connect_time == None
   con.features = msg
+  con.original_ports._ports = msg.ports
   con.dpid = msg.datapath_id
 
   if not connecting:
@@ -145,6 +146,10 @@ def handle_STATS_REPLY (con, msg):
   con._incoming_stats_reply(msg)
 
 def handle_PORT_STATUS (con, msg): #A
+  if msg.reason == of.OFPRR_DELETE:
+    con.ports._forget(msg.desc)
+  else:
+    con.ports._update(msg.desc)
   con.ofnexus.raiseEventNoErrors(PortStatus, con, msg)
   con.raiseEventNoErrors(PortStatus, con, msg)
 
@@ -448,6 +453,104 @@ class OFCaptureSocket (CaptureSocket):
       l = len(self._sbuf)
 
 
+class PortCollection (object):
+  """
+  Keeps track of lists of ports and provides nice indexing.
+
+  NOTE: It's possible this could be simpler by inheriting from UserDict,
+        but I couldn't swear without looking at UserDict in some detail,
+        so I just implemented a lot of stuff by hand.
+  """
+  def __init__ (self):
+    self._ports = list()
+    self._masks = set()
+    self._chain = None
+
+  def _forget (self, port_no):
+    self._masks.add(port_no)
+    self._ports = [p for p in self._ports if p.port_no != port_no]
+
+  def _update (self, port):
+    self._masks.discard(port.port_no)
+    self._ports = [p for p in self._ports if p.port_no != port.port_no]
+    self._ports.add(port)
+
+  def __str__ (self):
+    if len(self) == 0:
+      return "<Ports: Empty>"
+    l = ["%s:%i"%(p.name,p.port_no) for p in sorted(self.values())]
+    return "<Ports: %s>" % (", ".join(l),)
+
+  def __len__ (self):
+    return len(self.keys())
+
+  def __getitem__ (self, index):
+    if isinstance(index, (int,long)):
+      for p in self._ports:
+        if p.port_no == index:
+          return p
+    elif isinstance(index, EthAddr):
+      for p in self._ports:
+        if p.hw_addr == index:
+          return p
+    else:
+      for p in self.port:
+        if p.name == index:
+          return p
+    if self._chain:
+      p = self._chain[index]
+      if p.port_no not in self._masks:
+        return p
+
+    raise IndexError("No key %s" % (index,))
+
+  def keys (self):
+    if self._chain:
+      k = set(self._chain.keys())
+      k.difference_update(self._masks)
+    else:
+      k = set()
+    k.update([p.port_no for p in self._ports])
+    return list(k)
+
+  def __iter__ (self):
+    return iter(self.keys())
+
+  def iterkeys (self):
+    return iter(self.keys())
+
+  def __contains__ (self, index):
+    try:
+      self[index]
+      return True
+    except Exception:
+      pass
+    return False
+
+  def values (self):
+    return [self[k] for k in self.keys()]
+
+  def items (self):
+    return [(k,self[k]) for k in self.keys()]
+
+  def iterkeys (self):
+    return iter(self.keys())
+  def itervalues (self):
+    return iter(self.values())
+  def iteritems (self):
+    return iter(self.items())
+  def has_key (self, k):
+    return k in self
+  def get (self, k, default=None):
+    try:
+      return self[k]
+    except IndexError:
+      return default
+  def copy (self):
+    r = PortCollection()
+    r._ports = self.values()
+
+
 class Connection (EventMixin):
   """
   A Connection object represents a single TCP session with an
@@ -502,6 +605,10 @@ class Connection (EventMixin):
     self.connect_time = None
 
     self.send(of.ofp_hello())
+
+    self.original_ports = PortCollection()
+    self.ports = PortCollection()
+    self.ports._chain = self.original_ports
 
     #TODO: set a time that makes sure we actually establish a connection by
     #      some timeout
