@@ -207,11 +207,11 @@ class ofp_phy_port (object):
     return id(self)-id(other)
   
   def __hash__(self, *args, **kwargs):
-    return self.port_no.__hash__() + self.hw_addr.toInt().__hash__() + \
-           self.name.__hash__() + self.config.__hash__() + \
-           self.state.__hash__() + self.curr.__hash__() + \
-           self.advertised.__hash__() + self.supported.__hash__() + \
-           self.peer.__hash__()
+    return hash(self.port_no) ^ hash(self.hw_addr) ^ \
+           hash(self.name) ^ hash(self.config) ^ \
+           hash(self.state) ^ hash(self.curr) ^ \
+           hash(self.advertised) ^ hash(self.supported) + \
+           hash(self.peer)
 
   def show (self, prefix=''):
     outstr = ''
