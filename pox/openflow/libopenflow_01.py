@@ -2906,6 +2906,17 @@ class ofp_packet_out (ofp_header):
     self.actions = []
     self._data = ''
 
+    # Enable you to easily resend a packet
+    if 'resend' in kw:
+      rd = kw['resend']
+      del kw['resend']
+      if isinstance(rd, ofp_packet_in):
+        rd = rd.resend_data
+      self.buffer_id = rd[0]
+      if self.buffer_id in (-1, None):
+        self.data = rd[1]
+      self.in_port = rd[2]
+
     # ofp_flow_mod and ofp_packet_out do some special handling of 'actions'...
 
     # Allow "action" as a synonym for "actions"
@@ -3090,6 +3101,15 @@ class ofp_packet_in (ofp_header):
 
     self.header_type = OFPT_PACKET_IN
     self._total_len = 0
+
+  @property
+  def resend_data (self):
+    """
+    Facilitates resending via packet_out.
+
+    Use like ofp_packet_out(resend=p.resend_data)
+    """
+    return (self.buffer_id,self.data,self.in_port)
 
   def _set_data(self, data):
     assert_type("data", data, (packet_base, str))
