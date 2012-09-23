@@ -96,12 +96,13 @@ class ipv4(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = ''.join(('(','[v:'+str(self.v),'hl:'+str(self.hl),\
-                         'l:', str(self.iplen),'t:', \
-                         str(self.ttl), ']', ipproto_to_str(self.protocol), \
-                         ' cs:', '%x' %self.csum, '[',str(self.srcip), \
-                         '>', str(self.dstip),'])'))
-        if self.next == None:
+        s = "[IP+%s %s>%s (cs:%02x v:%s hl:%s l:%s t:%s)]" % (
+            ipproto_to_str(self.protocol),
+            self.srcip, self.dstip,
+            self.csum,
+            self.v, self.hl, self.iplen, self.ttl)
+
+        if isinstance(self.next,(basestring,type(None))):
             return s
         return ''.join((s, str(self.next)))
 

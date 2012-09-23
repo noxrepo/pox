@@ -297,7 +297,7 @@ class dns(packet_base):
 
         self.parsed = True
 
-    def __str__(self):
+    def _to_str(self):
         flags = "|"
 
         if self.qr != 0:
@@ -333,9 +333,10 @@ class dns(packet_base):
             for a in self.additional:
                 s += "(add: "+str(a)+")"
 
-        if self.next == None:
+        if self.next is None:
             return s
-        return ''.join((s, str(self.next)))
+        return s + " (More data follows)"
+        #return ''.join((s, str(self.next)))
 
     # Utility methods for parsing.  Generally these would be pulled out
     # into a separate class. However, because the lengths are not known

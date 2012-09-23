@@ -138,7 +138,7 @@ class dhcp(packet_base):
 
         self._init(kw)
 
-    def __str__(self):
+    def _to_str(self):
         s  = '[op:'+str(self.op)
         s += ' htype:'+str(self.htype)
         s += ' hlen:'+str(self.hlen)
@@ -153,7 +153,7 @@ class dhcp(packet_base):
         s += ' chaddr:'
         if isinstance(self.chaddr, EthAddr):
             s += str(self.chaddr)
-        else:
+        elif self.chaddr is not None:
             s += ' '.join(["{0:02x}".format(x) for x in self.chaddr])
         s += ' magic:'+' '.join(["{0:02x}".format(x) for x in self.magic])
         s += ' options:'+' '.join(["{0:02x}".format(x) for x in

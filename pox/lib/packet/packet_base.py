@@ -98,7 +98,13 @@ class packet_base (object):
         return len(self.pack())
 
     def __str__(self):
-        return "%s: Undefined representation" % self.__class__.__name__
+        if hasattr(self, "_to_str"):
+          try:
+            return self._to_str()
+          except Exception as e:
+            lg.debug("str(%s): %s" % (self.__class__.__name__, e))
+          return "[%s:Bad Representation]" % (self.__class__.__name__,)
+        return "[%s: No representation]" % (self.__class__.__name__,)
 
     def find(self, proto):
         """

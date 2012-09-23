@@ -139,7 +139,7 @@ class arp (packet_base):
           buf += struct.pack('!I',self.protodst)
         return buf
 
-    def __str__(self):
+    def _to_str(self):
         op = str(self.opcode)
 
         eth_type = None
