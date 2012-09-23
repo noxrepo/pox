@@ -150,6 +150,9 @@ class ofp_phy_port (object):
     self.peer = 0
     initHelper(self, kw)
 
+  def __str__ (self):
+    return "%s:%i" % (self.name, self.port_no)
+
   def _assert (self):
     if not isinstance(self.hw_addr, bytes) and not isinstance(self.hw_addr, EthAddr):
       return (False, "hw_addr is not bytes or EthAddr")
