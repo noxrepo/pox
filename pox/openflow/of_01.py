@@ -83,7 +83,7 @@ def handle_FLOW_REMOVED (con, msg): #A
 def handle_FEATURES_REPLY (con, msg):
   connecting = con.connect_time == None
   con.features = msg
-  con.original_ports._ports = msg.ports
+  con.original_ports._ports = set(msg.ports)
   con.dpid = msg.datapath_id
 
   if not connecting:
@@ -462,17 +462,17 @@ class PortCollection (object):
         so I just implemented a lot of stuff by hand.
   """
   def __init__ (self):
-    self._ports = list()
+    self._ports = set()
     self._masks = set()
     self._chain = None
 
   def _forget (self, port_no):
     self._masks.add(port_no)
-    self._ports = [p for p in self._ports if p.port_no != port_no]
+    self._ports = set([p for p in self._ports if p.port_no != port_no])
 
   def _update (self, port):
     self._masks.discard(port.port_no)
-    self._ports = [p for p in self._ports if p.port_no != port.port_no]
+    self._ports = set([p for p in self._ports if p.port_no != port.port_no])
     self._ports.add(port)
 
   def __str__ (self):
@@ -548,7 +548,7 @@ class PortCollection (object):
       return default
   def copy (self):
     r = PortCollection()
-    r._ports = self.values()
+    r._ports = set(self.values())
 
 
 class Connection (EventMixin):
