@@ -93,6 +93,9 @@ class ofp_header (object):
       return (False, "type is not a known message type")
     return (True, None)
 
+  def send (self, connection):
+    connection.send(self)
+
   def pack (self, assertstruct=True):
     if self.xid is None:
       self.xid = generateXID()
@@ -1864,6 +1867,29 @@ class ofp_flow_mod (ofp_header):
     # Allow use of actions=<a single action> for kw args.
     if not hasattr(self.actions, '__getitem__'):
       self.actions = [self.actions]
+
+  def send (self, connection, resend = None):
+    """
+    Sends this flow_mod to a connection, possibly resending data
+    """
+
+    # Enable you to easily resend a packet
+    po = None
+    if resend:
+      rd = resend
+      if isinstance(rd, ofp_packet_in):
+        rd = rd.resend_data
+      self.buffer_id = rd[0]
+      if self.buffer_id in (-1, None):
+        if rd[1]: # We have data
+          # Okay, we have to send this as a packet_out.
+          po = ofp_packet_out(resend=resend)
+          po.actions.add(ofp_action_output(port = OFPP_TABLE))
+
+    connection.send(self)
+    if po:
+      connection.send(ofp_barrier_request())
+      connection.send(po)
 
   def _assert (self):
     if(not isinstance(self.match, ofp_match)):
