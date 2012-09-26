@@ -64,7 +64,6 @@ class IOWorker (object):
     self.close_handler = None
     self.connect_handler = None
 
-
   def _handle_rx (self):
     """ Can be overridden OR you can just use rx_handler """
     self._custom_rx_handler(self)
@@ -325,13 +324,18 @@ class RecocoIOLoop (Task):
     # to this thread-safe queue.
     self._pending_commands = deque()
 
-  def new_worker (self, _worker_type = None, **kw):
+  def new_worker (self, *args, **kw):
     '''
     Return an IOWorker wrapping the given socket.
+
+    You can create a specific worker type by specifying
+    _worker_type.
     '''
     # Called from external threads.
     # Does not register the IOWorker immediately with the select loop --
     # rather, adds a command to the pending queue
+
+    _worker_type = kw.pop("_worker_type", None)
     
     # Our callback for io_worker.close():
     def on_close (worker):
@@ -346,7 +350,7 @@ class RecocoIOLoop (Task):
     if _worker_type is None:
       _worker_type = self._worker_type
     assert issubclass(_worker_type, RecocoIOWorker)
-    worker = _worker_type(pinger=self.pinger, on_close=on_close, **kw)
+    worker = _worker_type(pinger=self.pinger, on_close=on_close, *args, **kw)
     # Don't add immediately, since we're in the wrong thread
     self._pending_commands.append(lambda: self._workers.add(worker))
     self.pinger.ping()
@@ -398,6 +402,9 @@ class RecocoIOLoop (Task):
         for worker in wlist:
           worker._do_send(self)
 
+      except GeneratorExit:
+        # Must be shutting down
+        break
       except BaseException as e:
         log.exception(e)
         break
