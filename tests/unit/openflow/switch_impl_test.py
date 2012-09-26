@@ -8,7 +8,7 @@ from copy import copy
 sys.path.append(os.path.dirname(__file__) + "/../../..")
 
 from pox.openflow.libopenflow_01 import *
-from pox.openflow.switch_impl import *
+from pox.datapaths.switch import *
 
 class MockConnection(object):
   def __init__(self):

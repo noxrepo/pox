@@ -7,7 +7,7 @@ from copy import copy
 sys.path.append(os.path.dirname(__file__) + "/../../..")
 
 from pox.openflow.libopenflow_01 import *
-from pox.openflow.switch_impl import *
+from pox.datapaths.switch import *
 
 def extract_num(buf, start, length):
   """ extracts a number from a raw byte string. Assumes network byteorder  """
@@ -211,7 +211,13 @@ class ofp_command_test(unittest.TestCase):
                    ofp_get_config_reply,
                    ofp_set_config ):
       xid = xid_gen.next()
-      o = cls(xid=xid)
+      args = {}
+
+      # Customize initializer
+      if cls is ofp_stats_reply:
+        args['body'] = ofp_desc_stats(sw_desc="POX")
+
+      o = cls(xid=xid, **args)
       self._test_pack_unpack(o, xid)
 
   out = ofp_action_output
