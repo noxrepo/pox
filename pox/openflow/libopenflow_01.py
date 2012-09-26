@@ -2236,6 +2236,15 @@ class ofp_stats_reply (ofp_header):
     return (True, None)
 
   @property
+  def is_last_reply (self):
+    return (self.flags & 1) == 0
+  @is_last_reply.setter
+  def is_last_reply (self, value):
+    self.flags = self.flags & 0xfffe
+    if not value:
+      self.flags |= 1
+
+  @property
   def body_data (self):
     if self._body_data[0] is not self.body:
       def _pack(b):
@@ -2269,7 +2278,28 @@ class ofp_stats_reply (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.type, self.flags) = struct.unpack_from("!HH", binaryString, 8)
-    self.body = binaryString[12:self.length]
+    packed = binaryString[12:self.length]
+    t = _stats_map.get(self.type)
+    if t is None:
+      self.body = packed
+    else:
+      _,t,is_array = t
+      if t is None:
+        self.body = packed
+      else:
+        if not is_array:
+          self.body = t()
+          self.body.unpack(packed)
+        else:
+          prev_len = len(packed)
+          self.body = []
+          while len(packed):
+            part = t()
+            packed = part.unpack(packed)
+            assert len(packed) != prev_len
+            prev_len = len(packed)
+            self.body.append(n)
+
     return binaryString[self.length:]
 
   def __len__ (self):
@@ -3943,6 +3973,9 @@ def _get_type (o):
   """
   Gets the OpenFlow type for the given class or object.
 
+  If the given class/object is not an OpenFlow type,
+  returns None.
+
   For example, if o is an ofp_flow_mod, it returns
   OFPT_FLOW_MOD (14).
   """
@@ -3953,7 +3986,7 @@ def _get_type (o):
     c = o.__name__
   else:
     c = o.__class__.__name__
-  assert c.startswith("ofp_")
+  if not c.startswith("ofp_"): return None
   c = c.split("ofp_", 1)[1]
   if (c.endswith("_stats_request") or c.endswith("_stats_reply") or
       c.endswith("_stats")):
@@ -3965,6 +3998,11 @@ def _get_type (o):
 # Table that maps an action type to a callable that creates that type
 # (This is filled in by _init after the globals have been created)
 _action_map = {}
+
+# Table that maps a stats type to two callables to create the requests
+# and replies of that type respectively.
+# (This is filled in by _init after the globals have been created)
+_stats_map = {}
 
 def _unpack_actions (b, length, offset=0):
   """
@@ -4068,6 +4106,19 @@ _action_map.update({
   OFPAT_DEC_MPLS_TTL             : ofp_action_mpls_dec_ttl,
   OFPAT_RESUBMIT                 : ofp_action_resubmit
   
+})
+
+# Fill in the stats-to-class table
+# Values are (request_type,reply_type,reply_is_list)
+_stats_map.update({
+  OFPST_DESC       : (None, ofp_desc_stats, False),
+  OFPST_FLOW       : (ofp_flow_stats_request, ofp_flow_stats, True),
+  OFPST_AGGREGATE  : (ofp_aggregate_stats_request,
+                      ofp_aggregate_stats_reply, False),
+  OFPST_TABLE      : (None, ofp_table_stats, True),
+  OFPST_PORT       : (ofp_port_stats_request, ofp_port_stats, True),
+  OFPST_QUEUE      : (None, ofp_queue_stats, True), #FIXME: request type
+  OFPST_VENDOR     : (ofp_vendor_header, None), #TODO: support vendor types
 })
 
 # Values from macro definitions

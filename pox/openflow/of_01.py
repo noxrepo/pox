@@ -172,38 +172,21 @@ def handle_BARRIER (con, msg):
   con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)
   con.raiseEventNoErrors(BarrierIn, con, msg)
 
-#TODO: def handle_VENDOR (con, msg): #S
-
-
-def _processStatsBody (body, obj):
-  r = []
-  t = obj.__class__
-  remaining = len(body)
-  while remaining:
-    obj = t()
-    body = obj.unpack(body)
-    assert len(body) < remaining # Should have read something
-    remaining = len(body)
-    r.append(obj)
-  return r
-
 # handlers for stats replies
 def handle_OFPST_DESC (con, parts):
-  msg = of.ofp_desc_stats()
-  msg.unpack(parts[0].body)
+  msg = parts[0].body
   con.ofnexus.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
   con.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
 
 def handle_OFPST_FLOW (con, parts):
   msg = []
   for part in parts:
-    msg += _processStatsBody(part.body, of.ofp_flow_stats())
+    msg.extend(part.body)
   con.ofnexus.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
   con.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
 
 def handle_OFPST_AGGREGATE (con, parts):
-  msg = of.ofp_aggregate_stats_reply()
-  msg.unpack(parts[0].body)
+  msg = parts[0].body
   con.ofnexus.raiseEventNoErrors(AggregateFlowStatsReceived, con,
                                  parts[0], msg)
   con.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
@@ -211,21 +194,21 @@ def handle_OFPST_AGGREGATE (con, parts):
 def handle_OFPST_TABLE (con, parts):
   msg = []
   for part in parts:
-    msg += _processStatsBody(part.body, of.ofp_table_stats())
+    msg.extend(part.body)
   con.ofnexus.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
   con.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
 
 def handle_OFPST_PORT (con, parts):
   msg = []
   for part in parts:
-    msg += _processStatsBody(part.body, of.ofp_port_stats())
+    msg.extend(part.body)
   con.ofnexus.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
   con.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
 
 def handle_OFPST_QUEUE (con, parts):
   msg = []
   for part in parts:
-    msg += _processStatsBody(part.body, of.ofp_queue_stats())
+    msg.extend(part.body)
   con.ofnexus.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
   con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
 
@@ -729,8 +712,7 @@ class Connection (EventMixin):
   def _incoming_stats_reply (self, ofp):
     # This assumes that you don't receive multiple stats replies
     # to different requests out of order/interspersed.
-    more = (ofp.flags & 1) != 0
-    if more:
+    if not ofp.is_last_reply:
       if ofp.type not in [of.OFPST_FLOW, of.OFPST_TABLE,
                                 of.OFPST_PORT, of.OFPST_QUEUE]:
         log.error("Don't know how to aggregate stats message of type " +
@@ -752,7 +734,7 @@ class Connection (EventMixin):
     else:
       self._previous_stats = [ofp]
 
-    if not more:
+    if ofp.is_last_reply:
       handler = statsHandlerMap.get(self._previous_stats[0].type, None)
       s = self._previous_stats
       self._previous_stats = []
