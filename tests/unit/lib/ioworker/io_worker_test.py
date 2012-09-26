@@ -25,8 +25,8 @@ class IOWorkerTest(unittest.TestCase):
     i = IOWorker()
     self.data = None
     def d(worker):
-      self.data = worker.peek_receive_buf()
-    i.set_receive_handler(d)
+      self.data = worker.peek()
+    i.rx_handler = d
     i._push_receive_data("bar")
     self.assertEqual(self.data, "bar")
     # d does not consume the data
@@ -37,9 +37,9 @@ class IOWorkerTest(unittest.TestCase):
     i = IOWorker()
     self.data = None
     def consume(worker):
-      self.data = worker.peek_receive_buf()
+      self.data = worker.peek()
       worker.consume_receive_buf(len(self.data))
-    i.set_receive_handler(consume)
+    i.rx_handler = consume
     i._push_receive_data("bar")
     self.assertEqual(self.data, "bar")
     # data has been consumed
@@ -51,7 +51,7 @@ class RecocoIOLoopTest(unittest.TestCase):
   def test_basic(self):
     loop = RecocoIOLoop()
     (left, right) = MockSocket.pair()
-    loop.create_worker_for_socket(left)
+    loop.new_worker(left)
 
   def test_stop(self):
     loop = RecocoIOLoop()
@@ -60,13 +60,13 @@ class RecocoIOLoopTest(unittest.TestCase):
   def test_run_read(self):
     loop = RecocoIOLoop()
     (left, right) = MockSocket.pair()
-    worker = loop.create_worker_for_socket(left)
+    worker = loop.new_worker(left)
 
     # callback for ioworker to record receiving
     self.received = None
     def r(worker):
-      self.received = worker.peek_receive_buf()
-    worker.set_receive_handler(r)
+      self.received = worker.peek()
+    worker.rx_handler = r
 
     # 'start' the run (dark generator magic here). Does not actually execute run, but 'yield' a generator
     g = loop.run()
@@ -86,21 +86,21 @@ class RecocoIOLoopTest(unittest.TestCase):
   def test_run_close(self):
     loop = RecocoIOLoop()
     (left, right) = MockSocket.pair()
-    worker = loop.create_worker_for_socket(left)
+    worker = loop.new_worker(left)
 
     self.assertFalse(worker in loop._workers,  "Should not add to _workers yet, until we start up the loop")
-    self.assertTrue(loop._pending_commands.qsize() == 1, "Should have added pending create() command")
+    self.assertTrue(len(loop._pending_commands) == 1, "Should have added pending create() command")
     worker.close()
     # This causes the worker to be scheduled to be closed -- it also 
     # calls pinger.ping(). However, the Select task won't receive the ping
     # Until after this method has completed! Thus, we only test whether
     # worker has been added to the pending close queue
-    self.assertTrue(loop._pending_commands.qsize() == 2, "Should have added pending close() command")
+    self.assertTrue(len(loop._pending_commands) == 2, "Should have added pending close() command")
 
   def test_run_write(self):
     loop = RecocoIOLoop()
     (left, right) = MockSocket.pair()
-    worker = loop.create_worker_for_socket(left)
+    worker = loop.new_worker(left)
 
     worker.send("heppo")
     # 'start' the run (dark generator magic here). Does not actually execute run, but 'yield' a generator
