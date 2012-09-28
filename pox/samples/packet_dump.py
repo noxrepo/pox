@@ -42,6 +42,9 @@ def _handle_PacketIn (event):
   else:
     p = packet
     while p:
+      if isinstance(p, basestring):
+        msg += "[%s bytes]" % (len(p),)
+        break
       msg += "[%s]" % (p.__class__.__name__,)
       p = p.next
 
