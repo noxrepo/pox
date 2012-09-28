@@ -423,9 +423,13 @@ class ofp_match (object):
     Constructs an exact match for the given packet
 
     @param in_port The switch port the packet arrived on if you want
-                   the resulting match to have its in_port set
-    @param packet  A pox.packet.ethernet instance
+                   the resulting match to have its in_port set.
+                   If "packet" is a packet_in, this is ignored.
+    @param packet  A pox.packet.ethernet instance or a packet_in
     """
+    if isinstance(packet, ofp_packet_in):
+      in_port = packet.in_port
+      packet = ethernet(packet.data)
     assert assert_type("packet", packet, ethernet, none_ok=False)
 
     match = cls()
