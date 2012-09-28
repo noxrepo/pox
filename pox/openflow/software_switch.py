@@ -546,6 +546,7 @@ class OFConnection (object):
   def __init__ (self, io_worker):
     self.io_worker = io_worker
     self.io_worker.set_receive_handler(self.read)
+    self.controller_id = io_worker.socket.getpeername()
     self.error_handler = None
     OFConnection.ID += 1
     self.ID = OFConnection.ID
@@ -616,7 +617,7 @@ class OFConnection (object):
 
   def get_controller_id(self):
     ''' Return a tuple of the controller's (address, port) we are connected to'''
-    return self.io_worker.socket.getpeername()
+    return self.controller_id
 
   def __str__ (self):
     return "[Con " + str(self.ID) + "]"
