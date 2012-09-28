@@ -62,6 +62,17 @@ _type_to_name = {
     11  : "TIME_EXCEED",
 }
 
+
+# This is such a hack; someone really needs to rewrite the
+# stringizing.
+def _str_rest (s, p):
+  if p.next is None:
+    return s
+  if isinstance(p.next, basestring):
+    return "[%s bytes]" % (len(p.next),)
+  return s+str(p.next)
+
+
 #----------------------------------------------------------------------
 #
 #  Echo Request/Reply
@@ -93,7 +104,7 @@ class echo(packet_base):
         self._init(kw)
 
     def __str__(self):
-        return "{id:%i seq:%i}" % (self.id, self.seq)
+        return "[id:%i seq:%i]" % (self.id, self.seq)
 
     def parse(self, raw):
         assert isinstance(raw, bytes)
@@ -145,12 +156,9 @@ class unreach(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = ''.join(('{', 'm:', str(self.next_mtu), '}'))
+        s = ''.join(('[', 'm:', str(self.next_mtu), ']'))
 
-        if self.next is None:
-            return s
-
-        return ''.join((s, str(self.next)))
+        return _str_rest(s, self)
 
     def parse(self, raw):
         assert isinstance(raw, bytes)
@@ -196,12 +204,8 @@ class icmp(packet_base):
 
     def __str__(self):
         t = _type_to_name.get(self.type, str(self.type))
-        s = '{t:%s c:%i chk:%x}' % (t, self.code, self.csum)
-
-        if self.next is None:
-            return s
-
-        return ''.join((s, str(self.next)))
+        s = '[t:%s c:%i chk:%x]' % (t, self.code, self.csum)
+        return _str_rest(s, self)
 
     def parse(self, raw):
         assert isinstance(raw, bytes)
