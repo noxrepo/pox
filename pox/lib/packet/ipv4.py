@@ -47,6 +47,7 @@ from packet_utils       import *
 from tcp import *
 from udp import *
 from icmp import *
+from igmp import *
 
 from packet_base import packet_base
 
@@ -64,6 +65,7 @@ class ipv4(packet_base):
     ICMP_PROTOCOL = 1
     TCP_PROTOCOL  = 6
     UDP_PROTOCOL  = 17
+    IGMP_PROTOCOL = 2
 
     DF_FLAG = 0x02
     MF_FLAG = 0x01
@@ -155,6 +157,8 @@ class ipv4(packet_base):
             self.next = tcp(raw=raw[self.hl*4:length], prev=self)
         elif self.protocol == ipv4.ICMP_PROTOCOL:
             self.next = icmp(raw=raw[self.hl*4:length], prev=self)
+        elif self.protocol == ipv4.IGMP_PROTOCOL:
+            self.next = igmp(raw=raw[self.hl*4:length], prev=self)
         elif dlen < self.iplen:
             self.msg('(ip parse) warning IP packet data shorter than IP len: %u < %u' % (dlen, self.iplen))
         else:
