@@ -102,8 +102,10 @@ class packet_base (object):
           try:
             return self._to_str()
           except Exception as e:
+            #import traceback
+            #traceback.print_exc()
             lg.debug("str(%s): %s" % (self.__class__.__name__, e))
-          return "[%s:Bad Representation]" % (self.__class__.__name__,)
+          return "[%s:Bad representation]" % (self.__class__.__name__,)
         return "[%s: No representation]" % (self.__class__.__name__,)
 
     def find(self, proto):

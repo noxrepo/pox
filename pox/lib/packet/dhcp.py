@@ -155,8 +155,9 @@ class dhcp(packet_base):
             s += str(self.chaddr)
         elif self.chaddr is not None:
             s += ' '.join(["{0:02x}".format(x) for x in self.chaddr])
-        s += ' magic:'+' '.join(["{0:02x}".format(x) for x in self.magic])
-        s += ' options:'+' '.join(["{0:02x}".format(x) for x in
+        s += ' magic:'+' '.join(
+            ["{0:02x}".format(ord(x)) for x in self.magic])
+        s += ' options:'+' '.join(["{0:02x}".format(ord(x)) for x in
                                   self._raw_options])
         s += ']'
         return s
