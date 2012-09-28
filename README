@@ -10,7 +10,7 @@ POX currently communicates with OpenFlow 1.0 switches.
 
 pox.py boots up POX. It takes a list of module names on the command line,
 locates the modules, calls their launch() function (if it exists), and
-then opens up a Python commandline for interactive use.
+then transitions to the "up" state.
 
 Modules are looked for everywhere that Python normally looks, plus the
 "pox" and "ext" directories.  Thus, you can do the following:
@@ -26,5 +26,4 @@ to set the address or port of the controller, invoke as follows:
 pox.py also supports a few command line options of its own which should
 be given first:
  --verbose      print stack traces for initialization exceptions
- --no-cli       don't bring up a Python interpreter
  --no-openflow  don't start the openflow module automatically
