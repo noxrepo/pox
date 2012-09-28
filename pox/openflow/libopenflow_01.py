@@ -429,7 +429,7 @@ class ofp_match (object):
                    the resulting match to have its in_port set
     @param packet  A pox.packet.ethernet instance
     """
-    assert_type("packet", packet, ethernet, none_ok=False)
+    assert assert_type("packet", packet, ethernet, none_ok=False)
 
     match = cls()
 
@@ -528,13 +528,15 @@ class ofp_match (object):
       setattr(self, k, v)
 
   def get_nw_dst (self):
-    if (self.wildcards & OFPFW_NW_DST_ALL) == OFPFW_NW_DST_ALL: return (None, 0)
+    if (self.wildcards & OFPFW_NW_DST_ALL) == OFPFW_NW_DST_ALL:
+      return (None, 0)
 
     w = (self.wildcards & OFPFW_NW_DST_MASK) >> OFPFW_NW_DST_SHIFT
     return (self._nw_dst,32-w if w <= 32 else 0)
 
   def get_nw_src (self):
-    if (self.wildcards & OFPFW_NW_SRC_ALL) == OFPFW_NW_SRC_ALL: return (None, 0)
+    if (self.wildcards & OFPFW_NW_SRC_ALL) == OFPFW_NW_SRC_ALL:
+      return (None, 0)
 
     w = (self.wildcards & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT
     return (self._nw_src,32-w if w <= 32 else 0)
@@ -663,15 +665,19 @@ class ofp_match (object):
 
     packed += struct.pack("!HB", self.dl_vlan or 0, self.dl_vlan_pcp or 0)
     packed += _PAD # Hardcode padding
-    packed += struct.pack("!HBB", self.dl_type or 0, check_ip(self.nw_tos), check_ip_or_arp(self.nw_proto))
+    packed += struct.pack("!HBB", self.dl_type or 0,
+        check_ip(self.nw_tos), check_ip_or_arp(self.nw_proto))
     packed += _PAD2 # Hardcode padding
     def fix (addr):
       if addr is None: return 0
       if type(addr) is int: return addr & 0xffFFffFF
       if type(addr) is long: return addr & 0xffFFffFF
       return addr.toUnsigned()
-    packed += struct.pack("!LLHH", check_ip_or_arp(fix(self.nw_src)), check_ip_or_arp(fix(self.nw_dst)),
-                          check_tp(self.tp_src), check_tp(self.tp_dst))
+
+    packed += struct.pack("!LLHH", check_ip_or_arp(fix(self.nw_src)),
+        check_ip_or_arp(fix(self.nw_dst)),
+        check_tp(self.tp_src), check_tp(self.tp_dst))
+
 #    if USE_MPLS_MATCH:
 #        packed += struct.pack("!IBxxx", self.mpls_label or 0, self.mpls_tc or 0)
     return packed
@@ -689,8 +695,8 @@ class ofp_match (object):
     return wildcards
 
   def _wire_wildcards(self, wildcards):
-    """ Normallize the wildcard bits to the openflow wire representation. Note this
-        atrocity from the OF1.1 spec:
+    """ Normalize the wildcard bits to the openflow wire representation.
+        Note this atrocity from the OF1.1 spec:
         Protocol-specific fields within ofp_match will be ignored within
         a single table when the corresponding protocol is not specified in the
         match. The MPLS match fields will be ignored unless the Ethertype is
@@ -712,12 +718,14 @@ class ofp_match (object):
         return wildcards & ~( OFPFW_NW_TOS | OFPFW_TP_SRC | OFPFW_TP_DST)
     else:
         # not even IP. Clear NW/TP wildcards for the wire
-        return wildcards & ~( OFPFW_NW_TOS | OFPFW_NW_PROTO | OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK | OFPFW_TP_SRC | OFPFW_TP_DST)
+        return wildcards & ~( OFPFW_NW_TOS | OFPFW_NW_PROTO
+            | OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK
+            | OFPFW_TP_SRC | OFPFW_TP_DST)
 
 
   def _unwire_wildcards(self, wildcards):
-    """ Normallize the wildcard bits from the openflow wire representation. Note this
-        atrocity from the OF1.1 spec:
+    """ Normalize the wildcard bits from the openflow wire representation.
+        Note this atrocity from the OF1.1 spec:
         Protocol-specific fields within ofp_match will be ignored within
         a single table when the corresponding protocol is not specified in the
         match. The MPLS match fields will be ignored unless the Ethertype is
@@ -789,12 +797,14 @@ class ofp_match (object):
 
   def matches_with_wildcards (self, other, consider_other_wildcards=True):
     """
-    Test whether /this/ match completely encompasses the other match. Important for non-strict modify flow_mods etc.
+    Test whether /this/ match completely encompasses the other match.
+    Important for non-strict modify flow_mods etc.
     """
-    assert_type("other", other, ofp_match, none_ok=False)
+    assert assert_type("other", other, ofp_match, none_ok=False)
     # short cut for equal matches
     if(self == other): return True
-    # only candidate if all wildcard bits in the *other* match are also set in this match (i.e., a submatch)
+    # only candidate if all wildcard bits in the *other* match are also
+    # set in this match (i.e., a submatch)
 
     # first compare the bitmask part
     if(consider_other_wildcards):
@@ -2960,7 +2970,7 @@ class ofp_packet_out (ofp_header):
     self.buffer_id = -1
     self.in_port = OFPP_NONE
     self.actions = []
-    self._data = ''
+    self._data = b''
 
     # Enable you to easily resend a packet
     if 'resend' in kw:
@@ -2988,7 +2998,7 @@ class ofp_packet_out (ofp_header):
   def _set_data(self, data):
     assert_type("data", data, (packet_base, str))
     if data is None:
-      self._data = ''
+      self._data = b''
     elif isinstance(data, packet_base):
       self._data = data.pack()
     else:
@@ -3193,11 +3203,19 @@ class ofp_packet_in (ofp_header):
     # need to update the self.length field for ofp_header.pack to put the correct value in the packed
     # array. this sucks.
     self.length = len(self)
-    self._total_len = len(self) # TODO: Is this correct?
+    self._total_len = len(self.data) if self.data else 0
     packed += ofp_header.pack(self)
     packed += struct.pack("!LHHBB", self.buffer_id & 0xffFFffFF, self._total_len, self.in_port, self.reason, 0)
     packed += self.data
     return packed
+
+  @property
+  def total_len (self):
+    return self._total_len
+  @property
+  def is_complete (self):
+    if self.buffer_id != -1: return True
+    return len(self.data) == self.total_len
 
   def unpack (self, binaryString):
     if (len(binaryString) < 18):
