@@ -1343,6 +1343,38 @@ class ofp_action_pop_mpls (object):
     outstr += prefix + 'ethertype: ' + str(self.ethertype) + '\n'
     return outstr
 
+class ofp_action_strip_vlan (object):
+  def __init__ (self):
+    self.type = OFPAT_STRIP_VLAN
+    self.length = 8
+
+  def pack (self, assertstruct=True):
+    packed = struct.pack("!HHi", self.type, self.length, 0)
+    return packed
+
+  def unpack (self, binaryString):
+    if (len(binaryString) < 8):
+      return binaryString
+    (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
+    return binaryString[8:]
+
+  def __len__ (self):
+    return 8
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type !=  other.type: return False
+    if self.length !=  other.length: return False
+    return True
+
+  def __ne__ (self, other): return not self.__eq__(other)
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    return outstr
+
 class ofp_action_vlan_vid (object):
   def __init__ (self, **kw):
     self.type = OFPAT_SET_VLAN_VID
@@ -4104,8 +4136,8 @@ _init()
 # Fill in the action-to-class table
 #TODO: Use the factory functions?
 _action_map.update({
-  #TODO: special type for OFPAT_STRIP_VLAN?
   OFPAT_OUTPUT                   : ofp_action_output,
+  OFPAT_STRIP_VLAN               : ofp_action_strip_vlan,
   OFPAT_SET_VLAN_VID             : ofp_action_vlan_vid,
   OFPAT_SET_VLAN_PCP             : ofp_action_vlan_pcp,
   OFPAT_SET_DL_SRC               : ofp_action_dl_addr,
