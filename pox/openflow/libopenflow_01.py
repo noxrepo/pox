@@ -93,9 +93,6 @@ class ofp_header (object):
       return (False, "type is not a known message type")
     return (True, None)
 
-  def send (self, connection):
-    connection.send(self)
-
   def pack (self, assertstruct=True):
     if self.xid is None:
       self.xid = generateXID()
@@ -1864,6 +1861,7 @@ class ofp_flow_mod (ofp_header):
     self.out_port = OFPP_NONE
     self.flags = 0
     self.actions = []
+    self.data = None # Not in the spec!  Special magic!  Can be packet_in.
 
     # ofp_flow_mod and ofp_packet_out do some special handling of 'actions'...
 
@@ -1878,38 +1876,38 @@ class ofp_flow_mod (ofp_header):
     if not hasattr(self.actions, '__getitem__'):
       self.actions = [self.actions]
 
-  def send (self, connection, resend = None):
-    """
-    Sends this flow_mod to a connection, possibly resending data
-    """
-
-    # Enable you to easily resend a packet
-    po = None
-    if resend:
-      rd = resend
-      if isinstance(rd, ofp_packet_in):
-        rd = rd.resend_data
-      self.buffer_id = rd[0]
-      if self.buffer_id in (-1, None):
-        if rd[1]: # We have data
-          # Okay, we have to send this as a packet_out.
-          po = ofp_packet_out(resend=resend)
-          po.actions.add(ofp_action_output(port = OFPP_TABLE))
-
-    connection.send(self)
-    if po:
-      connection.send(ofp_barrier_request())
-      connection.send(po)
-
   def _assert (self):
     if(not isinstance(self.match, ofp_match)):
       return (False, "match is not class ofp_match")
     return (True, None)
 
   def pack (self, assertstruct=True):
+    """
+    Packs this object into its wire format.
+    May normalize fields.
+    NOTE: If "data" has been specified, this method may actually return
+          *more than just a single ofp_flow_mod* in packed form.
+          Specifically, it may also have a barrier and an ofp_packet_out.
+    """
     if(assertstruct):
       if(not self._assert()[0]):
         return None
+
+    po = None
+    if self.data:
+      #TODO: It'd be nice to log and then ignore it if not data_is_complete.
+      #      Unfortunately, we currently have no logging in here, so we
+      #      assert instead which is a either too drastic or too quiet.
+      assert self.data.is_complete
+      assert self.buffer_id in (-1, None)
+      self.buffer_id = self.data.buffer_id
+      if self.buffer_id in (-1, None):
+        po = ofp_packet_out(data=self.data)
+        po.in_port = self.data.in_port
+        po.actions.add(ofp_action_output(port = OFPP_TABLE))
+        # Should maybe check that packet hits the new entry...
+        # Or just duplicate the actions?
+
     packed = ""
     self.length = len(self)
     packed += ofp_header.pack(self)
@@ -1917,6 +1915,10 @@ class ofp_flow_mod (ofp_header):
     packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id & 0xffffffff, self.out_port, self.flags)
     for i in self.actions:
       packed += i.pack(assertstruct)
+
+    if po:
+      packet += ofp_barrier_request().pack()
+      packet += po.pack()
     return packed
 
   def unpack (self, binaryString):
@@ -2972,17 +2974,6 @@ class ofp_packet_out (ofp_header):
     self.actions = []
     self._data = b''
 
-    # Enable you to easily resend a packet
-    if 'resend' in kw:
-      rd = kw['resend']
-      del kw['resend']
-      if isinstance(rd, ofp_packet_in):
-        rd = rd.resend_data
-      self.buffer_id = rd[0]
-      if self.buffer_id in (-1, None):
-        self.data = rd[1]
-      self.in_port = rd[2]
-
     # ofp_flow_mod and ofp_packet_out do some special handling of 'actions'...
 
     # Allow "action" as a synonym for "actions"
@@ -2995,17 +2986,29 @@ class ofp_packet_out (ofp_header):
     if not hasattr(self.actions, '__getitem__'):
       self.actions = [self.actions]
 
-  def _set_data(self, data):
-    assert_type("data", data, (packet_base, str))
+  @property
+  def data (self):
+    return self._data
+  @data.setter
+  def data (self, data):
     if data is None:
       self._data = b''
     elif isinstance(data, packet_base):
       self._data = data.pack()
-    else:
+    elif isinstance(data, ofp_packet_in):
+      # Enable you to easily resend a packet
+      self._data = b''
+      self.buffer_id = data.buffer_id
+      if self.buffer_id in (-1, None):
+        #TODO: It'd be nice to log and then ignore it if not data_is_complete.
+        #      Unfortunately, we currently have no logging in here, so we
+        #      assert instead which is a either too drastic or too quiet.
+        assert data.is_complete
+        self._data = data._data
+      self.in_port = data.in_port
+    elif isinstance(data, bytes):
       self._data = data
-  def _get_data(self):
-    return self._data
-  data = property(_get_data, _set_data)
+    assert assert_type("data", self._data, (bytes,))
 
   def _assert (self):
     if self.buffer_id != -1 and self.data != '':
@@ -3169,25 +3172,17 @@ class ofp_packet_in (ofp_header):
     self._total_len = 0
 
   @property
-  def resend_data (self):
-    """
-    Facilitates resending via packet_out.
-
-    Use like ofp_packet_out(resend=p.resend_data)
-    """
-    return (self.buffer_id,self.data,self.in_port)
-
-  def _set_data(self, data):
-    assert_type("data", data, (packet_base, str))
+  def data (self):
+    return self._data
+  @data.setter
+  def data (self, data):
+    assert assert_type("data", data, (packet_base, str))
     if data is None:
       self._data = ''
     elif isinstance(data, packet_base):
       self._data = data.pack()
     else:
       self._data = data
-  def _get_data(self):
-    return self._data
-  data = property(_get_data, _set_data)
 
   def _assert (self):
     if not isinstance(self.data, str):

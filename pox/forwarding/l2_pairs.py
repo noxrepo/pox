@@ -52,9 +52,9 @@ def _handle_PacketIn (event):
     # To send out all ports, we can use either of the special ports
     # OFPP_FLOOD or OFPP_ALL.  We'd like to just use OFPP_FLOOD,
     # but it's not clear if all switches support this. :(
-    msg = of.ofp_packet_out(resend = event.ofp)
+    msg = of.ofp_packet_out(data = event.ofp)
     msg.actions.append(of.ofp_action_output(port = of.OFPP_ALL))
-    msg.send(event.connection)
+    event.connection.send(msg)
   else:
     # Since we know the switch ports for both the source and dest
     # MACs, we can install rules for both directions.
@@ -62,15 +62,16 @@ def _handle_PacketIn (event):
     msg.match.dl_dst = packet.src
     msg.match.dl_src = packet.dst
     msg.actions.append(of.ofp_action_output(port = event.port))
-    msg.send(event.connection)
+    event.connection.send(msg)
     
     # This is the packet that just came in -- we want to
     # install the rule and also resend the packet.
     msg = of.ofp_flow_mod()
+    msg.data = event.ofp # Forward the incoming packet
     msg.match.dl_src = packet.src
     msg.match.dl_dst = packet.dst
     msg.actions.append(of.ofp_action_output(port = dst_port))
-    msg.send(event.connection, resend = event.ofp)
+    event.connection.send(msg)
 
     log.debug("Installing %s <-> %s" % (packet.src, packet.dst))
 
