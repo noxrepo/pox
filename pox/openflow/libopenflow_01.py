@@ -573,7 +573,8 @@ class ofp_match (object):
 
     if (type(ipOrIPAndBits) is str) and (len(ipOrIPAndBits) != 4):
       if ipOrIPAndBits.find('/') != -1:
-        s = ipOrIPAndBits.split('/')
+        #s = ipOrIPAndBits.split('/')
+        s = parse_cidr(ipOrIPAndBits, infer=False)
         ip = s[0]
         b = int(s[1]) if b is None else b
       else:
@@ -830,12 +831,12 @@ class ofp_match (object):
     self_nw_src = self.get_nw_src()
     if(self_nw_src[0] != None):
       other_nw_src = other.get_nw_src()
-      if self_nw_src[1] > other_nw_src[1] or not IPAddr(other_nw_src[0]).inNetwork((self_nw_src[0], 32-self_nw_src[1])): return False
+      if self_nw_src[1] > other_nw_src[1] or not IPAddr(other_nw_src[0]).inNetwork((self_nw_src[0], self_nw_src[1])): return False
 
     self_nw_dst = self.get_nw_dst()
     if(self_nw_dst[0] != None):
       other_nw_dst = other.get_nw_dst()
-      if self_nw_dst[1] > other_nw_dst[1] or not IPAddr(other_nw_dst[0]).inNetwork((self_nw_dst[0], 32-self_nw_dst[1])): return False
+      if self_nw_dst[1] > other_nw_dst[1] or not IPAddr(other_nw_dst[0]).inNetwork((self_nw_dst[0], self_nw_dst[1])): return False
     return True
 
   def __eq__ (self, other):
@@ -1055,7 +1056,7 @@ class ofp_action_enqueue (object):
   def __init__ (self, **kw):
     self.type = OFPAT_ENQUEUE
     self.length = 16
-    self.port = 0
+    self.port = None # Require user to set
     self.queue_id = 0
 
     initHelper(self, kw)

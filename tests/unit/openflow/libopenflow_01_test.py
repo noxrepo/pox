@@ -47,7 +47,7 @@ class ofp_match_test(unittest.TestCase):
       self.assertTrue( ((m.wildcards & bitmask) >> shift) >= 32)
 
       # set a bunch of ip addresses with or without networks
-      for ipnet in ( "10.0.0.0/8", "172.16.1.0/16", "192.168.24.0/24", "1.2.3.4/30", "212.11.225.3"):
+      for ipnet in ( "10.0.0.0/8", "172.16.0.0/16", "192.168.24.0/24", "1.2.3.4/30", "212.11.225.3"):
         parts = ipnet.split("/")
         ip = parts[0]
         bits = int(parts[1]) if len(parts)>1 else 32
@@ -90,6 +90,7 @@ class ofp_match_test(unittest.TestCase):
       self.assertFalse(ref.matches_with_wildcards(other), "%s - %s should NOT match %s " % (msg, ref.show(), other.show()))
 
     ref = create()
+    print ref
 
     # same instances match
     assertMatch(ref, ref)

@@ -56,7 +56,7 @@ def _fix_proto (n):
     return getattr(ipv4, n)
   return n
 
-from pox.lib.addresses import parseCIDR, EthAddr
+from pox.lib.addresses import parse_cidr, EthAddr
 
 def _fix_eth (n):
   if n is None: return None
@@ -64,7 +64,7 @@ def _fix_eth (n):
 
 def _fix_ip (n):
   if n is None: return n
-  return parseCIDR(n, infer = False)
+  return parse_cidr(n, infer = False)
 
 import socket
 
