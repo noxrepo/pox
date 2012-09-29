@@ -305,7 +305,7 @@ class IPAddr (object):
     try:
       if not isinstance(other, IPAddr):
         other = IPAddr(other)
-      return cmp(self._value, other._value)
+      return cmp(self.toUnsigned(), other.toUnsigned())
     except:
       return -other.__cmp__(self)
 
