@@ -154,7 +154,7 @@ class OFSetTableRequest (OFConRequest):
   def _init (self, flows = []):
     self.done = False
 
-    xid = of.generateXID()
+    xid = of.generate_xid()
     self.xid = xid
     self.clear_table(xid=xid)
 

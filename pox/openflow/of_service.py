@@ -167,7 +167,7 @@ class OFBot (ChannelBot):
       if con is None:
         raise RuntimeError("No such switch")
 
-      xid = of.generateXID() 
+      xid = of.generate_xid()
 
       fm = of.ofp_flow_mod()
       fm.xid = xid

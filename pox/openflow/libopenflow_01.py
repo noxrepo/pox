@@ -22,6 +22,7 @@
 import struct
 import operator
 import collections
+from itertools import chain, repeat
 import sys
 from pox.lib.packet.packet_base import packet_base
 from pox.lib.packet.ethernet import ethernet
@@ -51,21 +52,14 @@ MAX_XID = 0x7fFFffFF
 _nextXID = 1
 #USE_MPLS_MATCH = False
 
-#TODO: Refactor generateXID and xid_generator
+def xid_generator (start = 1, stop = MAX_XID):
+  return chain.from_iterable(repeat(xrange(start,stop+1))).next
 
-def generateXID ():
-  global _nextXID
-  r = _nextXID
-  _nextXID += 1
-  _nextXID = (_nextXID + 1) % (MAX_XID + 1)
-  return r
+def user_xid_generator ():
+  return xid_generator(0x80000000, 0xffFFffFF)
 
-def xid_generator(start=1):
-  """ generate a xid sequence. Wraps at 2**31-1 """
-  n = start % (MAX_XID + 1)
-  while True:
-    yield n
-    n  = ( n + 1 )  % (MAX_XID + 1)
+generate_xid = xid_generator()
+
 
 def _format_body (body, prefix):
   if hasattr(body, 'show'):
@@ -95,7 +89,7 @@ class ofp_header (object):
 
   def pack (self, assertstruct=True):
     if self.xid is None:
-      self.xid = generateXID()
+      self.xid = generate_xid()
     if(assertstruct):
       if(not ofp_header._assert(self)[0]):
         raise RuntimeError("assertstruct failed")
