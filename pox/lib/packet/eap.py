@@ -149,12 +149,10 @@ class eap(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = '{ EAP %s id=%d }' % (eap.code_name(self.code), self.id)
+        s = '[EAP %s id=%d' % (eap.code_name(self.code), self.id)
         if hasattr(self, 'type'):
-            s += '{%s}' % (eap.type_names[self.type])
-        if self.next is not None:
-            s += str(self.next)
-        return s
+            s += ' type=%s' % (eap.type_names[self.type],)
+        return s + "]"
 
     def parse(self, raw):
         assert isinstance(raw, bytes)

@@ -139,7 +139,7 @@ class dhcp(packet_base):
         self._init(kw)
 
     def _to_str(self):
-        s  = '[op:'+str(self.op)
+        s  = '[DHCP op:'+str(self.op)
         s += ' htype:'+str(self.htype)
         s += ' hlen:'+str(self.hlen)
         s += ' hops:'+str(self.hops)

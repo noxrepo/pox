@@ -104,7 +104,7 @@ class echo(packet_base):
         self._init(kw)
 
     def __str__(self):
-        return "[id:%i seq:%i]" % (self.id, self.seq)
+        return "[ICMP id:%i seq:%i]" % (self.id, self.seq)
 
     def parse(self, raw):
         assert isinstance(raw, bytes)

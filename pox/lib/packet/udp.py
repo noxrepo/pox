@@ -36,11 +36,15 @@
 #                 +---------------- ...
 #======================================================================
 import struct
-from packet_utils       import *
+from packet_utils import *
 from dhcp import *
 from dns  import *
+from rip  import *
 
 from packet_base import packet_base
+
+# We grab ipv4 later to prevent cyclic dependency
+#_ipv4 = None
 
 class udp(packet_base):
     "UDP packet struct"
@@ -48,6 +52,11 @@ class udp(packet_base):
     MIN_LEN = 8
 
     def __init__(self, raw=None, prev=None, **kw):
+        #global _ipv4
+        #if not _ipv4:
+        #  from ipv4 import ipv4
+        #  _ipv4 = ipv4
+
         packet_base.__init__(self)
 
         self.prev = prev
@@ -63,14 +72,9 @@ class udp(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = ''.join(('{', str(self.srcport), '>', \
-                         str(self.dstport), '} l:', \
-                         str(self.len), ' c: ', str(self.csum)))
-
-        if self.next is None or type(self.next) is bytes:
-            return s
-        return ''.join((s, str(self.next)))
-
+        s = '[UDP %s>%s l:%s c:%02x]' % (self.srcport, self.dstport,
+                                         self.len, self.csum)
+        return s
 
     def parse(self, raw):
         assert isinstance(raw, bytes)
@@ -97,6 +101,11 @@ class udp(packet_base):
         elif (self.dstport == dns.SERVER_PORT
                     or self.srcport == dns.SERVER_PORT):
             self.next = dns(raw=raw[udp.MIN_LEN:],prev=self)
+        elif ( (self.dstport == rip.RIP_PORT
+                or self.srcport == rip.RIP_PORT) ):
+#               and isinstance(self.prev, _ipv4)
+#               and self.prev.dstip == rip.RIP2_ADDRESS ):
+            self.next = rip(raw=raw[udp.MIN_LEN:],prev=self)
         elif dlen < self.len:
             self.msg('(udp parse) warning UDP packet data shorter than UDP len: %u < %u' % (dlen, self.len))
             return

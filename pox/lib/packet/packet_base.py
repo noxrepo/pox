@@ -106,7 +106,23 @@ class packet_base (object):
             #traceback.print_exc()
             lg.debug("str(%s): %s" % (self.__class__.__name__, e))
           return "[%s:Bad representation]" % (self.__class__.__name__,)
-        return "[%s: No representation]" % (self.__class__.__name__,)
+        return "[%s l:%i%s]" % (self.__class__.__name__, len(self),
+            "" if self.next else " *")
+
+    def dump(self):
+        p = self
+        m = []
+        while p is not None:
+          if not isinstance(p, packet_base):
+            try:
+              l = len(p)
+              m.append("[%s l:%i]" % (p.__class__.__name__, l))
+            except:
+              m.append("[%s]" % (p.__class__.__name__,))
+            break
+          m.append(str(p))
+          p = p.next
+        return "".join(m)
 
     def find(self, proto):
         """

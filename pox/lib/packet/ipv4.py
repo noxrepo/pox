@@ -104,9 +104,7 @@ class ipv4(packet_base):
             self.csum,
             self.v, self.hl, self.iplen, self.ttl)
 
-        if isinstance(self.next,(basestring,type(None))):
-            return s
-        return ''.join((s, str(self.next)))
+        return s
 
     def parse(self, raw):
         assert isinstance(raw, bytes)

@@ -58,11 +58,9 @@ class mpls(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = "mls label={0} tc={1} s={2} ttl={3}".format(self.label, self.tc,
-                                                self.s, self.ttl)
-        if self.next is None:
-            return s
-        return s + "|" + str(self.next)
+        s = "[MPLS label={0} tc={1} s={2} ttl={3}]".format(self.label,
+            self.tc, self.s, self.ttl)
+        return s
 
     def parse(self, raw):
         assert isinstance(raw, bytes)

@@ -62,11 +62,9 @@ class vlan(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = "vlan={0} pcp={1} ether={2}".format(self.id, self.pcp,
-                                                ethtype_to_str(self.eth_type))
-        if self.next is None:
-            return s
-        return s + "|" + str(self.next)
+        s = "[VLAN vlan={0} pcp={1} ether={2}]".format(self.id, self.pcp,
+            ethtype_to_str(self.eth_type))
+        return s
 
     def parse(self, raw):
         assert isinstance(raw, bytes)

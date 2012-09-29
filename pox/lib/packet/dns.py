@@ -333,10 +333,7 @@ class dns(packet_base):
             for a in self.additional:
                 s += "(add: "+str(a)+")"
 
-        if self.next is None:
-            return s
-        return s + " (More data follows)"
-        #return ''.join((s, str(self.next)))
+        return s
 
     # Utility methods for parsing.  Generally these would be pulled out
     # into a separate class. However, because the lengths are not known

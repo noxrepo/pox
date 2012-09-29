@@ -153,12 +153,7 @@ class ethernet(packet_base):
   def _to_str(self):
     s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self.dst)),':',
                 ethernet.getNameForType(self.type),']'))
-    if self.next is None:
-      return s
-    elif isinstance(self.next, basestring):
-      return s + '|<' + str(len(self.next)) + ' bytes>'
-    else:
-      return s + "|" + str(self.next)
+    return s
 
   def hdr(self, payload):
     dst = self.dst

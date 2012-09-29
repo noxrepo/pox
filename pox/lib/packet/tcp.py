@@ -164,13 +164,20 @@ class tcp(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = ''.join(('{', str(self.srcport), '>',
-                         str(self.dstport), '} seq:',
-                         str(self.seq), ' ack:', str(self.ack), ' f:',
-                         hex(self.flags)))
-        if self.next is None or type(self.next) is bytes:
-            return s
-        return ''.join((s, str(self.next)))
+        f = ''
+        if self.SYN: f += 'S'
+        if self.ACK: f += 'A'
+        if self.FIN: f += 'F'
+        if self.RST: f += 'R'
+        if self.PSH: f += 'P'
+        if self.URG: f += 'U'
+        if self.ECN: f += 'E'
+        if self.CWR: f += 'C'
+
+        s = '[TCP %s>%s seq:%s ack:%s f:%s]' % (self.srcport,
+            self.dstport, self.seq, self.ack, f)
+
+        return s
 
     def parse_options(self, raw):
 

@@ -79,9 +79,7 @@ class eapol(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = '{ EAPOL v%d %s }' % (self.version, self.type_name(self.type))
-        if self.next != None:
-            s += str(self.next)
+        s = '[EAPOL v%d %s]' % (self.version, self.type_name(self.type))
         return s
 
     def parse(self, raw):

@@ -201,7 +201,7 @@ class lldp (packet_base):
         lstr = ''
         for tlv in self.tlvs:
             lstr += str(tlv)
-        return lstr
+        return '[LLDP ' + lstr + ']'
 
     def hdr(self, payload):
         packet = b''
