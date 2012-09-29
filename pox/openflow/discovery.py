@@ -270,7 +270,7 @@ class Discovery (EventMixin):
     if packet.dst != NDP_MULTICAST: return
 
     if self.explicit_drop:
-      if event.ofp.buffer_id != -1:
+      if event.ofp.buffer_id is not None:
         log.debug("Dropping LLDP packet %i", event.ofp.buffer_id)
         msg = of.ofp_packet_out()
         msg.buffer_id = event.ofp.buffer_id

@@ -155,7 +155,7 @@ class Switch (EventMixin):
   def __repr__ (self):
     return dpidToStr(self.dpid)
 
-  def _install (self, switch, port, match, buf = -1):
+  def _install (self, switch, port, match, buf = None):
     msg = of.ofp_flow_mod()
     msg.match = match
     msg.idle_timeout = 10
@@ -164,7 +164,7 @@ class Switch (EventMixin):
     msg.buffer_id = buf
     switch.connection.send(msg)
 
-  def _install_path (self, p, match, buffer_id = -1):
+  def _install_path (self, p, match, buffer_id = None):
     for sw,port in p[1:]:
       self._install(sw, port, match)
 
@@ -231,10 +231,10 @@ class Switch (EventMixin):
 
     def drop ():
       # Kill the buffer
-      if event.ofp.buffer_id != -1:
+      if event.ofp.buffer_id is not None:
         msg = of.ofp_packet_out()
         msg.buffer_id = event.ofp.buffer_id
-        event.ofp.buffer_id = -1 # Mark is dead
+        event.ofp.buffer_id = None # Mark is dead
         msg.in_port = event.port
         self.connection.send(msg)
 

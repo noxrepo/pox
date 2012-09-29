@@ -97,7 +97,7 @@ class LearningSwitch (object):
 
     def flood ():
       """ Floods the packet """
-      if event.ofp.buffer_id == -1:
+      if event.ofp.buffer_id is None:
         log.warning("Not flooding unbuffered packet on %s",
                     dpidToStr(event.dpid))
         return
@@ -127,7 +127,7 @@ class LearningSwitch (object):
         msg.hard_timeout = duration[1]
         msg.buffer_id = event.ofp.buffer_id
         self.connection.send(msg)
-      elif event.ofp.buffer_id != -1:
+      elif event.ofp.buffer_id is not None:
         msg = of.ofp_packet_out()
         msg.buffer_id = event.ofp.buffer_id
         msg.in_port = event.port

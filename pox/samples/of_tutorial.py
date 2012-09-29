@@ -59,7 +59,7 @@ class Tutorial (object):
     """
     msg = of.ofp_packet_out()
     msg.in_port = in_port
-    if buffer_id != -1 and buffer_id is not None:
+    if buffer_id is not None:
       # We got a buffer ID from the switch; use that
       msg.buffer_id = buffer_id
     else:

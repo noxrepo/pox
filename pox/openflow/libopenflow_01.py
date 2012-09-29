@@ -1889,7 +1889,7 @@ class ofp_flow_mod (ofp_header):
     self.idle_timeout = 0
     self.hard_timeout = 0
     self.priority = OFP_DEFAULT_PRIORITY
-    self.buffer_id = -1
+    self._buffer_id = NO_BUFFER
     self.out_port = OFPP_NONE
     self.flags = 0
     self.actions = []
@@ -1907,6 +1907,15 @@ class ofp_flow_mod (ofp_header):
     # Allow use of actions=<a single action> for kw args.
     if not hasattr(self.actions, '__getitem__'):
       self.actions = [self.actions]
+
+  @property
+  def buffer_id (self):
+    if self._buffer_id == NO_BUFFER: return None
+    return self._buffer_id
+  @buffer_id.setter
+  def buffer_id (self, val):
+    if val is None: val = NO_BUFFER
+    self._buffer_id = val
 
   def _validate (self):
     if not isinstance(self.match, ofp_match):
@@ -1927,9 +1936,9 @@ class ofp_flow_mod (ofp_header):
       #      Unfortunately, we currently have no logging in here, so we
       #      assert instead which is a either too drastic or too quiet.
       assert self.data.is_complete
-      assert self.buffer_id in (-1, None)
+      assert self.buffer_id is None
       self.buffer_id = self.data.buffer_id
-      if self.buffer_id in (-1, None):
+      if self.buffer_id is None:
         po = ofp_packet_out(data=self.data)
         po.in_port = self.data.in_port
         po.actions.add(ofp_action_output(port = OFPP_TABLE))
@@ -1941,7 +1950,7 @@ class ofp_flow_mod (ofp_header):
     self.length = len(self)
     packed += ofp_header.pack(self)
     packed += self.match.pack(flow_mod=True)
-    packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id & 0xffffffff, self.out_port, self.flags)
+    packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self._buffer_id, self.out_port, self.flags)
     for i in self.actions:
       packed += i.pack()
 
@@ -1955,9 +1964,7 @@ class ofp_flow_mod (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     self.match.unpack(binaryString[8:], flow_mod=True)
-    (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 8 + len(self.match))
-    if self.buffer_id == 0xffffffff:
-      self.buffer_id = -1
+    (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self._buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 8 + len(self.match))
     self.actions, offset = _unpack_actions(binaryString, self.length-(32 + len(self.match)), 32 + len(self.match))
     assert offset == self.length
     return binaryString[offset:]
@@ -2958,7 +2965,7 @@ class ofp_packet_out (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.header_type = OFPT_PACKET_OUT
-    self.buffer_id = -1
+    self._buffer_id = NO_BUFFER
     self.in_port = OFPP_NONE
     self.actions = []
     self._data = b''
@@ -2976,6 +2983,15 @@ class ofp_packet_out (ofp_header):
       self.actions = [self.actions]
 
   @property
+  def buffer_id (self):
+    if self._buffer_id == NO_BUFFER: return None
+    return self._buffer_id
+  @buffer_id.setter
+  def buffer_id (self, val):
+    if val is None: val = NO_BUFFER
+    self._buffer_id = val
+
+  @property
   def data (self):
     return self._data
   @data.setter
@@ -2988,8 +3004,8 @@ class ofp_packet_out (ofp_header):
       # Enable you to easily resend a packet
       self._data = b''
       self.buffer_id = data.buffer_id
-      if self.buffer_id in (-1, None):
-        #TODO: It'd be nice to log and then ignore if not data_is_complete.
+      if self.buffer_id is None:
+        #TODO: It'd be nice to log and then ignore if data is incomplete
         #      Unfortunately, we currently have no logging in here, so we
         #      assert instead which is a either too drastic or too quiet.
         assert data.is_complete
@@ -3000,7 +3016,7 @@ class ofp_packet_out (ofp_header):
     assert assert_type("data", self._data, (bytes,))
 
   def _validate (self):
-    if self.buffer_id != -1 and self.data != b'':
+    if self.buffer_id is not None and self.data != b'':
       return "can not have both buffer_id and data set"
     return None
 
@@ -3016,21 +3032,18 @@ class ofp_packet_out (ofp_header):
 
     if self.data is not None:
       return b''.join((ofp_header.pack(self),
-      struct.pack("!LHH", self.buffer_id & 0xffFFffFF, self.in_port, actions_len),
-      actions,
-      self.data))
+        struct.pack("!LHH", self._buffer_id, self.in_port, actions_len),
+        actions, self.data))
     else:
       return b''.join((ofp_header.pack(self),
-      struct.pack("!LHH", self.buffer_id & 0xffFFffFF, self.in_port, actions_len),
+      struct.pack("!LHH", self._buffer_id, self.in_port, actions_len),
       actions))
 
   def unpack (self, binaryString):
     if (len(binaryString) < 16):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
-    (self.buffer_id, self.in_port, actions_len) = struct.unpack_from("!LHH", binaryString, 8)
-    if self.buffer_id == 0xffFFffFF:
-      self.buffer_id = -1
+    (self._buffer_id, self.in_port, actions_len) = struct.unpack_from("!LHH", binaryString, 8)
     self.actions,offset = _unpack_actions(binaryString, actions_len, 16)
 
     self.data = binaryString[offset:self.length] if offset < self.length else None
@@ -3141,7 +3154,7 @@ class ofp_packet_in (ofp_header):
     ofp_header.__init__(self)
 
     self.in_port = OFPP_NONE
-    self.buffer_id = -1
+    self._buffer_id = NO_BUFFER
     self.reason = 0
     self.data = None
 
@@ -3149,6 +3162,15 @@ class ofp_packet_in (ofp_header):
 
     self.header_type = OFPT_PACKET_IN
     self._total_len = 0
+
+  @property
+  def buffer_id (self):
+    if self._buffer_id == NO_BUFFER: return None
+    return self._buffer_id
+  @buffer_id.setter
+  def buffer_id (self, val):
+    if val is None: val = NO_BUFFER
+    self._buffer_id = val
 
   @property
   def data (self):
@@ -3172,7 +3194,7 @@ class ofp_packet_in (ofp_header):
     self.length = len(self)
     self._total_len = len(self.data) if self.data else 0
     packed += ofp_header.pack(self)
-    packed += struct.pack("!LHHBB", self.buffer_id & 0xffFFffFF, self._total_len, self.in_port, self.reason, 0)
+    packed += struct.pack("!LHHBB", self._buffer_id, self._total_len, self.in_port, self.reason, 0)
     packed += self.data
     return packed
 
@@ -3181,16 +3203,14 @@ class ofp_packet_in (ofp_header):
     return self._total_len
   @property
   def is_complete (self):
-    if self.buffer_id != -1: return True
+    if self.buffer_id is not None: return True
     return len(self.data) == self.total_len
 
   def unpack (self, binaryString):
     if (len(binaryString) < 18):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
-    (self.buffer_id, self._total_len, self.in_port, self.reason, pad) = struct.unpack_from("!LHHBB", binaryString, 8)
-    if self.buffer_id == 0xFFffFFff:
-      self.buffer_id = -1
+    (self._buffer_id, self._total_len, self.in_port, self.reason, pad) = struct.unpack_from("!LHHBB", binaryString, 8)
     if (len(binaryString) < self.length):
       return binaryString
     self.data = binaryString[18:self.length]
@@ -3204,7 +3224,7 @@ class ofp_packet_in (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.buffer_id !=  other.buffer_id: return False
+    if self.buffer_id != other.buffer_id: return False
     if self._total_len !=  other._total_len: return False
     if self.in_port !=  other.in_port: return False
     if self.reason !=  other.reason: return False
