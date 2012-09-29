@@ -297,7 +297,7 @@ class SoftwareSwitch(EventMixin):
       buffer_id = int("0xFFFFFFFF",16)
 
     if xid == None:
-      xid = self.xid_count.next()
+      xid = self.xid_count()
     msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
                         data = packet.pack())
 
@@ -339,7 +339,7 @@ class SoftwareSwitch(EventMixin):
     else:
       # no matching entry
       buffer_id = self._buffer_packet(packet, in_port)
-      self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_NO_MATCH)
+      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(), reason=OFPR_NO_MATCH)
 
   def take_port_down(self, port):
     ''' Take the given port down, and send a port_status message to the controller '''
@@ -391,7 +391,7 @@ class SoftwareSwitch(EventMixin):
           real_send(port)
     elif out_port == OFPP_CONTROLLER:
       buffer_id = self._buffer_packet(packet, in_port)
-      self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_ACTION)
+      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(), reason=OFPR_ACTION)
     elif out_port == OFPP_TABLE:
       # There better be a table entry there, else we get infinite recurision
       # between switch<->controller
