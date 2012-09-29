@@ -356,7 +356,8 @@ class SoftwareSwitch(EventMixin):
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
       if port_no in self.down_port_nos:
-        raise RuntimeError("output port %x currently down!" % port_no)
+        #raise RuntimeError("output port %x currently down!" % port_no)
+        self.log.warn("Port %d is currently down. Dropping packet" % port_no)
       self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
     if out_port < OFPP_MAX:
