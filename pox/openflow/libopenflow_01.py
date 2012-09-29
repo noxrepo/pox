@@ -551,7 +551,7 @@ class ofp_match (ofp_base):
       self.dl_vlan_pcp = 0
 
     #TODO: What do we do when something is "behind" a wildcard?
-    #      e.g., does nw_src count if dl_type is wild or only if it's 0x0800?
+    #   e.g., does nw_src count if dl_type is wild or only if it's 0x0800?
     if self.dl_type is not None:
       if self.dl_type != 0x0800:
         # Not IP
@@ -565,7 +565,8 @@ class ofp_match (ofp_base):
         self.tp_dst = 0
       else:
         # It's IP
-        if self.nw_proto != 6 and self.nw_proto != 17 and self.nw_proto != 1:
+        if (self.nw_proto != 6 and self.nw_proto != 17
+            and self.nw_proto != 1):
           # Not TCP, UDP, or ICMP
           self.tp_src = 0
           self.tp_dst = 0
@@ -679,7 +680,8 @@ class ofp_match (ofp_base):
 
   def __getattr__ (self, name):
     if name in ofp_match_data:
-      if (self.wildcards & ofp_match_data[name][1]) == ofp_match_data[name][1]:
+      if ( (self.wildcards & ofp_match_data[name][1])
+           == ofp_match_data[name][1] ):
         # It's wildcarded -- always return None
         return None
       if name == 'nw_dst' or name == 'nw_src':
@@ -717,9 +719,11 @@ class ofp_match (ofp_base):
     def check_ip(val):
       return (val or 0) if self.dl_type == 0x0800 else 0
     def check_ip_or_arp(val):
-      return (val or 0) if self.dl_type == 0x0800 or self.dl_type == 0x0806 else 0
+      return (val or 0) if self.dl_type == 0x0800 \
+                           or self.dl_type == 0x0806 else 0
     def check_tp(val):
-      return (val or 0) if self.dl_type == 0x0800 and self.nw_proto in (1,6,17) else 0
+      return (val or 0) if self.dl_type == 0x0800 \
+                           and self.nw_proto in (1,6,17) else 0
 
     packed += struct.pack("!HB", self.dl_vlan or 0, self.dl_vlan_pcp or 0)
     packed += _PAD # Hardcode padding
@@ -737,13 +741,16 @@ class ofp_match (ofp_base):
         check_tp(self.tp_src), check_tp(self.tp_dst))
 
 #    if USE_MPLS_MATCH:
-#        packed += struct.pack("!IBxxx", self.mpls_label or 0, self.mpls_tc or 0)
+#        packed += struct.pack("!IBxxx", self.mpls_label or 0,
+#                              self.mpls_tc or 0)
     return packed
 
   def _normalize_wildcards (self, wildcards):
-    """ nw_src and nw_dst values greater than 32 mean the same thing as 32.
-      We normalize them here just to be clean and so that comparisons act
-      as you'd want them to. """
+    """
+    nw_src and nw_dst values greater than 32 mean the same thing as 32.
+    We normalize them here just to be clean and so that comparisons act
+    as you'd want them to.
+    """
     if ((wildcards & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT) > 32:
       wildcards &= ~OFPFW_NW_SRC_MASK
       wildcards |= (32 << OFPFW_NW_SRC_SHIFT)
@@ -753,16 +760,17 @@ class ofp_match (ofp_base):
     return wildcards
 
   def _wire_wildcards(self, wildcards):
-    """ Normalize the wildcard bits to the openflow wire representation.
-        Note this atrocity from the OF1.1 spec:
-        Protocol-specific fields within ofp_match will be ignored within
-        a single table when the corresponding protocol is not specified in the
-        match. The MPLS match fields will be ignored unless the Ethertype is
-        specified as MPLS. Likewise, the IP header and transport header fields
-        will be ignored unless the Ethertype is specified as either IPv4 or
-        ARP. The tp_src and tp_dst fields will be ignored unless the network
-        protocol specified is as TCP, UDP or SCTP. Fields that are ignored
-        don't need to be wildcarded and should be set to 0.
+    """
+    Normalize the wildcard bits to the openflow wire representation.
+    Note this atrocity from the OF1.1 spec:
+    Protocol-specific fields within ofp_match will be ignored within
+    a single table when the corresponding protocol is not specified in the
+    match. The MPLS match fields will be ignored unless the Ethertype is
+    specified as MPLS. Likewise, the IP header and transport header fields
+    will be ignored unless the Ethertype is specified as either IPv4 or
+    ARP. The tp_src and tp_dst fields will be ignored unless the network
+    protocol specified is as TCP, UDP or SCTP. Fields that are ignored
+    don't need to be wildcarded and should be set to 0.
     """
     if self.dl_type == 0x0800:
         # IP
@@ -782,16 +790,17 @@ class ofp_match (ofp_base):
 
 
   def _unwire_wildcards(self, wildcards):
-    """ Normalize the wildcard bits from the openflow wire representation.
-        Note this atrocity from the OF1.1 spec:
-        Protocol-specific fields within ofp_match will be ignored within
-        a single table when the corresponding protocol is not specified in the
-        match. The MPLS match fields will be ignored unless the Ethertype is
-        specified as MPLS. Likewise, the IP header and transport header fields
-        will be ignored unless the Ethertype is specified as either IPv4 or
-        ARP. The tp_src and tp_dst fields will be ignored unless the network
-        protocol specified is as TCP, UDP or SCTP. Fields that are ignored
-        don't need to be wildcarded and should be set to 0.
+    """
+    Normalize the wildcard bits from the openflow wire representation.
+    Note this atrocity from the OF1.1 spec:
+    Protocol-specific fields within ofp_match will be ignored within
+    a single table when the corresponding protocol is not specified in the
+    match. The MPLS match fields will be ignored unless the Ethertype is
+    specified as MPLS. Likewise, the IP header and transport header fields
+    will be ignored unless the Ethertype is specified as either IPv4 or
+    ARP. The tp_src and tp_dst fields will be ignored unless the network
+    protocol specified is as TCP, UDP or SCTP. Fields that are ignored
+    don't need to be wildcarded and should be set to 0.
     """
     if self._dl_type == 0x0800:
         # IP
@@ -802,10 +811,12 @@ class ofp_match (ofp_base):
           return wildcards
     elif self._dl_type == 0x0806:
         # ARP: Set NW_TOS / TP wildcards for the object
-        return wildcards  | ( OFPFW_NW_TOS | OFPFW_TP_SRC | OFPFW_TP_DST)
+        return wildcards | ( OFPFW_NW_TOS | OFPFW_TP_SRC | OFPFW_TP_DST)
     else:
         # not even IP. Set NW/TP wildcards for the object
-        return wildcards  | ( OFPFW_NW_TOS | OFPFW_NW_PROTO | OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK | OFPFW_TP_SRC | OFPFW_TP_DST)
+        return wildcards | ( OFPFW_NW_TOS | OFPFW_NW_PROTO
+                             | OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK
+                             | OFPFW_TP_SRC | OFPFW_TP_DST)
 
 
   @property
@@ -819,18 +830,26 @@ class ofp_match (ofp_base):
   def unpack (self, binaryString, flow_mod=False):
     if (len(binaryString) < self.__len__()):
       return binaryString
-    (wildcards, self._in_port) = struct.unpack_from("!LH", binaryString, 0)
-    self._dl_src = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 6))
-    self._dl_dst = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 12))
-    (self._dl_vlan, self._dl_vlan_pcp) = struct.unpack_from("!HB", binaryString, 18)
-    (self._dl_type, self._nw_tos, self._nw_proto) = struct.unpack_from("!HBB", binaryString, 22)
-    (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = struct.unpack_from("!LLHH", binaryString, 28)
+    (wildcards, self._in_port) = struct.unpack_from("!LH",binaryString, 0)
+    self._dl_src = EthAddr(struct.unpack_from("!BBBBBB",binaryString, 6))
+    self._dl_dst = EthAddr(struct.unpack_from("!BBBBBB",binaryString, 12))
+    (self._dl_vlan, self._dl_vlan_pcp) = \
+        struct.unpack_from("!HB", binaryString, 18)
+    (self._dl_type, self._nw_tos, self._nw_proto) = \
+        struct.unpack_from("!HBB", binaryString, 22)
+    (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = \
+        struct.unpack_from("!LLHH", binaryString, 28)
     self._nw_src = IPAddr(self._nw_src)
     self._nw_dst = IPAddr(self._nw_dst)
     #if USE_MPLS_MATCH:
-    #  self.mpls_label,self.mpls_tc = struct.unpack_from("!IBxxx", binaryString, 40)
-    self.wildcards = self._normalize_wildcards(self._unwire_wildcards(wildcards) if flow_mod else wildcards) # Overide
-    return binaryString[self.__len__():]
+    #  self.mpls_label,self.mpls_tc = \
+    #      struct.unpack_from("!IBxxx", binaryString, 40)
+
+    # Only unwire wildcards for flow_mod
+    self.wildcards = self._normalize_wildcards(
+        self._unwire_wildcards(wildcards) if flow_mod else wildcards)
+
+    return binaryString[len(self):]
 
   def __len__ (self):
  #   if USE_MPLS_MATCH:
@@ -839,8 +858,8 @@ class ofp_match (ofp_base):
 
   def hash_code (self):
     '''
-    ofp_match is not properly hashable since it is mutable, but it can still be
-    useful to easily generate a hash code.
+    ofp_match is not properly hashable since it is mutable, but it can
+    still be useful to easily generate a hash code.
     '''
 
     h = self.wildcards
@@ -866,8 +885,8 @@ class ofp_match (ofp_base):
 
     # first compare the bitmask part
     if(consider_other_wildcards):
-      self_bits  = self.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
-      other_bits = other.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
+      self_bits  = self.wildcards&~(OFPFW_NW_SRC_MASK|OFPFW_NW_DST_MASK)
+      other_bits = other.wildcards&~(OFPFW_NW_SRC_MASK|OFPFW_NW_DST_MASK)
       if( self_bits | other_bits != self_bits): return False
 
     def match_fail(mine, others):
@@ -887,12 +906,17 @@ class ofp_match (ofp_base):
     self_nw_src = self.get_nw_src()
     if(self_nw_src[0] != None):
       other_nw_src = other.get_nw_src()
-      if self_nw_src[1] > other_nw_src[1] or not IPAddr(other_nw_src[0]).inNetwork((self_nw_src[0], self_nw_src[1])): return False
+      if self_nw_src[1] > other_nw_src[1]: return False
+      if not IPAddr(other_nw_src[0]).inNetwork(
+            (self_nw_src[0], self_nw_src[1])): return False
 
     self_nw_dst = self.get_nw_dst()
     if(self_nw_dst[0] != None):
       other_nw_dst = other.get_nw_dst()
-      if self_nw_dst[1] > other_nw_dst[1] or not IPAddr(other_nw_dst[0]).inNetwork((self_nw_dst[0], self_nw_dst[1])): return False
+      if self_nw_dst[1] > other_nw_dst[1]: return False
+      if not IPAddr(other_nw_dst[0]).inNetwork(
+            (self_nw_dst[0], self_nw_dst[1])): return False
+
     return True
 
   def __eq__ (self, other):
@@ -932,16 +956,23 @@ class ofp_match (ofp_base):
         return hex(n)
 
     def show_wildcards(w):
-      parts = [ k.lower()[len("OFPFW_"):] for (k,v) in ofp_flow_wildcards_rev_map.iteritems() if v & w == v ]
+      parts = [ k.lower()[len("OFPFW_"):]
+                for (k,v) in ofp_flow_wildcards_rev_map.iteritems()
+                if v & w == v ]
       nw_src_bits = (w & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT
-      if(nw_src_bits > 0): parts.append("nw_src(/%d)" % (32 - nw_src_bits))
+      if nw_src_bits > 0:
+        parts.append("nw_src(/%d)" % (32 - nw_src_bits))
 
       nw_dst_bits = (w & OFPFW_NW_DST_MASK) >> OFPFW_NW_DST_SHIFT
-      if(nw_dst_bits > 0): parts.append("nw_dst(/%d)" % (32 - nw_dst_bits))
+      if nw_dst_bits > 0:
+        parts.append("nw_dst(/%d)" % (32 - nw_dst_bits))
+
       return "|".join(parts)
 
     outstr = ''
-    outstr += prefix + 'wildcards: ' + show_wildcards(self.wildcards) + ' (' + binstr(self.wildcards) + ' = ' + hex(self.wildcards) + ')\n'
+    outstr += prefix + 'wildcards: '
+    outstr += show_wildcards(self.wildcards)
+    outstr += ' (%s = %x)\n' % (binstr(self.wildcards), self.wildcards)
     def append (f, formatter=str):
       v = self.__getattr__(f)
       if v is None: return ''
@@ -985,8 +1016,9 @@ OFPFW_NW_SRC_ALL       = 8192
 OFPFW_NW_SRC_MASK      = 16128
 OFPFW_NW_DST_ALL       = 524288
 OFPFW_NW_DST_MASK      = 1032192
-# Note: Need to handle all flags that are set in this
-# glob-all masks in the packet handling methods. (Esp. ofp_match.from_packet)
+# Note: Need to handle all flags that are set in this.
+# glob-all masks in the packet handling methods.
+# (Esp. ofp_match.from_packet)
 # Otherwise, packets are not being matched as they should
 OFPFW_ALL              = ((1 << 22) - 1)
 
@@ -1505,7 +1537,8 @@ class ofp_action_dl_addr (ofp_base):
       self.dl_addr = EthAddr(dl_addr)
 
   def _validate (self):
-    if not isinstance(self.dl_addr, EthAddr) and not isinstance(self.dl_addr, bytes):
+    if (not isinstance(self.dl_addr, EthAddr)
+        and not isinstance(self.dl_addr, bytes)):
       return "dl_addr is not string or EthAddr"
     if isinstance(self.dl_addr, bytes) and len(self.dl_addr) != 6:
       return "dl_addr is not of size 6"
@@ -1895,7 +1928,7 @@ class ofp_flow_mod (ofp_header):
     self.actions = []
     self.data = None # Not in the spec!  Special magic!  Can be packet_in.
 
-    # ofp_flow_mod and ofp_packet_out do some special handling of 'actions'...
+    # ofp_flow_mod/ofp_packet_out do some special handling of 'actions'...
 
     # Allow "action" as a synonym for "actions"
     if 'action' in kw and 'actions' not in kw:
@@ -1932,7 +1965,7 @@ class ofp_flow_mod (ofp_header):
     """
     po = None
     if self.data:
-      #TODO: It'd be nice to log and then ignore it if not data_is_complete.
+      #TODO: It'd be nice to log and then ignore if not data_is_complete.
       #      Unfortunately, we currently have no logging in here, so we
       #      assert instead which is a either too drastic or too quiet.
       assert self.data.is_complete
@@ -2039,7 +2072,8 @@ class ofp_port_mod (ofp_header):
     initHelper(self, kw)
 
   def _validate (self):
-    if not isinstance(self.hw_addr, bytes) and not isinstance(self.hw_addr, EthAddr):
+    if (not isinstance(self.hw_addr, bytes)
+        and not isinstance(self.hw_addr, EthAddr)):
       return "hw_addr is not bytes or EthAddr"
     if len(self.hw_addr) != 6:
       return "hw_addr is not of size 6"
@@ -2254,7 +2288,8 @@ class ofp_stats_request (ofp_header):
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'type: ' + str(self.type) + '\n'
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
-    outstr += prefix + 'body:\n' + _format_body(self.body, prefix + '  ') + '\n'
+    outstr += prefix + 'body:\n'
+    outstr += _format_body(self.body, prefix + '  ') + '\n'
     return outstr
 
 class ofp_stats_reply (ofp_header):
@@ -2356,7 +2391,8 @@ class ofp_stats_reply (ofp_header):
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'type: ' + str(self.type) + '\n'
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
-    outstr += prefix + 'body:\n' + _format_body(self.body, prefix + '  ') + '\n'
+    outstr += prefix + 'body:\n'
+    outstr += _format_body(self.body, prefix + '  ') + '\n'
     return outstr
 
 ofp_stats_types_rev_map = {
@@ -3050,7 +3086,8 @@ class ofp_packet_out (ofp_header):
     return binaryString[self.length:]
 
   def __len__ (self):
-    return 16 + reduce(operator.add, (a.length for a in self.actions), 0) + (len(self.data) if self.data else 0)
+    return 16 + reduce(operator.add, (a.length for a in self.actions),
+        0) + (len(self.data) if self.data else 0)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3072,7 +3109,8 @@ class ofp_packet_out (ofp_header):
     outstr += prefix + 'actions: \n'
     for obj in self.actions:
       if obj is None:
-        raise RuntimeError("An element of self.actions was None! Bad formatting...")
+        raise RuntimeError("An element of self.actions was None! "
+                           + "Bad formatting...")
       outstr += obj.show(prefix + '  ')
     return outstr
 
@@ -3189,8 +3227,8 @@ class ofp_packet_in (ofp_header):
     assert self._assert()
 
     packed = ""
-    # need to update the self.length field for ofp_header.pack to put the correct value in the packed
-    # array. this sucks.
+    # need to update the self.length field for ofp_header.pack to put
+    # the correct value in the packed array. this sucks.
     self.length = len(self)
     self._total_len = len(self.data) if self.data else 0
     packed += ofp_header.pack(self)
@@ -3592,7 +3630,8 @@ class ofp_echo_request (ofp_header):
     outstr = ''
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
-    outstr += prefix + 'body:\n' + _format_body(self.body, prefix + '  ') + '\n'
+    outstr += prefix + 'body:\n'
+    outstr += _format_body(self.body, prefix + '  ') + '\n'
     return outstr
 
 class ofp_echo_reply (ofp_header):
@@ -3636,7 +3675,8 @@ class ofp_echo_reply (ofp_header):
     outstr = ''
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
-    outstr += prefix + 'body:\n' + _format_body(self.body, prefix + '  ') + '\n'
+    outstr += prefix + 'body:\n'
+    outstr += _format_body(self.body, prefix + '  ') + '\n'
     return outstr
 
 class ofp_vendor_header (ofp_header):
@@ -3827,7 +3867,8 @@ class ofp_get_config_reply (ofp_header):
     if (len(binaryString) < 12):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
-    (self.flags, self.miss_send_len) = struct.unpack_from("!HH", binaryString, 8)
+    (self.flags, self.miss_send_len) = \
+        struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
   def __len__ (self):
@@ -3872,7 +3913,8 @@ class ofp_set_config (ofp_header):
     if (len(binaryString) < 12):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
-    (self.flags, self.miss_send_len) = struct.unpack_from("!HH", binaryString, 8)
+    (self.flags, self.miss_send_len) = \
+        struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
   def __len__ (self):
@@ -3996,7 +4038,8 @@ def _init ():
   def formatMap (name, m):
     o = name + " = {\n"
     vk = sorted([(v,k) for k,v in m.iteritems()])
-    maxlen = 2 + len(reduce(lambda a,b: a if len(a)>len(b) else b, (v for k,v in vk)))
+    maxlen = 2 + len(reduce(lambda a,b: a if len(a)>len(b) else b,
+                            (v for k,v in vk)))
     fstr = "  %-" + str(maxlen) + "s : %s,\n"
     for v,k in vk:
       o += fstr % ("'" + k + "'",v)
@@ -4020,7 +4063,8 @@ def _init ():
   """
   maps = []
   for k,v in globals().iteritems():
-    if k.startswith("ofp_") and k.endswith("_rev_map") and type(v) == dict:
+    if (k.startswith("ofp_") and k.endswith("_rev_map")
+        and type(v) == dict):
       maps.append((k[:-8],v))
   for name,m in maps:
     # Try to generate forward maps
@@ -4074,14 +4118,14 @@ _action_map.update({
 # Fill in the stats-to-class table
 # Values are (request_type,reply_type,reply_is_list)
 _stats_map.update({
-  OFPST_DESC       : (None, ofp_desc_stats, False),
-  OFPST_FLOW       : (ofp_flow_stats_request, ofp_flow_stats, True),
-  OFPST_AGGREGATE  : (ofp_aggregate_stats_request,
-                      ofp_aggregate_stats_reply, False),
-  OFPST_TABLE      : (None, ofp_table_stats, True),
-  OFPST_PORT       : (ofp_port_stats_request, ofp_port_stats, True),
-  OFPST_QUEUE      : (None, ofp_queue_stats, True), #FIXME: request type
-  OFPST_VENDOR     : (ofp_vendor_header, None), #TODO: support vendor types
+  OFPST_DESC      : (None, ofp_desc_stats, False),
+  OFPST_FLOW      : (ofp_flow_stats_request, ofp_flow_stats, True),
+  OFPST_AGGREGATE : (ofp_aggregate_stats_request,
+                     ofp_aggregate_stats_reply, False),
+  OFPST_TABLE     : (None, ofp_table_stats, True),
+  OFPST_PORT      : (ofp_port_stats_request, ofp_port_stats, True),
+  OFPST_QUEUE     : (None, ofp_queue_stats, True), #FIXME: request type
+  OFPST_VENDOR    : (ofp_vendor_header, None), #TODO: support vendor types
 })
 
 # Values from macro definitions
