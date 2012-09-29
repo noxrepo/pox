@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -191,10 +191,10 @@ class ofp_header (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.version !=  other.version: return False
-    if self.header_type !=  other.header_type: return False
-    if len(self) !=  len(other): return False
-    if self.xid !=  other.xid: return False
+    if self.version != other.version: return False
+    if self.header_type != other.header_type: return False
+    if len(self) != len(other): return False
+    if self.xid != other.xid: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -268,15 +268,15 @@ class ofp_phy_port (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.port_no !=  other.port_no: return False
-    if self.hw_addr !=  other.hw_addr: return False
-    if self.name !=  other.name: return False
-    if self.config !=  other.config: return False
-    if self.state !=  other.state: return False
-    if self.curr !=  other.curr: return False
-    if self.advertised !=  other.advertised: return False
-    if self.supported !=  other.supported: return False
-    if self.peer !=  other.peer: return False
+    if self.port_no != other.port_no: return False
+    if self.hw_addr != other.hw_addr: return False
+    if self.name != other.name: return False
+    if self.config != other.config: return False
+    if self.state != other.state: return False
+    if self.curr != other.curr: return False
+    if self.advertised != other.advertised: return False
+    if self.supported != other.supported: return False
+    if self.peer != other.peer: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -378,9 +378,9 @@ class ofp_packet_queue (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.queue_id !=  other.queue_id: return False
-    if self.length !=  other.length: return False
-    if self.properties !=  other.properties: return False
+    if self.queue_id != other.queue_id: return False
+    if self.length != other.length: return False
+    if self.properties != other.properties: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -425,8 +425,8 @@ class ofp_queue_prop_header (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.property !=  other.property: return False
-    if self.length !=  other.length: return False
+    if self.property != other.property: return False
+    if self.length != other.length: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -465,8 +465,8 @@ class ofp_queue_prop_min_rate (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.prop_header !=  other.prop_header: return False
-    if self.rate !=  other.rate: return False
+    if self.prop_header != other.prop_header: return False
+    if self.rate != other.rate: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -897,19 +897,19 @@ class ofp_match (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.wildcards !=  other.wildcards: return False
-    if self.in_port !=  other.in_port: return False
-    if self.dl_src !=  other.dl_src: return False
-    if self.dl_dst !=  other.dl_dst: return False
-    if self.dl_vlan !=  other.dl_vlan: return False
-    if self.dl_vlan_pcp !=  other.dl_vlan_pcp: return False
-    if self.dl_type !=  other.dl_type: return False
-    if self.nw_tos !=  other.nw_tos: return False
-    if self.nw_proto !=  other.nw_proto: return False
-    if self.nw_src !=  other.nw_src: return False
-    if self.nw_dst !=  other.nw_dst: return False
-    if self.tp_src !=  other.tp_src: return False
-    if self.tp_dst !=  other.tp_dst: return False
+    if self.wildcards != other.wildcards: return False
+    if self.in_port != other.in_port: return False
+    if self.dl_src != other.dl_src: return False
+    if self.dl_dst != other.dl_dst: return False
+    if self.dl_vlan != other.dl_vlan: return False
+    if self.dl_vlan_pcp != other.dl_vlan_pcp: return False
+    if self.dl_type != other.dl_type: return False
+    if self.nw_tos != other.nw_tos: return False
+    if self.nw_proto != other.nw_proto: return False
+    if self.nw_src != other.nw_src: return False
+    if self.nw_dst != other.nw_dst: return False
+    if self.tp_src != other.tp_src: return False
+    if self.tp_dst != other.tp_dst: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1043,8 +1043,8 @@ class ofp_action_header (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1085,10 +1085,10 @@ class ofp_action_output (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
-    if self.port !=  other.port: return False
-    if self.max_len !=  other.max_len: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.port != other.port: return False
+    if self.max_len != other.max_len: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1131,10 +1131,10 @@ class ofp_action_enqueue (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
-    if self.port !=  other.port: return False
-    if self.queue_id !=  other.queue_id: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.port != other.port: return False
+    if self.queue_id != other.queue_id: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1391,8 +1391,8 @@ class ofp_action_strip_vlan (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1430,9 +1430,9 @@ class ofp_action_vlan_vid (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
-    if self.vlan_vid !=  other.vlan_vid: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.vlan_vid != other.vlan_vid: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1471,9 +1471,9 @@ class ofp_action_vlan_pcp (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
-    if self.vlan_pcp !=  other.vlan_pcp: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.vlan_pcp != other.vlan_pcp: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1535,9 +1535,9 @@ class ofp_action_dl_addr (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
-    if self.dl_addr !=  other.dl_addr: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.dl_addr != other.dl_addr: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1588,9 +1588,9 @@ class ofp_action_nw_addr (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
-    if self.nw_addr !=  other.nw_addr: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.nw_addr != other.nw_addr: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1627,9 +1627,9 @@ class ofp_action_nw_tos (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
-    if self.nw_tos !=  other.nw_tos: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.nw_tos != other.nw_tos: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1676,9 +1676,9 @@ class ofp_action_tp_port (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
-    if self.tp_port !=  other.tp_port: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.tp_port != other.tp_port: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1716,9 +1716,9 @@ class ofp_action_vendor_header (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.type !=  other.type: return False
-    if self.length !=  other.length: return False
-    if self.vendor !=  other.vendor: return False
+    if self.type != other.type: return False
+    if self.length != other.length: return False
+    if self.vendor != other.vendor: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1784,12 +1784,12 @@ class ofp_features_reply (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.datapath_id !=  other.datapath_id: return False
-    if self.n_buffers !=  other.n_buffers: return False
-    if self.n_tables !=  other.n_tables: return False
-    if self.capabilities !=  other.capabilities: return False
-    if self.actions !=  other.actions: return False
-    if self.ports !=  other.ports: return False
+    if self.datapath_id != other.datapath_id: return False
+    if self.n_buffers != other.n_buffers: return False
+    if self.n_tables != other.n_tables: return False
+    if self.capabilities != other.capabilities: return False
+    if self.actions != other.actions: return False
+    if self.ports != other.ports: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1854,8 +1854,8 @@ class ofp_switch_config (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.flags !=  other.flags: return False
-    if self.miss_send_len !=  other.miss_send_len: return False
+    if self.flags != other.flags: return False
+    if self.miss_send_len != other.miss_send_len: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1978,16 +1978,16 @@ class ofp_flow_mod (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.match !=  other.match: return False
-    if self.cookie !=  other.cookie: return False
-    if self.command !=  other.command: return False
-    if self.idle_timeout !=  other.idle_timeout: return False
-    if self.hard_timeout !=  other.hard_timeout: return False
-    if self.priority !=  other.priority: return False
-    if self.buffer_id !=  other.buffer_id: return False
-    if self.out_port !=  other.out_port: return False
-    if self.flags !=  other.flags: return False
-    if self.actions !=  other.actions: return False
+    if self.match != other.match: return False
+    if self.cookie != other.cookie: return False
+    if self.command != other.command: return False
+    if self.idle_timeout != other.idle_timeout: return False
+    if self.hard_timeout != other.hard_timeout: return False
+    if self.priority != other.priority: return False
+    if self.buffer_id != other.buffer_id: return False
+    if self.out_port != other.out_port: return False
+    if self.flags != other.flags: return False
+    if self.actions != other.actions: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2074,11 +2074,11 @@ class ofp_port_mod (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.port_no !=  other.port_no: return False
-    if self.hw_addr !=  other.hw_addr: return False
-    if self.config !=  other.config: return False
-    if self.mask !=  other.mask: return False
-    if self.advertise !=  other.advertise: return False
+    if self.port_no != other.port_no: return False
+    if self.hw_addr != other.hw_addr: return False
+    if self.config != other.config: return False
+    if self.mask != other.mask: return False
+    if self.advertise != other.advertise: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2125,7 +2125,7 @@ class ofp_queue_get_config_request (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.port !=  other.port: return False
+    if self.port != other.port: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2174,8 +2174,8 @@ class ofp_queue_get_config_reply (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.port !=  other.port: return False
-    if self.queues !=  other.queues: return False
+    if self.port != other.port: return False
+    if self.queues != other.queues: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2343,9 +2343,9 @@ class ofp_stats_reply (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.type !=  other.type: return False
-    if self.flags !=  other.flags: return False
-    if self.body !=  other.body: return False
+    if self.type != other.type: return False
+    if self.flags != other.flags: return False
+    if self.body != other.body: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2432,11 +2432,11 @@ class ofp_desc_stats (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.mfr_desc !=  other.mfr_desc: return False
-    if self.hw_desc !=  other.hw_desc: return False
-    if self.sw_desc !=  other.sw_desc: return False
-    if self.serial_num !=  other.serial_num: return False
-    if self.dp_desc !=  other.dp_desc: return False
+    if self.mfr_desc != other.mfr_desc: return False
+    if self.hw_desc != other.hw_desc: return False
+    if self.sw_desc != other.sw_desc: return False
+    if self.serial_num != other.serial_num: return False
+    if self.dp_desc != other.dp_desc: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2483,9 +2483,9 @@ class ofp_flow_stats_request (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.match !=  other.match: return False
-    if self.table_id !=  other.table_id: return False
-    if self.out_port !=  other.out_port: return False
+    if self.match != other.match: return False
+    if self.table_id != other.table_id: return False
+    if self.out_port != other.out_port: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2553,18 +2553,18 @@ class ofp_flow_stats (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.length !=  other.length: return False
-    if self.table_id !=  other.table_id: return False
-    if self.match !=  other.match: return False
-    if self.duration_sec !=  other.duration_sec: return False
-    if self.duration_nsec !=  other.duration_nsec: return False
-    if self.priority !=  other.priority: return False
-    if self.idle_timeout !=  other.idle_timeout: return False
-    if self.hard_timeout !=  other.hard_timeout: return False
-    if self.cookie !=  other.cookie: return False
-    if self.packet_count !=  other.packet_count: return False
-    if self.byte_count !=  other.byte_count: return False
-    if self.actions !=  other.actions: return False
+    if self.length != other.length: return False
+    if self.table_id != other.table_id: return False
+    if self.match != other.match: return False
+    if self.duration_sec != other.duration_sec: return False
+    if self.duration_nsec != other.duration_nsec: return False
+    if self.priority != other.priority: return False
+    if self.idle_timeout != other.idle_timeout: return False
+    if self.hard_timeout != other.hard_timeout: return False
+    if self.cookie != other.cookie: return False
+    if self.packet_count != other.packet_count: return False
+    if self.byte_count != other.byte_count: return False
+    if self.actions != other.actions: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2622,9 +2622,9 @@ class ofp_aggregate_stats_request (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.match !=  other.match: return False
-    if self.table_id !=  other.table_id: return False
-    if self.out_port !=  other.out_port: return False
+    if self.match != other.match: return False
+    if self.table_id != other.table_id: return False
+    if self.out_port != other.out_port: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2664,9 +2664,9 @@ class ofp_aggregate_stats (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.packet_count !=  other.packet_count: return False
-    if self.byte_count !=  other.byte_count: return False
-    if self.flow_count !=  other.flow_count: return False
+    if self.packet_count != other.packet_count: return False
+    if self.byte_count != other.byte_count: return False
+    if self.flow_count != other.flow_count: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2721,13 +2721,13 @@ class ofp_table_stats (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.table_id !=  other.table_id: return False
-    if self.name !=  other.name: return False
-    if self.wildcards !=  other.wildcards: return False
-    if self.max_entries !=  other.max_entries: return False
-    if self.active_count !=  other.active_count: return False
-    if self.lookup_count !=  other.lookup_count: return False
-    if self.matched_count !=  other.matched_count: return False
+    if self.table_id != other.table_id: return False
+    if self.name != other.name: return False
+    if self.wildcards != other.wildcards: return False
+    if self.max_entries != other.max_entries: return False
+    if self.active_count != other.active_count: return False
+    if self.lookup_count != other.lookup_count: return False
+    if self.matched_count != other.matched_count: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2768,7 +2768,7 @@ class ofp_port_stats_request (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.port_no !=  other.port_no: return False
+    if self.port_no != other.port_no: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2817,19 +2817,19 @@ class ofp_port_stats (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.port_no !=  other.port_no: return False
-    if self.rx_packets !=  other.rx_packets: return False
-    if self.tx_packets !=  other.tx_packets: return False
-    if self.rx_bytes !=  other.rx_bytes: return False
-    if self.tx_bytes !=  other.tx_bytes: return False
-    if self.rx_dropped !=  other.rx_dropped: return False
-    if self.tx_dropped !=  other.tx_dropped: return False
-    if self.rx_errors !=  other.rx_errors: return False
-    if self.tx_errors !=  other.tx_errors: return False
-    if self.rx_frame_err !=  other.rx_frame_err: return False
-    if self.rx_over_err !=  other.rx_over_err: return False
-    if self.rx_crc_err !=  other.rx_crc_err: return False
-    if self.collisions !=  other.collisions: return False
+    if self.port_no != other.port_no: return False
+    if self.rx_packets != other.rx_packets: return False
+    if self.tx_packets != other.tx_packets: return False
+    if self.rx_bytes != other.rx_bytes: return False
+    if self.tx_bytes != other.tx_bytes: return False
+    if self.rx_dropped != other.rx_dropped: return False
+    if self.tx_dropped != other.tx_dropped: return False
+    if self.rx_errors != other.rx_errors: return False
+    if self.tx_errors != other.tx_errors: return False
+    if self.rx_frame_err != other.rx_frame_err: return False
+    if self.rx_over_err != other.rx_over_err: return False
+    if self.rx_crc_err != other.rx_crc_err: return False
+    if self.collisions != other.collisions: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2897,8 +2897,8 @@ class ofp_queue_stats_request (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.port_no !=  other.port_no: return False
-    if self.queue_id !=  other.queue_id: return False
+    if self.port_no != other.port_no: return False
+    if self.queue_id != other.queue_id: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2940,11 +2940,11 @@ class ofp_queue_stats (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.port_no !=  other.port_no: return False
-    if self.queue_id !=  other.queue_id: return False
-    if self.tx_bytes !=  other.tx_bytes: return False
-    if self.tx_packets !=  other.tx_packets: return False
-    if self.tx_errors !=  other.tx_errors: return False
+    if self.port_no != other.port_no: return False
+    if self.queue_id != other.queue_id: return False
+    if self.tx_bytes != other.tx_bytes: return False
+    if self.tx_packets != other.tx_packets: return False
+    if self.tx_errors != other.tx_errors: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3055,9 +3055,9 @@ class ofp_packet_out (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.buffer_id !=  other.buffer_id: return False
-    if self.in_port !=  other.in_port: return False
-    if self.actions !=  other.actions: return False
+    if self.buffer_id != other.buffer_id: return False
+    if self.in_port != other.in_port: return False
+    if self.actions != other.actions: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3225,10 +3225,10 @@ class ofp_packet_in (ofp_header):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
     if self.buffer_id != other.buffer_id: return False
-    if self._total_len !=  other._total_len: return False
-    if self.in_port !=  other.in_port: return False
-    if self.reason !=  other.reason: return False
-    if self.data !=  other.data: return False
+    if self._total_len != other._total_len: return False
+    if self.in_port != other.in_port: return False
+    if self.reason != other.reason: return False
+    if self.data != other.data: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3299,15 +3299,15 @@ class ofp_flow_removed (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.match !=  other.match: return False
-    if self.cookie !=  other.cookie: return False
-    if self.priority !=  other.priority: return False
-    if self.reason !=  other.reason: return False
-    if self.duration_sec !=  other.duration_sec: return False
-    if self.duration_nsec !=  other.duration_nsec: return False
-    if self.idle_timeout !=  other.idle_timeout: return False
-    if self.packet_count !=  other.packet_count: return False
-    if self.byte_count !=  other.byte_count: return False
+    if self.match != other.match: return False
+    if self.cookie != other.cookie: return False
+    if self.priority != other.priority: return False
+    if self.reason != other.reason: return False
+    if self.duration_sec != other.duration_sec: return False
+    if self.duration_nsec != other.duration_nsec: return False
+    if self.idle_timeout != other.idle_timeout: return False
+    if self.packet_count != other.packet_count: return False
+    if self.byte_count != other.byte_count: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3373,8 +3373,8 @@ class ofp_port_status (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.reason !=  other.reason: return False
-    if self.desc !=  other.desc: return False
+    if self.reason != other.reason: return False
+    if self.desc != other.desc: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3430,9 +3430,9 @@ class ofp_error (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.type !=  other.type: return False
-    if self.code !=  other.code: return False
-    if self.data !=  other.data: return False
+    if self.type != other.type: return False
+    if self.code != other.code: return False
+    if self.data != other.data: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3583,7 +3583,7 @@ class ofp_echo_request (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.body !=  other.body: return False
+    if self.body != other.body: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3627,7 +3627,7 @@ class ofp_echo_reply (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.body !=  other.body: return False
+    if self.body != other.body: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3668,7 +3668,7 @@ class ofp_vendor_header (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.vendor !=  other.vendor: return False
+    if self.vendor != other.vendor: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3718,7 +3718,7 @@ class ofp_vendor (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.vendor !=  other.vendor: return False
+    if self.vendor != other.vendor: return False
     if self.data != other.data: return False
     return True
 
@@ -3836,8 +3836,8 @@ class ofp_get_config_reply (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.flags !=  other.flags: return False
-    if self.miss_send_len !=  other.miss_send_len: return False
+    if self.flags != other.flags: return False
+    if self.miss_send_len != other.miss_send_len: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -3881,8 +3881,8 @@ class ofp_set_config (ofp_header):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.flags !=  other.flags: return False
-    if self.miss_send_len !=  other.miss_send_len: return False
+    if self.flags != other.flags: return False
+    if self.miss_send_len != other.miss_send_len: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
