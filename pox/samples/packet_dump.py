@@ -30,15 +30,33 @@ log = core.getLogger()
 
 _verbose = None
 _max_length = None
-
+_types = None
+_show_by_default = None
 
 def _handle_PacketIn (event):
   packet = event.parsed
 
+  show = _show_by_default
+  p = packet
+  while p:
+    if p.__class__.__name__.lower() in _types:
+      if _show_by_default:
+        # This packet is hidden
+        return
+      else:
+        # This packet should be shown
+        show = True
+        break
+      return
+    if not hasattr(p, 'next'): break
+    p = p.next
+
+  if not show: return
+
   msg = dpidToStr(event.dpid) + ": "
   msg = ""
   if _verbose:
-    msg += str(packet)
+    msg += packet.dump()
   else:
     p = packet
     while p:
@@ -55,10 +73,24 @@ def _handle_PacketIn (event):
   core.getLogger("dump:" + dpidToStr(event.dpid)).debug(msg)
 
 
-def launch (verbose = False, max_length = 110, full_packets = True):
-  global _verbose, _max_length
+def launch (verbose = False, max_length = 110, full_packets = True,
+            hide = '', show = ''):
+  global _verbose, _max_length, _types, _show_by_default
   _verbose = verbose
   _max_length = max_length
+  hide = hide.replace(',', ' ').replace('|', ' ')
+  hide = set([p.lower() for p in hide.split()])
+  show = show.replace(',', ' ').replace('|', ' ')
+  show = set([p.lower() for p in show.split()])
+
+  if hide and show:
+    raise RuntimeError("Can't both show and hide packet types")
+
+  if show:
+    _types = show
+  else:
+    _types = hide
+  _show_by_default = not not hide
 
   if full_packets:
     # Send full packets to controller
