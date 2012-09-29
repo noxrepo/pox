@@ -39,18 +39,16 @@ from pox.lib.util import assert_type
 from pox.lib.util import initHelper
 from pox.lib.util import hexdump
 
-_PAD = b'\x00'
-_PAD2 = _PAD*2
-_PAD3 = _PAD*3
-_PAD4 = _PAD*4
-_PAD6 = _PAD*6
-
 
 EMPTY_ETH = EthAddr(None)
 
-MAX_XID = 0x7fFFffFF
-_nextXID = 1
 #USE_MPLS_MATCH = False
+
+# ----------------------------------------------------------------------
+# XID Management
+# ----------------------------------------------------------------------
+
+MAX_XID = 0x7fFFffFF
 
 def xid_generator (start = 1, stop = MAX_XID):
   return chain.from_iterable(repeat(xrange(start,stop+1))).next
@@ -59,6 +57,62 @@ def user_xid_generator ():
   return xid_generator(0x80000000, 0xffFFffFF)
 
 generate_xid = xid_generator()
+
+# ----------------------------------------------------------------------
+
+
+# ----------------------------------------------------------------------
+# Packing / Unpacking
+# ----------------------------------------------------------------------
+
+_PAD = b'\x00'
+_PAD2 = _PAD*2
+_PAD3 = _PAD*3
+_PAD4 = _PAD*4
+_PAD6 = _PAD*6
+
+class UnderrunError (RuntimeError):
+  """
+  Raised when one tries to unpack more data than is available
+  """
+  pass
+
+def _read (data, offset, length):
+  if (len(data)-offset) < length: raise UnderrunError()
+  return (offset+length, data[offset:offset+length])
+
+def _unpack (data, offset, fmt):
+  size = struct.calcsize(fmt)
+  if (len(data)-offset) < size: raise UnderrunError()
+  return (offset+size, struct.unpack___from(fmt, data, offset))
+
+def _skip (data, offset, num):
+  offset += num
+  if offset > len(data): raise UnderrunError()
+  return offset
+
+def _unpad (data, offset, num):
+  (offset, o) = _read(data, offset, num)
+  assert len(o.replace("\x00", "")) == 0
+  return offset
+
+def _readzs (data, offset, length):
+  (offset, d) = _read(data, offset, length)
+  d = d.split("\x00", 1)
+  assert len(d[1].replace("\x00", "")) == 0
+  #if len(d[1].replace("\x00", "")) > 0:
+  #  raise RuntimeError("Non-zero string padding")
+  return (offset, d[0])
+
+def _readether (data, offset):
+  (offset, d) = _read(data, offset, 6)
+  return (offset, EthAddr(d))
+
+def _readip (data, offset):
+  (offset, d) = _read(data, offset, 4)
+  return (offset, IPAddr(d))
+
+# ----------------------------------------------------------------------
 
 
 def _format_body (body, prefix):
@@ -71,47 +125,75 @@ def _format_body (body, prefix):
 TABLE_ALL = 0xff
 TABLE_EMERGENCY = 0xfe
 
+
+class ofp_base (object):
+  def _assert (self):
+    r = self._validate()
+    if r is not None:
+      raise RuntimeError(r)
+      return False # Never reached
+    return True
+
+  def _validate (self):
+    return None
+
+  def unpack_new (cls, raw, offset=0):
+    o = cls()
+    r = o.unpack(raw, offset)
+    return (r, o)
+
+
+# ----------------------------------------------------------------------
 # Structure definitions
+# ----------------------------------------------------------------------
 
 #1. Openflow Header
-class ofp_header (object):
+class ofp_header (ofp_base):
   def __init__ (self, **kw):
     self.version = OFP_VERSION
-    self.header_type = 0
+    self.header_type = None # Require setting
+    self._xid = None
     self.length = 8
-    self.xid = None
     initHelper(self, kw)
 
-  def _assert (self):
-    if self.header_type not in ofp_type_map:
-      return (False, "type is not a known message type")
-    return (True, None)
+  @property
+  def xid (self):
+    if self._xid is None:
+      self._xid = generate_xid()
+    return self._xid
 
-  def pack (self, assertstruct=True):
-    if self.xid is None:
-      self.xid = generate_xid()
-    if(assertstruct):
-      if(not ofp_header._assert(self)[0]):
-        raise RuntimeError("assertstruct failed")
+  @xid.setter
+  def xid (self, val):
+    self._xid = val
+
+  def _validate (self):
+    if self.header_type not in ofp_type_map:
+      return "type is not a known message type"
+    return None
+
+  def pack (self):
+    assert self._assert()
+
     packed = ""
-    packed += struct.pack("!BBHL", self.version, self.header_type, self.length,
-                          self.xid)
+    packed += struct.pack("!BBHL", self.version, self.header_type,
+        len(self), self.xid)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.version, self.header_type, self.length, self.xid) = struct.unpack_from("!BBHL", binaryString, 0)
+    (self.version, self.header_type, self.length, self.xid) = \
+        struct.unpack_from("!BBHL", binaryString, 0)
     return binaryString[8:]
 
   def __len__ (self):
-    return self.length
+    raise RuntimeError("__len__ unimplemented")
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.version !=  other.version: return False
     if self.header_type !=  other.header_type: return False
-    if self.length !=  other.length: return False
+    if len(self) !=  len(other): return False
     if self.xid !=  other.xid: return False
     return True
 
@@ -122,7 +204,10 @@ class ofp_header (object):
     outstr += prefix + 'version: ' + str(self.version) + '\n'
     outstr += prefix + 'type:    ' + str(self.header_type)# + '\n'
     outstr += " (" + ofp_type_map.get(self.header_type, "Unknown") + ")\n"
-    outstr += prefix + 'length:  ' + str(self.length) + '\n'
+    try:
+      outstr += prefix + 'length:  ' + str(len(self)) + '\n'
+    except:
+      pass
     outstr += prefix + 'xid:     ' + str(self.xid) + '\n'
     return outstr
   
@@ -131,7 +216,7 @@ class ofp_header (object):
 
 #2. Common Structures
 ##2.1 Port Structures
-class ofp_phy_port (object):
+class ofp_phy_port (ofp_base):
   def __init__ (self, **kw):
     self.port_no = 0
     self.hw_addr = EMPTY_ETH
@@ -147,21 +232,21 @@ class ofp_phy_port (object):
   def __str__ (self):
     return "%s:%i" % (self.name, self.port_no)
 
-  def _assert (self):
-    if not isinstance(self.hw_addr, bytes) and not isinstance(self.hw_addr, EthAddr):
-      return (False, "hw_addr is not bytes or EthAddr")
-    if(len(self.hw_addr) != 6):
-      return (False, "hw_addr is not of size 6")
-    if(not isinstance(self.name, str)):
-      return (False, "name is not string")
-    if(len(self.name) > 16):
-      return (False, "name is not of size 16")
-    return (True, None)
+  def _validate (self):
+    if (not isinstance(self.hw_addr, bytes)
+        and not isinstance(self.hw_addr, EthAddr)):
+      return "hw_addr is not bytes or EthAddr"
+    if len(self.hw_addr) != 6:
+      return "hw_addr is not of size 6"
+    if not isinstance(self.name, str):
+      return "name is not string"
+    if len(self.name) > 16:
+      return "name is not of size 16"
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+  def pack (self):
+    assert self._assert()
+
     packed = ""
     packed += struct.pack("!H", self.port_no)
     packed += self.hw_addr if isinstance(self.hw_addr, bytes) else self.hw_addr.toRaw()
@@ -261,7 +346,7 @@ ofp_port_features_rev_map = {
 }
 
 ##2.2 Queue Structures
-class ofp_packet_queue (object):
+class ofp_packet_queue (ofp_base):
   def __init__ (self, **kw):
     self.queue_id = 0
     self.length = 0
@@ -269,18 +354,14 @@ class ofp_packet_queue (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!LH", self.queue_id, self.length)
     packed += _PAD2 # Pad
     for i in self.properties:
-      packed += i.pack(assertstruct)
+      packed += i.pack()
     return packed
 
   def unpack (self, binaryString):
@@ -318,20 +399,16 @@ ofp_queue_properties_rev_map = {
 }
 OFPQT_NONE         = 0
 
-class ofp_queue_prop_header (object):
+class ofp_queue_prop_header (ofp_base):
   def __init__ (self, **kw):
     self.property = 0
     self.length = 8
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!HH", self.property, self.length)
     packed += _PAD4 # Pad
@@ -360,22 +437,16 @@ class ofp_queue_prop_header (object):
     outstr += prefix + 'len: ' + str(self.length) + '\n'
     return outstr
 
-class ofp_queue_prop_min_rate (object):
+class ofp_queue_prop_min_rate (ofp_base):
   def __init__ (self, **kw):
     self.prop_header = ofp_queue_prop_header()
     self.rate = 0
 
     initHelper(self, kw)
 
-  def _assert (self):
-    if(not isinstance(self.prop_header, ofp_queue_prop_header)):
-      return (False, "prop_header is not class ofp_queue_prop_header")
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += self.prop_header.pack()
     packed += struct.pack("!H", self.rate)
@@ -408,7 +479,7 @@ class ofp_queue_prop_min_rate (object):
     return outstr
 
 ##2.3 Flow Match Structures
-class ofp_match (object):
+class ofp_match (ofp_base):
   adjust_wildcards = True # Set to true to "fix" outgoing wildcards
 
   @classmethod
@@ -617,21 +688,12 @@ class ofp_match (object):
       return self.__dict__['_' + name]
     raise AttributeError("attribute not found: "+name)
 
-  def _assert (self):
-    #if not isinstance(self._dl_src, list):
-    #  return "self.dl_src is not list"
-    #if len(self._dl_src) != 6:
-    #  return "self.dl_src is not of size 6"
-    #if not isinstance(self._dl_dst, list):
-    #  return "self.dl_dst is not list"
-    if len(self._dl_dst) != 6:
-      return "self.dl_dst is not of size 6"
+  def _validate (self):
+    # TODO
     return None
 
-  def pack (self, assertstruct=True, flow_mod=False):
-    if(assertstruct):
-      if self._assert() is not None:
-        raise RuntimeError(self._assert())
+  def pack (self, flow_mod=False):
+    assert self._assert()
 
     packed = ""
     if self.adjust_wildcards and flow_mod:
@@ -952,7 +1014,7 @@ ofp_action_type_rev_map = {
   'OFPAT_VENDOR'       : 65535,
 }
 
-class ofp_action_header (object):
+class ofp_action_header (ofp_base):
   def __init__ (self, **kw):
     self.type = None # Purposely bad
     self.length = 8
@@ -960,13 +1022,9 @@ class ofp_action_header (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!HH", self.type, self.length)
     packed += _PAD4 # Pad
@@ -997,7 +1055,7 @@ class ofp_action_header (object):
     outstr += prefix + 'len: ' + str(self.length) + '\n'
     return outstr
 
-class ofp_action_output (object):
+class ofp_action_output (ofp_base):
   def __init__ (self, **kw):
     self.type = OFPAT_OUTPUT
     self.length = 8
@@ -1006,15 +1064,12 @@ class ofp_action_output (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
-
-  def pack (self, assertstruct=True):
+  def pack (self):
     if self.port != OFPP_CONTROLLER:
       self.max_len = 0
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+
+    assert self._assert()
+
     packed = ""
     packed += struct.pack("!HHHH", self.type, self.length, self.port, self.max_len)
     return packed
@@ -1046,7 +1101,7 @@ class ofp_action_output (object):
     outstr += prefix + 'max_len: ' + str(self.max_len) + '\n'
     return outstr
 
-class ofp_action_enqueue (object):
+class ofp_action_enqueue (ofp_base):
   def __init__ (self, **kw):
     self.type = OFPAT_ENQUEUE
     self.length = 16
@@ -1055,13 +1110,9 @@ class ofp_action_enqueue (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!HHH", self.type, self.length, self.port)
     packed += _PAD6 # Pad
@@ -1096,7 +1147,7 @@ class ofp_action_enqueue (object):
     outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
     return outstr
 
-class ofp_action_push_mpls (object):
+class ofp_action_push_mpls (ofp_base):
   """ For now a push mpls action, but we can use this for
     push vlan too some day"""
   unicast_mpls_ethertype = 0x8847
@@ -1108,18 +1159,17 @@ class ofp_action_push_mpls (object):
 
     initHelper(self, kw)
   
-  def _assert(self):
-    return ((self.ethertype == ofp_action_push_mpls.unicast_mpls_ethertype or 
-            self.ethertype == ofp_action_push_mpls.multicast_mpls_ethertype), 
-            None)
+  def _validate (self):
+    if self.ethertype not in (self.unicast_mpls_ethertype,
+        self.multicast_mpls_ethertype):
+      return "Bad ethertype"
   
-  def pack (self, assertstruct = True):
-    if (assertstruct):
-      if not (self._assert()[0]):
-        return None
-      packed = ""
-      packed += struct.pack("!HHHxx", self.type, self.length, self.ethertype)
-      return packed
+  def pack (self):
+    assert self._assert()
+
+    packed = ""
+    packed += struct.pack("!HHHxx", self.type, self.length, self.ethertype)
+    return packed
   
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
@@ -1147,7 +1197,7 @@ class ofp_action_push_mpls (object):
     outstr += prefix + 'ethertype: ' + str(self.ethertype) + '\n'
     return outstr
 
-class ofp_action_mpls_label (object):
+class ofp_action_mpls_label (ofp_base):
   def __init__ (self, **kw):
     self.type = OFPAT_SET_MPLS_LABEL
     self.length = 8
@@ -1155,16 +1205,12 @@ class ofp_action_mpls_label (object):
 
     initHelper(self, kw)
   
-  def _assert(self):
-    return (True, None)
-  
-  def pack (self, assertstruct = True):
-    if (assertstruct):
-      if not (self._assert()[0]):
-        return None
-      packed = ""
-      packed += struct.pack("!HHI", self.type, self.length, self.mpls_label)
-      return packed
+  def pack (self):
+    assert self._assert()
+
+    packed = ""
+    packed += struct.pack("!HHI", self.type, self.length, self.mpls_label)
+    return packed
   
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
@@ -1192,7 +1238,7 @@ class ofp_action_mpls_label (object):
     outstr += prefix + 'label: ' + str(self.mpls_label) + '\n'
     return outstr
 
-class ofp_action_mpls_tc (object):
+class ofp_action_mpls_tc (ofp_base):
   def __init__ (self, **kw):
     self.type = OFPAT_SET_MPLS_TC
     self.length = 8
@@ -1200,16 +1246,12 @@ class ofp_action_mpls_tc (object):
 
     initHelper(self, kw)
   
-  def _assert(self):
-    return (True, None)
-  
-  def pack (self, assertstruct = True):
-    if (assertstruct):
-      if not (self._assert()[0]):
-        return None
-      packed = ""
-      packed += struct.pack("!HHBxxx", self.type, self.length, self.mpls_tc)
-      return packed
+  def pack (self):
+    assert self._assert()
+
+    packed = ""
+    packed += struct.pack("!HHBxxx", self.type, self.length, self.mpls_tc)
+    return packed
   
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
@@ -1237,7 +1279,7 @@ class ofp_action_mpls_tc (object):
     outstr += prefix + 'tc: ' + str(self.mpls_tc) + '\n'
     return outstr
 
-class ofp_action_mpls_ttl (object):
+class ofp_action_mpls_ttl (ofp_base):
   def __init__ (self, **kw):
     self.type = OFPAT_SET_MPLS_TTL
     self.length = 8
@@ -1245,16 +1287,12 @@ class ofp_action_mpls_ttl (object):
 
     initHelper(self, kw)
   
-  def _assert(self):
-    return (True, None)
-  
-  def pack (self, assertstruct = True):
-    if (assertstruct):
-      if not (self._assert()[0]):
-        return None
-      packed = ""
-      packed += struct.pack("!HHBxxx", self.type, self.length, self.mpls_ttl)
-      return packed
+  def pack (self):
+    assert self._assert()
+
+    packed = ""
+    packed += struct.pack("!HHBxxx", self.type, self.length, self.mpls_ttl)
+    return packed
   
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
@@ -1292,7 +1330,7 @@ class ofp_action_resubmit (ofp_action_header):
     super(ofp_action_resubmit, self).__init__(**kw)
     self.type = OFPAT_RESUBMIT
 
-class ofp_action_pop_mpls (object):
+class ofp_action_pop_mpls (ofp_base):
   def __init__ (self, **kw):
     self.type = OFPAT_POP_MPLS
     self.length = 8
@@ -1300,16 +1338,12 @@ class ofp_action_pop_mpls (object):
 
     initHelper(self, kw)
   
-  def _assert(self):
-    return (True, None)
-  
-  def pack (self, assertstruct = True):
-    if (assertstruct):
-      if not (self._assert()[0]):
-        return None
-      packed = ""
-      packed += struct.pack("!HHHxx", self.type, self.length, self.ethertype)
-      return packed
+  def pack (self):
+    assert self._assert()
+
+    packed = ""
+    packed += struct.pack("!HHHxx", self.type, self.length, self.ethertype)
+    return packed
   
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
@@ -1337,12 +1371,12 @@ class ofp_action_pop_mpls (object):
     outstr += prefix + 'ethertype: ' + str(self.ethertype) + '\n'
     return outstr
 
-class ofp_action_strip_vlan (object):
+class ofp_action_strip_vlan (ofp_base):
   def __init__ (self):
     self.type = OFPAT_STRIP_VLAN
     self.length = 8
 
-  def pack (self, assertstruct=True):
+  def pack (self):
     packed = struct.pack("!HHi", self.type, self.length, 0)
     return packed
 
@@ -1369,7 +1403,7 @@ class ofp_action_strip_vlan (object):
     outstr += prefix + 'len: ' + str(self.length) + '\n'
     return outstr
 
-class ofp_action_vlan_vid (object):
+class ofp_action_vlan_vid (ofp_base):
   def __init__ (self, **kw):
     self.type = OFPAT_SET_VLAN_VID
     self.length = 8
@@ -1377,13 +1411,9 @@ class ofp_action_vlan_vid (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!HHH", self.type, self.length, self.vlan_vid)
     packed += _PAD2 # Pad
@@ -1414,7 +1444,7 @@ class ofp_action_vlan_vid (object):
     outstr += prefix + 'vlan_vid: ' + str(self.vlan_vid) + '\n'
     return outstr
 
-class ofp_action_vlan_pcp (object):
+class ofp_action_vlan_pcp (ofp_base):
   def __init__ (self, **kw):
     self.type = OFPAT_SET_VLAN_PCP
     self.length = 8
@@ -1422,13 +1452,9 @@ class ofp_action_vlan_pcp (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!HHB", self.type, self.length, self.vlan_pcp)
     packed += _PAD3 # Pad
@@ -1459,7 +1485,7 @@ class ofp_action_vlan_pcp (object):
     outstr += prefix + 'vlan_pcp: ' + str(self.vlan_pcp) + '\n'
     return outstr
 
-class ofp_action_dl_addr (object):
+class ofp_action_dl_addr (ofp_base):
   @classmethod
   def set_dst (cls, dl_addr = None):
     return cls(OFPAT_SET_DL_DST, dl_addr)
@@ -1478,17 +1504,16 @@ class ofp_action_dl_addr (object):
     if dl_addr is not None:
       self.dl_addr = EthAddr(dl_addr)
 
-  def _assert (self):
+  def _validate (self):
     if not isinstance(self.dl_addr, EthAddr) and not isinstance(self.dl_addr, bytes):
-      return (False, "dl_addr is not string or EthAddr")
+      return "dl_addr is not string or EthAddr"
     if isinstance(self.dl_addr, bytes) and len(self.dl_addr) != 6:
-      return (False, "dl_addr is not of size 6")
-    return (True, None)
+      return "dl_addr is not of size 6"
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+  def pack (self):
+    assert self._assert()
+
     packed = ""
     packed += struct.pack("!HH", self.type, self.length)
     if isinstance(self.dl_addr, EthAddr):
@@ -1524,7 +1549,7 @@ class ofp_action_dl_addr (object):
     outstr += prefix + 'dl_addr: ' + str(self.dl_addr) + '\n'
     return outstr
 
-class ofp_action_nw_addr (object):
+class ofp_action_nw_addr (ofp_base):
   @classmethod
   def set_dst (cls, nw_addr = None):
     return cls(OFPAT_SET_NW_DST, nw_addr)
@@ -1544,13 +1569,9 @@ class ofp_action_nw_addr (object):
     else:
       self.nw_addr = IPAddr(0)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!HHl", self.type, self.length, self.nw_addr.toSigned())
     return packed
@@ -1581,19 +1602,15 @@ class ofp_action_nw_addr (object):
     outstr += prefix + 'nw_addr: ' + str(self.nw_addr) + '\n'
     return outstr
 
-class ofp_action_nw_tos (object):
+class ofp_action_nw_tos (ofp_base):
   def __init__ (self, nw_tos = 0):
     self.type = OFPAT_SET_NW_TOS
     self.length = 8
     self.nw_tos = nw_tos
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!HHB", self.type, self.length, self.nw_tos)
     packed += _PAD3
@@ -1624,7 +1641,7 @@ class ofp_action_nw_tos (object):
     outstr += prefix + 'nw_tos: ' + str(self.nw_tos) + '\n'
     return outstr
 
-class ofp_action_tp_port (object):
+class ofp_action_tp_port (ofp_base):
   @classmethod
   def set_dst (cls, tp_port = None):
     return cls(OFPAT_SET_TP_DST, tp_port)
@@ -1640,13 +1657,9 @@ class ofp_action_tp_port (object):
     self.length = 8
     self.tp_port = tp_port
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!HHH", self.type, self.length, self.tp_port)
     packed += _PAD2
@@ -1677,7 +1690,7 @@ class ofp_action_tp_port (object):
     outstr += prefix + 'tp_port: ' + str(self.tp_port) + '\n'
     return outstr
 
-class ofp_action_vendor_header (object):
+class ofp_action_vendor_header (ofp_base):
   def __init__ (self, **kw):
     self.type = OFPAT_VENDOR
     self.length = 8
@@ -1685,13 +1698,9 @@ class ofp_action_vendor_header (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!HHL", self.type, self.length, self.vendor)
     return packed
@@ -1740,20 +1749,16 @@ class ofp_features_reply (ofp_header):
     self.header_type = OFPT_FEATURES_REPLY
     self.length = len(self)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!QLB", self.datapath_id, self.n_buffers, self.n_tables)
     packed += _PAD3
     packed += struct.pack("!LL", self.capabilities, self.actions)
     for i in self.ports:
-      packed += i.pack(assertstruct)
+      packed += i.pack()
     return packed
 
   def unpack (self, binaryString):
@@ -1827,13 +1832,9 @@ class ofp_switch_config (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.flags, self.miss_send_len)
@@ -1907,12 +1908,12 @@ class ofp_flow_mod (ofp_header):
     if not hasattr(self.actions, '__getitem__'):
       self.actions = [self.actions]
 
-  def _assert (self):
-    if(not isinstance(self.match, ofp_match)):
-      return (False, "match is not class ofp_match")
-    return (True, None)
+  def _validate (self):
+    if not isinstance(self.match, ofp_match):
+      return "match is not class ofp_match"
+    return None
 
-  def pack (self, assertstruct=True):
+  def pack (self):
     """
     Packs this object into its wire format.
     May normalize fields.
@@ -1920,10 +1921,6 @@ class ofp_flow_mod (ofp_header):
           *more than just a single ofp_flow_mod* in packed form.
           Specifically, it may also have a barrier and an ofp_packet_out.
     """
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
-
     po = None
     if self.data:
       #TODO: It'd be nice to log and then ignore it if not data_is_complete.
@@ -1939,13 +1936,14 @@ class ofp_flow_mod (ofp_header):
         # Should maybe check that packet hits the new entry...
         # Or just duplicate the actions?
 
+    assert self._assert()
     packed = ""
     self.length = len(self)
     packed += ofp_header.pack(self)
     packed += self.match.pack(flow_mod=True)
     packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self.buffer_id & 0xffffffff, self.out_port, self.flags)
     for i in self.actions:
-      packed += i.pack(assertstruct)
+      packed += i.pack()
 
     if po:
       packet += ofp_barrier_request().pack()
@@ -2033,17 +2031,16 @@ class ofp_port_mod (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
+  def _validate (self):
     if not isinstance(self.hw_addr, bytes) and not isinstance(self.hw_addr, EthAddr):
-      return (False, "hw_addr is not bytes or EthAddr")
+      return "hw_addr is not bytes or EthAddr"
     if len(self.hw_addr) != 6:
-      return (False, "hw_addr is not of size 6")
-    return (True, None)
+      return "hw_addr is not of size 6"
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+  def pack (self):
+    assert self._assert()
+
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port_no)
@@ -2099,13 +2096,9 @@ class ofp_queue_get_config_request (ofp_header):
     self.length = 12
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port)
@@ -2147,19 +2140,15 @@ class ofp_queue_get_config_reply (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port)
     packed += _PAD6
     for i in self.queues:
-      packed += i.pack(assertstruct)
+      packed += i.pack()
     return packed
 
   def unpack (self, binaryString):
@@ -2206,18 +2195,15 @@ class ofp_stats_request (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
-
-  def pack (self, assertstruct=True):
+  def pack (self):
     self.length = len(self)
     if self.type is None:
       self.type = _get_type(self.body)
       if self.type is None:
         self.type = OFPST_DESC # Maybe shouldn't assume this?
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+
+    assert self._assert()
+
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.flags)
@@ -2275,9 +2261,6 @@ class ofp_stats_reply (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
-
   @property
   def is_last_reply (self):
     return (self.flags & 1) == 0
@@ -2302,14 +2285,14 @@ class ofp_stats_reply (ofp_header):
       self._body_data = (self.body, data)
     return self._body_data[1]
 
-  def pack (self, assertstruct=True):
+  def pack (self):
     if self.type == None:
       self.type = _get_type(self.body)
 
     self.length = len(self)
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+
+    assert self._assert()
+
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.flags)
@@ -2383,7 +2366,7 @@ ofp_stats_reply_flags_rev_map = {
   'OFPSF_REPLY_MORE' : 1,
 }
 
-class ofp_desc_stats (object):
+class ofp_desc_stats (ofp_base):
   def __init__ (self, **kw):
     self.mfr_desc= ""
     self.hw_desc= ""
@@ -2393,33 +2376,32 @@ class ofp_desc_stats (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    if(not isinstance(self.mfr_desc, str)):
-      return (False, "mfr_desc is not string")
-    if(len(self.mfr_desc) > 256):
-      return (False, "mfr_desc is not of size 256")
-    if(not isinstance(self.hw_desc, str)):
-      return (False, "hw_desc is not string")
-    if(len(self.hw_desc) > 256):
-      return (False, "hw_desc is not of size 256")
-    if(not isinstance(self.sw_desc, str)):
-      return (False, "sw_desc is not string")
-    if(len(self.sw_desc) > 256):
-      return (False, "sw_desc is not of size 256")
-    if(not isinstance(self.serial_num, str)):
-      return (False, "serial_num is not string")
-    if(len(self.serial_num) > 32):
-      return (False, "serial_num is not of size 32")
-    if(not isinstance(self.dp_desc, str)):
-      return (False, "dp_desc is not string")
-    if(len(self.dp_desc) > 256):
-      return (False, "dp_desc is not of size 256")
-    return (True, None)
+  def _validate (self):
+    if not isinstance(self.mfr_desc, str):
+      return "mfr_desc is not string"
+    if len(self.mfr_desc) > 256:
+      return "mfr_desc is not of size 256"
+    if not isinstance(self.hw_desc, str):
+      return "hw_desc is not string"
+    if len(self.hw_desc) > 256:
+      return "hw_desc is not of size 256"
+    if not isinstance(self.sw_desc, str):
+      return "sw_desc is not string"
+    if len(self.sw_desc) > 256:
+      return "sw_desc is not of size 256"
+    if not isinstance(self.serial_num, str):
+      return "serial_num is not string"
+    if len(self.serial_num) > 32:
+      return "serial_num is not of size 32"
+    if not isinstance(self.dp_desc, str):
+      return "dp_desc is not string"
+    if len(self.dp_desc) > 256:
+      return "dp_desc is not of size 256"
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+  def pack (self):
+    assert self._assert()
+
     packed = ""
     packed += self.mfr_desc.ljust(256,'\0')
     packed += self.hw_desc.ljust(256,'\0')
@@ -2462,22 +2444,21 @@ class ofp_desc_stats (object):
     return outstr
 ofp_desc_stats_reply = ofp_desc_stats
 
-class ofp_flow_stats_request (object):
+class ofp_flow_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.match = ofp_match()
     self.table_id = TABLE_ALL
     self.out_port = OFPP_NONE
     initHelper(self, kw)
 
-  def _assert (self):
-    if(not isinstance(self.match, ofp_match)):
-      return (False, "match is not class ofp_match")
-    return (True, None)
+  def _validate (self):
+    if not isinstance(self.match, ofp_match):
+      return "match is not class ofp_match"
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+  def pack (self):
+    assert self._assert()
+
     packed = ""
     packed += self.match.pack()
     packed += struct.pack("!BBH", self.table_id, 0, self.out_port)
@@ -2510,7 +2491,7 @@ class ofp_flow_stats_request (object):
     outstr += prefix + 'out_port: ' + str(self.out_port) + '\n'
     return outstr
 
-class ofp_flow_stats (object):
+class ofp_flow_stats (ofp_base):
   def __init__ (self, **kw):
     self.length = 0
     self.table_id = 0
@@ -2527,15 +2508,14 @@ class ofp_flow_stats (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    if(not isinstance(self.match, ofp_match)):
-      return (False, "match is not class ofp_match")
-    return (True, None)
+  def _validate (self):
+    if not isinstance(self.match, ofp_match):
+      return "match is not class ofp_match"
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+  def pack (self):
+    assert self._assert()
+
     packed = ""
     packed += struct.pack("!HBB", self.length, self.table_id, 0)
     packed += self.match.pack()
@@ -2543,7 +2523,7 @@ class ofp_flow_stats (object):
     packed += _PAD6 # Pad
     packed += struct.pack("!QQQ", self.cookie, self.packet_count, self.byte_count)
     for i in self.actions:
-      packed += i.pack(assertstruct)
+      packed += i.pack()
     return packed
 
   def unpack (self, binaryString):
@@ -2602,7 +2582,7 @@ class ofp_flow_stats (object):
     return outstr
 ofp_flow_stats_reply = ofp_flow_stats
 
-class ofp_aggregate_stats_request (object):
+class ofp_aggregate_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.match = ofp_match()
     self.table_id = TABLE_ALL
@@ -2610,15 +2590,14 @@ class ofp_aggregate_stats_request (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    if(not isinstance(self.match, ofp_match)):
-      return (False, "match is not class ofp_match")
-    return (True, None)
+  def _validate (self):
+    if not isinstance(self.match, ofp_match):
+      return "match is not class ofp_match"
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+  def pack (self):
+    assert self._assert()
+
     packed = ""
     packed += self.match.pack()
     packed += struct.pack("!BBH", self.table_id, 0, self.out_port)
@@ -2651,7 +2630,7 @@ class ofp_aggregate_stats_request (object):
     outstr += prefix + 'out_port: ' + str(self.out_port) + '\n'
     return outstr
 
-class ofp_aggregate_stats (object):
+class ofp_aggregate_stats (ofp_base):
   def __init__ (self, **kw):
     self.packet_count = 0
     self.byte_count = 0
@@ -2659,13 +2638,9 @@ class ofp_aggregate_stats (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!QQL", self.packet_count, self.byte_count, self.flow_count)
     packed += _PAD4 # Pad
@@ -2697,7 +2672,7 @@ class ofp_aggregate_stats (object):
     return outstr
 ofp_aggregate_stats_reply = ofp_aggregate_stats
 
-class ofp_table_stats (object):
+class ofp_table_stats (ofp_base):
   def __init__ (self, **kw):
     self.table_id = 0
     self.name= ""
@@ -2709,17 +2684,16 @@ class ofp_table_stats (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    if(not isinstance(self.name, str)):
-      return (False, "name is not string")
-    if(len(self.name) > 32):
-      return (False, "name is not of size 32")
-    return (True, None)
+  def _validate (self):
+    if not isinstance(self.name, str):
+      return "name is not string"
+    if len(self.name) > 32:
+      return "name is not of size 32"
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+  def pack (self):
+    assert self._assert()
+
     packed = ""
     packed += struct.pack("!B", self.table_id)
     packed += _PAD3
@@ -2763,18 +2737,14 @@ class ofp_table_stats (object):
     return outstr
 ofp_table_stats_reply = ofp_table_stats
 
-class ofp_port_stats_request (object):
+class ofp_port_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.port_no = OFPP_NONE
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!H", self.port_no)
     packed += _PAD6
@@ -2801,7 +2771,7 @@ class ofp_port_stats_request (object):
     outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
     return outstr
 
-class ofp_port_stats (object):
+class ofp_port_stats (ofp_base):
   def __init__ (self, **kw):
     self.port_no = 0
     self.rx_packets = 0
@@ -2819,13 +2789,9 @@ class ofp_port_stats (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!H", self.port_no)
     packed += _PAD6
@@ -2896,20 +2862,16 @@ class ofp_port_stats (object):
     return outstr
 ofp_port_stats_reply = ofp_port_stats
 
-class ofp_queue_stats_request (object):
+class ofp_queue_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.port_no = 0
     self.queue_id = 0
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!H", self.port_no)
     packed += _PAD2
@@ -2940,7 +2902,7 @@ class ofp_queue_stats_request (object):
     outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
     return outstr
 
-class ofp_queue_stats (object):
+class ofp_queue_stats (ofp_base):
   def __init__ (self, **kw):
     self.port_no = 0
     self.queue_id = 0
@@ -2950,13 +2912,9 @@ class ofp_queue_stats (object):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += struct.pack("!H", self.port_no)
     packed += _PAD2
@@ -3005,7 +2963,7 @@ class ofp_packet_out (ofp_header):
     self.actions = []
     self._data = b''
 
-    # ofp_flow_mod and ofp_packet_out do some special handling of 'actions'...
+    # ofp_flow_mod & ofp_packet_out do some special handling of 'actions'
 
     # Allow "action" as a synonym for "actions"
     if 'action' in kw and 'actions' not in kw:
@@ -3031,7 +2989,7 @@ class ofp_packet_out (ofp_header):
       self._data = b''
       self.buffer_id = data.buffer_id
       if self.buffer_id in (-1, None):
-        #TODO: It'd be nice to log and then ignore it if not data_is_complete.
+        #TODO: It'd be nice to log and then ignore if not data_is_complete.
         #      Unfortunately, we currently have no logging in here, so we
         #      assert instead which is a either too drastic or too quiet.
         assert data.is_complete
@@ -3041,17 +2999,15 @@ class ofp_packet_out (ofp_header):
       self._data = data
     assert assert_type("data", self._data, (bytes,))
 
-  def _assert (self):
-    if self.buffer_id != -1 and self.data != '':
+  def _validate (self):
+    if self.buffer_id != -1 and self.data != b'':
       return "can not have both buffer_id and data set"
-    return True
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if self._assert() is not True:
-        raise RuntimeError(self._assert())
+  def pack (self):
+    assert self._assert()
 
-    actions = b''.join((i.pack(assertstruct) for i in self.actions))
+    actions = b''.join((i.pack() for i in self.actions))
     actions_len = len(actions)
 
     self.length = 16 + actions_len
@@ -3114,13 +3070,9 @@ class ofp_barrier_reply (ofp_header):
     self.header_type = OFPT_BARRIER_REPLY
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        raise RuntimeError("assertstruct failed")
     packed = ""
     packed += ofp_header.pack(self)
     return packed
@@ -3154,13 +3106,9 @@ class ofp_barrier_request (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     return packed
@@ -3215,16 +3163,9 @@ class ofp_packet_in (ofp_header):
     else:
       self._data = data
 
-  def _assert (self):
-    if not isinstance(self.data, str):
-      return (False,
-          "ofp_packet_in: data should be raw byte string, not %s" % str(type(self.data)))
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        raise AssertionError(self._assert()[1])
     packed = ""
     # need to update the self.length field for ofp_header.pack to put the correct value in the packed
     # array. this sucks.
@@ -3304,15 +3245,14 @@ class ofp_flow_removed (ofp_header):
     self.length = len(self)
     initHelper(self, kw)
 
-  def _assert (self):
-    if(not isinstance(self.match, ofp_match)):
-      return (False, "match is not class ofp_match")
-    return (True, None)
+  def _validate (self):
+    if not isinstance(self.match, ofp_match):
+      return "match is not class ofp_match"
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+  def pack (self):
+    assert self._assert()
+
     packed = ""
     packed += ofp_header.pack(self)
     packed += self.match.pack()
@@ -3384,15 +3324,14 @@ class ofp_port_status (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    if(not isinstance(self.desc, ofp_phy_port)):
-      return (False, "desc is not class ofp_phy_port")
-    return (True, None)
+  def _validate (self):
+    if not isinstance(self.desc, ofp_phy_port):
+      return "desc is not class ofp_phy_port"
+    return None
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
+  def pack (self):
+    assert self._assert()
+
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!B", self.reason)
@@ -3445,13 +3384,9 @@ class ofp_error (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     self.length = len(self)
     packed = ""
     packed += ofp_header.pack(self)
@@ -3567,13 +3502,9 @@ class ofp_hello (ofp_header):
     self.length = len(self)
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     return packed
@@ -3607,13 +3538,9 @@ class ofp_echo_request (ofp_header):
     self.body = b''
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = b""
     packed += ofp_header.pack(self)
     packed += self.body
@@ -3655,13 +3582,9 @@ class ofp_echo_reply (ofp_header):
     self.body = b''
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = b""
     packed += ofp_header.pack(self)
     packed += self.body
@@ -3704,13 +3627,9 @@ class ofp_vendor_header (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!L", self.vendor)
@@ -3750,13 +3669,9 @@ class ofp_vendor (ofp_header):
     self.length = 12
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     self.length = 12 + len(self.data)
     packed = ""
     packed += ofp_header.pack(self)
@@ -3805,13 +3720,9 @@ class ofp_features_request (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     return packed
@@ -3845,13 +3756,9 @@ class ofp_get_config_request (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     return packed
@@ -3888,13 +3795,9 @@ class ofp_get_config_reply (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.flags, self.miss_send_len)
@@ -3937,13 +3840,9 @@ class ofp_set_config (ofp_header):
 
     initHelper(self, kw)
 
-  def _assert (self):
-    return (True, None)
+  def pack (self):
+    assert self._assert()
 
-  def pack (self, assertstruct=True):
-    if(assertstruct):
-      if(not self._assert()[0]):
-        return None
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.flags, self.miss_send_len)

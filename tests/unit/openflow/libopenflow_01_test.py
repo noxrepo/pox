@@ -184,7 +184,11 @@ class ofp_command_test(unittest.TestCase):
   def test_header_pack_unpack(self):
     for kw in ( { "header_type": OFPT_PACKET_OUT, "xid": 1 },
                 { "header_type": OFPT_FLOW_MOD, "xid": 2 }):
-      o = ofp_header(**kw)
+      # Can't directly pack a header, since it has no length...
+      class H (ofp_header):
+        def __len__ (self):
+          return 8
+      o = H(**kw)
       self._test_pack_unpack(o, kw["xid"], kw["header_type"])
 
   def test_pack_all_comands_simple(self):
@@ -234,7 +238,7 @@ class ofp_command_test(unittest.TestCase):
 
     for actions in self.some_actions:
       for attrs in ( { 'data': packet }, { 'buffer_id': 5 } ):
-        xid = xid_gen.next()
+        xid = xid_gen()
         o = ofp_packet_out(xid=xid, actions=actions, **attrs)
         self._test_pack_unpack(o, xid, OFPT_PACKET_OUT)
 
@@ -280,7 +284,7 @@ class ofp_command_test(unittest.TestCase):
       for actions in self.some_actions:
         for command in ( OFPFC_ADD, OFPFC_DELETE, OFPFC_DELETE_STRICT, OFPFC_MODIFY_STRICT, OFPFC_MODIFY_STRICT ):
           for attrs in ( {}, { 'buffer_id' : 123 }, { 'idle_timeout': 5, 'hard_timeout': 10 } ):
-            xid = xid_gen.next()
+            xid = xid_gen()
             o = ofp_flow_mod(xid=xid, command=command, match = match, actions=actions, **attrs)
             unpacked = self._test_pack_unpack(o, xid, OFPT_FLOW_MOD)
 
