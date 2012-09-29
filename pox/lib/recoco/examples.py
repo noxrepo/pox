@@ -1,3 +1,4 @@
+# Copyright 2011 Colin Scott
 # Copyright 2011 James McCauley
 #
 # This file is part of POX.
@@ -18,9 +19,6 @@
 """
 These are example uses of the recoco cooperative threading library. Hopefully
 they will save time for developers getting used to the POX environment.
-
-I can't seem to find any documentation on recoco on the web. Maybe
-Murphy rolled recoco himself?
 """
 
 from pox.core import core
