@@ -386,7 +386,7 @@ class SoftwareSwitch(EventMixin):
   def _process_actions_for_packet_from_buffer(self, actions, buffer_id):
     """ output and release a packet from the buffer """
     buffer_id = buffer_id - 1
-    if(buffer_id > len(self.packet_buffer) or self.packet_buffer[buffer_id] == None):
+    if(buffer_id > len(self.packet_buffer) or buffer_id not in self.packet_buffer):
       self.log.warn("Invalid output buffer id: %x" % buffer_id)
       return
     (packet, in_port) = self.packet_buffer[buffer_id]
