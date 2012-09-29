@@ -126,7 +126,7 @@ class NXSoftwareSwitch(SoftwareSwitch):
           reply = of.ofp_vendor(vendor = nx.VENDOR_ID, data = nx.role_reply_data(role = data.role))
           self.send(reply)
           return
-      except NotImplemented:
+      except NotImplementedError:
         self.send_error(connection)
     else:
       return SoftwareSwitch._receive_vendor(self, vendor)
