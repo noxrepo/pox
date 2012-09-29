@@ -9,6 +9,7 @@ old.*
 *.diff
 *.orig
 *.swp
+*.pcap
 \#*\#
 *~
 ext/*
