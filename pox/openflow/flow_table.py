@@ -224,8 +224,11 @@ class SwitchFlowTable(FlowTable):
     """ Process a flow mod sent to the switch
     @return a tuple (added|modified|removed, [list of affected entries])
     """
-    if(flow_mod.flags & OFPFF_CHECK_OVERLAP): raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
-    if(flow_mod.out_port != OFPP_NONE): raise NotImplementedError("flow_mod outport checking not implemented")
+    if(flow_mod.flags & OFPFF_CHECK_OVERLAP):
+      raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
+    if(flow_mod.out_port != OFPP_NONE and
+       flow_mod.command == ofp_flow_mod_command_rev_map['OFPFC_DELETE']):
+      raise NotImplementedError("flow_mod outport checking not implemented")
 
     if flow_mod.command == OFPFC_ADD:
       # exactly matching entries have to be removed
