@@ -372,6 +372,12 @@ class SoftwareSwitch(EventMixin):
     elif out_port == OFPP_CONTROLLER:
       buffer_id = self._buffer_packet(packet, in_port)
       self.send_packet_in(in_port, buffer_id, packet, self.xid_count.next(), reason=OFPR_ACTION)
+    elif out_port == OFPP_TABLE:
+      # There better be a table entry there, else we get infinite recurision
+      # between switch<->controller
+      # Note that this isn't infinite recursion, since the table entry's
+      # out_port will not be OFPP_TABLE
+      self.process_packet(packet, in_port)
     else:
       raise("Unsupported virtual output port: %x" % out_port)
 
