@@ -231,7 +231,7 @@ class SwitchFlowTable(FlowTable):
     if(flow_mod.flags & OFPFF_CHECK_OVERLAP):
       raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
     if(flow_mod.out_port != OFPP_NONE and
-            flow_mod.type == ofp_flow_mod_command_rev_map['OFPFC_DELETE']):
+            flow_mod.command == ofp_flow_mod_command_rev_map['OFPFC_DELETE']):
       raise NotImplementedError("flow_mod outport checking not implemented")
 
     if flow_mod.command == OFPFC_ADD:
