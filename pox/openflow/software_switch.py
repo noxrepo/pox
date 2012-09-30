@@ -113,7 +113,7 @@ class SoftwareSwitch(EventMixin):
     h = self.ofp_handlers[ofp_type]
 
     # figure out wether the handler supports the 'connection' argument, if so attach it
-    # (handlers for NX extended switches sometimes need to know which connection a 
+    # (handlers for NX extended switches sometimes need to know which connection a
     # particular message was received on)
     argspec = inspect.getargspec(h)
     if "connection" in argspec.args or argspec.keywords:
@@ -387,7 +387,7 @@ class SoftwareSwitch(EventMixin):
   def _process_actions_for_packet_from_buffer(self, actions, buffer_id):
     """ output and release a packet from the buffer """
     buffer_id = buffer_id - 1
-    if(buffer_id > len(self.packet_buffer) or buffer_id not in self.packet_buffer):
+    if(buffer_id >= len(self.packet_buffer) or self.packet_buffer[buffer_id] == None):
       self.log.warn("Invalid output buffer id: %x" % buffer_id)
       return
     (packet, in_port) = self.packet_buffer[buffer_id]
@@ -528,7 +528,7 @@ class OFConnection (object):
       into byte arrays.
 
       Wraps an io_worker that does the actual io work, and calls a receiver_callbac
-      function when a new message as arrived. 
+      function when a new message as arrived.
   """
 
   # Unlike of_01.Connection, this is persistent (at least until we implement a proper
