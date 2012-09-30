@@ -71,7 +71,7 @@ class TableEntry (object):
 
   def to_flow_mod(self, flags=None, **kw):
     if not flags:
-      flags = self.flags 
+      flags = self.flags
     return ofp_flow_mod(priority = self.priority, cookie = self.cookie,
             match = self.match, idle_timeout = self.idle_timeout,
             hard_timeout = self.hard_timeout, actions = self.actions,
@@ -144,7 +144,7 @@ class FlowTable (EventMixin):
     # [ (cookie, match, counters, actions),
     #   (cookie, match, counters, actions),
     #    ...                        ]
-    # 
+    #
     # Implies O(N) lookup for now. TODO: fix
     self.table = kw.get('table', [])
 
@@ -208,7 +208,7 @@ class FlowTable (EventMixin):
     return remove_flows
 
   def entry_for_packet(self, packet, in_port):
-    """ return the highest priority flow table entry that matches the given packet 
+    """ return the highest priority flow table entry that matches the given packet
     on the given in_port, or None if no matching entry is found. """
     packet_match = ofp_match.from_packet(packet, in_port)
 
@@ -257,7 +257,7 @@ class SwitchFlowTable(FlowTable):
 
 class NOMFlowTable(EventMixin):
   _eventMixin_events = set([FlowTableModification])
-  """ 
+  """
   Model a flow table for use in our NOM model. Keep in sync with a switch through a
   connection.
   """
@@ -344,7 +344,7 @@ class NOMFlowTable(EventMixin):
       flow_mod = op[1].to_flow_mod(xid=fmod_xid, command=op[0], flags=op[1].flags | OFPFF_SEND_FLOW_REM)
       log.info("NOMFlowTable: _sync_pending: send flow_mod %s" % (flow_mod))
 
-      self.switch.send(flow_mod) 
+      self.switch.send(flow_mod)
 
     barrier_xid = self.switch._xid_generator.next()
     self.switch.send(ofp_barrier_request(xid=barrier_xid))
