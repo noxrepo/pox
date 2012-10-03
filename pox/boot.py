@@ -435,7 +435,15 @@ def boot ():
     argv = sys.argv[1:]
 
     # Always load cli (first!)
-    argv = "py --disable".split() + argv
+    #TODO: Can we just get rid of the normal options yet?
+    pre = []
+    while len(argv):
+      if argv[0].startswith("-"):
+        pre.append(argv.pop(0))
+      else:
+        break
+    argv = pre + "py --disable".split() + argv
+    print argv
 
     if _do_launch(argv):
       _post_startup()
