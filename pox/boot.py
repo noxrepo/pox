@@ -443,7 +443,6 @@ def boot ():
       else:
         break
     argv = pre + "py --disable".split() + argv
-    print argv
 
     if _do_launch(argv):
       _post_startup()
