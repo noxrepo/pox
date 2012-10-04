@@ -144,6 +144,41 @@ class ofp_base (object):
 
 
 # ----------------------------------------------------------------------
+# Class decorators
+# ----------------------------------------------------------------------
+
+_message_type_to_class = {}
+_message_class_to_types = {} # Do we need this?
+#_message_type_to_name = {}
+#_message_name_to_type = {}
+ofp_type_rev_map = {}
+
+def openflow_message (ofp_type, type_val, reply_to=None,
+    request_for=None, switch=False, controller=False):
+  #TODO: Reply stuff, switch/controller stuff
+
+  #_message_name_to_type[ofp_type] = type_val
+  #_message_type_to_name[type_val] = ofp_type
+  ofp_type_rev_map[ofp_type] = type_val
+  def f (c):
+    c.header_type = type_val
+    c._from_switch = switch
+    c._from_controller = controller
+    _message_type_to_class[type_val] = c
+    _message_class_to_types.get(c, set()).add(type_val)
+    return c
+  return f
+
+def openflow_sc_message (*args, **kw):
+  return openflow_message(switch=True, controller=True, *args, **kw)
+
+def openflow_c_message (*args, **kw):
+  return openflow_message(controller=True, *args, **kw)
+
+def openflow_s_message (*args, **kw):
+  return openflow_message(switch=True, *args, **kw)
+
+# ----------------------------------------------------------------------
 # Structure definitions
 # ----------------------------------------------------------------------
 
@@ -1767,6 +1802,8 @@ class ofp_action_vendor_header (ofp_base):
 
 ##3.1 Handshake
 # was ofp_switch_features
+@openflow_s_message("OFPT_FEATURES_REPLY", 6,
+    reply_to="ofp_features_request")
 class ofp_features_reply (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
@@ -1779,7 +1816,6 @@ class ofp_features_reply (ofp_header):
     
     initHelper(self, kw)
   
-    self.header_type = OFPT_FEATURES_REPLY
     self.length = len(self)
 
   def pack (self):
@@ -1855,10 +1891,10 @@ ofp_capabilities_rev_map = {
 }
 
 ##3.2 Switch Configuration
+@openflow_c_message("OFPT_SET_CONFIG", 9)
 class ofp_switch_config (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_SET_CONFIG
     self.length = 12
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
@@ -1909,10 +1945,10 @@ ofp_config_flags_rev_map = {
 }
 
 ##3.3 Modify State Messages
+@openflow_c_message("OFPT_FLOW_MOD", 14)
 class ofp_flow_mod (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_FLOW_MOD
     if 'match' in kw:
       self.match = None
     else:
@@ -2058,10 +2094,10 @@ ofp_flow_mod_flags_rev_map = {
   'OFPFF_EMERG'         : 4,
 }
 
+@openflow_c_message("OFPT_PORT_MOD", 15)
 class ofp_port_mod (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_PORT_MOD
     self.port_no = 0
     self.hw_addr = EMPTY_ETH
     self.config = 0
@@ -2129,10 +2165,10 @@ class ofp_port_mod (ofp_header):
     return outstr
 
 ##3.4 Queue Configuration Messages
+@openflow_c_message("OFPT_QUEUE_GET_CONFIG_REQUEST", 20)
 class ofp_queue_get_config_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_QUEUE_GET_CONFIG_REQUEST
     self.port = 0
     self.length = 12
     initHelper(self, kw)
@@ -2171,10 +2207,10 @@ class ofp_queue_get_config_request (ofp_header):
     outstr += prefix + 'port: ' + str(self.port) + '\n'
     return outstr
 
+@openflow_s_message("OFPT_QUEUE_GET_CONFIG_REPLY", 21)
 class ofp_queue_get_config_reply (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_QUEUE_GET_CONFIG_REPLY
     self.length = 16
     self.port = 0
     self.queues = []
@@ -2225,10 +2261,10 @@ class ofp_queue_get_config_reply (ofp_header):
     return outstr
 
 ##3.5 Read State Messages
+@openflow_c_message("OFPT_STATS_REQUEST", 16)
 class ofp_stats_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_STATS_REQUEST
     self.type = None # Try to guess
     self.flags = 0
     self.body = b''
@@ -2292,10 +2328,11 @@ class ofp_stats_request (ofp_header):
     outstr += _format_body(self.body, prefix + '  ') + '\n'
     return outstr
 
+@openflow_s_message("OFPT_STATS_REPLY", 17,
+    reply_to="ofp_stats_request")
 class ofp_stats_reply (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_STATS_REPLY
     self.type = None # Guess
     self.flags = 0
     self.body = b''
@@ -2997,10 +3034,10 @@ ofp_queue_stats_reply = ofp_queue_stats
 
 
 ##3.6 Send Packet Message
+@openflow_c_message("OFPT_PACKET_OUT", 13)
 class ofp_packet_out (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_PACKET_OUT
     self._buffer_id = NO_BUFFER
     self.in_port = OFPP_NONE
     self.actions = []
@@ -3115,10 +3152,11 @@ class ofp_packet_out (ofp_header):
     return outstr
 
 ##3.7 Barrier Message
+@openflow_s_message("OFPT_BARRIER_REPLY", 19,
+    reply_to="ofp_barrier_request")
 class ofp_barrier_reply (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_BARRIER_REPLY
     initHelper(self, kw)
 
   def pack (self):
@@ -3150,10 +3188,11 @@ class ofp_barrier_reply (ofp_header):
     outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
+@openflow_s_message("OFPT_BARRIER_REQUEST", 18,
+    request_for="ofp_barrier_reply")
 class ofp_barrier_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_BARRIER_REQUEST
 
     initHelper(self, kw)
 
@@ -3187,6 +3226,7 @@ class ofp_barrier_request (ofp_header):
     return outstr
 
 #4 Asynchronous Messages
+@openflow_s_message("OFPT_PACKET_IN", 10)
 class ofp_packet_in (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
@@ -3198,7 +3238,6 @@ class ofp_packet_in (ofp_header):
 
     initHelper(self, kw)
 
-    self.header_type = OFPT_PACKET_IN
     self._total_len = 0
 
   @property
@@ -3287,10 +3326,10 @@ ofp_packet_in_reason_rev_map = {
   'OFPR_ACTION'   : 1,
 }
 
+@openflow_s_message("OFPT_FLOW_REMOVED", 11)
 class ofp_flow_removed (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_FLOW_REMOVED
     self.match = ofp_match()
     self.cookie = 0
     self.priority = 0
@@ -3372,10 +3411,10 @@ ofp_flow_removed_reason_rev_map = {
   'OFPRR_DELETE'       : 2,
 }
 
+@openflow_s_message("OFPT_PORT_STATUS", 12)
 class ofp_port_status (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_PORT_STATUS
     self.reason = 0
     self.desc = ofp_phy_port()
     self.length = 64
@@ -3432,10 +3471,10 @@ ofp_port_reason_rev_map = {
   'OFPPR_MODIFY' : 2,
 }
 
+@openflow_s_message("OFPT_ERROR", 1)
 class ofp_error (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_ERROR
     self.type = 0
     self.code = 0
     self.data = []
@@ -3553,10 +3592,10 @@ ofp_queue_op_failed_code_rev_map = {
 }
 
 #5. Symmetric Messages
+@openflow_sc_message("OFPT_HELLO", 0)
 class ofp_hello (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_HELLO
     self.length = len(self)
     initHelper(self, kw)
 
@@ -3589,10 +3628,11 @@ class ofp_hello (ofp_header):
     outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
+@openflow_sc_message("OFPT_ECHO_REQUEST", 2,
+    request_for="ofp_echo_reply")
 class ofp_echo_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_ECHO_REQUEST
     self.body = b''
     initHelper(self, kw)
 
@@ -3634,10 +3674,11 @@ class ofp_echo_request (ofp_header):
     outstr += _format_body(self.body, prefix + '  ') + '\n'
     return outstr
 
+@openflow_sc_message("OFPT_ECHO_REPLY", 3,
+    reply_to="ofp_echo_request")
 class ofp_echo_reply (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_ECHO_REPLY
     self.body = b''
     initHelper(self, kw)
 
@@ -3720,10 +3761,11 @@ class ofp_vendor_header (ofp_header):
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
     return outstr
 
+
+@openflow_sc_message("OFPT_VENDOR", 4)
 class ofp_vendor (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_VENDOR
     self.vendor = 0
     self.data = b''
     self.length = 12
@@ -3772,10 +3814,12 @@ class ofp_vendor (ofp_header):
     outstr += prefix + 'data: ' + self.data + '\n'
     return outstr
 
+
+@openflow_c_message("OFPT_FEATURES_REQUEST", 5,
+    request_for="ofp_features_reply")
 class ofp_features_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_FEATURES_REQUEST
     self.length = 8
 
     initHelper(self, kw)
@@ -3809,10 +3853,11 @@ class ofp_features_request (ofp_header):
     outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
+@openflow_c_message("OFPT_GET_CONFIG_REQUEST", 7,
+    request_for="ofp_get_config_reply")
 class ofp_get_config_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_GET_CONFIG_REQUEST
 
     initHelper(self, kw)
 
@@ -3845,10 +3890,11 @@ class ofp_get_config_request (ofp_header):
     outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
+@openflow_s_message("OFPT_GET_CONFIG_REPLY", 8,
+    reply_to="ofp_get_config_request")
 class ofp_get_config_reply (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_GET_CONFIG_REPLY
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
     self.length = 12
@@ -3891,10 +3937,10 @@ class ofp_get_config_reply (ofp_header):
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
 
+@openflow_c_message("OFPT_SET_CONFIG", 9)
 class ofp_set_config (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.header_type = OFPT_SET_CONFIG
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
     self.length = 12
@@ -3947,31 +3993,6 @@ ofp_port_rev_map = {
   'OFPP_CONTROLLER' : 65533,
   'OFPP_LOCAL'      : 65534,
   'OFPP_NONE'       : 65535,
-}
-
-ofp_type_rev_map = {
-  'OFPT_HELLO'                    : 0,
-  'OFPT_ERROR'                    : 1,
-  'OFPT_ECHO_REQUEST'             : 2,
-  'OFPT_ECHO_REPLY'               : 3,
-  'OFPT_VENDOR'                   : 4,
-  'OFPT_FEATURES_REQUEST'         : 5,
-  'OFPT_FEATURES_REPLY'           : 6,
-  'OFPT_GET_CONFIG_REQUEST'       : 7,
-  'OFPT_GET_CONFIG_REPLY'         : 8,
-  'OFPT_SET_CONFIG'               : 9,
-  'OFPT_PACKET_IN'                : 10,
-  'OFPT_FLOW_REMOVED'             : 11,
-  'OFPT_PORT_STATUS'              : 12,
-  'OFPT_PACKET_OUT'               : 13,
-  'OFPT_FLOW_MOD'                 : 14,
-  'OFPT_PORT_MOD'                 : 15,
-  'OFPT_STATS_REQUEST'            : 16,
-  'OFPT_STATS_REPLY'              : 17,
-  'OFPT_BARRIER_REQUEST'          : 18,
-  'OFPT_BARRIER_REPLY'            : 19,
-  'OFPT_QUEUE_GET_CONFIG_REQUEST' : 20,
-  'OFPT_QUEUE_GET_CONFIG_REPLY'   : 21,
 }
 
 def _get_type (o):
@@ -4111,8 +4132,7 @@ _action_map.update({
   OFPAT_SET_MPLS_TC              : ofp_action_mpls_tc,
   OFPAT_SET_MPLS_TTL             : ofp_action_mpls_ttl,
   OFPAT_DEC_MPLS_TTL             : ofp_action_mpls_dec_ttl,
-  OFPAT_RESUBMIT                 : ofp_action_resubmit
-  
+  OFPAT_RESUBMIT                 : ofp_action_resubmit,
 })
 
 # Fill in the stats-to-class table
