@@ -32,7 +32,6 @@ from pox.lib.packet.udp import udp
 from pox.lib.packet.tcp import tcp
 from pox.lib.packet.icmp import icmp
 from pox.lib.packet.arp import arp
-from pox.lib.packet.mpls import mpls
 
 from pox.lib.addresses import *
 from pox.lib.util import assert_type
@@ -41,8 +40,6 @@ from pox.lib.util import hexdump
 
 
 EMPTY_ETH = EthAddr(None)
-
-#USE_MPLS_MATCH = False
 
 # ----------------------------------------------------------------------
 # XID Management
@@ -541,12 +538,6 @@ class ofp_match (ofp_base):
     match.dl_dst = packet.dst
     match.dl_type = packet.type
     p = packet.next
-#    if isinstance(p, mpls):
-#      match.mpls_label = p.label
-#      match.mpls_tc = p.tc
-#    else:
-#      match.mpls_label = 0
-#      match.mpls_tc = 0
     if isinstance(p, vlan):
       match.dl_type = p.eth_type
       match.dl_vlan = p.id
@@ -775,9 +766,6 @@ class ofp_match (ofp_base):
         check_ip_or_arp(fix(self.nw_dst)),
         check_tp(self.tp_src), check_tp(self.tp_dst))
 
-#    if USE_MPLS_MATCH:
-#        packed += struct.pack("!IBxxx", self.mpls_label or 0,
-#                              self.mpls_tc or 0)
     return packed
 
   def _normalize_wildcards (self, wildcards):
@@ -800,8 +788,7 @@ class ofp_match (ofp_base):
     Note this atrocity from the OF1.1 spec:
     Protocol-specific fields within ofp_match will be ignored within
     a single table when the corresponding protocol is not specified in the
-    match. The MPLS match fields will be ignored unless the Ethertype is
-    specified as MPLS. Likewise, the IP header and transport header fields
+    match.  The IP header and transport header fields
     will be ignored unless the Ethertype is specified as either IPv4 or
     ARP. The tp_src and tp_dst fields will be ignored unless the network
     protocol specified is as TCP, UDP or SCTP. Fields that are ignored
@@ -830,8 +817,7 @@ class ofp_match (ofp_base):
     Note this atrocity from the OF1.1 spec:
     Protocol-specific fields within ofp_match will be ignored within
     a single table when the corresponding protocol is not specified in the
-    match. The MPLS match fields will be ignored unless the Ethertype is
-    specified as MPLS. Likewise, the IP header and transport header fields
+    match.  The IP header and transport header fields
     will be ignored unless the Ethertype is specified as either IPv4 or
     ARP. The tp_src and tp_dst fields will be ignored unless the network
     protocol specified is as TCP, UDP or SCTP. Fields that are ignored
@@ -876,9 +862,6 @@ class ofp_match (ofp_base):
         struct.unpack_from("!LLHH", binaryString, 28)
     self._nw_src = IPAddr(self._nw_src)
     self._nw_dst = IPAddr(self._nw_dst)
-    #if USE_MPLS_MATCH:
-    #  self.mpls_label,self.mpls_tc = \
-    #      struct.unpack_from("!IBxxx", binaryString, 40)
 
     # Only unwire wildcards for flow_mod
     self.wildcards = self._normalize_wildcards(
@@ -887,8 +870,6 @@ class ofp_match (ofp_base):
     return binaryString[len(self):]
 
   def __len__ (self):
- #   if USE_MPLS_MATCH:
- #     return 48
     return 40
 
   def hash_code (self):
@@ -1024,8 +1005,6 @@ class ofp_match (ofp_base):
     outstr += append('nw_dst')
     outstr += append('tp_src')
     outstr += append('tp_dst')
-#    outstr += append('mpls_label')
-#    outstr += append('mpls_tc')
     return outstr
 
 ofp_flow_wildcards_rev_map = {
@@ -1037,8 +1016,6 @@ ofp_flow_wildcards_rev_map = {
   'OFPFW_NW_PROTO'     : 32,
   'OFPFW_TP_SRC'       : 64,
   'OFPFW_TP_DST'       : 128,
-#  'OFPFW_MPLS_LABEL'   : 1 << 21,
-#  'OFPFW_MPLS_TC'      : 1 << 22,
   'OFPFW_DL_VLAN_PCP'  : 1048576,
   'OFPFW_NW_TOS'       : 1<<21,
 }
@@ -1071,13 +1048,6 @@ ofp_action_type_rev_map = {
   'OFPAT_SET_TP_SRC'   : 9,
   'OFPAT_SET_TP_DST'   : 10,
   'OFPAT_ENQUEUE'      : 11,
-  'OFPAT_SET_MPLS_LABEL':13,
-  'OFPAT_SET_MPLS_TC'  : 14,
-  'OFPAT_SET_MPLS_TTL' : 15,
-  'OFPAT_DEC_MPLS_TTL' : 16,
-  'OFPAT_PUSH_MPLS'    : 19,
-  'OFPAT_POP_MPLS'     : 20,
-  'OFPAT_RESUBMIT'     : 21,
   'OFPAT_VENDOR'       : 65535,
 }
 
@@ -1121,6 +1091,7 @@ class ofp_action_header (ofp_base):
     outstr += prefix + 'type: ' + str(self.type) + '\n'
     outstr += prefix + 'len: ' + str(self.length) + '\n'
     return outstr
+
 
 class ofp_action_output (ofp_base):
   def __init__ (self, **kw):
@@ -1168,6 +1139,7 @@ class ofp_action_output (ofp_base):
     outstr += prefix + 'max_len: ' + str(self.max_len) + '\n'
     return outstr
 
+
 class ofp_action_enqueue (ofp_base):
   def __init__ (self, **kw):
     self.type = OFPAT_ENQUEUE
@@ -1214,229 +1186,6 @@ class ofp_action_enqueue (ofp_base):
     outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
     return outstr
 
-class ofp_action_push_mpls (ofp_base):
-  """ For now a push mpls action, but we can use this for
-    push vlan too some day"""
-  unicast_mpls_ethertype = 0x8847
-  multicast_mpls_ethertype = 0x8848
-  def __init__ (self, **kw):
-    self.type = OFPAT_PUSH_MPLS
-    self.length = 8
-    self.ethertype = ofp_action_push_mpls.unicast_mpls_ethertype
-
-    initHelper(self, kw)
-  
-  def _validate (self):
-    if self.ethertype not in (self.unicast_mpls_ethertype,
-        self.multicast_mpls_ethertype):
-      return "Bad ethertype"
-  
-  def pack (self):
-    assert self._assert()
-
-    packed = ""
-    packed += struct.pack("!HHHxx", self.type, self.length, self.ethertype)
-    return packed
-  
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, self.length, self.ethertype) = struct.unpack_from("!HHH", binaryString, 0)
-    return binaryString[8:]
- 
-  def __len__ (self):
-    return self.length
-
-  def __eq__ (self, other):
-    if type(self) != type(other): return False
-    if self.type != other.type: return False
-    if self.length != other.length: return False
-    if self.ethertype != other.ethertype: return False
-    return True
-  
-  def __ne__ (self, other): 
-    return not self.__eq__(other)
-
-  def show (self, prefix = ''):
-    outstr = ''
-    outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
-    outstr += prefix + 'ethertype: ' + str(self.ethertype) + '\n'
-    return outstr
-
-class ofp_action_mpls_label (ofp_base):
-  def __init__ (self, **kw):
-    self.type = OFPAT_SET_MPLS_LABEL
-    self.length = 8
-    self.mpls_label = 0
-
-    initHelper(self, kw)
-  
-  def pack (self):
-    assert self._assert()
-
-    packed = ""
-    packed += struct.pack("!HHI", self.type, self.length, self.mpls_label)
-    return packed
-  
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, self.length, self.mpls_label) = struct.unpack_from("!HHI", binaryString, 0)
-    return binaryString[8:]
- 
-  def __len__ (self):
-    return self.length
-
-  def __eq__ (self, other):
-    if type(self) != type(other): return False
-    if self.type != other.type: return False
-    if self.length != other.length: return False
-    if self.mpls_label != other.mpls_label: return False
-    return True
-  
-  def __ne__ (self, other): 
-    return not self.__eq__(other)
-
-  def show (self, prefix = ''):
-    outstr = ''
-    outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
-    outstr += prefix + 'label: ' + str(self.mpls_label) + '\n'
-    return outstr
-
-class ofp_action_mpls_tc (ofp_base):
-  def __init__ (self, **kw):
-    self.type = OFPAT_SET_MPLS_TC
-    self.length = 8
-    self.mpls_tc = 0
-
-    initHelper(self, kw)
-  
-  def pack (self):
-    assert self._assert()
-
-    packed = ""
-    packed += struct.pack("!HHBxxx", self.type, self.length, self.mpls_tc)
-    return packed
-  
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, self.length, self.mpls_tc) = struct.unpack_from("!HHB", binaryString, 0)
-    return binaryString[8:]
- 
-  def __len__ (self):
-    return self.length
-
-  def __eq__ (self, other):
-    if type(self) != type(other): return False
-    if self.type != other.type: return False
-    if self.length != other.length: return False
-    if self.mpls_tc != other.mpls_tc: return False
-    return True
-  
-  def __ne__ (self, other): 
-    return not self.__eq__(other)
-
-  def show (self, prefix = ''):
-    outstr = ''
-    outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
-    outstr += prefix + 'tc: ' + str(self.mpls_tc) + '\n'
-    return outstr
-
-class ofp_action_mpls_ttl (ofp_base):
-  def __init__ (self, **kw):
-    self.type = OFPAT_SET_MPLS_TTL
-    self.length = 8
-    self.mpls_ttl = 0
-
-    initHelper(self, kw)
-  
-  def pack (self):
-    assert self._assert()
-
-    packed = ""
-    packed += struct.pack("!HHBxxx", self.type, self.length, self.mpls_ttl)
-    return packed
-  
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, self.length, self.mpls_ttl) = struct.unpack_from("!HHB", binaryString, 0)
-    return binaryString[8:]
- 
-  def __len__ (self):
-    return self.length
-
-  def __eq__ (self, other):
-    if type(self) != type(other): return False
-    if self.type != other.type: return False
-    if self.length != other.length: return False
-    if self.mpls_ttl != other.mpls_ttl: return False
-    return True
-  
-  def __ne__ (self, other): 
-    return not self.__eq__(other)
-
-  def show (self, prefix = ''):
-    outstr = ''
-    outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
-    outstr += prefix + 'ttl: ' + str(self.mpls_ttl) + '\n'
-    return outstr
-
-class ofp_action_mpls_dec_ttl (ofp_action_header):
-  def __init__ (self, **kw):
-    super(ofp_action_mpls_dec_ttl, self).__init__(**kw)
-    self.type = OFPAT_DEC_MPLS_TTL
-
-class ofp_action_resubmit (ofp_action_header):
-  def __init__ (self, **kw):
-    super(ofp_action_resubmit, self).__init__(**kw)
-    self.type = OFPAT_RESUBMIT
-
-class ofp_action_pop_mpls (ofp_base):
-  def __init__ (self, **kw):
-    self.type = OFPAT_POP_MPLS
-    self.length = 8
-    self.ethertype = 0
-
-    initHelper(self, kw)
-  
-  def pack (self):
-    assert self._assert()
-
-    packed = ""
-    packed += struct.pack("!HHHxx", self.type, self.length, self.ethertype)
-    return packed
-  
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, self.length, self.ethertype) = struct.unpack_from("!HHH", binaryString, 0)
-    return binaryString[8:]
- 
-  def __len__ (self):
-    return self.length
-
-  def __eq__ (self, other):
-    if type(self) != type(other): return False
-    if self.type != other.type: return False
-    if self.length != other.length: return False
-    if self.ethertype != other.ethertype: return False
-    return True
-  
-  def __ne__ (self, other): 
-    return not self.__eq__(other)
-
-  def show (self, prefix = ''):
-    outstr = ''
-    outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
-    outstr += prefix + 'ethertype: ' + str(self.ethertype) + '\n'
-    return outstr
 
 class ofp_action_strip_vlan (ofp_base):
   def __init__ (self):
@@ -4126,13 +3875,6 @@ _action_map.update({
   OFPAT_SET_TP_SRC               : ofp_action_tp_port,
   OFPAT_SET_TP_DST               : ofp_action_tp_port,
   OFPAT_ENQUEUE                  : ofp_action_enqueue,
-  OFPAT_PUSH_MPLS                : ofp_action_push_mpls,
-  OFPAT_POP_MPLS                 : ofp_action_pop_mpls,
-  OFPAT_SET_MPLS_LABEL           : ofp_action_mpls_label,
-  OFPAT_SET_MPLS_TC              : ofp_action_mpls_tc,
-  OFPAT_SET_MPLS_TTL             : ofp_action_mpls_ttl,
-  OFPAT_DEC_MPLS_TTL             : ofp_action_mpls_dec_ttl,
-  OFPAT_RESUBMIT                 : ofp_action_resubmit,
 })
 
 # Fill in the stats-to-class table
@@ -4229,6 +3971,4 @@ ofp_match_data = {
   'nw_dst' : (0, OFPFW_NW_DST_ALL),
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
-#  'mpls_label': (0, OFPFW_MPLS_LABEL),
-#  'mpls_tc': (0, OFPFW_MPLS_TC),
 }
