@@ -64,7 +64,7 @@ def handle_HELLO (con, msg): #S
 
   # Send a features request
   msg = of.ofp_features_request()
-  con.send(msg.pack())
+  con.send(msg)
 
 def handle_ECHO_REPLY (con, msg):
   #con.msg("Got echo reply")
@@ -74,7 +74,7 @@ def handle_ECHO_REQUEST (con, msg): #S
   reply = msg
   
   reply.header_type = of.OFPT_ECHO_REPLY
-  con.send(reply.pack())
+  con.send(reply)
 
 def handle_FLOW_REMOVED (con, msg): #A
   con.ofnexus.raiseEventNoErrors(FlowRemoved, con, msg)
@@ -641,17 +641,18 @@ class Connection (EventMixin):
 
   def send (self, data):
     """
-    Send raw data to the switch.
+    Send data to the switch.
 
-    Generally, data is a bytes object.  If not, we check if it has a pack()
-    method and call it (hoping the result will be a bytes object).  This
-    way, you can just pass one of the OpenFlow objects from the OpenFlow
-    library to it and get the expected result, for example.
+    Data should probably either be raw bytes in OpenFlow wire format, or
+    an OpenFlow controller-to-switch message object from libopenflow.
     """
     if self.disconnected: return
     if type(data) is not bytes:
-      if hasattr(data, 'pack'):
-        data = data.pack()
+      # There's actually no reason the data has to be an instance of
+      # ofp_header, but this check is likely to catch a lot of bugs,
+      # so we check it anyway.
+      assert isinstance(data, of.ofp_header)
+      data = data.pack()
 
     if deferredSender.sending:
       log.debug("deferred sender is sending!")
