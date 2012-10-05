@@ -98,9 +98,10 @@ class IOWorker (object):
       if self._connecting:
         self._connecting = False
         _call_safe(self._handle_connect)
-      l = self.socket.send(self.send_buf)
-      if l > 0:
-        self._consume_send_buf(l)
+      if len(self.send_buf):
+        l = self.socket.send(self.send_buf)
+        if l > 0:
+          self._consume_send_buf(l)
     except socket.error as (s_errno, strerror):
       if s_errno != errno.EAGAIN:
         log.error("Socket error during send: " + strerror)
