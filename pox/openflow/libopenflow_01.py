@@ -227,7 +227,6 @@ class ofp_header (ofp_base):
     self.version = OFP_VERSION
     #self.header_type = None # Set via class decorator
     self._xid = None
-    self.length = 8
     if 'header_type' in kw:
       self.header_type = kw.pop('header_type')
     initHelper(self, kw)
@@ -258,7 +257,8 @@ class ofp_header (ofp_base):
   def unpack (self, binaryString):
     if len(binaryString) < 8:
       return binaryString
-    (self.version, self.header_type, self.length, self.xid) = \
+    #FIXME: self._length is a temporary hack
+    (self.version, self.header_type, self._length, self.xid) = \
         struct.unpack_from("!BBHL", binaryString, 0)
     return binaryString[8:]
 
@@ -429,7 +429,6 @@ class ofp_packet_queue (ofp_base):
   _MIN_LENGTH = 8
   def __init__ (self, **kw):
     self.queue_id = 0
-    self.length = 0
     self.properties = []
 
     initHelper(self, kw)
@@ -438,7 +437,7 @@ class ofp_packet_queue (ofp_base):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!LH", self.queue_id, self.length)
+    packed += struct.pack("!LH", self.queue_id, len(self))
     packed += _PAD2 # Pad
     for i in self.properties:
       packed += i.pack()
@@ -447,7 +446,7 @@ class ofp_packet_queue (ofp_base):
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.queue_id, self.length) = struct.unpack_from("!LH", binaryString, 0)
+    (self.queue_id, length) = struct.unpack_from("!LH", binaryString, 0)
     return binaryString[8:]
 
   def __len__ (self):
@@ -459,7 +458,7 @@ class ofp_packet_queue (ofp_base):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.queue_id != other.queue_id: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.properties != other.properties: return False
     return True
 
@@ -468,7 +467,7 @@ class ofp_packet_queue (ofp_base):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'properties: \n'
     for obj in self.properties:
       outstr += obj.show(prefix + '  ')
@@ -482,7 +481,6 @@ OFPQT_NONE         = 0
 class ofp_queue_prop_header (ofp_base):
   def __init__ (self, **kw):
     self.property = 0
-    self.length = 8
 
     initHelper(self, kw)
 
@@ -490,14 +488,14 @@ class ofp_queue_prop_header (ofp_base):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HH", self.property, self.length)
+    packed += struct.pack("!HH", self.property, len(self))
     packed += _PAD4 # Pad
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.property, self.length) = struct.unpack_from("!HH", binaryString, 0)
+    (self.property, length) = struct.unpack_from("!HH", binaryString, 0)
     return binaryString[8:]
 
   @staticmethod
@@ -507,7 +505,7 @@ class ofp_queue_prop_header (ofp_base):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.property != other.property: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -515,7 +513,7 @@ class ofp_queue_prop_header (ofp_base):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'property: ' + str(self.property) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     return outstr
 
 class ofp_queue_prop_min_rate (ofp_base):
@@ -1129,7 +1127,6 @@ class ofp_action_generic (ofp_base):
 @openflow_action('OFPAT_OUTPUT', 0)
 class ofp_action_output (ofp_action):
   def __init__ (self, **kw):
-    self.length = 8
     self.port = None # Purposely bad -- require specification
     self.max_len = 0xffFF
 
@@ -1142,13 +1139,13 @@ class ofp_action_output (ofp_action):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HHHH", self.type, self.length, self.port, self.max_len)
+    packed += struct.pack("!HHHH", self.type, len(self), self.port, self.max_len)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.type, self.length, self.port, self.max_len) = struct.unpack_from("!HHHH", binaryString, 0)
+    (self.type, length, self.port, self.max_len) = struct.unpack_from("!HHHH", binaryString, 0)
     return binaryString[8:]
 
   @staticmethod
@@ -1158,7 +1155,7 @@ class ofp_action_output (ofp_action):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.port != other.port: return False
     if self.max_len != other.max_len: return False
     return True
@@ -1168,7 +1165,7 @@ class ofp_action_output (ofp_action):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'port: ' + str(self.port) + '\n'
     outstr += prefix + 'max_len: ' + str(self.max_len) + '\n'
     return outstr
@@ -1177,7 +1174,6 @@ class ofp_action_output (ofp_action):
 @openflow_action('OFPAT_ENQUEUE', 11)
 class ofp_action_enqueue (ofp_action):
   def __init__ (self, **kw):
-    self.length = 16
     self.port = None # Require user to set
     self.queue_id = 0
 
@@ -1187,7 +1183,7 @@ class ofp_action_enqueue (ofp_action):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HHH", self.type, self.length, self.port)
+    packed += struct.pack("!HHH", self.type, len(self), self.port)
     packed += _PAD6 # Pad
     packed += struct.pack("!L", self.queue_id)
     return packed
@@ -1195,7 +1191,7 @@ class ofp_action_enqueue (ofp_action):
   def unpack (self, binaryString):
     if (len(binaryString) < 16):
       return binaryString
-    (self.type, self.length, self.port) = struct.unpack_from("!HHH", binaryString, 0)
+    (self.type, length, self.port) = struct.unpack_from("!HHH", binaryString, 0)
     (self.queue_id,) = struct.unpack_from("!L", binaryString, 12)
     return binaryString[16:]
 
@@ -1206,7 +1202,7 @@ class ofp_action_enqueue (ofp_action):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.port != other.port: return False
     if self.queue_id != other.queue_id: return False
     return True
@@ -1216,7 +1212,7 @@ class ofp_action_enqueue (ofp_action):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'port: ' + str(self.port) + '\n'
     outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
     return outstr
@@ -1225,16 +1221,16 @@ class ofp_action_enqueue (ofp_action):
 @openflow_action('OFPAT_STRIP_VLAN', 3)
 class ofp_action_strip_vlan (ofp_action):
   def __init__ (self):
-    self.length = 8
+    pass
 
   def pack (self):
-    packed = struct.pack("!HHi", self.type, self.length, 0)
+    packed = struct.pack("!HHi", self.type, len(self), 0)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
+    (self.type, length) = struct.unpack_from("!HH", binaryString, 0)
     return binaryString[8:]
 
   @staticmethod
@@ -1244,7 +1240,7 @@ class ofp_action_strip_vlan (ofp_action):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1252,13 +1248,12 @@ class ofp_action_strip_vlan (ofp_action):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     return outstr
 
 @openflow_action('OFPAT_SET_VLAN_VID', 1)
 class ofp_action_vlan_vid (ofp_action):
   def __init__ (self, **kw):
-    self.length = 8
     self.vlan_vid = 0
 
     initHelper(self, kw)
@@ -1267,14 +1262,14 @@ class ofp_action_vlan_vid (ofp_action):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HHH", self.type, self.length, self.vlan_vid)
+    packed += struct.pack("!HHH", self.type, len(self), self.vlan_vid)
     packed += _PAD2 # Pad
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.type, self.length, self.vlan_vid) = struct.unpack_from("!HHH", binaryString, 0)
+    (self.type, length, self.vlan_vid) = struct.unpack_from("!HHH", binaryString, 0)
     return binaryString[8:]
 
   @staticmethod
@@ -1284,7 +1279,7 @@ class ofp_action_vlan_vid (ofp_action):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.vlan_vid != other.vlan_vid: return False
     return True
 
@@ -1293,7 +1288,7 @@ class ofp_action_vlan_vid (ofp_action):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'vlan_vid: ' + str(self.vlan_vid) + '\n'
     return outstr
 
@@ -1301,7 +1296,6 @@ class ofp_action_vlan_vid (ofp_action):
 @openflow_action('OFPAT_SET_VLAN_PCP', 2)
 class ofp_action_vlan_pcp (ofp_action):
   def __init__ (self, **kw):
-    self.length = 8
     self.vlan_pcp = 0
 
     initHelper(self, kw)
@@ -1310,14 +1304,14 @@ class ofp_action_vlan_pcp (ofp_action):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HHB", self.type, self.length, self.vlan_pcp)
+    packed += struct.pack("!HHB", self.type, len(self), self.vlan_pcp)
     packed += _PAD3 # Pad
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.type, self.length, self.vlan_pcp) = struct.unpack_from("!HHB", binaryString, 0)
+    (self.type, length, self.vlan_pcp) = struct.unpack_from("!HHB", binaryString, 0)
     return binaryString[8:]
 
   @staticmethod
@@ -1327,7 +1321,7 @@ class ofp_action_vlan_pcp (ofp_action):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.vlan_pcp != other.vlan_pcp: return False
     return True
 
@@ -1336,7 +1330,7 @@ class ofp_action_vlan_pcp (ofp_action):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'vlan_pcp: ' + str(self.vlan_pcp) + '\n'
     return outstr
 
@@ -1356,7 +1350,6 @@ class ofp_action_dl_addr (ofp_action):
     'type' should be OFPAT_SET_DL_SRC or OFPAT_SET_DL_DST.
     """
     self.type = type
-    self.length = 16
     self.dl_addr = EMPTY_ETH
 
     if dl_addr is not None:
@@ -1374,7 +1367,7 @@ class ofp_action_dl_addr (ofp_action):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HH", self.type, self.length)
+    packed += struct.pack("!HH", self.type, len(self))
     if isinstance(self.dl_addr, EthAddr):
       packed += self.dl_addr.toRaw()
     else:
@@ -1385,7 +1378,7 @@ class ofp_action_dl_addr (ofp_action):
   def unpack (self, binaryString):
     if (len(binaryString) < 16):
       return binaryString
-    (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
+    (self.type, length) = struct.unpack_from("!HH", binaryString, 0)
     self.dl_addr = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 4))
     return binaryString[16:]
 
@@ -1396,7 +1389,7 @@ class ofp_action_dl_addr (ofp_action):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.dl_addr != other.dl_addr: return False
     return True
 
@@ -1405,7 +1398,7 @@ class ofp_action_dl_addr (ofp_action):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'dl_addr: ' + str(self.dl_addr) + '\n'
     return outstr
 
@@ -1425,7 +1418,6 @@ class ofp_action_nw_addr (ofp_action):
     'type' should be OFPAT_SET_NW_SRC or OFPAT_SET_NW_DST
     """
     self.type = type
-    self.length = 8
 
     if nw_addr is not None:
       self.nw_addr = IPAddr(nw_addr)
@@ -1436,13 +1428,13 @@ class ofp_action_nw_addr (ofp_action):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HHl", self.type, self.length, self.nw_addr.toSigned())
+    packed += struct.pack("!HHl", self.type, len(self), self.nw_addr.toSigned())
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.type, self.length, self.nw_addr) = struct.unpack_from("!HHL", binaryString, 0)
+    (self.type, length, self.nw_addr) = struct.unpack_from("!HHL", binaryString, 0)
     self.nw_addr = IPAddr(self.nw_addr, networkOrder=False)
     return binaryString[8:]
 
@@ -1453,7 +1445,7 @@ class ofp_action_nw_addr (ofp_action):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.nw_addr != other.nw_addr: return False
     return True
 
@@ -1462,7 +1454,7 @@ class ofp_action_nw_addr (ofp_action):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'nw_addr: ' + str(self.nw_addr) + '\n'
     return outstr
 
@@ -1470,21 +1462,20 @@ class ofp_action_nw_addr (ofp_action):
 @openflow_action('OFPAT_SET_NW_TOS', 8)
 class ofp_action_nw_tos (ofp_action):
   def __init__ (self, nw_tos = 0):
-    self.length = 8
     self.nw_tos = nw_tos
 
   def pack (self):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HHB", self.type, self.length, self.nw_tos)
+    packed += struct.pack("!HHB", self.type, len(self), self.nw_tos)
     packed += _PAD3
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.type, self.length, self.nw_tos) = struct.unpack_from("!HHB", binaryString, 0)
+    (self.type, length, self.nw_tos) = struct.unpack_from("!HHB", binaryString, 0)
     return binaryString[8:]
 
   @staticmethod
@@ -1494,7 +1485,7 @@ class ofp_action_nw_tos (ofp_action):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.nw_tos != other.nw_tos: return False
     return True
 
@@ -1503,7 +1494,7 @@ class ofp_action_nw_tos (ofp_action):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'nw_tos: ' + str(self.nw_tos) + '\n'
     return outstr
 
@@ -1523,21 +1514,20 @@ class ofp_action_tp_port (ofp_action):
     'type' is OFPAT_SET_TP_SRC/DST
     """
     self.type = type
-    self.length = 8
     self.tp_port = tp_port
 
   def pack (self):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HHH", self.type, self.length, self.tp_port)
+    packed += struct.pack("!HHH", self.type, len(self), self.tp_port)
     packed += _PAD2
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.type, self.length, self.tp_port) = struct.unpack_from("!HHH", binaryString, 0)
+    (self.type, length, self.tp_port) = struct.unpack_from("!HHH", binaryString, 0)
     return binaryString[8:]
 
   @staticmethod
@@ -1547,7 +1537,7 @@ class ofp_action_tp_port (ofp_action):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.tp_port != other.tp_port: return False
     return True
 
@@ -1556,7 +1546,7 @@ class ofp_action_tp_port (ofp_action):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'tp_port: ' + str(self.tp_port) + '\n'
     return outstr
 
@@ -1564,7 +1554,6 @@ class ofp_action_tp_port (ofp_action):
 @openflow_action('OFPAT_VENDOR', 65535)
 class ofp_action_vendor_header (ofp_action):
   def __init__ (self, **kw):
-    self.length = 8
     self.vendor = 0
 
     initHelper(self, kw)
@@ -1573,13 +1562,13 @@ class ofp_action_vendor_header (ofp_action):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HHL", self.type, self.length, self.vendor)
+    packed += struct.pack("!HHL", self.type, len(self), self.vendor)
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.type, self.length, self.vendor) = struct.unpack_from("!HHL", binaryString, 0)
+    (self.type, length, self.vendor) = struct.unpack_from("!HHL", binaryString, 0)
     return binaryString[8:]
 
   @staticmethod
@@ -1589,7 +1578,7 @@ class ofp_action_vendor_header (ofp_action):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.vendor != other.vendor: return False
     return True
 
@@ -1598,7 +1587,7 @@ class ofp_action_vendor_header (ofp_action):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
     return outstr
 
@@ -1622,8 +1611,6 @@ class ofp_features_reply (ofp_header):
     
     initHelper(self, kw)
   
-    self.length = len(self)
-
   def pack (self):
     assert self._assert()
 
@@ -1642,13 +1629,13 @@ class ofp_features_reply (ofp_header):
     ofp_header.unpack(self, binaryString[0:])
     (self.datapath_id, self.n_buffers, self.n_tables) = struct.unpack_from("!QLB", binaryString, 8)
     (self.capabilities, self.actions) = struct.unpack_from("!LL", binaryString, 24)
-    portCount = (self.length - 32) / len(ofp_phy_port)
+    portCount = (self._length - 32) / len(ofp_phy_port)
     self.ports = []
     for i in xrange(0, portCount):
       p = ofp_phy_port()
       p.unpack(binaryString[32+i*len(ofp_phy_port):])
       self.ports.append(p)
-    return binaryString[self.length:]
+    return binaryString[self._length:]
 
   def __len__ (self):
     l = 32
@@ -1701,7 +1688,6 @@ ofp_capabilities_rev_map = {
 class ofp_switch_config (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.length = 12
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
 
@@ -1823,7 +1809,6 @@ class ofp_flow_mod (ofp_header):
 
     assert self._assert()
     packed = ""
-    self.length = len(self)
     packed += ofp_header.pack(self)
     packed += self.match.pack(flow_mod=True)
     packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self._buffer_id, self.out_port, self.flags)
@@ -1841,14 +1826,14 @@ class ofp_flow_mod (ofp_header):
     ofp_header.unpack(self, binaryString[0:])
     self.match.unpack(binaryString[8:], flow_mod=True)
     (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self._buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 8 + len(self.match))
-    self.actions, offset = _unpack_actions(binaryString, self.length-(32 + len(self.match)), 32 + len(self.match))
-    assert offset == self.length
+    self.actions, offset = _unpack_actions(binaryString, self._length-(32 + len(self.match)), 32 + len(self.match))
+    assert offset == self._length
     return binaryString[offset:]
 
   def __len__ (self):
     l = 32 + len(self.match)
     for i in self.actions:
-      l += len(i)#.length()
+      l += len(i)
     return l
 
   def __eq__ (self, other):
@@ -1910,7 +1895,6 @@ class ofp_port_mod (ofp_header):
     self.config = 0
     self.mask = 0
     self.advertise = 0
-    self.length = 32
 
     initHelper(self, kw)
 
@@ -1978,7 +1962,6 @@ class ofp_queue_get_config_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.port = 0
-    self.length = 12
     initHelper(self, kw)
 
   def pack (self):
@@ -2021,7 +2004,6 @@ class ofp_queue_get_config_reply (ofp_header):
   _MIN_LENGTH = 16
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.length = 16
     self.port = 0
     self.queues = []
 
@@ -2084,7 +2066,6 @@ class ofp_stats_request (ofp_header):
     initHelper(self, kw)
 
   def pack (self):
-    self.length = len(self)
     if self.type is None:
       self.type = _get_type(self.body)
       if self.type is None:
@@ -2112,9 +2093,8 @@ class ofp_stats_request (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.type, self.flags) = struct.unpack_from("!HH", binaryString, 8)
-    self.body = binaryString[12:self.length]
-    assert self.length == len(self)
-    return binaryString[self.length:]
+    self.body = binaryString[12:self._length]
+    return binaryString[self._length:]
 
   def __len__ (self):
     return 12 + len(self.body_data)
@@ -2180,8 +2160,6 @@ class ofp_stats_reply (ofp_header):
     if self.type == None:
       self.type = _get_type(self.body)
 
-    self.length = len(self)
-
     assert self._assert()
 
     packed = ""
@@ -2195,7 +2173,7 @@ class ofp_stats_reply (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.type, self.flags) = struct.unpack_from("!HH", binaryString, 8)
-    packed = binaryString[12:self.length]
+    packed = binaryString[12:self._length]
     t = _stats_map.get(self.type)
     if t is None:
       self.body = packed
@@ -2217,7 +2195,7 @@ class ofp_stats_reply (ofp_header):
             prev_len = len(packed)
             self.body.append(n)
 
-    return binaryString[self.length:]
+    return binaryString[self._length:]
 
   def __len__ (self):
     return 12 + len(self.body)
@@ -2386,7 +2364,6 @@ class ofp_flow_stats_request (ofp_base):
 class ofp_flow_stats (ofp_base):
   _MIN_LENGTH = 88
   def __init__ (self, **kw):
-    self.length = 0
     self.table_id = 0
     self.match = ofp_match()
     self.duration_sec = 0
@@ -2410,7 +2387,7 @@ class ofp_flow_stats (ofp_base):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HBB", self.length, self.table_id, 0)
+    packed += struct.pack("!HBB", len(self), self.table_id, 0)
     packed += self.match.pack()
     packed += struct.pack("!LLHHH", self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout)
     packed += _PAD6 # Pad
@@ -2422,13 +2399,12 @@ class ofp_flow_stats (ofp_base):
   def unpack (self, binaryString):
     if (len(binaryString) < 48 + len(self.match)):
       return binaryString
-    (self.length, self.table_id, pad) = struct.unpack_from("!HBB", binaryString, 0)
+    (length, self.table_id, pad) = struct.unpack_from("!HBB", binaryString, 0)
     self.match.unpack(binaryString[4:])
     (self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout) = struct.unpack_from("!LLHHH", binaryString, 4 + len(self.match))
     (self.cookie, self.packet_count, self.byte_count) = struct.unpack_from("!QQQ", binaryString, 24 + len(self.match))
-    self.actions,offset = _unpack_actions(binaryString, self.length - (48 + len(self.match)), 48 + len(self.match))
-    assert offset == self.length
-    assert self.length == len(self)
+    self.actions,offset = _unpack_actions(binaryString, length - (48 + len(self.match)), 48 + len(self.match))
+    assert offset == length
     return binaryString[offset:]
 
   def __len__ (self):
@@ -2439,7 +2415,7 @@ class ofp_flow_stats (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.length != other.length: return False
+    if len(self) != len(other): return False
     if self.table_id != other.table_id: return False
     if self.match != other.match: return False
     if self.duration_sec != other.duration_sec: return False
@@ -2457,7 +2433,7 @@ class ofp_flow_stats (ofp_base):
 
   def show (self, prefix=''):
     outstr = ''
-    outstr += prefix + 'length: ' + str(self.length) + '\n'
+    outstr += prefix + 'length: ' + str(len(self)) + '\n'
     outstr += prefix + 'table_id: ' + str(self.table_id) + '\n'
     outstr += prefix + 'match: \n'
     outstr += self.match.show(prefix + '  ')
@@ -2920,10 +2896,6 @@ class ofp_packet_out (ofp_header):
     actions = b''.join((i.pack() for i in self.actions))
     actions_len = len(actions)
 
-    self.length = 16 + actions_len
-    if self.data is not None:
-      self.length += len(self.data)
-
     if self.data is not None:
       return b''.join((ofp_header.pack(self),
         struct.pack("!LHH", self._buffer_id, self.in_port, actions_len),
@@ -2940,11 +2912,11 @@ class ofp_packet_out (ofp_header):
     (self._buffer_id, self.in_port, actions_len) = struct.unpack_from("!LHH", binaryString, 8)
     self.actions,offset = _unpack_actions(binaryString, actions_len, 16)
 
-    self.data = binaryString[offset:self.length] if offset < self.length else None
-    return binaryString[self.length:]
+    self.data = binaryString[offset:self._length] if offset < self._length else None
+    return binaryString[self._length:]
 
   def __len__ (self):
-    return 16 + reduce(operator.add, (a.length for a in self.actions),
+    return 16 + reduce(operator.add, (len(a) for a in self.actions),
         0) + (len(self.data) if self.data else 0)
 
   def __eq__ (self, other):
@@ -3059,10 +3031,26 @@ class ofp_packet_in (ofp_header):
     self._buffer_id = NO_BUFFER
     self.reason = 0
     self.data = None
+    self._total_len = None
+
+    if 'total_len' in kw:
+      self._total_len = kw.pop('total_len')
 
     initHelper(self, kw)
 
-    self._total_len = 0
+  def _validate (self):
+    if self.data and (self.total_len < len(self.data)):
+      return "total len less than data len"
+
+  @property
+  def total_len (self):
+    if self._total_len is None:
+      return len(self.data) if self.data else 0
+    return self._total_len
+
+  @total_len.setter
+  def total_len (self, value):
+    self._total_len = value
 
   @property
   def buffer_id (self):
@@ -3090,18 +3078,11 @@ class ofp_packet_in (ofp_header):
     assert self._assert()
 
     packed = ""
-    # need to update the self.length field for ofp_header.pack to put
-    # the correct value in the packed array. this sucks.
-    self.length = len(self)
-    self._total_len = len(self.data) if self.data else 0
     packed += ofp_header.pack(self)
-    packed += struct.pack("!LHHBB", self._buffer_id, self._total_len, self.in_port, self.reason, 0)
+    packed += struct.pack("!LHHBB", self._buffer_id, self.total_len, self.in_port, self.reason, 0)
     packed += self.data
     return packed
 
-  @property
-  def total_len (self):
-    return self._total_len
   @property
   def is_complete (self):
     if self.buffer_id is not None: return True
@@ -3112,10 +3093,10 @@ class ofp_packet_in (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self._buffer_id, self._total_len, self.in_port, self.reason, pad) = struct.unpack_from("!LHHBB", binaryString, 8)
-    if (len(binaryString) < self.length):
+    if (len(binaryString) < self._length):
       return binaryString
-    self.data = binaryString[18:self.length]
-    return binaryString[self.length:]
+    self.data = binaryString[18:self._length]
+    return binaryString[self._length:]
 
   def __len__ (self):
     return 18 + len(self.data)
@@ -3124,7 +3105,7 @@ class ofp_packet_in (ofp_header):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
     if self.buffer_id != other.buffer_id: return False
-    if self._total_len != other._total_len: return False
+    if self.total_len != other.total_len: return False
     if self.in_port != other.in_port: return False
     if self.reason != other.reason: return False
     if self.data != other.data: return False
@@ -3137,7 +3118,7 @@ class ofp_packet_in (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'buffer_id: ' + str(self.buffer_id) + '\n'
-    outstr += prefix + '_total_len: ' + str(self._total_len) + '\n'
+    outstr += prefix + 'total_len: ' + str(self._total_len) + '\n'
     outstr += prefix + 'in_port: ' + str(self.in_port) + '\n'
     outstr += prefix + 'reason: ' + str(self.reason) + '\n'
     outstr += prefix + 'data: ' + str(self.data) + '\n'
@@ -3161,7 +3142,6 @@ class ofp_flow_removed (ofp_header):
     self.idle_timeout = 0
     self.packet_count = 0
     self.byte_count = 0
-    self.length = len(self)
     initHelper(self, kw)
 
   def _validate (self):
@@ -3240,7 +3220,6 @@ class ofp_port_status (ofp_header):
     ofp_header.__init__(self)
     self.reason = 0
     self.desc = ofp_phy_port()
-    self.length = 64
 
     initHelper(self, kw)
 
@@ -3309,7 +3288,6 @@ class ofp_error (ofp_header):
   def pack (self):
     assert self._assert()
 
-    self.length = len(self)
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.code)
@@ -3419,7 +3397,6 @@ ofp_queue_op_failed_code_rev_map = {
 class ofp_hello (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.length = len(self)
     initHelper(self, kw)
 
   def pack (self):
@@ -3474,9 +3451,9 @@ class ofp_echo_request (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     # Note that we trust the header to be correct here
-    if len(binaryString) < self.length:
+    if len(binaryString) < self._length:
       return binaryString
-    l = self.length - 8
+    l = self._length - 8
     self.body = binaryString[8:8+l]
     return binaryString[8 + l:]
 
@@ -3521,9 +3498,9 @@ class ofp_echo_reply (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     # Note that we trust the header to be correct here
-    if len(binaryString) < self.length:
+    if len(binaryString) < self._length:
       return binaryString
-    l = self.length - 8
+    l = self._length - 8
     self.body = binaryString[8:8+l]
     return binaryString[8 + l:]
 
@@ -3596,13 +3573,11 @@ class ofp_vendor (ofp_header):
     ofp_header.__init__(self)
     self.vendor = 0
     self.data = b''
-    self.length = 12
     initHelper(self, kw)
 
   def pack (self):
     assert self._assert()
 
-    self.length = 12 + len(self.data)
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!L", self.vendor)
@@ -3617,10 +3592,10 @@ class ofp_vendor (ofp_header):
       return binaryString
     ofp_header.unpack(self, binaryString[0:])
     (self.vendor,) = struct.unpack_from("!L", binaryString, 8)
-    if len(binaryString) < self.length:
+    if len(binaryString) < self._length:
       return binaryString
-    self.data = binaryString[12:self.length]
-    return binaryString[self.length:]
+    self.data = binaryString[12:self._length]
+    return binaryString[self._length:]
 
   def __len__ (self):
     return 12 + len(self.data)
@@ -3648,7 +3623,6 @@ class ofp_vendor (ofp_header):
 class ofp_features_request (ofp_header):
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    self.length = 8
 
     initHelper(self, kw)
 
@@ -3727,7 +3701,6 @@ class ofp_get_config_reply (ofp_header):
     ofp_header.__init__(self)
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
-    self.length = 12
 
     initHelper(self, kw)
 
@@ -3774,7 +3747,6 @@ class ofp_set_config (ofp_header):
     ofp_header.__init__(self)
     self.flags = 0
     self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
-    self.length = 12
 
     initHelper(self, kw)
 
