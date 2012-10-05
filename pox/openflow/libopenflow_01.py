@@ -123,7 +123,29 @@ TABLE_ALL = 0xff
 TABLE_EMERGENCY = 0xfe
 
 
+class _ofp_meta (type):
+  """
+  Metaclass for ofp messages/structures
+
+  This takes care of making len() work as desired.
+  """
+  def __len__ (cls):
+    try:
+      return cls.__len__()
+    except:
+      return cls._MIN_LENGTH
+
 class ofp_base (object):
+  """
+  Base class for OpenFlow messages/structures
+
+  You should implement a __len__ method.  If your length is fixed, it
+  should be a static method.  If your length is not fixed, you should
+  implement a __len__ instance method and set a class level _MIN_LENGTH
+  attribute to your minimum length.
+  """
+  __metaclass__ = _ofp_meta
+
   def _assert (self):
     r = self._validate()
     if r is not None:
@@ -240,9 +262,6 @@ class ofp_header (ofp_base):
         struct.unpack_from("!BBHL", binaryString, 0)
     return binaryString[8:]
 
-  def __len__ (self):
-    raise RuntimeError("__len__ unimplemented")
-
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.version != other.version: return False
@@ -322,7 +341,8 @@ class ofp_phy_port (ofp_base):
     (self.config, self.state, self.curr, self.advertised, self.supported, self.peer) = struct.unpack_from("!LLLLLL", binaryString, 24)
     return binaryString[48:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 48
 
   def __eq__ (self, other):
@@ -406,6 +426,7 @@ ofp_port_features_rev_map = {
 
 ##2.2 Queue Structures
 class ofp_packet_queue (ofp_base):
+  _MIN_LENGTH = 8
   def __init__ (self, **kw):
     self.queue_id = 0
     self.length = 0
@@ -479,7 +500,8 @@ class ofp_queue_prop_header (ofp_base):
     (self.property, self.length) = struct.unpack_from("!HH", binaryString, 0)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -519,7 +541,8 @@ class ofp_queue_prop_min_rate (ofp_base):
     (self.rate,) = struct.unpack_from("!H", binaryString, 8)
     return binaryString[16:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 16
 
   def __eq__ (self, other):
@@ -896,7 +919,8 @@ class ofp_match (ofp_base):
 
     return binaryString[len(self):]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 40
 
   def hash_code (self):
@@ -1062,10 +1086,10 @@ OFPFW_NW_DST_MASK      = 1032192
 OFPFW_ALL              = ((1 << 22) - 1)
 
 class ofp_action_generic (ofp_base):
+  _MIN_LENGTH = 8
   def __init__ (self, **kw):
     self.type = None # Purposely bad
-    self.length = 8
-    self.data = b''
+    self.data = _PAD4
 
     initHelper(self, kw)
 
@@ -1073,25 +1097,24 @@ class ofp_action_generic (ofp_base):
     assert self._assert()
 
     packed = ""
-    packed += struct.pack("!HH", self.type, self.length)
+    packed += struct.pack("!HH", self.type, len(self))
     packed += _PAD4 # Pad
     return packed
 
   def unpack (self, binaryString):
     if (len(binaryString) < 8):
       return binaryString
-    (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
-    if len(binaryString) < self.length: return binaryString
-    self.data = binaryString[8:8+self.length]
-    return binaryString[self.length:]
+    (self.type, length) = struct.unpack_from("!HH", binaryString, 0)
+    if len(binaryString) < length: return binaryString
+    self.data = binaryString[4:4+length]
+    return binaryString[length:]
 
   def __len__ (self):
-    return self.length
+    return 4 + len(self.data)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
-    if self.length != other.length: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1099,7 +1122,7 @@ class ofp_action_generic (ofp_base):
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
-    outstr += prefix + 'len: ' + str(self.length) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     return outstr
 
 
@@ -1128,7 +1151,8 @@ class ofp_action_output (ofp_action):
     (self.type, self.length, self.port, self.max_len) = struct.unpack_from("!HHHH", binaryString, 0)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -1175,7 +1199,8 @@ class ofp_action_enqueue (ofp_action):
     (self.queue_id,) = struct.unpack_from("!L", binaryString, 12)
     return binaryString[16:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 16
 
   def __eq__ (self, other):
@@ -1212,7 +1237,8 @@ class ofp_action_strip_vlan (ofp_action):
     (self.type, self.length) = struct.unpack_from("!HH", binaryString, 0)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -1251,7 +1277,8 @@ class ofp_action_vlan_vid (ofp_action):
     (self.type, self.length, self.vlan_vid) = struct.unpack_from("!HHH", binaryString, 0)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -1293,7 +1320,8 @@ class ofp_action_vlan_pcp (ofp_action):
     (self.type, self.length, self.vlan_pcp) = struct.unpack_from("!HHB", binaryString, 0)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -1361,7 +1389,8 @@ class ofp_action_dl_addr (ofp_action):
     self.dl_addr = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 4))
     return binaryString[16:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 16
 
   def __eq__ (self, other):
@@ -1417,7 +1446,8 @@ class ofp_action_nw_addr (ofp_action):
     self.nw_addr = IPAddr(self.nw_addr, networkOrder=False)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -1457,7 +1487,8 @@ class ofp_action_nw_tos (ofp_action):
     (self.type, self.length, self.nw_tos) = struct.unpack_from("!HHB", binaryString, 0)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -1509,7 +1540,8 @@ class ofp_action_tp_port (ofp_action):
     (self.type, self.length, self.tp_port) = struct.unpack_from("!HHH", binaryString, 0)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -1550,7 +1582,8 @@ class ofp_action_vendor_header (ofp_action):
     (self.type, self.length, self.vendor) = struct.unpack_from("!HHL", binaryString, 0)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -1573,9 +1606,11 @@ class ofp_action_vendor_header (ofp_action):
 
 ##3.1 Handshake
 # was ofp_switch_features
+#TODO: Set name back?
 @openflow_s_message("OFPT_FEATURES_REPLY", 6,
     reply_to="ofp_features_request")
 class ofp_features_reply (ofp_header):
+  _MIN_LENGTH = 32
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.datapath_id = 0
@@ -1607,18 +1642,18 @@ class ofp_features_reply (ofp_header):
     ofp_header.unpack(self, binaryString[0:])
     (self.datapath_id, self.n_buffers, self.n_tables) = struct.unpack_from("!QLB", binaryString, 8)
     (self.capabilities, self.actions) = struct.unpack_from("!LL", binaryString, 24)
-    portCount = (self.length - 32) / OFP_PHY_PORT_BYTES
+    portCount = (self.length - 32) / len(ofp_phy_port)
     self.ports = []
     for i in xrange(0, portCount):
       p = ofp_phy_port()
-      p.unpack(binaryString[32+i*OFP_PHY_PORT_BYTES:])
+      p.unpack(binaryString[32+i*len(ofp_phy_port):])
       self.ports.append(p)
     return binaryString[self.length:]
 
   def __len__ (self):
     l = 32
     for _ in self.ports:
-      l += OFP_PHY_PORT_BYTES
+      l += len(ofp_phy_port)
     return l
 
   def __eq__ (self, other):
@@ -1687,9 +1722,9 @@ class ofp_switch_config (ofp_header):
     (self.flags, self.miss_send_len) = struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
-  def __len__ (self):
-    l = 12
-    return l
+  @staticmethod
+  def __len__ ():
+    return 12
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -1718,6 +1753,7 @@ ofp_config_flags_rev_map = {
 ##3.3 Modify State Messages
 @openflow_c_message("OFPT_FLOW_MOD", 14)
 class ofp_flow_mod (ofp_header):
+  _MIN_LENGTH = 72
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     if 'match' in kw:
@@ -1909,7 +1945,8 @@ class ofp_port_mod (ofp_header):
     (self.config, self.mask, self.advertise) = struct.unpack_from("!LLL", binaryString, 16)
     return binaryString[32:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 32
 
   def __eq__ (self, other):
@@ -1960,7 +1997,8 @@ class ofp_queue_get_config_request (ofp_header):
     (self.port,) = struct.unpack_from("!H", binaryString, 8)
     return binaryString[12:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 12
 
   def __eq__ (self, other):
@@ -1980,6 +2018,7 @@ class ofp_queue_get_config_request (ofp_header):
 
 @openflow_s_message("OFPT_QUEUE_GET_CONFIG_REPLY", 21)
 class ofp_queue_get_config_reply (ofp_header):
+  _MIN_LENGTH = 16
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.length = 16
@@ -2034,6 +2073,7 @@ class ofp_queue_get_config_reply (ofp_header):
 ##3.5 Read State Messages
 @openflow_c_message("OFPT_STATS_REQUEST", 16)
 class ofp_stats_request (ofp_header):
+  _MIN_LENGTH = 12
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.type = None # Try to guess
@@ -2102,6 +2142,7 @@ class ofp_stats_request (ofp_header):
 @openflow_s_message("OFPT_STATS_REPLY", 17,
     reply_to="ofp_stats_request")
 class ofp_stats_reply (ofp_header):
+  _MIN_LENGTH = 12
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.type = None # Guess
@@ -2179,9 +2220,7 @@ class ofp_stats_reply (ofp_header):
     return binaryString[self.length:]
 
   def __len__ (self):
-    l = 12
-    l += len(self.body)
-    return l
+    return 12 + len(self.body)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2271,7 +2310,8 @@ class ofp_desc_stats (ofp_base):
     self.dp_desc = binaryString[800:1056].replace("\0","")
     return binaryString[1056:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 1056
 
   def __eq__ (self, other):
@@ -2322,8 +2362,9 @@ class ofp_flow_stats_request (ofp_base):
     (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, len(self.match))
     return binaryString[len(self)]
 
-  def __len__ (self):
-    return 4 + len(self.match)
+  @staticmethod
+  def __len__ ():
+    return 4 + len(ofp_match)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -2343,6 +2384,7 @@ class ofp_flow_stats_request (ofp_base):
     return outstr
 
 class ofp_flow_stats (ofp_base):
+  _MIN_LENGTH = 88
   def __init__ (self, **kw):
     self.length = 0
     self.table_id = 0
@@ -2461,7 +2503,8 @@ class ofp_aggregate_stats_request (ofp_base):
     (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, len(self.match))
     return binaryString[44:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 44
 
   def __eq__ (self, other):
@@ -2503,7 +2546,8 @@ class ofp_aggregate_stats (ofp_base):
     (self.packet_count, self.byte_count, self.flow_count) = struct.unpack_from("!QQL", binaryString, 0)
     return binaryString[24:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 24
 
   def __eq__ (self, other):
@@ -2560,7 +2604,8 @@ class ofp_table_stats (ofp_base):
     (self.wildcards, self.max_entries, self.active_count, self.lookup_count, self.matched_count) = struct.unpack_from("!LLLQQ", binaryString, 36)
     return binaryString[64:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 64
 
   def __eq__ (self, other):
@@ -2607,7 +2652,8 @@ class ofp_port_stats_request (ofp_base):
     (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -2656,7 +2702,8 @@ class ofp_port_stats (ofp_base):
     (self.rx_packets, self.tx_packets, self.rx_bytes, self.tx_bytes, self.rx_dropped, self.tx_dropped, self.rx_errors, self.tx_errors, self.rx_frame_err, self.rx_over_err, self.rx_crc_err, self.collisions) = struct.unpack_from("!QQQQQQQQQQQQ", binaryString, 8)
     return binaryString[104:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 104
 
   def __eq__ (self, other):
@@ -2736,7 +2783,8 @@ class ofp_queue_stats_request (ofp_base):
     (self.queue_id,) = struct.unpack_from("!L", binaryString, 4)
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -2779,7 +2827,8 @@ class ofp_queue_stats (ofp_base):
     (self.queue_id, self.tx_bytes, self.tx_packets, self.tx_errors) = struct.unpack_from("!LQQQ", binaryString, 4)
     return binaryString[32:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 32
 
   def __eq__ (self, other):
@@ -2807,6 +2856,7 @@ ofp_queue_stats_reply = ofp_queue_stats
 ##3.6 Send Packet Message
 @openflow_c_message("OFPT_PACKET_OUT", 13)
 class ofp_packet_out (ofp_header):
+  _MIN_LENGTH = 16
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self._buffer_id = NO_BUFFER
@@ -2943,7 +2993,8 @@ class ofp_barrier_reply (ofp_header):
     ofp_header.unpack(self, binaryString[0:])
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -2980,7 +3031,8 @@ class ofp_barrier_request (ofp_header):
     ofp_header.unpack(self, binaryString[0:])
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -2999,6 +3051,7 @@ class ofp_barrier_request (ofp_header):
 #4 Asynchronous Messages
 @openflow_s_message("OFPT_PACKET_IN", 10)
 class ofp_packet_in (ofp_header):
+  _MIN_LENGTH = 18
   def __init__ (self, **kw):
     ofp_header.__init__(self)
 
@@ -3065,9 +3118,7 @@ class ofp_packet_in (ofp_header):
     return binaryString[self.length:]
 
   def __len__ (self):
-    l = 18
-    l += len(self.data)*1
-    return l
+    return 18 + len(self.data)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3141,8 +3192,9 @@ class ofp_flow_removed (ofp_header):
     (self.packet_count, self.byte_count) = struct.unpack_from("!QQ", binaryString, 32 + len(self.match))
     return binaryString[len(self):]
 
-  def __len__ (self):
-    return 48 + len(self.match)
+  @staticmethod
+  def __len__ ():
+    return 48 + len(ofp_match)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3215,7 +3267,8 @@ class ofp_port_status (ofp_header):
     self.desc.unpack(binaryString[16:])
     return binaryString[64:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 64
 
   def __eq__ (self, other):
@@ -3244,6 +3297,7 @@ ofp_port_reason_rev_map = {
 
 @openflow_s_message("OFPT_ERROR", 1)
 class ofp_error (ofp_header):
+  _MIN_LENGTH = 12
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.type = 0
@@ -3271,9 +3325,7 @@ class ofp_error (ofp_header):
     return binaryString[12:]
 
   def __len__ (self):
-    l = 12
-    l += len(self.data)*1
-    return l
+    return 12 + len(self.data)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3383,7 +3435,8 @@ class ofp_hello (ofp_header):
     ofp_header.unpack(self, binaryString[0:])
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -3402,6 +3455,7 @@ class ofp_hello (ofp_header):
 @openflow_sc_message("OFPT_ECHO_REQUEST", 2,
     request_for="ofp_echo_reply")
 class ofp_echo_request (ofp_header):
+  _MIN_LENGTH = 8
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.body = b''
@@ -3448,6 +3502,7 @@ class ofp_echo_request (ofp_header):
 @openflow_sc_message("OFPT_ECHO_REPLY", 3,
     reply_to="ofp_echo_request")
 class ofp_echo_reply (ofp_header):
+  _MIN_LENGTH = 8
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.body = b''
@@ -3514,7 +3569,8 @@ class ofp_vendor_header (ofp_header):
     (self.vendor,) = struct.unpack_from("!L", binaryString, 8)
     return binaryString[12:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 12
 
   def __eq__ (self, other):
@@ -3535,6 +3591,7 @@ class ofp_vendor_header (ofp_header):
 
 @openflow_sc_message("OFPT_VENDOR", 4)
 class ofp_vendor (ofp_header):
+  _MIN_LENGTH = 12
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.vendor = 0
@@ -3608,7 +3665,8 @@ class ofp_features_request (ofp_header):
     ofp_header.unpack(self, binaryString[0:])
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -3645,7 +3703,8 @@ class ofp_get_config_request (ofp_header):
     ofp_header.unpack(self, binaryString[0:])
     return binaryString[8:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 8
 
   def __eq__ (self, other):
@@ -3688,7 +3747,8 @@ class ofp_get_config_reply (ofp_header):
         struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 12
 
   def __eq__ (self, other):
@@ -3734,7 +3794,8 @@ class ofp_set_config (ofp_header):
         struct.unpack_from("!HH", binaryString, 8)
     return binaryString[12:]
 
-  def __len__ (self):
+  @staticmethod
+  def __len__ ():
     return 12
 
   def __eq__ (self, other):
@@ -3914,49 +3975,6 @@ OFP_ETH_ALEN = 6
 OFP_VLAN_NONE = 0xffff
 OFPQ_ALL = 0xffffffff
 
-# Basic structure size definitions.
-#TODO: Delete these?
-OFP_ACTION_DL_ADDR_BYTES = 16
-OFP_ACTION_ENQUEUE_BYTES = 16
-OFP_ACTION_HEADER_BYTES = 8
-OFP_ACTION_NW_ADDR_BYTES = 8
-OFP_ACTION_NW_TOS_BYTES = 8
-OFP_ACTION_OUTPUT_BYTES = 8
-OFP_ACTION_TP_PORT_BYTES = 8
-OFP_ACTION_VENDOR_HEADER_BYTES = 8
-OFP_ACTION_VLAN_PCP_BYTES = 8
-OFP_ACTION_VLAN_VID_BYTES = 8
-OFP_AGGREGATE_STATS_REPLY_BYTES = 24
-OFP_AGGREGATE_STATS_REQUEST_BYTES = 44
-OFP_DESC_STATS_BYTES = 1056
-OFP_ERROR_MSG_BYTES = 12
-OFP_FLOW_MOD_BYTES = 72
-OFP_FLOW_REMOVED_BYTES = 88
-OFP_FLOW_STATS_BYTES = 88
-OFP_FLOW_STATS_REQUEST_BYTES = 44
-OFP_HEADER_BYTES = 8
-OFP_HELLO_BYTES = 8
-OFP_MATCH_BYTES = 40
-OFP_PACKET_IN_BYTES = 18
-OFP_PACKET_OUT_BYTES = 16
-OFP_PACKET_QUEUE_BYTES = 8
-OFP_PHY_PORT_BYTES = 48
-OFP_PORT_MOD_BYTES = 32
-OFP_PORT_STATS_BYTES = 104
-OFP_PORT_STATS_REQUEST_BYTES = 8
-OFP_PORT_STATUS_BYTES = 64
-OFP_QUEUE_GET_CONFIG_REPLY_BYTES = 16
-OFP_QUEUE_GET_CONFIG_REQUEST_BYTES = 12
-OFP_QUEUE_PROP_HEADER_BYTES = 8
-OFP_QUEUE_PROP_MIN_RATE_BYTES = 16
-OFP_QUEUE_STATS_BYTES = 32
-OFP_QUEUE_STATS_REQUEST_BYTES = 8
-OFP_STATS_REPLY_BYTES = 12
-OFP_STATS_REQUEST_BYTES = 12
-OFP_SWITCH_CONFIG_BYTES = 12
-OFP_SWITCH_FEATURES_BYTES = 32
-OFP_TABLE_STATS_BYTES = 64
-OFP_VENDOR_HEADER_BYTES = 12
 
 NO_BUFFER = 4294967295
 
