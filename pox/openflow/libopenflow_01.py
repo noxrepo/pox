@@ -47,8 +47,17 @@ EMPTY_ETH = EthAddr(None)
 
 MAX_XID = 0x7fFFffFF
 
+
+def XIDGenerator (start = 1, stop = MAX_XID):
+  i = start
+  while True:
+    yield i
+    i += 1
+    if i > stop:
+      i = start
+
 def xid_generator (start = 1, stop = MAX_XID):
-  return chain.from_iterable(repeat(xrange(start,stop+1))).next
+  return XIDGenerator(start, stop).next
 
 def user_xid_generator ():
   return xid_generator(0x80000000, 0xffFFffFF)
