@@ -447,47 +447,47 @@ class SwitchImpl(EventMixin):
     def enqueue(action, packet):
       self.log.warn("output_enqueue not supported yet. Performing regular output")
       return output_packet(action.tp_port, packet)
-    def push_mpls_tag(action, packet):
-      bottom_of_stack = isinstance(packet.next, mpls)
-      packet.next = mpls(prev = packet.pack())
-      if bottom_of_stack:
-        packet.next.s = 1
-      packet.type = action.ethertype
-      return packet
-    def pop_mpls_tag(action, packet):
-      if not isinstance(packet.next, mpls):
-        return packet
-      if not isinstance(packet.next.next, str):
-        packet.next.next = packet.next.next.pack()
-      if action.ethertype in ethernet.type_parsers:
-        packet.next = ethernet.type_parsers[action.ethertype](packet.next.next)
-      else:
-        packet.next = packet.next.next
-      packet.ethertype = action.ethertype
-      return packet
-    def set_mpls_label(action, packet):
-      if not isinstance(packet.next, mpls):
-        mock = ofp_action_push_mpls()
-        packet = push_mpls_tag(mock, packet)
-      packet.next.label = action.mpls_label
-      return packet
-    def set_mpls_tc(action, packet):
-      if not isinstance(packet.next, mpls):
-        mock = ofp_action_push_mpls()
-        packet = push_mpls_tag(mock, packet)
-      packet.next.tc = action.mpls_tc
-      return packet
-    def set_mpls_ttl(action, packet):
-      if not isinstance(packet.next, mpls):
-        mock = ofp_action_push_mpls()
-        packet = push_mpls_tag(mock, packet)
-      packet.next.ttl = action.mpls_ttl
-      return packet
-    def dec_mpls_ttl(action, packet):
-      if not isinstance(packet.next, mpls):
-        return packet
-      packet.next.ttl = packet.next.ttl - 1
-      return packet
+#    def push_mpls_tag(action, packet):
+#      bottom_of_stack = isinstance(packet.next, mpls)
+#      packet.next = mpls(prev = packet.pack())
+#      if bottom_of_stack:
+#        packet.next.s = 1
+#      packet.type = action.ethertype
+#      return packet
+#    def pop_mpls_tag(action, packet):
+#      if not isinstance(packet.next, mpls):
+#        return packet
+#      if not isinstance(packet.next.next, str):
+#        packet.next.next = packet.next.next.pack()
+#      if action.ethertype in ethernet.type_parsers:
+#        packet.next = ethernet.type_parsers[action.ethertype](packet.next.next)
+#      else:
+#        packet.next = packet.next.next
+#      packet.ethertype = action.ethertype
+#      return packet
+#    def set_mpls_label(action, packet):
+#      if not isinstance(packet.next, mpls):
+#        mock = ofp_action_push_mpls()
+#        packet = push_mpls_tag(mock, packet)
+#      packet.next.label = action.mpls_label
+#      return packet
+#    def set_mpls_tc(action, packet):
+#      if not isinstance(packet.next, mpls):
+#        mock = ofp_action_push_mpls()
+#        packet = push_mpls_tag(mock, packet)
+#      packet.next.tc = action.mpls_tc
+#      return packet
+#    def set_mpls_ttl(action, packet):
+#      if not isinstance(packet.next, mpls):
+#        mock = ofp_action_push_mpls()
+#        packet = push_mpls_tag(mock, packet)
+#      packet.next.ttl = action.mpls_ttl
+#      return packet
+#    def dec_mpls_ttl(action, packet):
+#      if not isinstance(packet.next, mpls):
+#        return packet
+#      packet.next.ttl = packet.next.ttl - 1
+#      return packet
     handler_map = {
         OFPAT_OUTPUT: output_packet,
         OFPAT_SET_VLAN_VID: set_vlan_id,
@@ -501,17 +501,17 @@ class SwitchImpl(EventMixin):
         OFPAT_SET_TP_SRC: set_tp_src,
         OFPAT_SET_TP_DST: set_tp_dst,
         OFPAT_ENQUEUE: enqueue,
-        OFPAT_PUSH_MPLS: push_mpls_tag, 
-        OFPAT_POP_MPLS: pop_mpls_tag,
-        OFPAT_SET_MPLS_LABEL: set_mpls_label,
-        OFPAT_SET_MPLS_TC: set_mpls_tc,
-        OFPAT_SET_MPLS_TTL: set_mpls_ttl,
-        OFPAT_DEC_MPLS_TTL: dec_mpls_ttl,
+#        OFPAT_PUSH_MPLS: push_mpls_tag,
+#        OFPAT_POP_MPLS: pop_mpls_tag,
+#        OFPAT_SET_MPLS_LABEL: set_mpls_label,
+#        OFPAT_SET_MPLS_TC: set_mpls_tc,
+#        OFPAT_SET_MPLS_TTL: set_mpls_ttl,
+#        OFPAT_DEC_MPLS_TTL: dec_mpls_ttl,
     }
     for action in actions:
-      if action.type is ofp_action_resubmit:
-        self.process_packet(packet, in_port)
-        return
+#      if action.type is ofp_action_resubmit:
+#        self.process_packet(packet, in_port)
+#        return
       if(action.type not in handler_map):
         raise NotImplementedError("Unknown action type: %x " % type)
       packet = handler_map[action.type](action, packet)
