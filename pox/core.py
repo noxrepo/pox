@@ -281,10 +281,18 @@ class POXCore (EventMixin):
     except:
       return "Unknown Python"
 
+  def _get_platform_info (self):
+    try:
+      import platform
+      return platform.platform().split("\n")[0]
+    except:
+      return "Unknown Platform"
+
   def goUp (self):
     log.debug(self.version_string + " going up...")
 
     log.debug("Running on " + self._get_python_version())
+    log.debug("Platform is " + self._get_platform_info())
 
     self.raiseEvent(GoingUpEvent())
 
