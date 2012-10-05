@@ -30,7 +30,9 @@ from pox.lib.addresses import IPAddr
 log = core.getLogger()
 
 class DNSSpy (object):
-  def __init__ (self):
+  def __init__ (self, install_flow = True):
+    self._install_flow = install_flow
+
     self.ip_to_name = {}
     self.name_to_ip = {}
 
@@ -40,13 +42,14 @@ class DNSSpy (object):
     core.Interactive.variables['lookup'] = self.lookup
 
   def _handle_ConnectionUp (self, event):
-    msg = of.ofp_flow_mod()
-    msg.match = of.ofp_match()
-    msg.match.dl_type = pkt.ethernet.IP_TYPE
-    msg.match.nw_proto = pkt.ipv4.UDP_PROTOCOL
-    msg.match.tp_src = 53
-    msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
-    event.connection.send(msg)
+    if self._install_flow:
+      msg = of.ofp_flow_mod()
+      msg.match = of.ofp_match()
+      msg.match.dl_type = pkt.ethernet.IP_TYPE
+      msg.match.nw_proto = pkt.ipv4.UDP_PROTOCOL
+      msg.match.tp_src = 53
+      msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
+      event.connection.send(msg)
 
   def lookup (self, something):
     if something in self.name_to_ip:
@@ -88,5 +91,5 @@ class DNSSpy (object):
                                                       addition.name))
 
 
-def launch ():
-  core.registerNew(DNSSpy)
+def launch (no_flow = False):
+  core.registerNew(DNSSpy, not no_flow)
