@@ -134,9 +134,11 @@ class ofp_base (object):
   def _validate (self):
     return None
 
+  @classmethod
   def unpack_new (cls, raw, offset=0):
+    assert offset == 0 # Not implemented yet
     o = cls()
-    r = o.unpack(raw, offset)
+    r = o.unpack(raw)#, offset)
     return (r, o)
 
 
@@ -149,6 +151,7 @@ _message_class_to_types = {} # Do we need this?
 #_message_type_to_name = {}
 #_message_name_to_type = {}
 ofp_type_rev_map = {}
+ofp_type_map = {}
 
 def openflow_message (ofp_type, type_val, reply_to=None,
     request_for=None, switch=False, controller=False):
@@ -157,6 +160,7 @@ def openflow_message (ofp_type, type_val, reply_to=None,
   #_message_name_to_type[ofp_type] = type_val
   #_message_type_to_name[type_val] = ofp_type
   ofp_type_rev_map[ofp_type] = type_val
+  ofp_type_map[type_val] = ofp_type
   def f (c):
     c.header_type = type_val
     c._from_switch = switch
@@ -175,6 +179,22 @@ def openflow_c_message (*args, **kw):
 def openflow_s_message (*args, **kw):
   return openflow_message(switch=True, *args, **kw)
 
+
+_action_type_to_class = {}
+_action_class_to_types = {} # Do we need this?
+ofp_action_type_rev_map = {}
+ofp_action_type_map = {}
+
+def openflow_action (action_type, type_val):
+  ofp_action_type_rev_map[action_type] = type_val
+  ofp_action_type_map[type_val] = action_type
+  def f (c):
+    c.type = type_val
+    _action_type_to_class[type_val] = c
+    _action_class_to_types.get(c, set()).add(type_val)
+    return c
+  return f
+
 # ----------------------------------------------------------------------
 # Structure definitions
 # ----------------------------------------------------------------------
@@ -186,6 +206,8 @@ class ofp_header (ofp_base):
     #self.header_type = None # Set via class decorator
     self._xid = None
     self.length = 8
+    if 'header_type' in kw:
+      self.header_type = kw.pop('header_type')
     initHelper(self, kw)
 
   @property
@@ -212,7 +234,7 @@ class ofp_header (ofp_base):
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 8):
+    if len(binaryString) < 8:
       return binaryString
     (self.version, self.header_type, self.length, self.xid) = \
         struct.unpack_from("!BBHL", binaryString, 0)
@@ -245,6 +267,11 @@ class ofp_header (ofp_base):
   
   def __str__ (self):
     return self.__class__.__name__ + "\n  " + self.show('  ').strip()
+
+
+class ofp_action (ofp_base):
+  pass
+
 
 #2. Common Structures
 ##2.1 Port Structures
@@ -1034,24 +1061,7 @@ OFPFW_NW_DST_MASK      = 1032192
 # Otherwise, packets are not being matched as they should
 OFPFW_ALL              = ((1 << 22) - 1)
 
-##2.4 Flow Action Structures
-ofp_action_type_rev_map = {
-  'OFPAT_OUTPUT'       : 0,
-  'OFPAT_SET_VLAN_VID' : 1,
-  'OFPAT_SET_VLAN_PCP' : 2,
-  'OFPAT_STRIP_VLAN'   : 3,
-  'OFPAT_SET_DL_SRC'   : 4,
-  'OFPAT_SET_DL_DST'   : 5,
-  'OFPAT_SET_NW_SRC'   : 6,
-  'OFPAT_SET_NW_DST'   : 7,
-  'OFPAT_SET_NW_TOS'   : 8,
-  'OFPAT_SET_TP_SRC'   : 9,
-  'OFPAT_SET_TP_DST'   : 10,
-  'OFPAT_ENQUEUE'      : 11,
-  'OFPAT_VENDOR'       : 65535,
-}
-
-class ofp_action_header (ofp_base):
+class ofp_action_generic (ofp_base):
   def __init__ (self, **kw):
     self.type = None # Purposely bad
     self.length = 8
@@ -1093,9 +1103,9 @@ class ofp_action_header (ofp_base):
     return outstr
 
 
-class ofp_action_output (ofp_base):
+@openflow_action('OFPAT_OUTPUT', 0)
+class ofp_action_output (ofp_action):
   def __init__ (self, **kw):
-    self.type = OFPAT_OUTPUT
     self.length = 8
     self.port = None # Purposely bad -- require specification
     self.max_len = 0xffFF
@@ -1140,9 +1150,9 @@ class ofp_action_output (ofp_base):
     return outstr
 
 
-class ofp_action_enqueue (ofp_base):
+@openflow_action('OFPAT_ENQUEUE', 11)
+class ofp_action_enqueue (ofp_action):
   def __init__ (self, **kw):
-    self.type = OFPAT_ENQUEUE
     self.length = 16
     self.port = None # Require user to set
     self.queue_id = 0
@@ -1187,9 +1197,9 @@ class ofp_action_enqueue (ofp_base):
     return outstr
 
 
-class ofp_action_strip_vlan (ofp_base):
+@openflow_action('OFPAT_STRIP_VLAN', 3)
+class ofp_action_strip_vlan (ofp_action):
   def __init__ (self):
-    self.type = OFPAT_STRIP_VLAN
     self.length = 8
 
   def pack (self):
@@ -1219,9 +1229,9 @@ class ofp_action_strip_vlan (ofp_base):
     outstr += prefix + 'len: ' + str(self.length) + '\n'
     return outstr
 
-class ofp_action_vlan_vid (ofp_base):
+@openflow_action('OFPAT_SET_VLAN_VID', 1)
+class ofp_action_vlan_vid (ofp_action):
   def __init__ (self, **kw):
-    self.type = OFPAT_SET_VLAN_VID
     self.length = 8
     self.vlan_vid = 0
 
@@ -1260,9 +1270,10 @@ class ofp_action_vlan_vid (ofp_base):
     outstr += prefix + 'vlan_vid: ' + str(self.vlan_vid) + '\n'
     return outstr
 
-class ofp_action_vlan_pcp (ofp_base):
+
+@openflow_action('OFPAT_SET_VLAN_PCP', 2)
+class ofp_action_vlan_pcp (ofp_action):
   def __init__ (self, **kw):
-    self.type = OFPAT_SET_VLAN_PCP
     self.length = 8
     self.vlan_pcp = 0
 
@@ -1301,7 +1312,10 @@ class ofp_action_vlan_pcp (ofp_base):
     outstr += prefix + 'vlan_pcp: ' + str(self.vlan_pcp) + '\n'
     return outstr
 
-class ofp_action_dl_addr (ofp_base):
+
+@openflow_action('OFPAT_SET_DL_DST', 5)
+@openflow_action('OFPAT_SET_DL_SRC', 4)
+class ofp_action_dl_addr (ofp_action):
   @classmethod
   def set_dst (cls, dl_addr = None):
     return cls(OFPAT_SET_DL_DST, dl_addr)
@@ -1366,7 +1380,10 @@ class ofp_action_dl_addr (ofp_base):
     outstr += prefix + 'dl_addr: ' + str(self.dl_addr) + '\n'
     return outstr
 
-class ofp_action_nw_addr (ofp_base):
+
+@openflow_action('OFPAT_SET_NW_DST', 7)
+@openflow_action('OFPAT_SET_NW_SRC', 6)
+class ofp_action_nw_addr (ofp_action):
   @classmethod
   def set_dst (cls, nw_addr = None):
     return cls(OFPAT_SET_NW_DST, nw_addr)
@@ -1419,9 +1436,10 @@ class ofp_action_nw_addr (ofp_base):
     outstr += prefix + 'nw_addr: ' + str(self.nw_addr) + '\n'
     return outstr
 
-class ofp_action_nw_tos (ofp_base):
+
+@openflow_action('OFPAT_SET_NW_TOS', 8)
+class ofp_action_nw_tos (ofp_action):
   def __init__ (self, nw_tos = 0):
-    self.type = OFPAT_SET_NW_TOS
     self.length = 8
     self.nw_tos = nw_tos
 
@@ -1458,7 +1476,10 @@ class ofp_action_nw_tos (ofp_base):
     outstr += prefix + 'nw_tos: ' + str(self.nw_tos) + '\n'
     return outstr
 
-class ofp_action_tp_port (ofp_base):
+
+@openflow_action('OFPAT_SET_TP_DST', 10)
+@openflow_action('OFPAT_SET_TP_SRC', 9)
+class ofp_action_tp_port (ofp_action):
   @classmethod
   def set_dst (cls, tp_port = None):
     return cls(OFPAT_SET_TP_DST, tp_port)
@@ -1507,9 +1528,10 @@ class ofp_action_tp_port (ofp_base):
     outstr += prefix + 'tp_port: ' + str(self.tp_port) + '\n'
     return outstr
 
-class ofp_action_vendor_header (ofp_base):
+
+@openflow_action('OFPAT_VENDOR', 65535)
+class ofp_action_vendor_header (ofp_action):
   def __init__ (self, **kw):
-    self.type = OFPAT_VENDOR
     self.length = 8
     self.vendor = 0
 
@@ -3770,9 +3792,6 @@ def _get_type (o):
     return ofp_stats_types_rev_map.get(c)
   #TODO: For non-stats
 
-# Table that maps an action type to a callable that creates that type
-# (This is filled in by _init after the globals have been created)
-_action_map = {}
 
 # Table that maps a stats type to two callables to create the requests
 # and replies of that type respectively.
@@ -3792,10 +3811,10 @@ def _unpack_actions (b, length, offset=0):
   while offset < end:
     (t,l) = struct.unpack_from("!HH", b, offset)
     if (len(b) - offset) < l: return ([], offset)
-    a = _action_map.get(t)
+    a = _action_type_to_class.get(t)
     if a is None:
       # Use generic action header for unknown type
-      a = ofp_action_header()
+      a = ofp_action_generic()
     else:
       a = a()
     a.unpack(b[offset:offset+l])
@@ -3840,7 +3859,8 @@ def _init ():
     # Try to generate forward maps
     forward = dict(((v,k) for k,v in m.iteritems()))
     if len(forward) == len(m):
-      globals()[name + "_map"] = forward
+      if name + "_map" not in globals():
+        globals()[name + "_map"] = forward
     else:
       print name + "_rev_map is not a map"
 
@@ -3860,22 +3880,6 @@ def _init ():
 
 _init()
 
-# Fill in the action-to-class table
-#TODO: Use the factory functions?
-_action_map.update({
-  OFPAT_OUTPUT                   : ofp_action_output,
-  OFPAT_STRIP_VLAN               : ofp_action_strip_vlan,
-  OFPAT_SET_VLAN_VID             : ofp_action_vlan_vid,
-  OFPAT_SET_VLAN_PCP             : ofp_action_vlan_pcp,
-  OFPAT_SET_DL_SRC               : ofp_action_dl_addr,
-  OFPAT_SET_DL_DST               : ofp_action_dl_addr,
-  OFPAT_SET_NW_SRC               : ofp_action_nw_addr,
-  OFPAT_SET_NW_DST               : ofp_action_nw_addr,
-  OFPAT_SET_NW_TOS               : ofp_action_nw_tos,
-  OFPAT_SET_TP_SRC               : ofp_action_tp_port,
-  OFPAT_SET_TP_DST               : ofp_action_tp_port,
-  OFPAT_ENQUEUE                  : ofp_action_enqueue,
-})
 
 # Fill in the stats-to-class table
 # Values are (request_type,reply_type,reply_is_list)
@@ -3911,6 +3915,7 @@ OFP_VLAN_NONE = 0xffff
 OFPQ_ALL = 0xffffffff
 
 # Basic structure size definitions.
+#TODO: Delete these?
 OFP_ACTION_DL_ADDR_BYTES = 16
 OFP_ACTION_ENQUEUE_BYTES = 16
 OFP_ACTION_HEADER_BYTES = 8
