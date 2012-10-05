@@ -479,6 +479,9 @@ class dns(packet_base):
                 s += " ??? "
             s += " ttl:"+str(self.ttl)
             s += " rdlen:"+str(self.rdlen)
-            s += " data: "+str(self.rddata)
+            s += " datalen:" + str(len(self.rddata))
+            if len(self.rddata) == 4:
+              #FIXME: can be smarter about whether this is an IP
+              s+= " data:" + str(IPAddr(self.rddata))
 
             return s
