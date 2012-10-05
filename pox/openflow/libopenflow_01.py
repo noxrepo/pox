@@ -183,7 +183,7 @@ def openflow_s_message (*args, **kw):
 class ofp_header (ofp_base):
   def __init__ (self, **kw):
     self.version = OFP_VERSION
-    self.header_type = None # Require setting
+    #self.header_type = None # Set via class decorator
     self._xid = None
     self.length = 8
     initHelper(self, kw)
