@@ -20,6 +20,10 @@ for root, dirs, files in os.walk(ROOT):
   root = root[len(ROOT)+1:]
   if not root.startswith("pox"): continue
 
+  if not path.exists(path.join(root, "__init__.py")):
+    continue
+  modules.append(root.replace(path.sep,"."))
+
   files = [f for f in files if f.endswith(".py") and not f.startswith("__init__") and f != "setup.py"]
   #print root
   for f in files:
