@@ -219,7 +219,8 @@ class ofp_command_test(unittest.TestCase):
       args = {}
 
       # Customize initializer
-      if cls is ofp_stats_reply:
+      if cls in (ofp_stats_reply, ofp_stats_request):
+        # These need a body set
         args['body'] = ofp_desc_stats(sw_desc="POX")
 
       o = cls(xid=xid, **args)
