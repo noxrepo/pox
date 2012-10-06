@@ -198,7 +198,7 @@ def openflow_message (ofp_type, type_val, reply_to=None,
     c._from_switch = switch
     c._from_controller = controller
     _message_type_to_class[type_val] = c
-    _message_class_to_types.get(c, set()).add(type_val)
+    _message_class_to_types.setdefault(c, set()).add(type_val)
     return c
   return f
 
@@ -223,9 +223,61 @@ def openflow_action (action_type, type_val):
   def f (c):
     c.type = type_val
     _action_type_to_class[type_val] = c
-    _action_class_to_types.get(c, set()).add(type_val)
+    _action_class_to_types.setdefault(c, set()).add(type_val)
     return c
   return f
+
+
+#_StatsClassInfo = collections.namedtuple('StatsClassInfo',
+#    'request reply reply_is_list')
+class _StatsClassInfo (object):
+  __slots__ = 'request reply reply_is_list'.split()
+  def set (self, **kw):
+    initHelper(self, kw)
+  def __str__ (self):
+    r = str(self.reply)
+    if self.reply_is_list: r = "[%s]" % (r,)
+    return "request:%s reply:%s" % (self.request, r)
+
+_stats_type_to_class_info = {}
+_stats_class_to_type = {}
+ofp_stats_type_rev_map = {}
+ofp_stats_type_map = {}
+
+def openflow_stats_request  (stats_type, type_val=None, is_list=None,
+    is_reply = False):
+  if type_val is not None:
+    ofp_stats_type_rev_map[stats_type] = type_val
+    ofp_stats_type_map[type_val] = stats_type
+  else:
+    type_val = ofp_stats_type_rev_map.get(stats_type)
+
+  def f (c):
+    if type_val is not None:
+      ti = _stats_type_to_class_info.get(stats_type)
+      if ti is not None:
+        _stats_type_to_class_info[type_val] = ti
+        del _stats_type_to_class_info[stats_type]
+      else:
+        ti = _stats_type_to_class_info.setdefault(type_val,
+            _StatsClassInfo())
+      _stats_class_to_type[c] = ti
+    else:
+      ti = _stats_type_to_class_info.setdefault(stats_type,
+          _StatsClassInfo())
+
+    if is_list is not None:
+      ti.reply_is_list = is_list
+    if is_reply:
+      ti.reply = c
+    else:
+      ti.request = c
+    return c
+  return f
+
+def openflow_stats_reply (stats_type, type_val=None, is_list=None,
+    is_reply = True):
+  return openflow_stats_request(stats_type, type_val, is_list, is_reply)
 
 # ----------------------------------------------------------------------
 
@@ -363,7 +415,8 @@ ofp_flow_mod_flags_rev_map = {
   'OFPFF_EMERG'         : 4,
 }
 
-ofp_stats_types_rev_map = {
+"""
+ofp_stats_type_rev_map = {
   'OFPST_DESC'      : 0,
   'OFPST_FLOW'      : 1,
   'OFPST_AGGREGATE' : 2,
@@ -372,6 +425,7 @@ ofp_stats_types_rev_map = {
   'OFPST_QUEUE'     : 5,
   'OFPST_VENDOR'    : 65535,
 }
+"""
 
 ofp_stats_reply_flags_rev_map = {
   'OFPSF_REPLY_MORE' : 1,
@@ -2357,6 +2411,7 @@ class ofp_stats_reply (ofp_header):
     return outstr
 
 
+@openflow_stats_reply("OFPST_DESC", 0)
 class ofp_desc_stats (ofp_base):
   def __init__ (self, **kw):
     self.mfr_desc= ""
@@ -2438,6 +2493,7 @@ class ofp_desc_stats (ofp_base):
 ofp_desc_stats_reply = ofp_desc_stats
 
 
+@openflow_stats_request('OFPST_FLOW', 1)
 class ofp_flow_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.match = ofp_match()
@@ -2487,6 +2543,7 @@ class ofp_flow_stats_request (ofp_base):
     return outstr
 
 
+@openflow_stats_reply('OFPST_FLOW', is_list = True)
 class ofp_flow_stats (ofp_base):
   _MIN_LENGTH = 88
   def __init__ (self, **kw):
@@ -2578,6 +2635,7 @@ class ofp_flow_stats (ofp_base):
 ofp_flow_stats_reply = ofp_flow_stats
 
 
+@openflow_stats_request('OFPST_AGGREGATE', 2)
 class ofp_aggregate_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.match = ofp_match()
@@ -2628,6 +2686,7 @@ class ofp_aggregate_stats_request (ofp_base):
     return outstr
 
 
+@openflow_stats_reply('OFPST_AGGREGATE')
 class ofp_aggregate_stats (ofp_base):
   def __init__ (self, **kw):
     self.packet_count = 0
@@ -2672,6 +2731,7 @@ class ofp_aggregate_stats (ofp_base):
 ofp_aggregate_stats_reply = ofp_aggregate_stats
 
 
+@openflow_stats_reply('OFPST_TABLE', 3, is_list = True)
 class ofp_table_stats (ofp_base):
   def __init__ (self, **kw):
     self.table_id = 0
@@ -2739,6 +2799,7 @@ class ofp_table_stats (ofp_base):
 ofp_table_stats_reply = ofp_table_stats
 
 
+@openflow_stats_request("OFPST_PORT", 4)
 class ofp_port_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.port_no = OFPP_NONE
@@ -2775,6 +2836,7 @@ class ofp_port_stats_request (ofp_base):
     return outstr
 
 
+@openflow_stats_reply("OFPST_PORT", is_list = True)
 class ofp_port_stats (ofp_base):
   def __init__ (self, **kw):
     self.port_no = 0
@@ -2868,6 +2930,7 @@ class ofp_port_stats (ofp_base):
 ofp_port_stats_reply = ofp_port_stats
 
 
+@openflow_stats_request("OFPST_QUEUE", 5)
 class ofp_queue_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.port_no = 0
@@ -2910,6 +2973,7 @@ class ofp_queue_stats_request (ofp_base):
     return outstr
 
 
+@openflow_stats_reply("OFPST_QUEUE", is_list = True)
 class ofp_queue_stats (ofp_base):
   def __init__ (self, **kw):
     self.port_no = 0
@@ -2960,6 +3024,49 @@ class ofp_queue_stats (ofp_base):
     outstr += prefix + 'tx_errors: ' + str(self.tx_errors) + '\n'
     return outstr
 ofp_queue_stats_reply = ofp_queue_stats
+
+
+@openflow_stats_reply("OFPST_VENDOR", 65535, is_list = False)
+#FIXME
+class ofp_vendor_stats_generic (ofp_base):
+  def __init__ (self, **kw):
+
+    initHelper(self, kw)
+
+  def pack (self):
+    assert self._assert()
+
+    packed = ""
+    packed += struct.pack("!H", self.port_no)
+    packed += _PAD2
+    packed += struct.pack("!LQQQ", self.queue_id, self.tx_bytes, self.tx_packets, self.tx_errors)
+    return packed
+
+  def unpack (self, binaryString):
+    if (len(binaryString) < 32):
+      return binaryString
+    (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
+    (self.queue_id, self.tx_bytes, self.tx_packets, self.tx_errors) = struct.unpack_from("!LQQQ", binaryString, 4)
+    return binaryString[32:]
+
+  @staticmethod
+  def __len__ ():
+    return 32
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.port_no != other.port_no: return False
+    if self.queue_id != other.queue_id: return False
+    if self.tx_bytes != other.tx_bytes: return False
+    if self.tx_packets != other.tx_packets: return False
+    if self.tx_errors != other.tx_errors: return False
+    return True
+
+  def __ne__ (self, other): return not self.__eq__(other)
+
+  def show (self, prefix=''):
+    outstr = ''
+    return outstr
 
 
 ##3.6 Send Packet Message
@@ -3882,7 +3989,7 @@ def _get_type (o):
       c.endswith("_stats")):
     c = c.rsplit("_stats", 1)[0].upper()
     c = "OFPST_" + c
-    return ofp_stats_types_rev_map.get(c)
+    return ofp_stats_type_rev_map.get(c)
   #TODO: For non-stats
 
 
