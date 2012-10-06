@@ -27,7 +27,7 @@ uses them to populate and manipulate Topology.
 
 import itertools
 
-from pox.lib.revent.revent import *
+from pox.lib.revent import *
 import libopenflow_01 as of
 from pox.openflow import *
 from pox.core import core
@@ -48,31 +48,21 @@ RECONNECT_TIMEOUT = 30
 
 log = core.getLogger()
 
-class OpenFlowTopology (EventMixin):
+class OpenFlowTopology (object):
   """
   Listens to various OpenFlow-specific events and uses those to manipulate
   Topology accordingly.
   """
-  
-  # Won't boot up OpenFlowTopology until all of these components are loaded
-  # into pox.core. Note though that these components won't be loaded
-  # proactively; they must be specified on the command line (with the
-  # exception of openflow which usally loads automatically)
-  _wantComponents = set(['openflow','topology','openflow_discovery'])
 
   def __init__ (self):
-    """ Note that self.topology is initialized in _resolveComponents """
-    super(EventMixin, self).__init__()
-    if not core.listenToDependencies(self, self._wantComponents):
-      self.listenTo(core)
-  
+    core.listen_to_dependencies(self, ['topology'], short_attrs=True)
+
   def _handle_openflow_discovery_LinkEvent (self, event):
     """
-    The discovery module simply sends out LLDP packets, and triggers LinkEvents
-    for discovered switches. It's our job to take these LinkEvents and update
-    pox.topology.
+    The discovery module simply sends out LLDP packets, and triggers
+    LinkEvents for discovered switches. It's our job to take these
+    LinkEvents and update pox.topology.
     """
-    if self.topology is None: return
     link = event.link
     sw1 = self.topology.getEntityByID(link.dpid1)
     sw2 = self.topology.getEntityByID(link.dpid2)
@@ -84,14 +74,6 @@ class OpenFlowTopology (EventMixin):
     elif event.removed:
       sw1.ports[link.port1].entities.discard(sw2)
       sw2.ports[link.port2].entities.discard(sw1)
-
-  def _handle_ComponentRegistered (self, event):
-    """
-    A component was registered with pox.core. If we were dependent on it, 
-    check again if all of our dependencies are now satisfied so we can boot.
-    """
-    if core.listenToDependencies(self, self._wantComponents):
-      return EventRemove
 
   def _handle_openflow_ConnectionUp (self, event):
     sw = self.topology.getEntityByID(event.dpid)
@@ -166,6 +148,7 @@ class OpenFlowPort (Port):
   def __repr__ (self):
     return "<Port #" + str(self.number) + ">"
 
+
 class OpenFlowSwitch (EventMixin, Switch):
   """
   OpenFlowSwitches are Topology entities (inheriting from topology.Switch)
@@ -236,9 +219,10 @@ class OpenFlowSwitch (EventMixin, Switch):
         del self.ports[p]
     if connection is not None:
       self._listeners = self.listenTo(connection, prefix="con")
-      self.raiseEvent(SwitchConnectionUp(switch=self, connection = connection))
+      self.raiseEvent(SwitchConnectionUp(switch = self,
+                                         connection = connection))
     else:
-      self.raiseEvent(SwitchConnectionDown(switch=self))
+      self.raiseEvent(SwitchConnectionDown(self))
 
 
   def _timer_ReconnectTimeout (self):
@@ -289,7 +273,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     return self._connection != None
 
   def installFlow(self, **kw):
-    """ install a flow in the local flow table as well as into the associated switch """
+    """ install flow in the local table and the associated switch """
     self.flow_table.install(TableEntry(**kw))
 
   def serialize (self):
