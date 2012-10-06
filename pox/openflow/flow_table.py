@@ -316,11 +316,11 @@ class NOMFlowTable(EventMixin):
           if op not in self.pending_op_to_barrier or (self.pending_op_to_barrier[op][1] + NOMFlowTable.TIME_OUT) < time.time ]
 
     for op in todo:
-      fmod_xid = self.switch.xid_generator.next()
+      fmod_xid = self.switch.xid_generator()
       flow_mod = op[1].to_flow_mod(xid=fmod_xid, command=op[0])
       self.switch.send(flow_mod)
 
-    barrier_xid = self.switch.xid_generator.next()
+    barrier_xid = self.switch.xid_generator()
     self.switch.send(ofp_barrier_request(xid=barrier_xid))
     now = time.time()
     self.pending_barrier_to_ops[barrier_xid] = todo
