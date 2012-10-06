@@ -144,6 +144,7 @@ class _ofp_meta (type):
     except:
       return cls._MIN_LENGTH
 
+
 class ofp_base (object):
   """
   Base class for OpenFlow messages/structures
@@ -225,6 +226,217 @@ def openflow_action (action_type, type_val):
     _action_class_to_types.get(c, set()).add(type_val)
     return c
   return f
+
+# ----------------------------------------------------------------------
+
+
+# ----------------------------------------------------------------------
+# Constants, etc.
+# ----------------------------------------------------------------------
+
+ofp_error_type_rev_map = {
+  'OFPET_HELLO_FAILED'    : 0,
+  'OFPET_BAD_REQUEST'     : 1,
+  'OFPET_BAD_ACTION'      : 2,
+  'OFPET_FLOW_MOD_FAILED' : 3,
+  'OFPET_PORT_MOD_FAILED' : 4,
+  'OFPET_QUEUE_OP_FAILED' : 5,
+}
+
+ofp_hello_failed_code_rev_map = {
+  'OFPHFC_INCOMPATIBLE' : 0,
+  'OFPHFC_EPERM'        : 1,
+}
+
+ofp_bad_request_code_rev_map = {
+  'OFPBRC_BAD_VERSION'    : 0,
+  'OFPBRC_BAD_TYPE'       : 1,
+  'OFPBRC_BAD_STAT'       : 2,
+  'OFPBRC_BAD_VENDOR'     : 3,
+  'OFPBRC_BAD_SUBTYPE'    : 4,
+  'OFPBRC_EPERM'          : 5,
+  'OFPBRC_BAD_LEN'        : 6,
+  'OFPBRC_BUFFER_EMPTY'   : 7,
+  'OFPBRC_BUFFER_UNKNOWN' : 8,
+}
+
+ofp_bad_action_code_rev_map = {
+  'OFPBAC_BAD_TYPE'        : 0,
+  'OFPBAC_BAD_LEN'         : 1,
+  'OFPBAC_BAD_VENDOR'      : 2,
+  'OFPBAC_BAD_VENDOR_TYPE' : 3,
+  'OFPBAC_BAD_OUT_PORT'    : 4,
+  'OFPBAC_BAD_ARGUMENT'    : 5,
+  'OFPBAC_EPERM'           : 6,
+  'OFPBAC_TOO_MANY'        : 7,
+  'OFPBAC_BAD_QUEUE'       : 8,
+}
+
+ofp_flow_mod_failed_code_rev_map = {
+  'OFPFMFC_ALL_TABLES_FULL'   : 0,
+  'OFPFMFC_OVERLAP'           : 1,
+  'OFPFMFC_EPERM'             : 2,
+  'OFPFMFC_BAD_EMERG_TIMEOUT' : 3,
+  'OFPFMFC_BAD_COMMAND'       : 4,
+  'OFPFMFC_UNSUPPORTED'       : 5,
+}
+
+ofp_port_mod_failed_code_rev_map = {
+  'OFPPMFC_BAD_PORT'    : 0,
+  'OFPPMFC_BAD_HW_ADDR' : 1,
+}
+
+ofp_queue_op_failed_code_rev_map = {
+  'OFPQOFC_BAD_PORT'  : 0,
+  'OFPQOFC_BAD_QUEUE' : 1,
+  'OFPQOFC_EPERM'     : 2,
+}
+
+ofp_port_config_rev_map = {
+  'OFPPC_PORT_DOWN'    : 1,
+  'OFPPC_NO_STP'       : 2,
+  'OFPPC_NO_RECV'      : 4,
+  'OFPPC_NO_RECV_STP'  : 8,
+  'OFPPC_NO_FLOOD'     : 16,
+  'OFPPC_NO_FWD'       : 32,
+  'OFPPC_NO_PACKET_IN' : 64,
+}
+
+ofp_port_state_rev_map = {
+  'OFPPS_STP_LISTEN'  : 0,
+  'OFPPS_LINK_DOWN'   : 1,
+  'OFPPS_STP_LEARN'   : 256,
+  'OFPPS_STP_FORWARD' : 512,
+  'OFPPS_STP_BLOCK'   : 768,
+}
+OFPPS_STP_MASK        = 768
+
+ofp_port_features_rev_map = {
+  'OFPPF_10MB_HD'    : 1,
+  'OFPPF_10MB_FD'    : 2,
+  'OFPPF_100MB_HD'   : 4,
+  'OFPPF_100MB_FD'   : 8,
+  'OFPPF_1GB_HD'     : 16,
+  'OFPPF_1GB_FD'     : 32,
+  'OFPPF_10GB_FD'    : 64,
+  'OFPPF_COPPER'     : 128,
+  'OFPPF_FIBER'      : 256,
+  'OFPPF_AUTONEG'    : 512,
+  'OFPPF_PAUSE'      : 1024,
+  'OFPPF_PAUSE_ASYM' : 2048,
+}
+
+ofp_queue_properties_rev_map = {
+  'OFPQT_MIN_RATE' : 0,
+}
+OFPQT_NONE         = 0
+
+ofp_capabilities_rev_map = {
+  'OFPC_FLOW_STATS'   : 1,
+  'OFPC_TABLE_STATS'  : 2,
+  'OFPC_PORT_STATS'   : 4,
+  'OFPC_STP'          : 8,
+  'OFPC_RESERVED'     : 16,
+  'OFPC_IP_REASM'     : 32,
+  'OFPC_QUEUE_STATS'  : 64,
+  'OFPC_ARP_MATCH_IP' : 128,
+}
+
+ofp_config_flags_rev_map = {
+  'OFPC_FRAG_NORMAL' : 0,
+  'OFPC_FRAG_DROP'   : 1,
+  'OFPC_FRAG_REASM'  : 2,
+  'OFPC_FRAG_MASK'   : 3,
+}
+
+ofp_flow_mod_command_rev_map = {
+  'OFPFC_ADD'           : 0,
+  'OFPFC_MODIFY'        : 1,
+  'OFPFC_MODIFY_STRICT' : 2,
+  'OFPFC_DELETE'        : 3,
+  'OFPFC_DELETE_STRICT' : 4,
+}
+
+ofp_flow_mod_flags_rev_map = {
+  'OFPFF_SEND_FLOW_REM' : 1,
+  'OFPFF_CHECK_OVERLAP' : 2,
+  'OFPFF_EMERG'         : 4,
+}
+
+ofp_stats_types_rev_map = {
+  'OFPST_DESC'      : 0,
+  'OFPST_FLOW'      : 1,
+  'OFPST_AGGREGATE' : 2,
+  'OFPST_TABLE'     : 3,
+  'OFPST_PORT'      : 4,
+  'OFPST_QUEUE'     : 5,
+  'OFPST_VENDOR'    : 65535,
+}
+
+ofp_stats_reply_flags_rev_map = {
+  'OFPSF_REPLY_MORE' : 1,
+}
+
+ofp_packet_in_reason_rev_map = {
+  'OFPR_NO_MATCH' : 0,
+  'OFPR_ACTION'   : 1,
+}
+
+ofp_flow_removed_reason_rev_map = {
+  'OFPRR_IDLE_TIMEOUT' : 0,
+  'OFPRR_HARD_TIMEOUT' : 1,
+  'OFPRR_DELETE'       : 2,
+}
+
+ofp_port_reason_rev_map = {
+  'OFPPR_ADD'    : 0,
+  'OFPPR_DELETE' : 1,
+  'OFPPR_MODIFY' : 2,
+}
+
+ofp_port_rev_map = {
+  'OFPP_MAX'        : 65280,
+  'OFPP_IN_PORT'    : 65528,
+  'OFPP_TABLE'      : 65529,
+  'OFPP_NORMAL'     : 65530,
+  'OFPP_FLOOD'      : 65531,
+  'OFPP_ALL'        : 65532,
+  'OFPP_CONTROLLER' : 65533,
+  'OFPP_LOCAL'      : 65534,
+  'OFPP_NONE'       : 65535,
+}
+
+ofp_flow_wildcards_rev_map = {
+  'OFPFW_IN_PORT'      : 1,
+  'OFPFW_DL_VLAN'      : 2,
+  'OFPFW_DL_SRC'       : 4,
+  'OFPFW_DL_DST'       : 8,
+  'OFPFW_DL_TYPE'      : 16,
+  'OFPFW_NW_PROTO'     : 32,
+  'OFPFW_TP_SRC'       : 64,
+  'OFPFW_TP_DST'       : 128,
+  'OFPFW_DL_VLAN_PCP'  : 1048576,
+  'OFPFW_NW_TOS'       : 1<<21,
+}
+
+OFPFW_NW_DST_BITS      = 6
+OFPFW_NW_SRC_BITS      = 6
+OFPFW_NW_SRC_SHIFT     = 8
+OFPFW_NW_DST_SHIFT     = 14
+OFPFW_NW_SRC_ALL       = 8192
+OFPFW_NW_SRC_MASK      = 16128
+OFPFW_NW_DST_ALL       = 524288
+OFPFW_NW_DST_MASK      = 1032192
+# Note: Need to handle all flags that are set in this.
+# glob-all masks in the packet handling methods.
+# (Esp. ofp_match.from_packet)
+# Otherwise, packets are not being matched as they should
+OFPFW_ALL              = ((1 << 22) - 1)
+
+NO_BUFFER = 4294967295
+
+# ----------------------------------------------------------------------
+
 
 # ----------------------------------------------------------------------
 # Structure definitions
@@ -399,39 +611,6 @@ class ofp_phy_port (ofp_base):
   def __repr__(self):
     return self.show()
 
-ofp_port_config_rev_map = {
-  'OFPPC_PORT_DOWN'    : 1,
-  'OFPPC_NO_STP'       : 2,
-  'OFPPC_NO_RECV'      : 4,
-  'OFPPC_NO_RECV_STP'  : 8,
-  'OFPPC_NO_FLOOD'     : 16,
-  'OFPPC_NO_FWD'       : 32,
-  'OFPPC_NO_PACKET_IN' : 64,
-}
-
-ofp_port_state_rev_map = {
-  'OFPPS_STP_LISTEN'  : 0,
-  'OFPPS_LINK_DOWN'   : 1,
-  'OFPPS_STP_LEARN'   : 256,
-  'OFPPS_STP_FORWARD' : 512,
-  'OFPPS_STP_BLOCK'   : 768,
-}
-OFPPS_STP_MASK        = 768
-
-ofp_port_features_rev_map = {
-  'OFPPF_10MB_HD'    : 1,
-  'OFPPF_10MB_FD'    : 2,
-  'OFPPF_100MB_HD'   : 4,
-  'OFPPF_100MB_FD'   : 8,
-  'OFPPF_1GB_HD'     : 16,
-  'OFPPF_1GB_FD'     : 32,
-  'OFPPF_10GB_FD'    : 64,
-  'OFPPF_COPPER'     : 128,
-  'OFPPF_FIBER'      : 256,
-  'OFPPF_AUTONEG'    : 512,
-  'OFPPF_PAUSE'      : 1024,
-  'OFPPF_PAUSE_ASYM' : 2048,
-}
 
 ##2.2 Queue Structures
 class ofp_packet_queue (ofp_base):
@@ -482,10 +661,6 @@ class ofp_packet_queue (ofp_base):
       outstr += obj.show(prefix + '  ')
     return outstr
 
-ofp_queue_properties_rev_map = {
-  'OFPQT_MIN_RATE' : 0,
-}
-OFPQT_NONE         = 0
 
 class ofp_queue_prop_header (ofp_base):
   def __init__ (self, **kw):
@@ -566,6 +741,7 @@ class ofp_queue_prop_min_rate (ofp_base):
     self.prop_header.show(prefix + '  ')
     outstr += prefix + 'rate: ' + str(self.rate) + '\n'
     return outstr
+
 
 ##2.3 Flow Match Structures
 class ofp_match (ofp_base):
@@ -1065,32 +1241,6 @@ class ofp_match (ofp_base):
     outstr += append('tp_dst')
     return outstr
 
-ofp_flow_wildcards_rev_map = {
-  'OFPFW_IN_PORT'      : 1,
-  'OFPFW_DL_VLAN'      : 2,
-  'OFPFW_DL_SRC'       : 4,
-  'OFPFW_DL_DST'       : 8,
-  'OFPFW_DL_TYPE'      : 16,
-  'OFPFW_NW_PROTO'     : 32,
-  'OFPFW_TP_SRC'       : 64,
-  'OFPFW_TP_DST'       : 128,
-  'OFPFW_DL_VLAN_PCP'  : 1048576,
-  'OFPFW_NW_TOS'       : 1<<21,
-}
-
-OFPFW_NW_DST_BITS      = 6
-OFPFW_NW_SRC_BITS      = 6
-OFPFW_NW_SRC_SHIFT     = 8
-OFPFW_NW_DST_SHIFT     = 14
-OFPFW_NW_SRC_ALL       = 8192
-OFPFW_NW_SRC_MASK      = 16128
-OFPFW_NW_DST_ALL       = 524288
-OFPFW_NW_DST_MASK      = 1032192
-# Note: Need to handle all flags that are set in this.
-# glob-all masks in the packet handling methods.
-# (Esp. ofp_match.from_packet)
-# Otherwise, packets are not being matched as they should
-OFPFW_ALL              = ((1 << 22) - 1)
 
 class ofp_action_generic (ofp_base):
   _MIN_LENGTH = 8
@@ -1259,6 +1409,7 @@ class ofp_action_strip_vlan (ofp_action):
     outstr += prefix + 'type: ' + str(self.type) + '\n'
     outstr += prefix + 'len: ' + str(len(self)) + '\n'
     return outstr
+
 
 @openflow_action('OFPAT_SET_VLAN_VID', 1)
 class ofp_action_vlan_vid (ofp_action):
@@ -1600,6 +1751,7 @@ class ofp_action_vendor_header (ofp_action):
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
     return outstr
 
+
 #3. Controller-to-Switch Messages
 
 ##3.1 Handshake
@@ -1681,16 +1833,6 @@ class ofp_features_reply (ofp_header):
 
 ofp_switch_features = ofp_features_reply
 
-ofp_capabilities_rev_map = {
-  'OFPC_FLOW_STATS'   : 1,
-  'OFPC_TABLE_STATS'  : 2,
-  'OFPC_PORT_STATS'   : 4,
-  'OFPC_STP'          : 8,
-  'OFPC_RESERVED'     : 16,
-  'OFPC_IP_REASM'     : 32,
-  'OFPC_QUEUE_STATS'  : 64,
-  'OFPC_ARP_MATCH_IP' : 128,
-}
 
 ##3.2 Switch Configuration
 @openflow_c_message("OFPT_SET_CONFIG", 9)
@@ -1738,12 +1880,6 @@ class ofp_switch_config (ofp_header):
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
 
-ofp_config_flags_rev_map = {
-  'OFPC_FRAG_NORMAL' : 0,
-  'OFPC_FRAG_DROP'   : 1,
-  'OFPC_FRAG_REASM'  : 2,
-  'OFPC_FRAG_MASK'   : 3,
-}
 
 ##3.3 Modify State Messages
 @openflow_c_message("OFPT_FLOW_MOD", 14)
@@ -1881,19 +2017,6 @@ class ofp_flow_mod (ofp_header):
       outstr += obj.show(prefix + '  ')
     return outstr
 
-ofp_flow_mod_command_rev_map = {
-  'OFPFC_ADD'           : 0,
-  'OFPFC_MODIFY'        : 1,
-  'OFPFC_MODIFY_STRICT' : 2,
-  'OFPFC_DELETE'        : 3,
-  'OFPFC_DELETE_STRICT' : 4,
-}
-
-ofp_flow_mod_flags_rev_map = {
-  'OFPFF_SEND_FLOW_REM' : 1,
-  'OFPFF_CHECK_OVERLAP' : 2,
-  'OFPFF_EMERG'         : 4,
-}
 
 @openflow_c_message("OFPT_PORT_MOD", 15)
 class ofp_port_mod (ofp_header):
@@ -1965,6 +2088,7 @@ class ofp_port_mod (ofp_header):
     outstr += prefix + 'advertise: ' + str(self.advertise) + '\n'
     return outstr
 
+
 ##3.4 Queue Configuration Messages
 @openflow_c_message("OFPT_QUEUE_GET_CONFIG_REQUEST", 20)
 class ofp_queue_get_config_request (ofp_header):
@@ -2007,6 +2131,7 @@ class ofp_queue_get_config_request (ofp_header):
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'port: ' + str(self.port) + '\n'
     return outstr
+
 
 @openflow_s_message("OFPT_QUEUE_GET_CONFIG_REPLY", 21)
 class ofp_queue_get_config_reply (ofp_header):
@@ -2060,6 +2185,7 @@ class ofp_queue_get_config_reply (ofp_header):
     for obj in self.queues:
       outstr += obj.show(prefix + '  ')
     return outstr
+
 
 ##3.5 Read State Messages
 @openflow_c_message("OFPT_STATS_REQUEST", 16)
@@ -2127,6 +2253,7 @@ class ofp_stats_request (ofp_header):
     outstr += prefix + 'body:\n'
     outstr += _format_body(self.body, prefix + '  ') + '\n'
     return outstr
+
 
 @openflow_s_message("OFPT_STATS_REPLY", 17,
     reply_to="ofp_stats_request")
@@ -2229,19 +2356,6 @@ class ofp_stats_reply (ofp_header):
     outstr += _format_body(self.body, prefix + '  ') + '\n'
     return outstr
 
-ofp_stats_types_rev_map = {
-  'OFPST_DESC'      : 0,
-  'OFPST_FLOW'      : 1,
-  'OFPST_AGGREGATE' : 2,
-  'OFPST_TABLE'     : 3,
-  'OFPST_PORT'      : 4,
-  'OFPST_QUEUE'     : 5,
-  'OFPST_VENDOR'    : 65535,
-}
-
-ofp_stats_reply_flags_rev_map = {
-  'OFPSF_REPLY_MORE' : 1,
-}
 
 class ofp_desc_stats (ofp_base):
   def __init__ (self, **kw):
@@ -2320,7 +2434,9 @@ class ofp_desc_stats (ofp_base):
     outstr += prefix + 'serial_num: ' + str(self.serial_num) + '\n'
     outstr += prefix + 'dp_desc: ' + str(self.dp_desc) + '\n'
     return outstr
+
 ofp_desc_stats_reply = ofp_desc_stats
+
 
 class ofp_flow_stats_request (ofp_base):
   def __init__ (self, **kw):
@@ -2369,6 +2485,7 @@ class ofp_flow_stats_request (ofp_base):
     outstr += prefix + 'table_id: ' + str(self.table_id) + '\n'
     outstr += prefix + 'out_port: ' + str(self.out_port) + '\n'
     return outstr
+
 
 class ofp_flow_stats (ofp_base):
   _MIN_LENGTH = 88
@@ -2460,6 +2577,7 @@ class ofp_flow_stats (ofp_base):
     return outstr
 ofp_flow_stats_reply = ofp_flow_stats
 
+
 class ofp_aggregate_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.match = ofp_match()
@@ -2509,6 +2627,7 @@ class ofp_aggregate_stats_request (ofp_base):
     outstr += prefix + 'out_port: ' + str(self.out_port) + '\n'
     return outstr
 
+
 class ofp_aggregate_stats (ofp_base):
   def __init__ (self, **kw):
     self.packet_count = 0
@@ -2551,6 +2670,7 @@ class ofp_aggregate_stats (ofp_base):
     outstr += prefix + 'flow_count: ' + str(self.flow_count) + '\n'
     return outstr
 ofp_aggregate_stats_reply = ofp_aggregate_stats
+
 
 class ofp_table_stats (ofp_base):
   def __init__ (self, **kw):
@@ -2618,6 +2738,7 @@ class ofp_table_stats (ofp_base):
     return outstr
 ofp_table_stats_reply = ofp_table_stats
 
+
 class ofp_port_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.port_no = OFPP_NONE
@@ -2652,6 +2773,7 @@ class ofp_port_stats_request (ofp_base):
     outstr = ''
     outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
     return outstr
+
 
 class ofp_port_stats (ofp_base):
   def __init__ (self, **kw):
@@ -2745,6 +2867,7 @@ class ofp_port_stats (ofp_base):
     return outstr
 ofp_port_stats_reply = ofp_port_stats
 
+
 class ofp_queue_stats_request (ofp_base):
   def __init__ (self, **kw):
     self.port_no = 0
@@ -2785,6 +2908,7 @@ class ofp_queue_stats_request (ofp_base):
     outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
     outstr += prefix + 'queue_id: ' + str(self.queue_id) + '\n'
     return outstr
+
 
 class ofp_queue_stats (ofp_base):
   def __init__ (self, **kw):
@@ -2953,6 +3077,7 @@ class ofp_packet_out (ofp_header):
       outstr += obj.show(prefix + '  ')
     return outstr
 
+
 ##3.7 Barrier Message
 @openflow_s_message("OFPT_BARRIER_REPLY", 19,
     reply_to="ofp_barrier_request")
@@ -2991,6 +3116,7 @@ class ofp_barrier_reply (ofp_header):
     outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
+
 @openflow_s_message("OFPT_BARRIER_REQUEST", 18,
     request_for="ofp_barrier_reply")
 class ofp_barrier_request (ofp_header):
@@ -3028,6 +3154,7 @@ class ofp_barrier_request (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     return outstr
+
 
 #4 Asynchronous Messages
 @openflow_s_message("OFPT_PACKET_IN", 10)
@@ -3133,10 +3260,6 @@ class ofp_packet_in (ofp_header):
     outstr += prefix + 'data: ' + str(self.data) + '\n'
     return outstr
 
-ofp_packet_in_reason_rev_map = {
-  'OFPR_NO_MATCH' : 0,
-  'OFPR_ACTION'   : 1,
-}
 
 @openflow_s_message("OFPT_FLOW_REMOVED", 11)
 class ofp_flow_removed (ofp_header):
@@ -3217,11 +3340,6 @@ class ofp_flow_removed (ofp_header):
     outstr += prefix + 'byte_count: ' + str(self.byte_count) + '\n'
     return outstr
 
-ofp_flow_removed_reason_rev_map = {
-  'OFPRR_IDLE_TIMEOUT' : 0,
-  'OFPRR_HARD_TIMEOUT' : 1,
-  'OFPRR_DELETE'       : 2,
-}
 
 @openflow_s_message("OFPT_PORT_STATUS", 12)
 class ofp_port_status (ofp_header):
@@ -3277,11 +3395,6 @@ class ofp_port_status (ofp_header):
     outstr += self.desc.show(prefix + '  ')
     return outstr
 
-ofp_port_reason_rev_map = {
-  'OFPPR_ADD'    : 0,
-  'OFPPR_DELETE' : 1,
-  'OFPPR_MODIFY' : 2,
-}
 
 @openflow_s_message("OFPT_ERROR", 1)
 class ofp_error (ofp_header):
@@ -3343,63 +3456,6 @@ class ofp_error (ofp_header):
       outstr += prefix + 'data: ' + str(self.data) + '\n'
     return outstr.strip()
 
-ofp_error_type_rev_map = {
-  'OFPET_HELLO_FAILED'    : 0,
-  'OFPET_BAD_REQUEST'     : 1,
-  'OFPET_BAD_ACTION'      : 2,
-  'OFPET_FLOW_MOD_FAILED' : 3,
-  'OFPET_PORT_MOD_FAILED' : 4,
-  'OFPET_QUEUE_OP_FAILED' : 5,
-}
-
-ofp_hello_failed_code_rev_map = {
-  'OFPHFC_INCOMPATIBLE' : 0,
-  'OFPHFC_EPERM'        : 1,
-}
-
-ofp_bad_request_code_rev_map = {
-  'OFPBRC_BAD_VERSION'    : 0,
-  'OFPBRC_BAD_TYPE'       : 1,
-  'OFPBRC_BAD_STAT'       : 2,
-  'OFPBRC_BAD_VENDOR'     : 3,
-  'OFPBRC_BAD_SUBTYPE'    : 4,
-  'OFPBRC_EPERM'          : 5,
-  'OFPBRC_BAD_LEN'        : 6,
-  'OFPBRC_BUFFER_EMPTY'   : 7,
-  'OFPBRC_BUFFER_UNKNOWN' : 8,
-}
-
-ofp_bad_action_code_rev_map = {
-  'OFPBAC_BAD_TYPE'        : 0,
-  'OFPBAC_BAD_LEN'         : 1,
-  'OFPBAC_BAD_VENDOR'      : 2,
-  'OFPBAC_BAD_VENDOR_TYPE' : 3,
-  'OFPBAC_BAD_OUT_PORT'    : 4,
-  'OFPBAC_BAD_ARGUMENT'    : 5,
-  'OFPBAC_EPERM'           : 6,
-  'OFPBAC_TOO_MANY'        : 7,
-  'OFPBAC_BAD_QUEUE'       : 8,
-}
-
-ofp_flow_mod_failed_code_rev_map = {
-  'OFPFMFC_ALL_TABLES_FULL'   : 0,
-  'OFPFMFC_OVERLAP'           : 1,
-  'OFPFMFC_EPERM'             : 2,
-  'OFPFMFC_BAD_EMERG_TIMEOUT' : 3,
-  'OFPFMFC_BAD_COMMAND'       : 4,
-  'OFPFMFC_UNSUPPORTED'       : 5,
-}
-
-ofp_port_mod_failed_code_rev_map = {
-  'OFPPMFC_BAD_PORT'    : 0,
-  'OFPPMFC_BAD_HW_ADDR' : 1,
-}
-
-ofp_queue_op_failed_code_rev_map = {
-  'OFPQOFC_BAD_PORT'  : 0,
-  'OFPQOFC_BAD_QUEUE' : 1,
-  'OFPQOFC_EPERM'     : 2,
-}
 
 #5. Symmetric Messages
 @openflow_sc_message("OFPT_HELLO", 0)
@@ -3437,6 +3493,7 @@ class ofp_hello (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     return outstr
+
 
 @openflow_sc_message("OFPT_ECHO_REQUEST", 2,
     request_for="ofp_echo_reply")
@@ -3485,6 +3542,7 @@ class ofp_echo_request (ofp_header):
     outstr += _format_body(self.body, prefix + '  ') + '\n'
     return outstr
 
+
 @openflow_sc_message("OFPT_ECHO_REPLY", 3,
     reply_to="ofp_echo_request")
 class ofp_echo_reply (ofp_header):
@@ -3531,6 +3589,7 @@ class ofp_echo_reply (ofp_header):
     outstr += prefix + 'body:\n'
     outstr += _format_body(self.body, prefix + '  ') + '\n'
     return outstr
+
 
 class ofp_vendor_header (ofp_header):
   def __init__ (self, **kw):
@@ -3665,6 +3724,7 @@ class ofp_features_request (ofp_header):
     outstr += ofp_header.show(self, prefix + '  ')
     return outstr
 
+
 @openflow_c_message("OFPT_GET_CONFIG_REQUEST", 7,
     request_for="ofp_get_config_reply")
 class ofp_get_config_request (ofp_header):
@@ -3702,6 +3762,7 @@ class ofp_get_config_request (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     return outstr
+
 
 @openflow_s_message("OFPT_GET_CONFIG_REPLY", 8,
     reply_to="ofp_get_config_request")
@@ -3750,6 +3811,7 @@ class ofp_get_config_reply (ofp_header):
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
 
+
 @openflow_c_message("OFPT_SET_CONFIG", 9)
 class ofp_set_config (ofp_header):
   def __init__ (self, **kw):
@@ -3796,17 +3858,6 @@ class ofp_set_config (ofp_header):
     outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
     return outstr
 
-ofp_port_rev_map = {
-  'OFPP_MAX'        : 65280,
-  'OFPP_IN_PORT'    : 65528,
-  'OFPP_TABLE'      : 65529,
-  'OFPP_NORMAL'     : 65530,
-  'OFPP_FLOOD'      : 65531,
-  'OFPP_ALL'        : 65532,
-  'OFPP_CONTROLLER' : 65533,
-  'OFPP_LOCAL'      : 65534,
-  'OFPP_NONE'       : 65535,
-}
 
 def _get_type (o):
   """
@@ -3936,6 +3987,7 @@ _stats_map.update({
   OFPST_VENDOR    : (ofp_vendor_header, None), #TODO: support vendor types
 })
 
+
 # Values from macro definitions
 OFP_FLOW_PERMANENT = 0
 OFP_DL_TYPE_ETH2_CUTOFF = 0x0600
@@ -3952,27 +4004,21 @@ OFPFW_ICMP_TYPE = OFPFW_TP_SRC
 OFP_TCP_PORT = 6633
 SERIAL_NUM_LEN = 32
 OFP_DEFAULT_PRIORITY = 0x8000
-OFP_ETH_ALEN = 6
 OFP_VLAN_NONE = 0xffff
 OFPQ_ALL = 0xffffffff
 
-
-NO_BUFFER = 4294967295
-
 ofp_match_data = {
-#  'wildcards' : (0, 0),
   'in_port' : (0, OFPFW_IN_PORT),
   'dl_src' : (EMPTY_ETH, OFPFW_DL_SRC),
   'dl_dst' : (EMPTY_ETH, OFPFW_DL_DST),
   'dl_vlan' : (0, OFPFW_DL_VLAN),
   'dl_vlan_pcp' : (0, OFPFW_DL_VLAN_PCP),
-  #'pad1' : (_PAD, 0),
   'dl_type' : (0, OFPFW_DL_TYPE),
   'nw_tos' : (0, OFPFW_NW_TOS),
   'nw_proto' : (0, OFPFW_NW_PROTO),
-  #'pad2' : (_PAD2, 0),
   'nw_src' : (0, OFPFW_NW_SRC_ALL),
   'nw_dst' : (0, OFPFW_NW_DST_ALL),
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
 }
+
