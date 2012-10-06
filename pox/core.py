@@ -429,7 +429,8 @@ class POXCore (EventMixin):
         if self._try_waiter(entry):
           changed = True
 
-  def listen_to_dependencies (self, sink, components=None, attrs=True):
+  def listen_to_dependencies (self, sink, components=None, attrs=True,
+                              short_attrs=False):
     """
     Look through *sink* for handlers named like _handle_component_event.
     Use that to build a list of components, and append any components
@@ -462,10 +463,14 @@ class POXCore (EventMixin):
       components.add(c)
 
 
-    def done (sink, components, attrs):
-      if attrs:
+    def done (sink, components, attrs, short_attrs):
+      if attrs or short_attrs:
         for c in components:
-          setattr(sink, "_%s_" % (c,), getattr(self, c))
+          if short_attrs:
+            attrname = c
+          else:
+            attrname = '_%s_' % (c,)
+          setattr(sink, attrname, getattr(self, c))
       for c in components:
         if hasattr(getattr(self, c), "_eventMixin_events"):
           getattr(self, c).addListeners(sink, prefix=c)
@@ -473,7 +478,7 @@ class POXCore (EventMixin):
 
 
     self.call_when_ready(done, components, name=sink.__class__.__name__,
-                         args=(sink,components,attrs))
+                         args=(sink,components,attrs,short_attrs))
 
 
   def __getattr__ (self, name):
