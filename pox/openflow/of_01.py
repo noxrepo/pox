@@ -805,15 +805,7 @@ class OpenFlow_01_Task (Task):
           con = None
           rlist, wlist, elist = yield Select(sockets, [], sockets, 5)
           if len(rlist) == 0 and len(wlist) == 0 and len(elist) == 0:
-            """
-            try:
-              timer_callback()
-            except:
-              print "[Timer]", sys.exc_info
-            continue
-            """
             if not core.running: break
-            pass
 
           for con in elist:
             if con is listener:
