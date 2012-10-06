@@ -228,12 +228,15 @@ def openflow_action (action_type, type_val):
   return f
 
 
-#_StatsClassInfo = collections.namedtuple('StatsClassInfo',
-#    'request reply reply_is_list')
 class _StatsClassInfo (object):
   __slots__ = 'request reply reply_is_list'.split()
-  def set (self, **kw):
+
+  def __init__ (self, **kw):
+    self.request = None
+    self.reply = None
+    self.reply_is_list = False
     initHelper(self, kw)
+
   def __str__ (self):
     r = str(self.reply)
     if self.reply_is_list: r = "[%s]" % (r,)
@@ -261,7 +264,7 @@ def openflow_stats_request  (stats_type, type_val=None, is_list=None,
       else:
         ti = _stats_type_to_class_info.setdefault(type_val,
             _StatsClassInfo())
-      _stats_class_to_type[c] = ti
+      _stats_class_to_type[c] = type_val
     else:
       ti = _stats_type_to_class_info.setdefault(stats_type,
           _StatsClassInfo())
@@ -272,6 +275,13 @@ def openflow_stats_request  (stats_type, type_val=None, is_list=None,
       ti.reply = c
     else:
       ti.request = c
+
+    if type_val is not None:
+      if ti.reply and issubclass(ti.reply, ofp_stats_body_base):
+        ti.reply._type = type_val
+      if ti.request and issubclass(ti.request, ofp_stats_body_base):
+        ti.request._type = type_val
+
     return c
   return f
 
@@ -415,18 +425,6 @@ ofp_flow_mod_flags_rev_map = {
   'OFPFF_EMERG'         : 4,
 }
 
-"""
-ofp_stats_type_rev_map = {
-  'OFPST_DESC'      : 0,
-  'OFPST_FLOW'      : 1,
-  'OFPST_AGGREGATE' : 2,
-  'OFPST_TABLE'     : 3,
-  'OFPST_PORT'      : 4,
-  'OFPST_QUEUE'     : 5,
-  'OFPST_VENDOR'    : 65535,
-}
-"""
-
 ofp_stats_reply_flags_rev_map = {
   'OFPSF_REPLY_MORE' : 1,
 }
@@ -563,8 +561,27 @@ class ofp_header (ofp_base):
     return self.__class__.__name__ + "\n  " + self.show('  ').strip()
 
 
-class ofp_action (ofp_base):
-  pass
+class ofp_stats_body_base (ofp_base):
+  """
+  Base class for stats bodies
+  """
+  # Stats bodies don't actually have a type field in OpenFlow --
+  # the type information is in the request or reply.  It's really
+  # convenient, though, so we add it.  Note that you generally
+  # don't need to set this yourself -- the openflow_stats_XXX
+  # decorator will do it for you.
+  _type = None
+
+
+class ofp_action_base (ofp_base):
+  """
+  Base class for actions
+
+  This is sort of the equivalent of ofp_action_header like the spec.
+  However, ofp_action_header as the spec defines it is not super
+  useful for us, as it has the padding in it.
+  """
+  type = None
 
 
 #2. Common Structures
@@ -1296,7 +1313,7 @@ class ofp_match (ofp_base):
     return outstr
 
 
-class ofp_action_generic (ofp_base):
+class ofp_action_generic (ofp_action_base):
   _MIN_LENGTH = 8
   def __init__ (self, **kw):
     self.type = None # Purposely bad
@@ -1338,7 +1355,7 @@ class ofp_action_generic (ofp_base):
 
 
 @openflow_action('OFPAT_OUTPUT', 0)
-class ofp_action_output (ofp_action):
+class ofp_action_output (ofp_action_base):
   def __init__ (self, **kw):
     self.port = None # Purposely bad -- require specification
     self.max_len = 0xffFF
@@ -1385,7 +1402,7 @@ class ofp_action_output (ofp_action):
 
 
 @openflow_action('OFPAT_ENQUEUE', 11)
-class ofp_action_enqueue (ofp_action):
+class ofp_action_enqueue (ofp_action_base):
   def __init__ (self, **kw):
     self.port = None # Require user to set
     self.queue_id = 0
@@ -1432,7 +1449,7 @@ class ofp_action_enqueue (ofp_action):
 
 
 @openflow_action('OFPAT_STRIP_VLAN', 3)
-class ofp_action_strip_vlan (ofp_action):
+class ofp_action_strip_vlan (ofp_action_base):
   def __init__ (self):
     pass
 
@@ -1466,7 +1483,7 @@ class ofp_action_strip_vlan (ofp_action):
 
 
 @openflow_action('OFPAT_SET_VLAN_VID', 1)
-class ofp_action_vlan_vid (ofp_action):
+class ofp_action_vlan_vid (ofp_action_base):
   def __init__ (self, **kw):
     self.vlan_vid = 0
 
@@ -1508,7 +1525,7 @@ class ofp_action_vlan_vid (ofp_action):
 
 
 @openflow_action('OFPAT_SET_VLAN_PCP', 2)
-class ofp_action_vlan_pcp (ofp_action):
+class ofp_action_vlan_pcp (ofp_action_base):
   def __init__ (self, **kw):
     self.vlan_pcp = 0
 
@@ -1551,7 +1568,7 @@ class ofp_action_vlan_pcp (ofp_action):
 
 @openflow_action('OFPAT_SET_DL_DST', 5)
 @openflow_action('OFPAT_SET_DL_SRC', 4)
-class ofp_action_dl_addr (ofp_action):
+class ofp_action_dl_addr (ofp_action_base):
   @classmethod
   def set_dst (cls, dl_addr = None):
     return cls(OFPAT_SET_DL_DST, dl_addr)
@@ -1619,7 +1636,7 @@ class ofp_action_dl_addr (ofp_action):
 
 @openflow_action('OFPAT_SET_NW_DST', 7)
 @openflow_action('OFPAT_SET_NW_SRC', 6)
-class ofp_action_nw_addr (ofp_action):
+class ofp_action_nw_addr (ofp_action_base):
   @classmethod
   def set_dst (cls, nw_addr = None):
     return cls(OFPAT_SET_NW_DST, nw_addr)
@@ -1674,7 +1691,7 @@ class ofp_action_nw_addr (ofp_action):
 
 
 @openflow_action('OFPAT_SET_NW_TOS', 8)
-class ofp_action_nw_tos (ofp_action):
+class ofp_action_nw_tos (ofp_action_base):
   def __init__ (self, nw_tos = 0):
     self.nw_tos = nw_tos
 
@@ -1715,7 +1732,7 @@ class ofp_action_nw_tos (ofp_action):
 
 @openflow_action('OFPAT_SET_TP_DST', 10)
 @openflow_action('OFPAT_SET_TP_SRC', 9)
-class ofp_action_tp_port (ofp_action):
+class ofp_action_tp_port (ofp_action_base):
   @classmethod
   def set_dst (cls, tp_port = None):
     return cls(OFPAT_SET_TP_DST, tp_port)
@@ -1766,7 +1783,7 @@ class ofp_action_tp_port (ofp_action):
 
 
 @openflow_action('OFPAT_VENDOR', 65535)
-class ofp_action_vendor_header (ofp_action):
+class ofp_action_vendor_header (ofp_action_base):
   def __init__ (self, **kw):
     self.vendor = 0
 
@@ -2241,7 +2258,6 @@ class ofp_queue_get_config_reply (ofp_header):
     return outstr
 
 
-##3.5 Read State Messages
 @openflow_c_message("OFPT_STATS_REQUEST", 16)
 class ofp_stats_request (ofp_header):
   _MIN_LENGTH = 12
@@ -2256,9 +2272,10 @@ class ofp_stats_request (ofp_header):
 
   def pack (self):
     if self.type is None:
-      self.type = _get_type(self.body)
-      if self.type is None:
-        self.type = OFPST_DESC # Maybe shouldn't assume this?
+      if isinstance(self.body, ofp_stats_body_base):
+        self.type = self.body._type
+      else:
+        raise RuntimeError("Can't determine body type; specify it explicitly")
 
     assert self._assert()
 
@@ -2347,8 +2364,11 @@ class ofp_stats_reply (ofp_header):
     return self._body_data[1]
 
   def pack (self):
-    if self.type == None:
-      self.type = _get_type(self.body)
+    if self.type is None:
+      if isinstance(self.body, ofp_stats_body_base):
+        self.type = self.body._type
+      else:
+        raise RuntimeError("Can't determine body type; specify it explicitly")
 
     assert self._assert()
 
@@ -2364,26 +2384,27 @@ class ofp_stats_reply (ofp_header):
     ofp_header.unpack(self, binaryString[0:])
     (self.type, self.flags) = struct.unpack_from("!HH", binaryString, 8)
     packed = binaryString[12:self._length]
-    t = _stats_map.get(self.type)
+    t = _stats_type_to_class_info.get(self.type)
     if t is None:
+      #FIXME: Put in a generic container?
       self.body = packed
     else:
-      _,t,is_array = t
-      if t is None:
+      if t.reply is None:
+        #FIXME: Put in a generic container?
         self.body = packed
       else:
-        if not is_array:
-          self.body = t()
+        if not t.reply_is_list:
+          self.body = t.reply()
           self.body.unpack(packed)
         else:
           prev_len = len(packed)
           self.body = []
           while len(packed):
-            part = t()
+            part = t.reply()
             packed = part.unpack(packed)
             assert len(packed) != prev_len
             prev_len = len(packed)
-            self.body.append(n)
+            self.body.append(part)
 
     return binaryString[self._length:]
 
@@ -2412,7 +2433,7 @@ class ofp_stats_reply (ofp_header):
 
 
 @openflow_stats_reply("OFPST_DESC", 0)
-class ofp_desc_stats (ofp_base):
+class ofp_desc_stats (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.mfr_desc= ""
     self.hw_desc= ""
@@ -2494,7 +2515,7 @@ ofp_desc_stats_reply = ofp_desc_stats
 
 
 @openflow_stats_request('OFPST_FLOW', 1)
-class ofp_flow_stats_request (ofp_base):
+class ofp_flow_stats_request (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.match = ofp_match()
     self.table_id = TABLE_ALL
@@ -2544,7 +2565,7 @@ class ofp_flow_stats_request (ofp_base):
 
 
 @openflow_stats_reply('OFPST_FLOW', is_list = True)
-class ofp_flow_stats (ofp_base):
+class ofp_flow_stats (ofp_stats_body_base):
   _MIN_LENGTH = 88
   def __init__ (self, **kw):
     self.table_id = 0
@@ -2636,7 +2657,7 @@ ofp_flow_stats_reply = ofp_flow_stats
 
 
 @openflow_stats_request('OFPST_AGGREGATE', 2)
-class ofp_aggregate_stats_request (ofp_base):
+class ofp_aggregate_stats_request (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.match = ofp_match()
     self.table_id = TABLE_ALL
@@ -2687,7 +2708,7 @@ class ofp_aggregate_stats_request (ofp_base):
 
 
 @openflow_stats_reply('OFPST_AGGREGATE')
-class ofp_aggregate_stats (ofp_base):
+class ofp_aggregate_stats (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.packet_count = 0
     self.byte_count = 0
@@ -2732,7 +2753,7 @@ ofp_aggregate_stats_reply = ofp_aggregate_stats
 
 
 @openflow_stats_reply('OFPST_TABLE', 3, is_list = True)
-class ofp_table_stats (ofp_base):
+class ofp_table_stats (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.table_id = 0
     self.name= ""
@@ -2800,7 +2821,7 @@ ofp_table_stats_reply = ofp_table_stats
 
 
 @openflow_stats_request("OFPST_PORT", 4)
-class ofp_port_stats_request (ofp_base):
+class ofp_port_stats_request (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.port_no = OFPP_NONE
     initHelper(self, kw)
@@ -2837,7 +2858,7 @@ class ofp_port_stats_request (ofp_base):
 
 
 @openflow_stats_reply("OFPST_PORT", is_list = True)
-class ofp_port_stats (ofp_base):
+class ofp_port_stats (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.port_no = 0
     self.rx_packets = 0
@@ -2931,7 +2952,7 @@ ofp_port_stats_reply = ofp_port_stats
 
 
 @openflow_stats_request("OFPST_QUEUE", 5)
-class ofp_queue_stats_request (ofp_base):
+class ofp_queue_stats_request (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.port_no = 0
     self.queue_id = 0
@@ -2974,7 +2995,7 @@ class ofp_queue_stats_request (ofp_base):
 
 
 @openflow_stats_reply("OFPST_QUEUE", is_list = True)
-class ofp_queue_stats (ofp_base):
+class ofp_queue_stats (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.port_no = 0
     self.queue_id = 0
@@ -3028,7 +3049,7 @@ ofp_queue_stats_reply = ofp_queue_stats
 
 @openflow_stats_reply("OFPST_VENDOR", 65535, is_list = False)
 #FIXME
-class ofp_vendor_stats_generic (ofp_base):
+class ofp_vendor_stats_generic (ofp_stats_body_base):
   def __init__ (self, **kw):
 
     initHelper(self, kw)
@@ -3069,7 +3090,6 @@ class ofp_vendor_stats_generic (ofp_base):
     return outstr
 
 
-##3.6 Send Packet Message
 @openflow_c_message("OFPT_PACKET_OUT", 13)
 class ofp_packet_out (ofp_header):
   _MIN_LENGTH = 16
@@ -3993,11 +4013,6 @@ def _get_type (o):
   #TODO: For non-stats
 
 
-# Table that maps a stats type to two callables to create the requests
-# and replies of that type respectively.
-# (This is filled in by _init after the globals have been created)
-_stats_map = {}
-
 def _unpack_actions (b, length, offset=0):
   """
   Parses actions from a buffer
@@ -4081,20 +4096,6 @@ def _init ():
 _init()
 
 
-# Fill in the stats-to-class table
-# Values are (request_type,reply_type,reply_is_list)
-_stats_map.update({
-  OFPST_DESC      : (None, ofp_desc_stats, False),
-  OFPST_FLOW      : (ofp_flow_stats_request, ofp_flow_stats, True),
-  OFPST_AGGREGATE : (ofp_aggregate_stats_request,
-                     ofp_aggregate_stats_reply, False),
-  OFPST_TABLE     : (None, ofp_table_stats, True),
-  OFPST_PORT      : (ofp_port_stats_request, ofp_port_stats, True),
-  OFPST_QUEUE     : (None, ofp_queue_stats, True), #FIXME: request type
-  OFPST_VENDOR    : (ofp_vendor_header, None), #TODO: support vendor types
-})
-
-
 # Values from macro definitions
 OFP_FLOW_PERMANENT = 0
 OFP_DL_TYPE_ETH2_CUTOFF = 0x0600
@@ -4128,4 +4129,3 @@ ofp_match_data = {
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
 }
-
