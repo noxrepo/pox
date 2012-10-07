@@ -81,6 +81,9 @@ class IOWorker (object):
     loop._workers.discard(self)
 
   def _do_recv (self, loop):
+    if self._connecting:
+      self._connecting = False
+      _call_safe(self._handle_connect)
     try:
       data = self.socket.recv(loop._BUF_SIZE)
       if len(data) == 0:
@@ -89,7 +92,7 @@ class IOWorker (object):
       else:
         self._push_receive_data(data)
     except socket.error as (s_errno, strerror):
-      log.error("Socket error during recv: " + strerror)
+      log.error("Socket %s error during recv: %s", str(self), strerror)
       self.close()
       loop._workers.discard(self)
 
@@ -104,7 +107,7 @@ class IOWorker (object):
           self._consume_send_buf(l)
     except socket.error as (s_errno, strerror):
       if s_errno != errno.EAGAIN:
-        log.error("Socket error during send: " + strerror)
+        log.error("Socket %s error during send: %s", str(self), strerror)
         self.close()
         loop._workers.discard(self)
 
