@@ -34,7 +34,6 @@ log = core.getLogger()
 # We don't want to flood immediately when a switch connects.
 FLOOD_DELAY = 5
 
-
 class LearningSwitch (object):
   """
   The learning switch "brain" associated with a single OpenFlow switch.
@@ -88,6 +87,9 @@ class LearningSwitch (object):
     # to the connection
     connection.addListeners(self)
 
+    # We just use this to know when to log a helpful message
+    self.hold_down_expired = False
+
     #log.debug("Initializing LearningSwitch, transparent=%s",
     #          str(self.transparent))
 
@@ -103,6 +105,13 @@ class LearningSwitch (object):
       msg = of.ofp_packet_out()
       if time.time() - self.connection.connect_time > FLOOD_DELAY:
         # Only flood if we've been connected for a little while...
+
+        if self.hold_down_expired is False:
+          # Oh yes it is!
+          self.hold_down_expired = True
+          log.info("%s: Flood hold-down expired -- flooding",
+              dpid_to_str(event.dpid))
+
         #log.debug("%i: flood %s -> %s", event.dpid,packet.src,packet.dst)
         msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
       else:
