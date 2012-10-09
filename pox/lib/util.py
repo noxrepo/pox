@@ -145,7 +145,7 @@ def set_extend (l, index, item, emptyValue = None):
     l += ([emptyValue] * (index - len(self) + 1))
   l[index] = item
 
-def strToDPID (s):
+def str_to_dpid (s):
   """
   Convert a DPID in the canonical string form into a long int.
   """
@@ -161,8 +161,9 @@ def strToDPID (s):
   if len(s) == 2:
     b = int(s[1])
   return a | (b << 48)
+strToDPID = str_to_dpid
 
-def dpidToStr (dpid, alwaysLong = False):
+def dpid_to_str (dpid, alwaysLong = False):
   """
   Convert a DPID from a long into into the canonical string form.
   """
@@ -178,6 +179,7 @@ def dpidToStr (dpid, alwaysLong = False):
     r += '|' + str(struct.unpack('!H', dpid[0:2])[0])
 
   return r
+dpidToStr = dpid_to_str # Deprecated
 
 def assert_type(name, obj, types, none_ok=True):
   """
