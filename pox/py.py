@@ -20,6 +20,7 @@ Provides a Python interpreter while running POX
 """
 
 from pox.core import core
+from pox.lib.util import str_to_bool
 import time
 
 def _monkeypatch_console ():
@@ -59,6 +60,7 @@ class Interactive (object):
   def __init__ (self):
     core.register("Interactive", self)
     self.enabled = False
+    self.completion = False
 
     import pox.license
     import sys
@@ -85,6 +87,10 @@ class Interactive (object):
   def interact (self):
     """ Begin user interaction """
 
+    if self.completion:
+      import readline, rlcompleter
+      readline.parse_and_bind("tab: complete")
+
     _monkeypatch_console()
 
     print "This program comes with ABSOLUTELY NO WARRANTY.  This program " \
@@ -103,7 +109,7 @@ class Interactive (object):
     core.quit()
 
 
-def launch (disable = False, __INSTANCE__ = None):
+def launch (disable = False, completion = None, __INSTANCE__ = None):
   if not core.hasComponent("Interactive"):
     Interactive()
 
@@ -113,4 +119,5 @@ def launch (disable = False, __INSTANCE__ = None):
   else:
     boot.set_main_function(None)
   core.Interactive.enabled = not disable
-  pass
+  if completion is not None:
+    core.Interactive.completion = str_to_bool(completion)
