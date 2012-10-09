@@ -16,13 +16,16 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-This is an L2 learning switch written directly against the OpenFlow library.
+An L2 learning switch.
+
 It is derived from one written live for an SDN crash course.
+It is somwhat similar to NOX's pyswitch in that it installs
+exact-match rules for each flow.
 """
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
-from pox.lib.util import dpidToStr
+from pox.lib.util import dpid_to_str
 from pox.lib.util import str_to_bool
 import time
 
@@ -53,7 +56,7 @@ class LearningSwitch (object):
 
   For each new flow:
   1) Use source address and port to update address/port table
-  2) Is destination address a Bridge Filtered address, or is Ethertpe LLDP?
+  2) Is destination address a Bridge Filtered address or is Ethertype LLDP?
      * This step is ignored if transparent = True *
      Yes:
         2a) Drop packet -- don't forward link-local traffic (LLDP, 802.1x)
@@ -90,26 +93,22 @@ class LearningSwitch (object):
 
   def _handle_PacketIn (self, event):
     """
-    Handles packet in messages from the switch to implement above algorithm.
+    Handle packet in messages from the switch to implement above algorithm.
     """
 
     packet = event.parsed
 
     def flood ():
       """ Floods the packet """
-      if event.ofp.buffer_id is None:
-        log.warning("Not flooding unbuffered packet on %s",
-                    dpidToStr(event.dpid))
-        return
       msg = of.ofp_packet_out()
       if time.time() - self.connection.connect_time > FLOOD_DELAY:
         # Only flood if we've been connected for a little while...
-        #log.debug("%i: flood %s -> %s", event.dpid, packet.src, packet.dst)
+        #log.debug("%i: flood %s -> %s", event.dpid,packet.src,packet.dst)
         msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
       else:
         pass
-        #log.info("Holding down flood for %s", dpidToStr(event.dpid))
-      msg.buffer_id = event.ofp.buffer_id
+        #log.info("Holding down flood for %s", dpid_to_str(event.dpid))
+      msg.data = event.ofp
       msg.in_port = event.port
       self.connection.send(msg)
 
@@ -135,12 +134,12 @@ class LearningSwitch (object):
 
     self.macToPort[packet.src] = event.port # 1
 
-    if not self.transparent:
-      if packet.type == packet.LLDP_TYPE or packet.dst.isBridgeFiltered(): # 2
-        drop()
+    if not self.transparent: # 2
+      if packet.type == packet.LLDP_TYPE or packet.dst.isBridgeFiltered():
+        drop() # 2a
         return
 
-    if packet.dst.isMulticast():
+    if packet.dst.is_multicast:
       flood() # 3a
     else:
       if packet.dst not in self.macToPort: # 4
@@ -150,8 +149,8 @@ class LearningSwitch (object):
         port = self.macToPort[packet.dst]
         if port == event.port: # 5
           # 5a
-          log.warning("Same port for packet from %s -> %s on %s.%s.  Drop." %
-                      (packet.src, packet.dst, dpidToStr(event.dpid), port))
+          log.warning("Same port for packet from %s -> %s on %s.%s.  Drop."
+              % (packet.src, packet.dst, dpid_to_str(event.dpid), port))
           drop(10)
           return
         # 6
