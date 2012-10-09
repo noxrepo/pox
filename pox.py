@@ -332,6 +332,35 @@ def setup_logging(log_config="logging.cfg", fail_if_non_existent=False):
     if fail_if_non_existent:
       raise IOError("Could not find logging config file: %s" % (log_config,))
 
+def print_thread_states():
+  global options
+  try:
+    import traceback
+    import time
+    import sys
+    import inspect
+
+    while True:
+      if options.get("deadlock"):
+        print >> sys.stderr, "\n*** Thread Stack Traces - START ***\n"
+        code = []
+        for threadId, stack in sys._current_frames().items():
+            code.append("\n# ThreadID: %s" % threadId)
+            for filename, lineno, name, line in traceback.extract_stack(stack):
+                code.append('File: "%s", line %d, in %s' % (filename,
+                                                            lineno, name))
+                if line:
+                    code.append("  %s" % (line.strip()))
+
+      for line in code:
+        print >> sys.stderr, line
+      print >> sys.stderr, "\n*** STACKTRACE - END ***\n"
+
+      time.sleep(5)
+  except:
+    if options.get("deadlock"):
+      traceback.print_exc(file=sys.stdout)
+
 def main ():
   setup_logging()
   _monkeypatch_console()
@@ -348,6 +377,11 @@ def main ():
     import traceback
     traceback.print_exc()
     return
+
+  if options.get("deadlock"):
+    import threading
+    deadlock_printer = threading.Thread(name="DeadlockPrinter", target=print_thread_states)
+    deadlock_printer.start()
 
   core.scheduler.run()
 
