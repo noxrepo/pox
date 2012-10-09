@@ -89,6 +89,12 @@ class Interactive (object):
 
     if self.completion:
       import readline, rlcompleter
+      ns = globals().copy()
+      ns.update(self.variables)
+      # Note that things added to self.variables later won't be available.
+      # To fix this, make a dict proxy that actually reads from self.variables
+      # *and* globals().
+      readline.set_completer(rlcompleter.Completer(ns).complete)
       readline.parse_and_bind("tab: complete")
 
     _monkeypatch_console()
