@@ -49,25 +49,14 @@ class Tutorial (object):
     self.mac_to_port = {}
 
 
-  def send_packet (self, buffer_id, raw_data, out_port, in_port):
+  def resend_packet (self, packet_in, out_port):
     """
-    Sends a packet out of the specified switch port.
-    If buffer_id is a valid buffer on the switch, use that.  Otherwise,
-    send the raw data in raw_data.
-    The "in_port" is the port number that packet arrived on.  Use
-    OFPP_NONE if you're generating this packet.
+    Instructs the switch to resend a packet that it had sent to us.
+    "packet_in" is the ofp_packet_in object the switch had sent to the
+    controller due to a table-miss.
     """
     msg = of.ofp_packet_out()
-    msg.in_port = in_port
-    if buffer_id is not None:
-      # We got a buffer ID from the switch; use that
-      msg.buffer_id = buffer_id
-    else:
-      # No buffer ID from switch -- we got the raw data
-      if raw_data is None:
-        # No raw_data specified -- nothing to send!
-        return
-      msg.data = raw_data
+    msg.data = packet_in
 
     # Add an action to send to the specified port
     action = of.ofp_action_output(port = out_port)
@@ -84,10 +73,9 @@ class Tutorial (object):
     """
 
     # We want to output to all ports -- we do that using the special
-    # OFPP_FLOOD port as the output port.  (We could have also used
-    # OFPP_ALL.)
-    self.send_packet(packet_in.buffer_id, packet_in.data,
-                     of.OFPP_FLOOD, packet_in.in_port)
+    # OFPP_ALL port as the output port.  (We could have also used
+    # OFPP_FLOOD.)
+    self.resend_packet(packet_in, of.OFPP_ALL)
 
     # Note that if we didn't get a valid buffer_id, a slightly better
     # implementation would check that we got the full data before
@@ -109,8 +97,7 @@ class Tutorial (object):
 
     if the port associated with the destination MAC of the packet is known:
       # Send packet out the associated port
-      self.send_packet(packet_in.buffer_id, packet_in.data,
-                       ..., packet_in.in_port)
+      self.resend_packet(packet_in, ...)
 
       # Once you have the above working, try pushing a flow entry
       # instead of resending the packet (comment out the above and
@@ -126,13 +113,12 @@ class Tutorial (object):
       #
       #< Set other fields of flow_mod (timeouts? buffer_id?) >
       #
-      #< Add an output action, and send -- similar to send_packet() >
+      #< Add an output action, and send -- similar to resend_packet() >
 
     else:
       # Flood the packet out everything but the input port
       # This part looks familiar, right?
-      self.send_packet(packet_in.buffer_id, packet_in.data,
-                       of.OFPP_FLOOD, packet_in.in_port)
+      self.resend_packet(packet_in, of.OFPP_ALL)
 
     """ # DELETE THIS LINE TO START WORKING ON THIS #
 
