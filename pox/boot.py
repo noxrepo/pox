@@ -106,6 +106,16 @@ def _do_import (name):
         # It was the one we tried to import itself. (Case 1)
         # If we have other names to try, try them!
         return do_import2(base_name, names_to_try)
+      elif (sys.exc_info()[1].message
+          == "Import by filename is not supported."):
+        print sys.exc_info()[1].message
+        import os.path
+        n = name.replace("/", ".").replace("\\", ".")
+        n = n.replace( os.path.sep, ".")
+        if n.startswith("pox.") or n.startswith("ext."):
+          n = n[4:]
+        print "Maybe you meant to run '%s'?" % (n,)
+        return False
       else:
         # This means we found the module we were looking for, but one
         # of its dependencies was missing.
