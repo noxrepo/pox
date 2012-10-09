@@ -53,10 +53,10 @@ class LearningSwitch (object):
 
   In short, our algorithm looks like this:
 
-  For each new flow:
-  1) Use source address and port to update address/port table
-  2) Is destination address a Bridge Filtered address or is Ethertype LLDP?
-     * This step is ignored if transparent = True *
+  For each packet from the switch:
+  1) Use source address and switch port to update address/port table
+  2) Is transparent = False and either Ethertype is LLDP or the packet's
+     destination address is a Bridge Filtered address?
      Yes:
         2a) Drop packet -- don't forward link-local traffic (LLDP, 802.1x)
             DONE
@@ -73,7 +73,7 @@ class LearningSwitch (object):
         5a) Drop packet and similar ones for a while
   6) Install flow table entry in the switch so that this
      flow goes out the appopriate port
-     6a) Send buffered packet out appopriate port
+     6a) Send the packet out appropriate port
   """
   def __init__ (self, connection, transparent):
     # Switch we'll be adding L2 learning switch capabilities to
@@ -100,7 +100,7 @@ class LearningSwitch (object):
 
     packet = event.parsed
 
-    def flood ():
+    def flood (message = None):
       """ Floods the packet """
       msg = of.ofp_packet_out()
       if time.time() - self.connection.connect_time > FLOOD_DELAY:
@@ -112,6 +112,7 @@ class LearningSwitch (object):
           log.info("%s: Flood hold-down expired -- flooding",
               dpid_to_str(event.dpid))
 
+        if message is not None: log.debug(message)
         #log.debug("%i: flood %s -> %s", event.dpid,packet.src,packet.dst)
         msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
       else:
@@ -152,8 +153,7 @@ class LearningSwitch (object):
       flood() # 3a
     else:
       if packet.dst not in self.macToPort: # 4
-        log.debug("Port for %s unknown -- flooding" % (packet.dst,))
-        flood() # 4a
+        flood("Port for %s unknown -- flooding" % (packet.dst,)) # 4a
       else:
         port = self.macToPort[packet.dst]
         if port == event.port: # 5
@@ -170,7 +170,7 @@ class LearningSwitch (object):
         msg.idle_timeout = 10
         msg.hard_timeout = 30
         msg.actions.append(of.ofp_action_output(port = port))
-        msg.buffer_id = event.ofp.buffer_id # 6a
+        msg.data = event.ofp # 6a
         self.connection.send(msg)
 
 
