@@ -383,6 +383,7 @@ def main ():
     deadlock_printer = threading.Thread(name="DeadlockPrinter", target=print_thread_states)
     deadlock_printer.start()
 
+  core.scheduler.errors_fatal = True
   core.scheduler.run()
 
   if cli:

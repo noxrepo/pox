@@ -144,6 +144,8 @@ class Scheduler (object):
     self._callLaterTask = None
     self._allDone = False
 
+    self.errors_fatal = False
+
     global defaultScheduler
     if isDefaultScheduler or (isDefaultScheduler is None and
                               defaultScheduler is None):
@@ -291,22 +293,27 @@ class Scheduler (object):
       rv = t.execute()
     except StopIteration:
       return True
-    except:
-      try:
-        print("Task", t, "caused exception and was de-scheduled")
-        traceback.print_exc()
-      except:
-        pass
-      return True
+    except Exception as e:
+      if self.errors_fatal:
+        raise e
+      else:
+        try:
+          print("Task", t, "caused exception and was de-scheduled")
+          traceback.print_exc()
+        except:
+          pass
+        return True
 
     if isinstance(rv, BlockingOperation):
       try:
         rv.execute(t, self)
       except Exception as e:
-        print("Task", t, "caused exception during a blocking operation and " +
-              "was de-scheduled")
-        traceback.print_exc()
-        raise e
+        if self.errors_fatal:
+          raise e
+        else:
+          print("Task", t, "caused exception during a blocking operation and " +
+                "was de-scheduled")
+          traceback.print_exc()
     elif rv is False:
       # Just unschedule/sleep
       #print "Unschedule", t, rv
