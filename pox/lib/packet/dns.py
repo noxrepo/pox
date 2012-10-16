@@ -340,7 +340,8 @@ class dns(packet_base):
     # until the fields have been parsed, it is more convenient to keep
     # them in the DNS class
 
-    def _read_dns_name_from_index(self, l, index, retlist):
+    @classmethod
+    def _read_dns_name_from_index(cls, l, index, retlist):
         while True:
             chunk_size = ord(l[index])
 
@@ -348,7 +349,7 @@ class dns(packet_base):
             if (chunk_size & 0xc0) == 0xc0:
                 # pull out offset from last 14 bits
                 offset = ((ord(l[index]) & 0x3) << 8 ) | ord(l[index+1])
-                self._read_dns_name_from_index(l, offset, retlist)
+                cls._read_dns_name_from_index(l, offset, retlist)
                 index += 1
                 break
             if chunk_size == 0:
@@ -358,9 +359,10 @@ class dns(packet_base):
             index += chunk_size
         return index
 
-    def read_dns_name_from_index(self, l, index):
+    @classmethod
+    def read_dns_name_from_index(cls, l, index):
         retlist = []
-        next = self._read_dns_name_from_index(l, index, retlist)
+        next = cls._read_dns_name_from_index(l, index, retlist)
         return (next + 1, ".".join(retlist))
 
     def next_rr(self, l, index, rr_list):
@@ -398,9 +400,12 @@ class dns(packet_base):
         # PTR
         elif type == 12:
             return  self.read_dns_name_from_index(l, beg_index)[1]
+        # CNAME
+        elif type == 5:
+            return self.read_dns_name_from_index(l, beg_index)[1]
         # MX
         elif type == 15:
-            # Jump past priorit (this should really be saves XXX)
+            #TODO: Save priority (don't just jump past it)
             return self.read_dns_name_from_index(l, beg_index + 2)[1]
         else:
             return l[beg_index : beg_index + dlen]
