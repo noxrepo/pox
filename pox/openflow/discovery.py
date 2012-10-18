@@ -380,7 +380,7 @@ class Discovery (EventMixin):
       # Create NOM link and add it to the NOM
       newLink = Link(originatorDPID, originatorPort, event.dpid, event.port)
       self.topology.addEntity(newLink)
-      self.raiseEventNoErrors(LinkEvent, True, newLink)
+      self.raiseEvent(LinkEvent, True, newLink)
     else:
       # Just update timestamp
       self.adjacency[link] = time.time()
