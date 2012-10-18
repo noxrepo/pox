@@ -617,14 +617,16 @@ class Connection (EventMixin):
       msg.unpack(self.buf)
       self.buf = self.buf[packet_length:]
       l = len(self.buf)
-      #try:
-      h = handlers[ofp_type]
-      h(self, msg)
-      #except:
-      #  log.exception("%s: Exception while handling OpenFlow message:\n" +
-      #                "%s %s", self,self,
-      #                ("\n" + str(self) + " ").join(str(msg).split('\n')))
-      #  continue
+      try:
+        h = handlers[ofp_type]
+        h(self, msg)
+      except ValueError as e:
+        raise e
+      except:
+        log.exception("%s: Exception while handling OpenFlow message:\n" +
+                      "%s %s", self,self,
+                      ("\n" + str(self) + " ").join(str(msg).split('\n')))
+        continue
     return True
 
   def _incoming_stats_reply (self, ofp):
@@ -758,6 +760,8 @@ class OpenFlow_01_Task (Task):
                 sockets.remove(con)
       except exceptions.KeyboardInterrupt:
         break
+      except ValueError as e:
+        raise e
       except:
         doTraceback = True
         if sys.exc_info()[0] is socket.error:
