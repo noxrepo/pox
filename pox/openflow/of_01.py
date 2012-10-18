@@ -70,7 +70,7 @@ def handle_HELLO (con, msg): #S
 
 def handle_ECHO_REQUEST (con, msg): #S
   reply = msg
-  
+
   reply.header_type = of.OFPT_ECHO_REPLY
   con.send(reply.pack())
 
@@ -467,7 +467,7 @@ class Connection (EventMixin):
     QueueStatsReceived,
     FlowRemoved,
   ])
-  
+
   # Globally unique identifier for the Connection instance
   ID = 0
 
@@ -613,15 +613,15 @@ class Connection (EventMixin):
       if packet_length > l: break
       msg = classes[ofp_type]()
       # msg.unpack implicitly only examines its own bytes, and not trailing
-      # bytes 
+      # bytes
       msg.unpack(self.buf)
       self.buf = self.buf[packet_length:]
       l = len(self.buf)
       try:
         h = handlers[ofp_type]
         h(self, msg)
-      except ValueError as e:
-        raise e
+      except ValueError, AttributeError:
+        raise
       except:
         log.exception("%s: Exception while handling OpenFlow message:\n" +
                       "%s %s", self,self,
@@ -640,7 +640,7 @@ class Connection (EventMixin):
                   str(ofp.type))
         self._previous_stats = []
         return
-      
+
     if len(self._previous_stats) != 0:
       if ((ofp.xid == self._previous_stats[0].xid) and
           (ofp.type == self._previous_stats[0].type)):
@@ -760,8 +760,8 @@ class OpenFlow_01_Task (Task):
                 sockets.remove(con)
       except exceptions.KeyboardInterrupt:
         break
-      except ValueError as e:
-        raise e
+      except ValueError, AttributeError:
+        raise
       except:
         doTraceback = True
         if sys.exc_info()[0] is socket.error:

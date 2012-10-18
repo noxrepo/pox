@@ -293,9 +293,9 @@ class Scheduler (object):
       rv = t.execute()
     except StopIteration:
       return True
-    except Exception as e:
+    except Exception:
       if self.errors_fatal:
-        raise e
+        raise
       else:
         try:
           print("Task", t, "caused exception and was de-scheduled")
