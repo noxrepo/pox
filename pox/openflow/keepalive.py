@@ -39,7 +39,7 @@ def _handle_timer (ofnexus):
 
 _running = False
 
-def launch (interval = 30):
+def launch (interval = 20):
   interval = float(interval)
   def start ():
     global _running
