@@ -1,4 +1,5 @@
 doc/*
+*.pem
 *.pyc
 *.pyo
 *.py~
