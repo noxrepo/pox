@@ -94,7 +94,12 @@ class IOWorker (object):
       else:
         self._push_receive_data(data)
     except socket.error as (s_errno, strerror):
-      log.error("Socket %s error during recv: %s", str(self), strerror)
+      if s_errno == errno.ENOENT:
+        # SSL library does this sometimes
+        log.error("Socket %s: ENOENT", str(self))
+        return
+      log.error("Socket %s error %i during recv: %s", str(self),
+          s_errno, strerror)
       self.close()
       loop._workers.discard(self)
 
@@ -109,7 +114,8 @@ class IOWorker (object):
           self._consume_send_buf(l)
     except socket.error as (s_errno, strerror):
       if s_errno != errno.EAGAIN:
-        log.error("Socket %s error during send: %s", str(self), strerror)
+        log.error("Socket %s error %i during send: %s", str(self),
+          s_errno, strerror)
         self.close()
         loop._workers.discard(self)
 
