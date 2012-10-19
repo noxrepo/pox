@@ -36,10 +36,12 @@ log = core.getLogger()
 
 _dummy_handler = lambda worker : None
 
-def _call_safe (f):
+def _call_safe (f, socket=None):
   try:
     f()
   except Exception as e:
+    if socket:
+      log.error("Exception on socket %s..." % (socket))
     log.exception(e)
 
 
