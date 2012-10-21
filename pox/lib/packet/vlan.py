@@ -78,7 +78,7 @@ class vlan(packet_base):
         (pcpid, self.eth_type) = struct.unpack("!HH", raw[:vlan.MIN_LEN])
 
         self.pcp = pcpid >> 13
-        self.c   = pcpid  & 0x1000
+        self.cfi = pcpid  & 0x1000
         self.id  = pcpid  & 0x0fff
 
         self.parsed = True
@@ -103,7 +103,7 @@ class vlan(packet_base):
 
     def hdr (self, payload):
         pcpid  = self.pcp << 13
-        pcpid |= self.c   << 12
+        pcpid |= self.cfi << 12
         pcpid |= self.id
         buf = struct.pack("!HH", pcpid, self.eth_type)
         return buf
