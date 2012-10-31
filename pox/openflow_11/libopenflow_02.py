@@ -354,25 +354,23 @@ ofp_queue_op_failed_code_rev_map = {
   'OFPQOFC_EPERM'     : 2,
 }
 
+# updated for openflow 1.1
 ofp_port_config_rev_map = {
   'OFPPC_PORT_DOWN'    : 1,
-  'OFPPC_NO_STP'       : 2,
   'OFPPC_NO_RECV'      : 4,
-  'OFPPC_NO_RECV_STP'  : 8,
-  'OFPPC_NO_FLOOD'     : 16,
   'OFPPC_NO_FWD'       : 32,
   'OFPPC_NO_PACKET_IN' : 64,
 }
 
+# updated for openflow 1.1
 ofp_port_state_rev_map = {
-  'OFPPS_STP_LISTEN'  : 0,
   'OFPPS_LINK_DOWN'   : 1,
-  'OFPPS_STP_LEARN'   : 256,
-  'OFPPS_STP_FORWARD' : 512,
-  'OFPPS_STP_BLOCK'   : 768,
+  'OFPPS_BLOCKED'     : 2,
+  'OFPPS_LIVE'        : 4,
 }
-OFPPS_STP_MASK        = 768
+#OFPPS_STP_MASK        = 768
 
+# updated for openflow 1.1
 ofp_port_features_rev_map = {
   'OFPPF_10MB_HD'    : 1,
   'OFPPF_10MB_FD'    : 2,
@@ -381,11 +379,15 @@ ofp_port_features_rev_map = {
   'OFPPF_1GB_HD'     : 16,
   'OFPPF_1GB_FD'     : 32,
   'OFPPF_10GB_FD'    : 64,
-  'OFPPF_COPPER'     : 128,
-  'OFPPF_FIBER'      : 256,
-  'OFPPF_AUTONEG'    : 512,
-  'OFPPF_PAUSE'      : 1024,
-  'OFPPF_PAUSE_ASYM' : 2048,
+  'OFPPF_40GB_FD'    : 128,
+  'OFPPF_100GB_FD'   : 256,
+  'OFPPF_1TB_FD'     : 512,
+  'OFPPF_OTHER'      : 1024,
+  'OFPPF_COPPER'     : 2048,
+  'OFPPF_FIBER'      : 4096,
+  'OFPPF_AUTONEG'    : 8192,
+  'OFPPF_PAUSE'      : 16384,
+  'OFPPF_PAUSE_ASYM' : 32768,
 }
 
 ofp_queue_properties_rev_map = {
@@ -446,16 +448,24 @@ ofp_port_reason_rev_map = {
   'OFPPR_MODIFY' : 2,
 }
 
+# updated for openflow 1.1
+
 ofp_port_rev_map = {
-  'OFPP_MAX'        : 65280,
-  'OFPP_IN_PORT'    : 65528,
-  'OFPP_TABLE'      : 65529,
-  'OFPP_NORMAL'     : 65530,
-  'OFPP_FLOOD'      : 65531,
-  'OFPP_ALL'        : 65532,
-  'OFPP_CONTROLLER' : 65533,
-  'OFPP_LOCAL'      : 65534,
-  'OFPP_NONE'       : 65535,
+  'OFPP_MAX'        : 0xFFFFFF00,
+  'OFPP_IN_PORT'    : 0xFFFFFFF8,
+  'OFPP_TABLE'      : 0xFFFFFFF9,
+  'OFPP_NORMAL'     : 0xFFFFFFFA,
+  'OFPP_FLOOD'      : 0xFFFFFFFB,
+  'OFPP_ALL'        : 0xFFFFFFFC,
+  'OFPP_CONTROLLER' : 0xFFFFFFFD,
+  'OFPP_LOCAL'      : 0xFFFFFFFE,
+  'OFPP_ANY'        : 0xFFFFFFFF,
+}
+
+# new in openflow 1.1
+
+ofp_match_type_rev_map = {
+  'OFPMT_STANDARD'     : 1,
 }
 
 ofp_flow_wildcards_rev_map = {
@@ -495,7 +505,7 @@ NO_BUFFER = 4294967295
 # ----------------------------------------------------------------------
 
 #1. Openflow Header
-class ofp_header_2 (ofp_base):
+class ofp_header (ofp_base):
   def __init__ (self, **kw):
     self.version = OFP_VERSION
     #self.header_type = None # Set via class decorator
@@ -656,6 +666,8 @@ class ofp_port (ofp_base):
     if self.advertised != other.advertised: return False
     if self.supported != other.supported: return False
     if self.peer != other.peer: return False
+    if self.curr_speed != other.curr_speed: return False
+    if self.max_speed != other.max_speed: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -672,7 +684,8 @@ class ofp_port (ofp_base):
            hash(self.name) ^ hash(self.config) ^ \
            hash(self.state) ^ hash(self.curr) ^ \
            hash(self.advertised) ^ hash(self.supported) + \
-           hash(self.peer)
+           hash(self.peer) ^ hash(self.curr_speed) + \
+           hash(self.max_speed)
 
   def show (self, prefix=''):
     outstr = ''
@@ -685,6 +698,8 @@ class ofp_port (ofp_base):
     outstr += prefix + 'advertised: ' + str(self.advertised) + '\n'
     outstr += prefix + 'supported: ' + str(self.supported) + '\n'
     outstr += prefix + 'peer: ' + str(self.peer) + '\n'
+    outstr += prefix + 'curr_speed: ' + str(self.curr_speed) + '\n'
+    outstr += prefix + 'max_speed: ' + str(self.max_speed) + '\n'
     return outstr
 
   def __repr__(self):
@@ -823,6 +838,9 @@ class ofp_queue_prop_min_rate (ofp_base):
 
 
 ##2.3 Flow Match Structures
+# updating for openflow 1.1
+# adds an ofp_match_type struct with one member of OFPMT_STANDARD
+#  - above in constants
 class ofp_match (ofp_base):
   adjust_wildcards = True # Set to true to "fix" outgoing wildcards
 
@@ -1033,6 +1051,19 @@ class ofp_match (ofp_base):
     return None
 
   def pack (self, flow_mod=False):
+    # OF 1.0 looks like:
+    # 32-bit wildcards
+    # 16-bit in_port
+    # 6x8bit source_eth
+    # 6x8bit dest_eth
+    # 16-bit VLAN ID
+    # 8-bit VLAN PCP (priority)
+    # 8-bit padding
+    # 16-bit dl_type
+    # 8-bit IP DSCP
+    # 8-bit IP proto / ARP lower 8 bits of opcode
+    # 2x8-bit align
+    
     assert self._assert()
 
     packed = ""
