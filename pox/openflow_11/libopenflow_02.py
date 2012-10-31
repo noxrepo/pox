@@ -345,49 +345,49 @@ ofp_flow_mod_failed_code_rev_map = {
 
 ofp_port_mod_failed_code_rev_map = {
   'OFPPMFC_BAD_PORT'    : 0,
-  'OFPPMFC_BAD_HW_ADDR' : 1,
+  'OFPPMFC_BAD_HW_ADDR' : 1 << 0,
 }
 
 ofp_queue_op_failed_code_rev_map = {
   'OFPQOFC_BAD_PORT'  : 0,
-  'OFPQOFC_BAD_QUEUE' : 1,
-  'OFPQOFC_EPERM'     : 2,
+  'OFPQOFC_BAD_QUEUE' : 1 << 0,
+  'OFPQOFC_EPERM'     : 1 << 1,
 }
 
 # updated for openflow 1.1
 ofp_port_config_rev_map = {
-  'OFPPC_PORT_DOWN'    : 1,
-  'OFPPC_NO_RECV'      : 4,
-  'OFPPC_NO_FWD'       : 32,
-  'OFPPC_NO_PACKET_IN' : 64,
+  'OFPPC_PORT_DOWN'    : 1 << 0,
+  'OFPPC_NO_RECV'      : 1 << 2,
+  'OFPPC_NO_FWD'       : 1 << 5,
+  'OFPPC_NO_PACKET_IN' : 1 << 6,
 }
 
 # updated for openflow 1.1
 ofp_port_state_rev_map = {
-  'OFPPS_LINK_DOWN'   : 1,
-  'OFPPS_BLOCKED'     : 2,
-  'OFPPS_LIVE'        : 4,
+  'OFPPS_LINK_DOWN'   : 1 << 0,
+  'OFPPS_BLOCKED'     : 1 << 1,
+  'OFPPS_LIVE'        : 1 << 2,
 }
 #OFPPS_STP_MASK        = 768
 
 # updated for openflow 1.1
 ofp_port_features_rev_map = {
-  'OFPPF_10MB_HD'    : 1,
-  'OFPPF_10MB_FD'    : 2,
-  'OFPPF_100MB_HD'   : 4,
-  'OFPPF_100MB_FD'   : 8,
-  'OFPPF_1GB_HD'     : 16,
-  'OFPPF_1GB_FD'     : 32,
-  'OFPPF_10GB_FD'    : 64,
-  'OFPPF_40GB_FD'    : 128,
-  'OFPPF_100GB_FD'   : 256,
-  'OFPPF_1TB_FD'     : 512,
-  'OFPPF_OTHER'      : 1024,
-  'OFPPF_COPPER'     : 2048,
-  'OFPPF_FIBER'      : 4096,
-  'OFPPF_AUTONEG'    : 8192,
-  'OFPPF_PAUSE'      : 16384,
-  'OFPPF_PAUSE_ASYM' : 32768,
+  'OFPPF_10MB_HD'    : 1 << 0,
+  'OFPPF_10MB_FD'    : 1 << 1,
+  'OFPPF_100MB_HD'   : 1 << 2,
+  'OFPPF_100MB_FD'   : 1 << 3,
+  'OFPPF_1GB_HD'     : 1 << 4,
+  'OFPPF_1GB_FD'     : 1 << 5,
+  'OFPPF_10GB_FD'    : 1 << 6,
+  'OFPPF_40GB_FD'    : 1 << 7,
+  'OFPPF_100GB_FD'   : 1 << 8,
+  'OFPPF_1TB_FD'     : 1 << 9,
+  'OFPPF_OTHER'      : 1 << 10,
+  'OFPPF_COPPER'     : 1 << 11,
+  'OFPPF_FIBER'      : 1 << 12,
+  'OFPPF_AUTONEG'    : 1 << 13,
+  'OFPPF_PAUSE'      : 1 << 14,
+  'OFPPF_PAUSE_ASYM' : 1 << 15,
 }
 
 ofp_queue_properties_rev_map = {
@@ -396,20 +396,20 @@ ofp_queue_properties_rev_map = {
 OFPQT_NONE         = 0
 
 ofp_capabilities_rev_map = {
-  'OFPC_FLOW_STATS'   : 1,
-  'OFPC_TABLE_STATS'  : 2,
-  'OFPC_PORT_STATS'   : 4,
-  'OFPC_STP'          : 8,
-  'OFPC_RESERVED'     : 16,
-  'OFPC_IP_REASM'     : 32,
-  'OFPC_QUEUE_STATS'  : 64,
-  'OFPC_ARP_MATCH_IP' : 128,
+  'OFPC_FLOW_STATS'   : 1 << 0,
+  'OFPC_TABLE_STATS'  : 1 << 1,
+  'OFPC_PORT_STATS'   : 1 << 2,
+  'OFPC_STP'          : 1 << 3,
+  'OFPC_RESERVED'     : 1 << 4,
+  'OFPC_IP_REASM'     : 1 << 5,
+  'OFPC_QUEUE_STATS'  : 1 << 6,
+  'OFPC_ARP_MATCH_IP' : 1 << 7,
 }
 
 ofp_config_flags_rev_map = {
   'OFPC_FRAG_NORMAL' : 0,
-  'OFPC_FRAG_DROP'   : 1,
-  'OFPC_FRAG_REASM'  : 2,
+  'OFPC_FRAG_DROP'   : 1 << 0,
+  'OFPC_FRAG_REASM'  : 1 << 1,
   'OFPC_FRAG_MASK'   : 3,
 }
 
@@ -422,30 +422,30 @@ ofp_flow_mod_command_rev_map = {
 }
 
 ofp_flow_mod_flags_rev_map = {
-  'OFPFF_SEND_FLOW_REM' : 1,
-  'OFPFF_CHECK_OVERLAP' : 2,
-  'OFPFF_EMERG'         : 4,
+  'OFPFF_SEND_FLOW_REM' : 1 << 0,
+  'OFPFF_CHECK_OVERLAP' : 1 << 1,
+  'OFPFF_EMERG'         : 1 << 2,
 }
 
 ofp_stats_reply_flags_rev_map = {
-  'OFPSF_REPLY_MORE' : 1,
+  'OFPSF_REPLY_MORE' : 1 << 0,
 }
 
 ofp_packet_in_reason_rev_map = {
   'OFPR_NO_MATCH' : 0,
-  'OFPR_ACTION'   : 1,
+  'OFPR_ACTION'   : 1 << 0,
 }
 
 ofp_flow_removed_reason_rev_map = {
   'OFPRR_IDLE_TIMEOUT' : 0,
-  'OFPRR_HARD_TIMEOUT' : 1,
-  'OFPRR_DELETE'       : 2,
+  'OFPRR_HARD_TIMEOUT' : 1 << 0,
+  'OFPRR_DELETE'       : 1 << 1,
 }
 
 ofp_port_reason_rev_map = {
   'OFPPR_ADD'    : 0,
-  'OFPPR_DELETE' : 1,
-  'OFPPR_MODIFY' : 2,
+  'OFPPR_DELETE' : 1 << 0,
+  'OFPPR_MODIFY' : 1 << 1,
 }
 
 # updated for openflow 1.1
@@ -465,35 +465,28 @@ ofp_port_rev_map = {
 # new in openflow 1.1
 
 ofp_match_type_rev_map = {
-  'OFPMT_STANDARD'     : 1,
+  'OFPMT_STANDARD'     : 1 << 0,
 }
 
+# updated for openflow 1.1
 ofp_flow_wildcards_rev_map = {
-  'OFPFW_IN_PORT'      : 1,
-  'OFPFW_DL_VLAN'      : 2,
-  'OFPFW_DL_SRC'       : 4,
-  'OFPFW_DL_DST'       : 8,
-  'OFPFW_DL_TYPE'      : 16,
-  'OFPFW_NW_PROTO'     : 32,
-  'OFPFW_TP_SRC'       : 64,
-  'OFPFW_TP_DST'       : 128,
-  'OFPFW_DL_VLAN_PCP'  : 1048576,
-  'OFPFW_NW_TOS'       : 1<<21,
+  'OFPFW_IN_PORT'      : 1 << 0,
+  'OFPFW_DL_VLAN'      : 1 << 1,
+  'OFPFW_DL_VLAN_PCP'  : 1 << 2,
+  'OFPFW_DL_TYPE'      : 1 << 3,
+  'OFPFW_NW_TOS'       : 1 << 4,
+  'OFPFW_NW_PROTO'     : 1 << 5,
+  'OFPFW_TP_SRC'       : 1 << 6,
+  'OFPFW_TP_DST'       : 1 << 7,
+  'OFPFW_MPLS_LABEL'   : 1 << 8,
+  'OFPFW_MPLS_TC'      : 1 << 9,
 }
 
-OFPFW_NW_DST_BITS      = 6
-OFPFW_NW_SRC_BITS      = 6
-OFPFW_NW_SRC_SHIFT     = 8
-OFPFW_NW_DST_SHIFT     = 14
-OFPFW_NW_SRC_ALL       = 8192
-OFPFW_NW_SRC_MASK      = 16128
-OFPFW_NW_DST_ALL       = 524288
-OFPFW_NW_DST_MASK      = 1032192
 # Note: Need to handle all flags that are set in this.
 # glob-all masks in the packet handling methods.
 # (Esp. ofp_match.from_packet)
 # Otherwise, packets are not being matched as they should
-OFPFW_ALL              = ((1 << 22) - 1)
+OFPFW_ALL              = ((1 << 10) - 1)
 
 NO_BUFFER = 4294967295
 
@@ -1063,27 +1056,74 @@ class ofp_match (ofp_base):
     # 8-bit IP DSCP
     # 8-bit IP proto / ARP lower 8 bits of opcode
     # 2x8-bit align
+    # 32-bit source IP
+    # 32-bit dest IP
+    # 16-bit source port
+    # 16-bit dest port
+    # 40 bytes total
+    
+    # OF 1.1 looks like:
+    # 16-bit type
+    # 16-bit length
+    # 32-bit in_port
+    # 32-bit wildcards
+    # 6x8bit source_eth
+    # 6x8bit source_eth_mask (dl_src_mask)
+    # 6x8bit dest_eth
+    # 6x8bit dest_eth_mask (dl_dst_mask)
+    # 16-bit vlan ID
+    # 8-bit VLAN pcp (priority)
+    # 8-bit padding
+    # 16-bit dl_type
+    # 8-bit IP DSCP
+    # 8-bit IP proto
+    # 32-bit source IP
+    # 32-bit source IP mask (nw_src_mask)
+    # 32-bit dest IP
+    # 32-bit dest IP mask (nw_dst_mask)
+    # 16-bit source port
+    # 16-bit dest-port
+    # 32-bit MLS label (mpls_label)
+    # 8-bit MPLS TC (mpls_tc)
+    # 3x8bit padding
+    # 64-bit metadata (metadata)
+    # 64-bit metadata_mask (metadata_mask)
     
     assert self._assert()
 
     packed = ""
+    # start with type and length
+    packed += struct.pack("!HH", OFPMT_STANDARD, 88)
     if self.adjust_wildcards and flow_mod:
       wc = self._wire_wildcards(self.wildcards)
     else:
       wc = self.wildcards
-    packed += struct.pack("!LH", wc, self.in_port or 0)
+    # port length now 32-bits
+    packed += struct.pack("!LL", self.in_port or 0, wc)
     if self.dl_src == None:
       packed += EMPTY_ETH.toRaw()
     elif type(self.dl_src) is bytes:
       packed += self.dl_src
     else:
       packed += self.dl_src.toRaw()
+    if self.dl_src_mask == None:
+      packed += EMPTY_ETH.toRaw()
+    elif type(self.dl_src_mask) is bytes:
+      packed += self.dl_src_mask
+    else:
+      packed += self.dl_src_mask.toRaw()
     if self.dl_dst == None:
       packed += EMPTY_ETH.toRaw()
     elif type(self.dl_dst) is bytes:
       packed += self.dl_dst
     else:
       packed += self.dl_dst.toRaw()
+    if self.dl_dst_mask == None:
+      packed += EMPTY_ETH.toRaw()
+    elif type(self.dl_dst_mask) is bytes:
+      packed += self.dl_dst_mask
+    else:
+      packed += self.dl_dst_mask.toRaw()
 
     def check_ip(val):
       return (val or 0) if self.dl_type == 0x0800 else 0
@@ -1098,16 +1138,27 @@ class ofp_match (ofp_base):
     packed += _PAD # Hardcode padding
     packed += struct.pack("!HBB", self.dl_type or 0,
         check_ip(self.nw_tos), check_ip_or_arp(self.nw_proto))
-    packed += _PAD2 # Hardcode padding
+    
     def fix (addr):
       if addr is None: return 0
       if type(addr) is int: return addr & 0xffFFffFF
       if type(addr) is long: return addr & 0xffFFffFF
       return addr.toUnsigned()
 
-    packed += struct.pack("!LLHH", check_ip_or_arp(fix(self.nw_src)),
+    packed += struct.pack("!LLLLHH", check_ip_or_arp(fix(self.nw_src)),
+        check_ip_or_arp(fix(self.nw_src_mask)),
         check_ip_or_arp(fix(self.nw_dst)),
+        check_ip_or_arp(fix(self.nw_dst_mask)),
         check_tp(self.tp_src), check_tp(self.tp_dst))
+    
+    # now MPLS stuff
+    
+    packed += struct.pack("!LB", self.mpls_label, self.mpls_tc)
+    packed += _PAD3
+    packed += struct.pack("!QQ", self.metadata, self.metadata_mask)
+    
+    # should we assert that the size is correct?
+    
 
     return packed
 
