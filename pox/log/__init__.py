@@ -65,7 +65,8 @@ def launch (__INSTANCE__ = None, **kw):
   """
 
   if 'format' in kw:
-    formatter = logging.Formatter(kw['format'])
+    df = kw.pop("datefmt", None)
+    formatter = logging.Formatter(kw['format'], datefmt=df)
     del kw['format']
     if len(kw) == 0:
       # Use for the default logger...
