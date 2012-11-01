@@ -62,6 +62,8 @@ def launch (__INSTANCE__ = None, **kw):
   logging.Formatter instance for all loggers created with that invocation
   of the log module.  If no loggers are created with this instantiation,
   it is used for the default logger.
+  If a --format is specified, you can also specify a --datefmt="<str>"
+  where the string is a strftime format string for date/time stamps.
   """
 
   if 'format' in kw:
