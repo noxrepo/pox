@@ -943,6 +943,7 @@ class ofp_match (ofp_base):
           + "unexpected keyword argument '" + k + "'")
       setattr(self, k, v)
 
+  # these need to be updated for masks
   def get_nw_dst (self):
     if (self.wildcards & OFPFW_NW_DST_ALL) == OFPFW_NW_DST_ALL:
       return (None, 0)
@@ -1013,6 +1014,7 @@ class ofp_match (ofp_base):
       self.__dict__[name] = value
       return
 
+    # this needs updating for _mask fields
     if name == 'nw_dst' or name == 'nw_src':
       # Special handling
       getattr(self, 'set_' + name)(value)
@@ -1163,6 +1165,7 @@ class ofp_match (ofp_base):
     return packed
 
   def _normalize_wildcards (self, wildcards):
+    # this isn't necessary in OpenFlow 1.1 - nw_src and nw_dst wildcards are a bitmask
     """
     nw_src and nw_dst values greater than 32 mean the same thing as 32.
     We normalize them here just to be clean and so that comparisons act
@@ -1188,6 +1191,8 @@ class ofp_match (ofp_base):
     protocol specified is as TCP, UDP or SCTP. Fields that are ignored
     don't need to be wildcarded and should be set to 0.
     """
+    # this will need recoding nw_src_mask and nw_src_dst don't make
+    # sense here
     if self.dl_type == 0x0800:
         # IP
         if  self.nw_proto not in (1,6,17):
@@ -1217,6 +1222,7 @@ class ofp_match (ofp_base):
     protocol specified is as TCP, UDP or SCTP. Fields that are ignored
     don't need to be wildcarded and should be set to 0.
     """
+    # same as above - src_mask and dst_mask are meaningless here
     if self._dl_type == 0x0800:
         # IP
         if  self._nw_proto not in (1,6,17):
@@ -1243,19 +1249,83 @@ class ofp_match (ofp_base):
     return not self.is_wildcarded
 
   def unpack (self, binaryString, flow_mod=False):
+    # OF 1.0 looks like:
+    # 32-bit wildcards
+    # 16-bit in_port
+    # 6x8bit source_eth
+    # 6x8bit dest_eth
+    # 16-bit VLAN ID
+    # 8-bit VLAN PCP (priority)
+    # 8-bit padding
+    # 16-bit dl_type
+    # 8-bit IP DSCP
+    # 8-bit IP proto / ARP lower 8 bits of opcode
+    # 2x8-bit align
+    # 32-bit source IP
+    # 32-bit dest IP
+    # 16-bit source port
+    # 16-bit dest port
+    # 40 bytes total
+    
+    # OF 1.1 looks like:
+    # 16-bit type
+    # 16-bit length
+    # 32-bit in_port
+    # 32-bit wildcards
+    # 6x8bit source_eth
+    # 6x8bit source_eth_mask (dl_src_mask)
+    # 6x8bit dest_eth
+    # 6x8bit dest_eth_mask (dl_dst_mask)
+    # 16-bit vlan ID
+    # 8-bit VLAN pcp (priority)
+    # 8-bit padding
+    # 16-bit dl_type
+    # 8-bit IP DSCP
+    # 8-bit IP proto
+    # 32-bit source IP
+    # 32-bit source IP mask (nw_src_mask)
+    # 32-bit dest IP
+    # 32-bit dest IP mask (nw_dst_mask)
+    # 16-bit source port
+    # 16-bit dest-port
+    # 32-bit MLS label (mpls_label)
+    # 8-bit MPLS TC (mpls_tc)
+    # 3x8bit padding
+    # 64-bit metadata (metadata)
+    # 64-bit metadata_mask (metadata_mask)
+    
+    # openflow 1.1 has a type and length field - we need to get
+    # these first and then compare to expected lengths
+    (match_type, match_length) = struct.unpack_from("!HH", binarystring, 0)
+    # this comparision needs to be changed
     if (len(binaryString) < self.__len__()):
       return binaryString
-    (wildcards, self._in_port) = struct.unpack_from("!LH",binaryString, 0)
-    self._dl_src = EthAddr(struct.unpack_from("!BBBBBB",binaryString, 6))
-    self._dl_dst = EthAddr(struct.unpack_from("!BBBBBB",binaryString, 12))
+    # in_port now 32-bits, swapped around
+    (self._in_port, wildcards) = struct.unpack_from("!LL",binaryString, 4)
+    # masks as well as addresses (follow where the _mask stuff goes)
+    self._dl_src = EthAddr(struct.unpack_from("!BBBBBB",binaryString, 12))
+    self._dl_src_mask = \
+        EthAddr(struct.unpack_from("!BBBBBB", binaryString, 18))
+    self._dl_dst = EthAddr(struct.unpack_from("!BBBBBB",binaryString, 24))
+    self._dl_dst_mask = \
+        EthAddr(struct.unpack_from("!BBBBBB", binaryString, 30))
     (self._dl_vlan, self._dl_vlan_pcp) = \
-        struct.unpack_from("!HB", binaryString, 18)
+        struct.unpack_from("!HB", binaryString, 36)
     (self._dl_type, self._nw_tos, self._nw_proto) = \
-        struct.unpack_from("!HBB", binaryString, 22)
-    (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = \
-        struct.unpack_from("!LLHH", binaryString, 28)
+        struct.unpack_from("!HBB", binaryString, 40)
+    # masks as well as addresses (follow where the _mask stuff goes)
+    (self._nw_src, self._nw_src_mask, self._nw_dst, self._nw_dst_mask,
+        self._tp_src, self._tp_dst) = \
+        struct.unpack_from("!LLLLHH", binaryString, 44)
     self._nw_src = IPAddr(self._nw_src)
+    self._nw_src_mask = IPAddr(self._nw_src_mask)
     self._nw_dst = IPAddr(self._nw_dst)
+    self._nw_dst_mask = IPAddr(self._nw_dst_mask)
+    # counted up to 64 bytes now, time for MPLS then 3 pad bytes
+    (self._mpls_label, self._mpls_tc) = \
+        struct.unpack_from("!LB", binaryString, 64)
+    (self._metadata, self._metadata_mask) = \
+        struct.unpack_from("!QQ", binaryString, 72)
 
     # Only unwire wildcards for flow_mod
     self.wildcards = self._normalize_wildcards(
@@ -1263,9 +1333,10 @@ class ofp_match (ofp_base):
 
     return binaryString[len(self):]
 
+  # updated for openflow 1.1
   @staticmethod
   def __len__ ():
-    return 40
+    return 88
 
   def hash_code (self):
     '''
@@ -1283,6 +1354,7 @@ class ofp_match (ofp_base):
 
     return int(h & 0x7fFFffFF)
 
+  # needs to be updated for openflow 1.1 matches
   def matches_with_wildcards (self, other, consider_other_wildcards=True):
     """
     Test whether /this/ match completely encompasses the other match.
@@ -1330,6 +1402,7 @@ class ofp_match (ofp_base):
 
     return True
 
+  # needs to be updated for openflow 1.1 matches
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.wildcards != other.wildcards: return False
