@@ -837,6 +837,7 @@ class ofp_queue_prop_min_rate (ofp_base):
 class ofp_match (ofp_base):
   adjust_wildcards = True # Set to true to "fix" outgoing wildcards
 
+  # needs to be updated for openflow 1.1
   @classmethod
   def from_packet (cls, packet, in_port = None):
     """
