@@ -859,9 +859,16 @@ class ofp_match (ofp_base):
       match.in_port = in_port
 
     match.dl_src = packet.src
+    match.dl_src_mask = EthAddr(b"\xff\xff\xff\xff\xff\xff")
     match.dl_dst = packet.dst
+    match.dl_dst_mask = EthAddr(b"\xff\xff\xff\xff\xff\xff")
     match.dl_type = packet.type
     p = packet.next
+    # test MPLS before VLANs
+    if isinstance(p, mpls):
+      match.mpls_label = p.label
+      match.mpls_tc = p.tc
+      p = packet.next
     if isinstance(p, vlan):
       match.dl_type = p.eth_type
       match.dl_vlan = p.id
@@ -873,7 +880,9 @@ class ofp_match (ofp_base):
 
     if isinstance(p, ipv4):
       match.nw_src = p.srcip
+      match.nw_src_mask = IPAddr("255.255.255.255")
       match.nw_dst = p.dstip
+      match.nw_dst_mask = IPAddr("255.255.255.255")
       match.nw_proto = p.protocol
       match.nw_tos = p.tos
       p = p.next
