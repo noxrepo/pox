@@ -29,8 +29,8 @@ class ofp_match_test(unittest.TestCase):
     # ping packet taken from wireshark pcap samples
     pkt = ""
     # ethernet
-    dl_src = EthAddr(b"\x00\x30\x96\xe6\xfc\x39")
-    dl_dst = EthAddr(b"\x00\x30\x96\x05\x28\x36")
+    dl_dst = EthAddr(b"\x00\x30\x96\xe6\xfc\x39")
+    dl_src = EthAddr(b"\x00\x30\x96\x05\x28\x38")
     eth_type = 0x8847
     pkt += dl_dst.toRaw()
     pkt += dl_src.toRaw()
@@ -39,7 +39,9 @@ class ofp_match_test(unittest.TestCase):
     mpls_label = 29
     mpls_tc = 0
     mpls_ttl = 0xff
-    pkt += struct.pack("!BB", (mpls_label << 3) + (mpls_tc << 1) + 1, 0xff)
+    mpls_label_top = mpls_label >> 4
+    mpls_label_bottom = mpls_label & 0xF
+    pkt += struct.pack("!HBB", mpls_label_top, (mpls_label_bottom << 4) + (mpls_tc << 1) + 1, 0xff)
     # IP
     nw_proto = 1
     nw_tos = 0
@@ -52,6 +54,11 @@ class ofp_match_test(unittest.TestCase):
     for i in range(0, 31):
       pkt += struct.pack("!H", 0xabcd)
     #
+    #for i in range(0, 3):
+    #  row = struct.unpack_from("!BBBBBBBBBBBBBBBB",pkt, i*16)
+    #  print "%X %X %X %X %X %X %X %X %X %X %X %X %X %X %X %X" % ( row[0],
+    #    row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], 
+    #    row[10], row[11], row[12], row[13], row[14], row[15]) 
     packet = ethernet(pkt)
     # create match from packet
     match = ofp_match.from_packet(packet)

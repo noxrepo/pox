@@ -869,7 +869,7 @@ class ofp_match (ofp_base):
     if isinstance(p, mpls):
       match.mpls_label = p.label
       match.mpls_tc = p.tc
-      p = packet.next
+      p = p.next
     if isinstance(p, vlan):
       match.dl_type = p.eth_type
       match.dl_vlan = p.id
