@@ -620,7 +620,9 @@ class Connection (EventMixin):
       try:
         h = handlers[ofp_type]
         h(self, msg)
-      except ValueError, AttributeError:
+      except ValueError:
+        raise
+      except AttributeError:
         raise
       except:
         log.exception("%s: Exception while handling OpenFlow message:\n" +
@@ -760,7 +762,9 @@ class OpenFlow_01_Task (Task):
                 sockets.remove(con)
       except exceptions.KeyboardInterrupt:
         break
-      except ValueError, AttributeError:
+      except ValueError:
+        raise
+      except AttributeError:
         raise
       except:
         doTraceback = True
