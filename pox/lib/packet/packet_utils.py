@@ -19,10 +19,10 @@
 # This file is derived from the packet library in NOX, which was
 # developed by Nicira, Inc.
 
-#======================================================================
-# Utility functions to support construction and printing of Ethernet/IP
-# packets
-#======================================================================
+"""
+Various functionality and data for the packet library
+"""
+
 import array
 import struct
 from socket import ntohs
@@ -64,34 +64,40 @@ _ipproto_to_str[17] = 'UDP'
 _ipproto_to_str[47] = 'GRE'
 _ipproto_to_str[89] = 'OSPF'
 
+
+class TruncatedException (RuntimeError):
+  pass
+
+
 def checksum (data, start = 0, skip_word = None):
+  if len(data) % 2 != 0:
+    arr = array.array('H', data[:-1])
+  else:
+    arr = array.array('H', data)
 
-    if len(data) % 2 != 0:
-        arr = array.array('H', data[:-1])
-    else:
-        arr = array.array('H', data)
+  if skip_word is not None:
+    for i in range(0, len(arr)):
+      if i == skip_word:
+        continue
+      start +=  arr[i]
+  else:
+    for i in range(0, len(arr)):
+      start +=  arr[i]
 
-    if skip_word is not None:
-        for i in range(0, len(arr)):
-            if i == skip_word:
-                continue
-            start +=  arr[i]
-    else:
-        for i in range(0, len(arr)):
-            start +=  arr[i]
+  if len(data) % 2 != 0:
+    start += struct.unpack('H', data[-1]+'\0')[0]
 
-    if len(data) % 2 != 0:
-        start += struct.unpack('H', data[-1]+'\0')[0]
+  start  = (start >> 16) + (start & 0xffff)
+  start += (start >> 16)
 
-    start  = (start >> 16) + (start & 0xffff)
-    start += (start >> 16)
+  return ntohs(~start & 0xffff)
 
-    return ntohs(~start & 0xffff)
 
 def ethtype_to_str(t):
   if t <= 0x05dc:
     return "802.3/%04x" % (t,)
   return _ethtype_to_str.get(t, "%04x" % (t,))
+
 
 def ipproto_to_str(t):
   if t in _ipproto_to_str:

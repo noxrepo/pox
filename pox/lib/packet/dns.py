@@ -92,7 +92,8 @@
 #======================================================================
 
 import struct
-from packet_utils       import *
+from packet_utils import *
+from packet_utils import TruncatedException as Trunc
 
 from packet_base import packet_base
 
@@ -160,6 +161,20 @@ class dns(packet_base):
             self.parse(raw)
 
         self._init(kw)
+
+    def _exc (self, e, part = None):
+      """
+      Turn exception into log message
+      """
+      msg = "(dns)"
+      if part is not None:
+        msg += " " + part
+      msg += ": "
+      msg += str(e)
+      if isinstance(e, Trunc):
+        self.msg(msg)
+      else:
+        self.err(msg)
 
     def hdr (self, payload):
         bits0 = 0
@@ -234,7 +249,7 @@ class dns(packet_base):
         self.raw = raw
         dlen = len(raw)
         if dlen < dns.MIN_LEN:
-            self.msg('(dns parse) warning DNS packet data too short to '
+            self.msg('(dns) packet data too short to '
                      + 'parse header: data len %u' % (dlen,))
             return None
 
@@ -266,7 +281,7 @@ class dns(packet_base):
             try:
                 query_head = self.next_question(raw, query_head)
             except Exception, e:
-                self.err('(dns) parsing questions: ' + str(e))
+                self._exc(e, 'parsing questions')
                 return None
 
         # answers
@@ -274,7 +289,7 @@ class dns(packet_base):
             try:
                 query_head = self.next_rr(raw, query_head, self.answers)
             except Exception, e:
-                self.err('(dns) parsing answers: ' + str(e))
+                self._exc(e, 'parsing answers')
                 return None
 
         # authoritative name servers
@@ -282,8 +297,7 @@ class dns(packet_base):
             try:
                 query_head = self.next_rr(raw, query_head, self.authorities)
             except Exception, e:
-                self.err('(dns) parsing authoritative name servers: '
-                         + str(e))
+                self._exc(e, 'parsing authoritative name servers')
                 return None
 
         # additional resource records
@@ -291,8 +305,7 @@ class dns(packet_base):
             try:
                 query_head = self.next_rr(raw, query_head, self.additional)
             except Exception, e:
-                self.err('(dns) parsing additional resource records: '
-                         + str(e))
+                self._exc(e, 'parsing additional resource records')
                 return None
 
         self.parsed = True
@@ -370,16 +383,16 @@ class dns(packet_base):
 
         # verify whether name is offset within packet
         if index > array_len:
-            raise Exception("next_rr: name truncated")
+            raise Trunc("next_rr: name truncated")
 
         index,name = self.read_dns_name_from_index(l, index)
 
         if index + 10 > array_len:
-            raise Exception("next_rr: truncated")
+            raise Trunc("next_rr: truncated")
 
         (qtype,qclass,ttl,rdlen) = struct.unpack('!HHIH', l[index:index+10])
         if index+10+rdlen > array_len:
-            raise Exception("next_rr: data truncated")
+            raise Trunc("next_rr: data truncated")
 
         rddata = self.get_rddata(l, qtype, rdlen, index + 10)
         rr_list.append(dns.rr(name, qtype, qclass,ttl,rdlen,rddata))
@@ -388,7 +401,7 @@ class dns(packet_base):
 
     def get_rddata(self, l, type, dlen, beg_index):
         if beg_index + dlen > len(l):
-            raise Exception('(dns) truncated rdata')
+            raise Trunc('(dns) truncated rdata')
         # A
         if type == 1:
             if dlen != 4:
@@ -416,7 +429,7 @@ class dns(packet_base):
         index,name = self.read_dns_name_from_index(l, index)
 
         if index + 4 > array_len:
-            raise Exception("next_question: truncated")
+            raise Trunc("next_question: truncated")
 
         (qtype,qclass) = struct.unpack('!HH', l[index:index+4])
         self.questions.append(dns.question(name, qtype, qclass))
