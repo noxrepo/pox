@@ -19,6 +19,7 @@
 A simple component that dumps packet_in info to the log.
 
 Use --verbose for really verbose dumps.
+Use --show to show all packets.
 """
 
 from pox.core import core
@@ -74,14 +75,21 @@ def _handle_PacketIn (event):
 
 
 def launch (verbose = False, max_length = 110, full_packets = True,
-            hide = '', show = ''):
+            hide = False, show = False):
   global _verbose, _max_length, _types, _show_by_default
   _verbose = verbose
   _max_length = max_length
-  hide = hide.replace(',', ' ').replace('|', ' ')
-  hide = set([p.lower() for p in hide.split()])
-  show = show.replace(',', ' ').replace('|', ' ')
-  show = set([p.lower() for p in show.split()])
+  force_show = (show is True) or (hide is False and show is False)
+  if isinstance(hide, basestring):
+    hide = hide.replace(',', ' ').replace('|', ' ')
+    hide = set([p.lower() for p in hide.split()])
+  else:
+    hide = set()
+  if isinstance(show, basestring):
+    show = show.replace(',', ' ').replace('|', ' ')
+    show = set([p.lower() for p in show.split()])
+  else:
+    show = set()
 
   if hide and show:
     raise RuntimeError("Can't both show and hide packet types")
@@ -91,6 +99,8 @@ def launch (verbose = False, max_length = 110, full_packets = True,
   else:
     _types = hide
   _show_by_default = not not hide
+  if force_show:
+    _show_by_default = force_show
 
   if full_packets:
     # Send full packets to controller
