@@ -34,9 +34,9 @@ from pox.lib.packet.ethernet      import LLDP_MULTICAST, NDP_MULTICAST
 from pox.lib.packet.ethernet      import ethernet
 from pox.lib.packet.lldp          import lldp, chassis_id, port_id, end_tlv
 from pox.lib.packet.lldp          import ttl, system_description
-import pox.openflow.libopenflow_01 as of
 from pox.lib.util                 import dpidToStr
-from pox.core import core
+from pox.core                     import core
+import pox.openflow.libopenflow_01 as of
 
 import struct
 import array
@@ -63,7 +63,7 @@ class LLDPSender (object):
 
   #NOTE: This class keeps the packets to send in a flat list, which makes
   #      adding/removing them on switch join/leave or (especially) port
-  #      status changes relatively expensive. This could easily be improved.
+  #      status changes relatively expensive. Could easily be improved.
 
   def __init__ (self):
     self._packets = []
@@ -206,8 +206,10 @@ class Discovery (EventMixin):
 
     if self.install_flow:
       log.debug("Installing flow for %s", dpidToStr(event.dpid))
-      msg = of.ofp_flow_mod(match = of.ofp_match(dl_type = ethernet.LLDP_TYPE,
-                                                 dl_dst = NDP_MULTICAST))
+      match = of.ofp_match(dl_type = ethernet.LLDP_TYPE,
+                           dl_dst = NDP_MULTICAST)
+      msg = of.ofp_flow_mod()
+      msg.match = match
       msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
       event.connection.send(msg)
 
@@ -230,12 +232,12 @@ class Discovery (EventMixin):
     self._deleteLinks(deleteme)
 
   def _handle_PortStatus (self, event):
-    '''
+    """
     Update the list of LLDP packets if ports are added/removed
 
     Add to the list of LLDP packets if a port is added.
     Delete from the list of LLDP packets if a port is removed.
-    '''
+    """
     # Only process 'sane' ports
     if event.port <= of.OFPP_MAX:
       if event.added:
@@ -244,10 +246,10 @@ class Discovery (EventMixin):
         self._sender.delPort(event.dpid, event.port)
 
   def _expireLinks (self):
-    '''
+    """
     Called periodially by a timer to expire links that haven't been
     refreshed recently.
-    '''
+    """
     curtime = time.time()
 
     deleteme = []
@@ -289,7 +291,7 @@ class Discovery (EventMixin):
       log.error("lldp_input_handler invalid lldp packet")
       return
 
-    def lookInSysDesc():
+    def lookInSysDesc ():
       r = None
       for t in lldph.tlvs[3:]:
         if t.tlv_type == lldp.SYSTEM_DESC_TLV:
