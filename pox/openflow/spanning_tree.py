@@ -15,6 +15,23 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Creates a spanning tree.
+
+This component sets the NO_FLOOD bit on some OpenFlow switch ports so that
+packets sent to the "flood" virtual port (OFPP_FLOOD) will skip those
+ports and instead only been sent out along a spanning tree.  This makes
+looped topologies feasible.
+
+This component is inspired by and roughly based on the description of
+Glenn Gibb's spanning tree module for NOX:
+  http://www.openflow.org/wk/index.php/Basic_Spanning_Tree
+
+Note that this does not have much of a relationship to Spanning Tree
+Protocol.  They have similar purposes, but this is a rather different way
+of going about it.
+"""
+
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.revent import *
@@ -28,6 +45,13 @@ log = core.getLogger()
 #_adj = defaultdict(lambda:defaultdict(lambda:[]))
 
 def _calc_spanning_tree ():
+  """
+  Calculates the actual spanning tree
+
+  Returns it as dictionary where the keys are DPID1, and the
+  values are tuples of (DPID2, port-num), where port-num
+  is the port on DPID1 connecting to DPID2.
+  """
   def flip (link):
     return Discovery.Link(link[2],link[3], link[0],link[1])
 
@@ -90,22 +114,32 @@ def _calc_spanning_tree ():
                                            sorted(list(ports))]))
     log.debug("*********************")
 
-  log.debug("Spanning tree updated")
-
   return tree
 
+
+# Keep a list of previous port states so that we can skip some port mods
 _prev = defaultdict(lambda : defaultdict(lambda : None))
 
-def _handle (event):
-  tree = _calc_spanning_tree()
 
+def _reset (event):
+  # When a switch connects, forget about previous port states
+  _prev[event.dpid].clear()
+
+def _handle (event):
+  # When links change, update spanning tree
+
+  # Get a spanning tree
+  tree = _calc_spanning_tree()
+  log.debug("Spanning tree updated")
+
+  # Now modify ports as needed
   try:
     change_count = 0
     for sw, ports in tree.iteritems():
       con = core.openflow.getConnection(sw)
       if con is None: continue # Must have disconnected
       tree_ports = [p[1] for p in ports]
-      for p in con.features.ports:
+      for p in con.ports.itervalues():
         if p.port_no < of.OFPP_MAX:
           flood = p.port_no in tree_ports
           if not flood:
@@ -129,8 +163,10 @@ def _handle (event):
     _prev.clear()
     log.exception("Couldn't push spanning tree")
 
+
 def launch ():
   def start_spanning_tree ():
+    core.openflow.addListenerByName("ConnectionUp", _reset)
     core.openflow_discovery.addListenerByName("LinkEvent", _handle)
     log.debug("Spanning tree component ready")
   core.call_when_ready(start_spanning_tree, "openflow_discovery")
