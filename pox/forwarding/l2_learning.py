@@ -32,7 +32,8 @@ import time
 log = core.getLogger()
 
 # We don't want to flood immediately when a switch connects.
-FLOOD_DELAY = 5
+# Can be overriden on commandline.
+_flood_delay = 5
 
 class LearningSwitch (object):
   """
@@ -88,7 +89,7 @@ class LearningSwitch (object):
     connection.addListeners(self)
 
     # We just use this to know when to log a helpful message
-    self.hold_down_expired = False
+    self.hold_down_expired = _flood_delay == 0
 
     #log.debug("Initializing LearningSwitch, transparent=%s",
     #          str(self.transparent))
@@ -103,7 +104,7 @@ class LearningSwitch (object):
     def flood (message = None):
       """ Floods the packet """
       msg = of.ofp_packet_out()
-      if time.time() - self.connection.connect_time > FLOOD_DELAY:
+      if time.time() - self.connection.connect_time >= _flood_delay:
         # Only flood if we've been connected for a little while...
 
         if self.hold_down_expired is False:
@@ -187,8 +188,15 @@ class l2_learning (object):
     LearningSwitch(event.connection, self.transparent)
 
 
-def launch (transparent=False):
+def launch (transparent=False, hold_down=_flood_delay):
   """
   Starts an L2 learning switch.
   """
+  try:
+    global _flood_delay
+    _flood_delay = int(str(hold_down), 10)
+    assert _flood_delay >= 0
+  except:
+    raise RuntimeError("Expected hold-down to be a number")
+
   core.registerNew(l2_learning, str_to_bool(transparent))
