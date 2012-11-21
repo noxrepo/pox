@@ -24,6 +24,7 @@ from pox.lib.util import dpidToStr
 
 log = core.getLogger()
 
+# Might be nice if we made this accessible on core...
 #_adj = defaultdict(lambda:defaultdict(lambda:[]))
 
 def _calc_spanning_tree ():
@@ -129,6 +130,8 @@ def _handle (event):
     log.exception("Couldn't push spanning tree")
 
 def launch ():
-  handler = lambda event : _calc_spanning_tree()
-  core.openflow_discovery.addListenerByName("LinkEvent", _handle)
+  def start_spanning_tree ():
+    core.openflow_discovery.addListenerByName("LinkEvent", _handle)
+    log.debug("Spanning tree component ready")
+  core.call_when_ready(start_spanning_tree, "openflow_discovery")
 
