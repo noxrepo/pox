@@ -2019,9 +2019,9 @@ class ofp_flow_mod (ofp_header):
       if self.buffer_id is None:
         po = ofp_packet_out(data=self.data)
         po.in_port = self.data.in_port
-        po.actions.add(ofp_action_output(port = OFPP_TABLE))
+        po.actions.append(ofp_action_output(port = OFPP_TABLE))
         # Should maybe check that packet hits the new entry...
-        # Or just duplicate the actions?
+        # Or just duplicate the actions? (I think that's the best idea)
 
     assert self._assert()
     packed = ""
