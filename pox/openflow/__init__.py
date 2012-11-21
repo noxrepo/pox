@@ -43,8 +43,20 @@ from pox.lib.packet.ethernet import ethernet
 
 class ConnectionUp (Event):
   """
-  Connection raised when the connection to an OpenFlow switch has been
+  Event raised when the connection to an OpenFlow switch has been
   established.
+  """
+  def __init__ (self, connection, ofp):
+    Event.__init__(self)
+    self.connection = connection
+    self.dpid = connection.dpid
+    self.ofp = ofp
+
+class FeaturesReceived (Event):
+  """
+  Raised upon receipt of an ofp_switch_features message
+
+  This generally happens as part of a connection automatically.
   """
   def __init__ (self, connection, ofp):
     Event.__init__(self)
@@ -54,7 +66,7 @@ class ConnectionUp (Event):
 
 class ConnectionDown (Event):
   """
-  Connection raised when the connection to an OpenFlow switch has been
+  Event raised when the connection to an OpenFlow switch has been
   lost.
   """
   def __init__ (self, connection):
@@ -271,6 +283,7 @@ class OpenFlowNexus (EventMixin):
   _eventMixin_events = set([
     ConnectionUp,
     ConnectionDown,
+    FeaturesReceived,
     PortStatus,
     FlowRemoved,
     PacketIn,

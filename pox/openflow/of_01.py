@@ -88,6 +88,8 @@ def handle_FEATURES_REPLY (con, msg):
 
   if not connecting:
     con.ofnexus._connect(con)
+    con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
+    con.raiseEventNoErrors(FeaturesReceived, con, msg)
     return
 
   nexus = core.OpenFlowConnectionArbiter.getNexus(con)
@@ -114,9 +116,10 @@ def handle_FEATURES_REPLY (con, msg):
       con.info("connected")
       import time
       con.connect_time = time.time()
-      #for p in msg.ports: print(p.show())
       con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
       con.raiseEventNoErrors(ConnectionUp, con, msg)
+      con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
+      con.raiseEventNoErrors(FeaturesReceived, con, msg)
     con.removeListeners(listeners)
   listeners.append(con.addListener(BarrierIn, finish_connecting))
 
