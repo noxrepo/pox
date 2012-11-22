@@ -535,7 +535,7 @@ class ControllerConnection (object):
 
   def __init__ (self, io_worker, ofp_handlers):
     self.io_worker = io_worker
-    self.io_worker.set_receive_handler(self.read)
+    self.io_worker.rx_handler = self.read
     self.error_handler = None
     ControllerConnection.ID += 1
     self.ID = ControllerConnection.ID
@@ -560,7 +560,7 @@ class ControllerConnection (object):
     self.io_worker.send(data)
 
   def read (self, io_worker):
-    message = io_worker.peek_receive_buf()
+    message = io_worker.peek()
     while len(message) > 4:
       # TODO: this is taken directly from of_01.Connection. The only difference is the
       # event handlers. Refactor to reduce redundancy.
@@ -581,7 +581,7 @@ class ControllerConnection (object):
 
       io_worker.consume_receive_buf(packet_length)
       # prime the next iteration of the loop
-      message = io_worker.peek_receive_buf()
+      message = io_worker.peek()
 
       try:
         if ofp_type not in self.ofp_handlers:
