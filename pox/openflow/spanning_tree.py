@@ -18,10 +18,11 @@
 """
 Creates a spanning tree.
 
-This component sets the NO_FLOOD bit on some OpenFlow switch ports so that
-packets sent to the "flood" virtual port (OFPP_FLOOD) will skip those
-ports and instead only been sent out along a spanning tree.  This makes
-looped topologies feasible.
+This component uses the discovery component to build a view of the network
+topology, constructs a spanning tree, and then disables flooding on switch
+ports that aren't on the tree by setting their NO_FLOOD bit.  The result
+is that topologies with loops no longer turn your network into useless
+hot packet soup.
 
 This component is inspired by and roughly based on the description of
 Glenn Gibb's spanning tree module for NOX:
