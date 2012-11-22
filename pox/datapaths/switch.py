@@ -590,7 +590,7 @@ class OFConnection (object):
 
   def __init__ (self, io_worker):
     self.io_worker = io_worker
-    self.io_worker.set_receive_handler(self.read)
+    self.io_worker.rx_handler = self.read
     self.controller_id = io_worker.socket.getpeername()
     self.error_handler = None
     OFConnection.ID += 1
@@ -619,7 +619,7 @@ class OFConnection (object):
 
   def read (self, io_worker):
     while True:
-      message = io_worker.peek_receive_buf()
+      message = io_worker.peek()
       if len(message) < 4:
         break
 
