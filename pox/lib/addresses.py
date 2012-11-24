@@ -417,7 +417,7 @@ def inferNetMask (addr):
     return 0
 
 IP_ANY = IPAddr("0.0.0.0")
-IP_BROADCAST = IPAddr("255.255.25.255")
+IP_BROADCAST = IPAddr("255.255.255.255")
 
 
 if __name__ == '__main__':
