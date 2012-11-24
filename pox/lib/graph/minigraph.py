@@ -23,6 +23,14 @@ ideal way to store the underlying graph, but it'll work for now.
 
 from collections import defaultdict as ddict
 
+
+def _fix_nbunch (nbunch, cls = set):
+  try:
+    return cls(nbunch)
+  except:
+    return cls([nbunch])
+
+
 class MultiGraph (object):
   def __init__ (self):
     self._next_key = 0
@@ -44,7 +52,7 @@ class MultiGraph (object):
       return (a,b)
 
     if nbunch is not None:
-      nbunch = set(nbunch)
+      nbunch = _fix_nbunch(nbunch)
 
     edges = {}
 
