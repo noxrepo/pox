@@ -51,10 +51,7 @@ from igmp import *
 
 from packet_base import packet_base
 
-from pox.lib.addresses import IPAddr
-
-IP_ANY = IPAddr("0.0.0.0")
-IP_BROADCAST = IPAddr("255.255.255.255")
+from pox.lib.addresses import IPAddr, IP_ANY, IP_BROADCAST
 
 class ipv4(packet_base):
     "IP packet struct"
