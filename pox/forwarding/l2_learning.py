@@ -115,6 +115,8 @@ class LearningSwitch (object):
 
         if message is not None: log.debug(message)
         #log.debug("%i: flood %s -> %s", event.dpid,packet.src,packet.dst)
+        # OFPP_FLOOD is optional; on some switches you may need to change
+        # this to OFPP_ALL.
         msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
       else:
         pass

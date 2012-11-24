@@ -224,6 +224,7 @@ class Switch (EventMixin):
       if self.is_holding_down:
         log.warning("Not flooding -- holddown active")
       msg = of.ofp_packet_out()
+      # OFPP_FLOOD is optional; some switches may need OFPP_ALL
       msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
       msg.buffer_id = event.ofp.buffer_id
       msg.in_port = event.port
