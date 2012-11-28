@@ -270,18 +270,49 @@ class SoftwareSwitch(EventMixin):
     self.log.debug("Set config %s %s", self.name, str(config))
 
   def _receive_port_mod(self, port_mod):
-    self.log.debug("Port Mod %s %s", self.name, str(port_mod))
-    if port_mod.port_no not in self.ports:
-      # TODO(cs): should actually send a PORT_MOD_FAILED message back
-      self.log.warn("No such port %d" % port_mod.port_no)
-    port = self.ports[port_mod.port_no]
-    if port.hw_addr != port_mod.hw_addr:
-      self.log.warn("Incorrect h/w address %s. s/b %s" % (port_mod.hw_addr, port.hw_addr))
-    if port_mod.mask & OFPPC_NO_FLOOD:
-      self.log.debug("Disabling flooding on port %s" % port)
-      self.no_flood_ports.add(port)
-    if port_mod.mask != OFPPC_NO_FLOOD:
-      self.log.warn("Unsupported PORT_MOD!")
+    self.log.debug("Get port modification request %s %s " % (self.name, str(ofp)))
+    port_no = ofp.port_no
+    if port_no not in self.ports:
+      err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT)
+      self.send(err)
+      return
+    port = self.ports[port_no]
+    if port.hw_addr != ofp.hw_addr:
+      err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_HW_ADDR)
+      self.send(err)
+      return
+
+    mask = ofp.mask
+
+    if mask & OFPPC_NO_FLOOD:
+      mask ^= OFPPC_NO_FLOOD
+      port.config = (port.config & ~OFPPC_NO_FLOOD) | (ofp.config & OFPPC_NO_FLOOD)
+      #TODO: Make sure .config syncs with no_flood_ports, or generate that .config
+      #      at query time based on no_flood_ports
+      if port.config & OFPPC_NO_FLOOD:
+        self.log.debug("Disabling flooding on port %s" % port)
+        self.no_flood_ports.add(port)
+      else:
+        self.log.debug("Enabling flooding on port %s" % port)
+        self.no_flood_ports.discard(port)
+
+    if mask & OFPPC_PORT_DOWN:
+      mask ^= OFPPC_PORT_DOWN
+      port.config = (port.config & ~OFPPC_PORT_DOWN) | (ofp.config & OFPPC_PORT_DOWN)
+      # Note (Peter Peresini): Although the spec is not clear about it,
+      # we will assume that config.OFPPC_PORT_DOWN implies state.OFPPS_LINK_DOWN.
+      # This is consistent with Open vSwitch.
+
+      # FIXME: for now, we assume that there is always physical link present
+      # and that the link state depends only on the configuration.
+      port.state = port.state & ~OFPPS_LINK_DOWN
+      if port.config & OFPPC_PORT_DOWN:
+        port.state = port.state | OFPPS_LINK_DOWN
+
+    #self.send_port_status(port, OFPPR_MODIFY) # (Only for when STP makes changes?)
+
+    if mask != 0:
+      self.log.warn("Unsupported PORT_MOD flags: %08x" % (mask,))
 
   def _receive_vendor(self, vendor):
     self.log.debug("Vendor %s %s", self.name, str(vendor))
@@ -393,7 +424,10 @@ class SoftwareSwitch(EventMixin):
       if port_no in self.down_port_nos:
         #raise RuntimeError("output port %x currently down!" % port_no)
         self.log.warn("Port %d is currently down. Dropping packet", port_no)
-      self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
+      if self.ports[port_no].state & OFPPS_LINK_DOWN:
+        self.log.debug("Sending packet on a port which is down!")
+      else:
+        self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
     if out_port < OFPP_MAX:
       real_send(out_port)
