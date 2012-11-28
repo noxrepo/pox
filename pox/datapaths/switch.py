@@ -103,6 +103,7 @@ class SwitchImpl(EventMixin):
        ofp_type_rev_map['OFPT_SET_CONFIG'] : self._receive_set_config,
        ofp_type_rev_map['OFPT_STATS_REQUEST'] : self._receive_stats_request,
        ofp_type_rev_map['OFPT_VENDOR'] : self._receive_vendor,
+       ofp_type_rev_map['OFPT_PORT_MOD'] : self._receive_port_mod,
        # Proactive responses
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
        # TODO: many more packet types to process
@@ -255,6 +256,36 @@ class SwitchImpl(EventMixin):
     err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
     self.send(err)
 
+  def _receive_port_mod(self, ofp):
+    self.log.debug("Get port modification request %s %s " % (self.name, str(ofp)))
+    port_no = ofp.port_no
+    if port_no not in self.ports:
+      err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT)
+      self.send(err)
+      return
+    port = self.ports[port_no]
+    if port.hw_addr != ofp.hw_addr:
+      err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_HW_ADDR)
+      self.send(err)
+      return
+
+    supported = OFPPC_PORT_DOWN
+    assert (ofp.mask | supported) == supported
+
+    if ofp.mask & OFPPC_PORT_DOWN:
+      port.config = (port.config & ~OFPPC_PORT_DOWN) | (ofp.config & OFPPC_PORT_DOWN)
+      # Note (Peter Peresini): Although the spec is not clear about it,
+      # we will assume that config.OFPPC_PORT_DOWN implies state.OFPPS_LINK_DOWN.
+      # This is consistent with OpenVSwitch.
+
+      # FIXME: for now, we assume that there is always physical link present
+      # and that the link state depends only on the configuration.
+      port.state = port.state & ~OFPPS_LINK_DOWN
+      if port.config & OFPPC_PORT_DOWN:
+        port.state = port.state | OFPPS_LINK_DOWN
+
+    self.send_port_status(port, OFPPR_MODIFY)
+
   # ==================================== #
   #    Proactive OFP processing          #
   # ==================================== #
@@ -353,7 +384,10 @@ class SwitchImpl(EventMixin):
         port_no = port_no.port_no
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
-      self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
+      if self.ports[port_no].state & OFPPS_LINK_DOWN:
+        self.log.debug("Sending packet on a port which is down!")
+      else:
+        self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
     if out_port < OFPP_MAX:
       real_send(out_port)

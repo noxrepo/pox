@@ -153,5 +153,41 @@ class SwitchImplTest(unittest.TestCase):
           "should have received port_status but got %s" % c.last)
     self.assertTrue(c.last.reason == OFPPR_ADD)
 
+  def test_port_mod_failed(self):
+    c = self.conn
+
+    # test wrong port
+    msg = ofp_port_mod()
+    msg.port_no = 1234
+    c.to_switch(msg)
+    self.assertEqual(len(c.received), 1)
+    self.assertTrue(isinstance(c.last, ofp_error))
+    self.assertTrue(c.last.type == OFPET_PORT_MOD_FAILED)
+    self.assertTrue(c.last.code == OFPPMFC_BAD_PORT)
+
+    # test wrong hw_addr
+    msg.port_no = 1
+    msg.hw_addr = EthAddr("11:22:33:44:55:66")
+    c.to_switch(msg)
+    self.assertEqual(len(c.received), 2)
+    self.assertTrue(isinstance(c.last, ofp_error))
+    self.assertTrue(c.last.type == OFPET_PORT_MOD_FAILED)
+    self.assertTrue(c.last.code == OFPPMFC_BAD_HW_ADDR)
+
+  def test_port_mod_link_down(self):
+    c = self.conn
+    s = self.switch
+
+    # test wrong port
+    msg = ofp_port_mod()
+    msg.port_no = 1
+    msg.hw_addr = s.ports[1].hw_addr
+    msg.mask = OFPPC_PORT_DOWN
+    msg.config = OFPPC_PORT_DOWN
+    c.to_switch(msg)
+    self.assertEqual(len(c.received), 1)
+    self.assertTrue(isinstance(c.last, ofp_port_status))
+
+
 if __name__ == '__main__':
   unittest.main()
