@@ -70,6 +70,9 @@ class TCPTransport (Task, Transport):
 class TCPConnection (Connection, Task):
   def __init__ (self, transport, socket):
     self._socket = socket
+    # Note: we cache name of the socket because socket.getpeername()
+    # is unavailable after the socket was closed!
+    self._socket_name = self._get_socket_name(socket)
     Connection.__init__(self, transport)
     Task.__init__(self)
 
@@ -104,9 +107,13 @@ class TCPConnection (Connection, Task):
     log.debug("%s stopped" % (self,))
 
   def __str__ (self):
-    s = "" + self.__class__.__name__ 
-    s += " %s:%i" % self._socket.getsockname()
-    s += "/%s:%i" % self._socket.getpeername()
+    s = "" + self.__class__.__name__ + " " + self._socket_name
+    return s
+
+  @staticmethod
+  def _get_socket_name(socket):
+    s = "%s:%i" % socket.getsockname()
+    s += "/%s:%i" % socket.getpeername()
     return s
 
 
