@@ -30,7 +30,7 @@ log = core.getLogger()
 from pox.lib.packet.ethernet import ethernet, ETHER_BROADCAST
 from pox.lib.packet.arp import arp
 from pox.lib.addresses import IPAddr, EthAddr
-from pox.lib.util import dpidToStr
+from pox.lib.util import dpid_to_str, str_to_bool
 from pox.lib.recoco import Timer
 from pox.lib.revent import EventHalt
 
@@ -155,13 +155,13 @@ class ARPResponder (object):
     inport = event.port
     packet = event.parsed
     if not packet.parsed:
-      log.warning("%s: ignoring unparsed packet", dpidToStr(dpid))
+      log.warning("%s: ignoring unparsed packet", dpid_to_str(dpid))
       return
 
     a = packet.find('arp')
     if not a: return
 
-    log.debug("%s ARP %s %s => %s", dpidToStr(dpid),
+    log.debug("%s ARP %s %s => %s", dpid_to_str(dpid),
       {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
       'op:%i' % (a.opcode,)), str(a.protosrc), str(a.protodst))
 
@@ -173,9 +173,9 @@ class ARPResponder (object):
             # Learn or update port/MAC info
             if a.protosrc in _arp_table:
               if _arp_table[a.protosrc] != packet.src:
-                log.warn("%s RE-learned %s", dpidToStr(dpid), a.protosrc)
+                log.warn("%s RE-learned %s", dpid_to_str(dpid), a.protosrc)
             else:
-              log.info("%s learned %s", dpidToStr(dpid), a.protosrc)
+              log.info("%s learned %s", dpid_to_str(dpid), a.protosrc)
             _arp_table[a.protosrc] = Entry(packet.src)
 
           if a.opcode == arp.REQUEST:
@@ -201,7 +201,7 @@ class ARPResponder (object):
               e = ethernet(type=packet.type, src=_dpid_to_mac(dpid),
                             dst=a.hwsrc)
               e.payload = r
-              log.info("%s answering ARP for %s" % (dpidToStr(dpid),
+              log.info("%s answering ARP for %s" % (dpid_to_str(dpid),
                 str(r.protosrc)))
               msg = of.ofp_packet_out()
               msg.data = e.pack()
@@ -216,7 +216,7 @@ class ARPResponder (object):
               _failed_queries[a.protodst] = time.time()
 
     # Didn't know how to handle this ARP, so just flood it
-    msg = "%s flooding ARP %s %s => %s" % (dpidToStr(dpid),
+    msg = "%s flooding ARP %s %s => %s" % (dpid_to_str(dpid),
         {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
         'op:%i' % (a.opcode,)), a.protosrc, a.protodst)
 
@@ -243,7 +243,7 @@ def launch (timeout=ARP_TIMEOUT, no_flow=False, eat_packets=True,
   global ARP_TIMEOUT, _install_flow, _eat_packets, _learn
   ARP_TIMEOUT = timeout
   _install_flow = not no_flow
-  _eat_packets = eat_packets
+  _eat_packets = str_to_bool(eat_packets)
   _learn = not no_learn
 
   core.Interactive.variables['arp'] = _arp_table
