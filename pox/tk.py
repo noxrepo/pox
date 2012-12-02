@@ -102,6 +102,12 @@ class Tk (object):
     root.bind('<<Ping>>', self._dispatch)
 
     self.root = root
+
+    # Become live once in a while so that signals get handled
+    def timer ():
+      root.after(500, timer)
+    timer()
+
     self.root.withdraw()
     try:
       root.mainloop()
