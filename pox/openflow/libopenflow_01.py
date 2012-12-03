@@ -2032,8 +2032,8 @@ class ofp_flow_mod (ofp_header):
       packed += i.pack()
 
     if po:
-      packet += ofp_barrier_request().pack()
-      packet += po.pack()
+      packed += ofp_barrier_request().pack()
+      packed += po.pack()
     return packed
 
   def unpack (self, binaryString):
