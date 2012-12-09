@@ -35,7 +35,7 @@ To subscribe to an event, you create a callback function and register it with
 the source.  For example:
 
 def bar_handler(self, event):
-  print "bar!", event
+  print("bar!", event)
 
 pox.core.addListener(UpEvent, bar_handler)
 
@@ -62,7 +62,7 @@ class Sink (EventMixin):
     # _invoke() method).
     component = event.component
     name = event.name
-    print "I see you,", name, "!"
+    print("I see you,", name, "!")
 
 
 Event sources can also use the EventMixin library:
@@ -92,6 +92,9 @@ class Source (EventMixin):
     # handler rauses an exception.  To project yourself from exceptions in
     # handlers, see raiseEventNoErrors().
 """
+
+from __future__ import print_function
+
 import operator
 
 # weakrefs are used for some event handlers. 
@@ -266,7 +269,7 @@ class EventMixin (object):
       kw = {}
       if event.source is None:
         event.source = self
-    #print "raise",event,eventType
+    #print("raise",event,eventType)
     if (self._eventMixin_events is not True
         and eventType not in self._eventMixin_events):
       raise RuntimeError("Event " + str(eventType) +
@@ -318,7 +321,7 @@ class EventMixin (object):
     """
     #TODO: This method could use an elegant refactoring.
 
-    #print "Remove listener", handlerOrEID
+    #print("Remove listener", handlerOrEID)
     self._eventMixin_init()
     handler = handlerOrEID
 
@@ -487,8 +490,8 @@ def autoBindEvents (sink, source, prefix='', weak=False, priority=None):
   if len(prefix) > 0 and prefix[0] != '_': prefix = '_' + prefix
   if hasattr(source, '_eventMixin_events') is False:
     # If source does not declare that it raises any events, do nothing
-    print "Warning: source class %s doesn't specify any events!" % (
-     source.__class__.__name__,)
+    print("Warning: source class %s doesn't specify any events!" % (
+          source.__class__.__name__,))
     return []
 
   events = {}
@@ -512,7 +515,7 @@ def autoBindEvents (sink, source, prefix='', weak=False, priority=None):
           # append the listener
           listeners.append(source.addListener(events[event], a, weak=weak,
                                               priority=priority))
-          #print "autoBind: ",source,m,"to",sink
+          #print("autoBind: ",source,m,"to",sink)
         elif len(prefix) > 0 and "_" not in event:
           print("Warning: %s found in %s, but %s not raised by %s" %
                 (m, sink.__class__.__name__, event, source.__class__.__name__))
@@ -544,18 +547,18 @@ class CallProxy (object):
 
   def _forgetMe (self, o):
     # o is the weak reference object; we don't use it
-    #print "Forgetting",self.removeData,self.method
+    #print("Forgetting",self.removeData,self.method)
     source = self.source()
     if source is not None:
       source.removeListener(self.removeData)
     self.obj = None
   def __call__ (self, *args, **kw):
-    #print "weak call"
+    #print("weak call")
     if self.obj is None: return
     o = self.obj()
     if o is not None:
       return self.method(o, *args, **kw)
-    print "callProxy object is gone!"
+    print("callProxy object is gone!")
     raise RuntimeError("callProxy object is gone!")
   def __str__ (self):
     return "<CallProxy for " + self.name + ">"

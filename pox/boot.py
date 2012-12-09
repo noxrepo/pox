@@ -43,6 +43,7 @@ fi
 exec python $OPT "$0" $FLG "$@"
 '''
 
+from __future__ import print_function
 
 import logging
 import logging.config
@@ -72,11 +73,11 @@ def _do_import (name):
 
   def show_fail ():
     traceback.print_exc()
-    print "Could not import module:", name
+    print("Could not import module:", name)
 
   def do_import2 (base_name, names_to_try):
     if len(names_to_try) == 0:
-      print "Module not found:", base_name
+      print("Module not found:", base_name)
       return False
 
     name = names_to_try.pop(0)
@@ -108,13 +109,13 @@ def _do_import (name):
         return do_import2(base_name, names_to_try)
       elif (sys.exc_info()[1].message
           == "Import by filename is not supported."):
-        print sys.exc_info()[1].message
+        print(sys.exc_info()[1].message)
         import os.path
         n = name.replace("/", ".").replace("\\", ".")
         n = n.replace( os.path.sep, ".")
         if n.startswith("pox.") or n.startswith("ext."):
           n = n[4:]
-        print "Maybe you meant to run '%s'?" % (n,)
+        print("Maybe you meant to run '%s'?" % (n,))
         return False
       else:
         # This means we found the module we were looking for, but one
@@ -164,12 +165,12 @@ def _do_launch (argv):
     r = _do_import(name)
     if r is False: return False
     name = r
-    #print ">>",name
+    #print(">>",name)
 
     if launch in sys.modules[name].__dict__:
       f = sys.modules[name].__dict__[launch]
       if f.__class__ is not _do_launch.__class__:
-        print launch, "in", name, "isn't a function!"
+        print(launch, "in", name, "isn't a function!")
         return False
 
       multi = False
@@ -190,7 +191,7 @@ def _do_launch (argv):
            inst[cname] + 1 == len(components[cname]))
 
       if multi == False and len(components[cname]) != 1:
-        print name, "does not accept multiple instances"
+        print(name, "does not accept multiple instances")
         return False
 
       try:
@@ -199,7 +200,7 @@ def _do_launch (argv):
         instText = ''
         if inst[cname] > 0:
           instText = "instance {0} of ".format(inst[cname] + 1)
-        print "Error executing {2}{0}.{1}:".format(name,launch,instText)
+        print("Error executing {2}{0}.{1}:".format(name,launch,instText))
         import inspect
         if inspect.currentframe() is sys.exc_info()[2].tb_frame:
           # Error is with calling the function
@@ -208,8 +209,8 @@ def _do_launch (argv):
             traceback.print_exc()
           else:
             exc = sys.exc_info()[0:2]
-            print ''.join(traceback.format_exception_only(*exc)),
-          print
+            print(''.join(traceback.format_exception_only(*exc)), end='')
+          print()
           EMPTY = "<Unspecified>"
           code = f.__code__
           argcount = code.co_argcount
@@ -228,37 +229,37 @@ def _do_launch (argv):
             del args['__INSTANCE__']
 
           if f.__doc__ is not None:
-            print "Documentation for {0}:".format(name)
+            print("Documentation for {0}:".format(name))
             doc = f.__doc__.split("\n")
             #TODO: only strip the same leading space as was on the first
             #      line
             doc = map(str.strip, doc)
-            print '',("\n ".join(doc)).strip()
+            print('',("\n ".join(doc)).strip())
 
-          #print params
-          #print args
+          #print(params)
+          #print(args)
 
-          print "Parameters for {0}:".format(name)
+          print("Parameters for {0}:".format(name))
           if len(args) == 0:
-            print " None."
+            print(" None.")
           else:
-            print " {0:25} {1:25} {2:25}".format("Name", "Default",
-                                                "Active")
-            print " {0:25} {0:25} {0:25}".format("-" * 15)
+            print(" {0:25} {1:25} {2:25}".format("Name", "Default",
+                                                "Active"))
+            print(" {0:25} {0:25} {0:25}".format("-" * 15))
 
             for k,v in args.iteritems():
-              print " {0:25} {1:25} {2:25}".format(k,str(v[0]),
-              str(v[1] if v[1] is not EMPTY else v[0]))
+              print(" {0:25} {1:25} {2:25}".format(k,str(v[0]),
+                    str(v[1] if v[1] is not EMPTY else v[0])))
 
           if len(params):
-            print "This component does not have a parameter named " + \
-                  "'{0}'.".format(params.keys()[0])
+            print("This component does not have a parameter named "
+                  + "'{0}'.".format(params.keys()[0]))
             return False
           missing = [k for k,x in args.iteritems()
                      if x[1] is EMPTY and x[0] is EMPTY]
           if len(missing):
-            print ("You must specify a value for the '{0}'"
-                   "parameter.".format(missing[0]))
+            print("You must specify a value for the '{0}'"
+                  "parameter.".format(missing[0]))
             return False
 
           return False
@@ -266,8 +267,8 @@ def _do_launch (argv):
           # Error is inside the function
           raise
     elif len(params) > 0 or launch is not "launch":
-      print "Module %s has no %s(), but it was specified or passed " \
-            "arguments" % (name, launch)
+      print("Module %s has no %s(), but it was specified or passed " \
+            "arguments" % (name, launch))
       return False
 
   return True
@@ -278,12 +279,12 @@ class Options (object):
     name = given_name.replace("-", "_")
     if name.startswith("_") or hasattr(Options, name):
       # Hey, what's that about?
-      print "Illegal option:", given_name
+      print("Illegal option:", given_name)
       return False
     has_field = hasattr(self, name)
     has_setter = hasattr(self, "_set_" + name)
     if has_field == False and has_setter == False:
-      print "Unknown option:", given_name
+      print("Unknown option:", given_name)
       return False
     if has_setter:
       setter = getattr(self, "_set_" + name)
@@ -334,12 +335,12 @@ class POXOptions (Options):
     self._set_help(given_name, name, value)
 
   def _set_help (self, given_name, name, value):
-    print _help_text
+    print(_help_text)
     #TODO: Summarize options, etc.
     sys.exit(0)
 
   def _set_version (self, given_name, name, value):
-    print core._get_python_version()
+    print(core._get_python_version())
     sys.exit(0)
 
   def _set_no_openflow (self, given_name, name, value):
@@ -412,7 +413,7 @@ def _setup_logging ():
 
   if _options.log_config is not None:
     if not os.path.exists(_options.log_config):
-      print "Could not find logging config file:", _options.log_config
+      print("Could not find logging config file:", _options.log_config)
       sys.exit(2)
     logging.config.fileConfig(_options.log_config,
                               disable_existing_loggers=True)

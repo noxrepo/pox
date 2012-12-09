@@ -23,6 +23,8 @@ This includes things like component rendezvous, logging, system status
 (up and down events), etc.
 """
 
+from __future__ import print_function
+
 # Set up initial log state
 import logging
 
@@ -189,7 +191,7 @@ class POXCore (EventMixin):
     self.components = {}
 
     self.version = (0,0,0)
-    print self.banner
+    print(self.banner)
 
     self.scheduler = recoco.Scheduler(daemon=True)
 

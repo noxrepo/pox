@@ -19,6 +19,7 @@
 Classes for addresses of various types.
 """
 
+from __future__ import print_function
 import struct
 import socket
 
@@ -431,20 +432,21 @@ IP_BROADCAST = IPAddr("255.255.255.255")
 
 if __name__ == '__main__':
   # A couple sanity checks
+  #TODO: move to tests
   import code
   a = IPAddr('255.0.0.1')
   for v in [('255.0.0.1',True), (0xff000001, True), (0x010000ff, False)]:
-    print "== " + str(v) + " ======================="
+    print("== " + str(v) + " =======================")
     a = IPAddr(v[0],v[1])
-    print a._value,-16777215
-    #print hex(a._value),'ff000001'
-    print str(a),'255.0.0.1'
-    print hex(a.toUnsigned()),'010000ff'
-    print hex(a.toUnsigned(networkOrder=True)),'ff000001'
-    print a.toSigned(),16777471
-    print a.toSigned(networkOrder=True),-16777215
-    print "----"
-    print [parse_cidr(x)[1]==24 for x in
-           ["192.168.101.0","192.168.102.0/24","1.1.168.103/255.255.255.0"]]
+    print(a._value,-16777215)
+    #print(hex(a._value),'ff000001')
+    print(str(a),'255.0.0.1')
+    print(hex(a.toUnsigned()),'010000ff')
+    print(hex(a.toUnsigned(networkOrder=True)),'ff000001')
+    print(a.toSigned(),16777471)
+    print(a.toSigned(networkOrder=True),-16777215)
+    print("----")
+    print([parse_cidr(x)[1]==24 for x in
+           ["192.168.101.0","192.168.102.0/24","1.1.168.103/255.255.255.0"]])
   code.interact(local=locals())
 

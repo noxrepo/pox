@@ -21,6 +21,7 @@ Tries to not get more than "maximum" (but this is not a hard limit).
 Kills off up to around half of its workers when more than half are idle.
 """
 
+from __future__ import print_function
 from __future__ import with_statement
 from threading import Thread, RLock
 from Queue import Queue
@@ -56,7 +57,7 @@ class WorkerThread (Thread):
       try:
         func(*args, **kw)
       except Exception as e:
-        print "Worker thread exception", e
+        print("Worker thread exception", e)
       self._pool._tasks.task_done()
 
     with self._pool._lock:

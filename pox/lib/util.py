@@ -19,6 +19,8 @@
 Various utility functions
 """
 
+from __future__ import print_function
+
 import traceback
 import struct
 import sys
@@ -29,6 +31,7 @@ import socket
 #FIXME: ugh, why can't I make importing pox.core work here?
 import logging
 log = logging.getLogger("util")
+
 
 class DirtyList (list):
   #TODO: right now the callback may be called more often than needed
@@ -135,6 +138,7 @@ class DirtyDict (dict):
     self._smudge('__delitem__', k, None)
     dict.__delitem__(self, k)
 
+
 def set_extend (l, index, item, emptyValue = None):
   """
   Adds item to the list l at position index.  If index is beyond the end
@@ -144,6 +148,7 @@ def set_extend (l, index, item, emptyValue = None):
   if index >= len(l):
     l += ([emptyValue] * (index - len(self) + 1))
   l[index] = item
+
 
 def str_to_dpid (s):
   """
@@ -163,6 +168,7 @@ def str_to_dpid (s):
   return a | (b << 48)
 strToDPID = str_to_dpid
 
+
 def dpid_to_str (dpid, alwaysLong = False):
   """
   Convert a DPID from a long into into the canonical string form.
@@ -180,6 +186,7 @@ def dpid_to_str (dpid, alwaysLong = False):
 
   return r
 dpidToStr = dpid_to_str # Deprecated
+
 
 def assert_type(name, obj, types, none_ok=True):
   """
@@ -205,10 +212,13 @@ def assert_type(name, obj, types, none_ok=True):
       return True
   allowed_types = "|".join(map(lambda x: str(x), types))
   stack = traceback.extract_stack()
-  stack_msg = "Function call %s() in %s:%d" % (stack[-2][2], stack[-3][0], stack[-3][1])
-  type_msg = "%s must be instance of %s (but is %s)" % (name, allowed_types , str(type(obj)))
+  stack_msg = "Function call %s() in %s:%d" % (stack[-2][2],
+                                               stack[-3][0], stack[-3][1])
+  type_msg = ("%s must be instance of %s (but is %s)"
+              % (name, allowed_types , str(type(obj))))
 
   raise AssertionError(stack_msg + ": " + type_msg)
+
 
 def initHelper (obj, kw):
   """
@@ -220,6 +230,7 @@ def initHelper (obj, kw):
       raise TypeError(obj.__class__.__name__ + " constructor got "
       + "unexpected keyword argument '" + k + "'")
     setattr(obj, k, v)
+
 
 def makePinger ():
   """
@@ -393,25 +404,30 @@ def hexdump (data):
     o += l
   return o
 
-def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
+
+def connect_socket_with_backoff (address, port, max_backoff_seconds=32):
   '''
   Connect to the given address and port. If the connection attempt fails, 
   exponentially back off, up to the max backoff
   
-  return the connected socket, or raise an exception if the connection was unsuccessful
+  return the connected socket, or raise an exception if the connection
+  was unsuccessful
   '''
   backoff_seconds = 1
   sock = None
-  print >>sys.stderr, "connect_socket_with_backoff(address=%s, port=%d)" % (address, port)
+  print("connect_socket_with_backoff(address=%s, port=%d)"
+        % (address, port), file=sys.stderr)
   while True:
     try:
       sock = socket.socket()
       sock.connect( (address, port) )
       break
     except socket.error as e:
-      print >>sys.stderr, "%s. Backing off %d seconds ..." % (str(e), backoff_seconds)
+      print("%s. Backing off %d seconds ..." % (str(e), backoff_seconds),
+            file=sys.stderr)
       if backoff_seconds >= max_backoff_seconds:
-        raise RuntimeError("Could not connect to controller %s:%d" % (address, port))
+        raise RuntimeError("Could not connect to controller %s:%d"
+                           % (address, port))
       else:
         time.sleep(backoff_seconds)
       backoff_seconds <<= 1
@@ -423,11 +439,14 @@ _scalar_types = (int, long, basestring, float, bool)
 def is_scalar (v):
  return isinstance(v, _scalar_types)
 
-def fields_of (obj, primitives_only=False, primitives_and_composites_only=False,
-               allow_caps=False):
+
+def fields_of (obj, primitives_only=False,
+               primitives_and_composites_only=False, allow_caps=False):
   """
   Returns key/value pairs of things that seem like public fields of an object.
   """
+  #NOTE: The above docstring isn't split into two lines on purpose.
+
   r = {}
   for k in dir(obj):
     if k.startswith('_'): continue
@@ -447,10 +466,11 @@ def fields_of (obj, primitives_only=False, primitives_and_composites_only=False,
 
 
 if __name__ == "__main__":
-  def cb (t,k,v): print v
+  #TODO: move to tests?
+  def cb (t,k,v): print(v)
   l = DirtyList([10,20,30,40,50])
   l.callback = cb
 
   l.append(3)
 
-  print l
+  print(l)

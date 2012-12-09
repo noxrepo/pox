@@ -19,6 +19,8 @@
 Provides a Python interpreter while running POX
 """
 
+from __future__ import print_function
+
 from pox.core import core
 from pox.lib.util import str_to_bool
 import time
@@ -99,10 +101,10 @@ class Interactive (object):
 
     _monkeypatch_console()
 
-    print "This program comes with ABSOLUTELY NO WARRANTY.  This program " \
-          "is free software,"
-    print "and you are welcome to redistribute it under certain conditions."
-    print "Type 'help(pox.license)' for details."
+    print("This program comes with ABSOLUTELY NO WARRANTY.  This program " \
+          "is free software,")
+    print("and you are welcome to redistribute it under certain conditions.")
+    print("Type 'help(pox.license)' for details.")
     time.sleep(1)
 
     import code
