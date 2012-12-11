@@ -381,6 +381,9 @@ def hexdump (data):
     o += l
   return o
 
+class TimeoutError(StandardError):
+  pass
+
 def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
   '''
   Connect to the given address and port. If the connection attempt fails, 
@@ -399,7 +402,7 @@ def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
     except socket.error as e:
       print >>sys.stderr, "Error connecting to %s:%d -- %s. Backing off %d seconds ..." % (address, port, str(e), backoff_seconds)
       if backoff_seconds >= max_backoff_seconds:
-        raise RuntimeError("Could not connect to controller %s:%d" % (address, port))
+        raise TimeoutError("Could not connect to controller %s:%d" % (address, port))
       else:
         time.sleep(backoff_seconds)
       backoff_seconds <<= 1
