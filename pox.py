@@ -403,21 +403,8 @@ def main ():
     code.interact('Ready.', local=l)
   else:
     try:
-      import traceback
       import time
-      import sys
-      import inspect
-      
       while True:
-        if 'deadlock' in globals()['options'] and globals()['options']['deadlock']:
-          frames = sys._current_frames()
-          for key in frames:
-            frame = frames[key]
-            print inspect.getframeinfo(frame)
-            outer_frames = inspect.getouterframes(frame)
-            for i in range(0, len(outer_frames)): 
-              print "     " + str(inspect.getframeinfo(outer_frames[i][0]))
-
         time.sleep(5)
     except:
       if 'deadlock' in globals()['options'] and globals()['options']['deadlock']:
