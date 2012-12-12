@@ -318,8 +318,6 @@ class l2_multi (EventMixin):
     def flip (link):
       return Discovery.Link(link[2],link[3], link[0],link[1])
 
-    # XXX l.dpid1 raises an Attribute error
-    return
     l = event.link
     sw1 = switches[l.dpid1]
     sw2 = switches[l.dpid2]
