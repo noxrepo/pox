@@ -471,16 +471,15 @@ class Connection (EventMixin):
   # Globally unique identifier for the Connection instance
   ID = 0
 
-  def msg (self, m):
+  def msg (self, m, *args):
     #print str(self), m
-    log.debug("of_01 %s %s", str(self), str(m))
-  def err (self, m):
+    log.debug("of_01 %s " + m, str(self), *args)
+  def err (self, m, *args):
     #print str(self), m
-    log.error("of_01 %s %s", str(self), str(m))
-  def info (self, m):
-    pass
+    log.error("of_01 %s " + m, str(self), *args)
+  def info (self, m, *args):
     #print str(self), m
-    log.info("of_01 %s %s", str(self), str(m))
+    log.info("of_01 %s " + m, str(self), *args)
 
   def __init__ (self, sock):
     self._previous_stats = []
