@@ -134,27 +134,27 @@ class SoftwareSwitch(EventMixin):
     if self._connection:
       self._connection.send(message)
     else:
-      self.log.debug("Asked to send message %s, but not connected" % message)
+      self.log.debug("Asked to send message %s, but not connected", message)
 
   # ==================================== #
   #    Reactive OFP processing           #
   # ==================================== #
   def _receive_hello(self, ofp):
-    self.log.debug("Receive hello %s" % self.name)
+    self.log.debug("Receive hello %s", self.name)
     # How does the OpenFlow protocol prevent an infinite loop of Hello messages?
     self.send_hello()
 
   def _receive_echo(self, ofp):
     """Reply to echo request
     """
-    self.log.debug("Reply echo of xid: %s %s" % (str(ofp), self.name))
+    self.log.debug("Reply echo of xid: %s %s", str(ofp), self.name)
     msg = ofp_echo_reply(xid=ofp.xid)
     self.send(msg)
 
   def _receive_features_request(self, ofp):
     """Reply to feature request
     """
-    self.log.debug("Reply features request of xid %s %s" % (str(ofp), self.name))
+    self.log.debug("Reply features request of xid %s %s", str(ofp), self.name)
     msg = ofp_features_reply(datapath_id = self.dpid, xid = ofp.xid, n_buffers = self.n_buffers,
                              n_tables = self.n_tables,
                              capabilities = self.capabilities.get_capabilities(),
@@ -165,7 +165,7 @@ class SoftwareSwitch(EventMixin):
   def _receive_flow_mod(self, ofp):
     """Handle flow mod: just print it here
     """
-    self.log.debug("Flow mod %s: %s" % (self.name, ofp.show()))
+    self.log.debug("Flow mod %s: %s", self.name, ofp.show())
     self.table.process_flow_mod(ofp)
     if(ofp.buffer_id > 0):
       self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id)
@@ -174,7 +174,7 @@ class SoftwareSwitch(EventMixin):
     """
     Send the packet out the given port
     """
-    self.log.debug("Packet out: %s" % packet_out.show())
+    self.log.debug("Packet out: %s", packet_out.show())
 
     if(packet_out.data):
       self._process_actions_for_packet(packet_out.actions, packet_out.data, packet_out.in_port)
@@ -184,20 +184,20 @@ class SoftwareSwitch(EventMixin):
       self.log.warn("packet_out: No data and no buffer_id -- don't know what to send")
 
   def _receive_echo_reply(self, ofp):
-    self.log.debug("Echo reply: %s %s" % (str(ofp), self.name))
+    self.log.debug("Echo reply: %s %s", str(ofp), self.name)
 
   def _receive_barrier_request(self, ofp):
-    self.log.debug("Barrier request %s %s" % (self.name, str(ofp)))
+    self.log.debug("Barrier request %s %s", self.name, str(ofp))
     msg = ofp_barrier_reply(xid = ofp.xid)
     self.send(msg)
 
   def _receive_get_config_request(self, ofp):
-    self.log.debug("Get config request %s %s " % (self.name, str(ofp)))
+    self.log.debug("Get config request %s %s ", self.name, str(ofp))
     msg = ofp_get_config_reply(xid = ofp.xid)
     self.send(msg)
 
   def _receive_stats_request(self, ofp):
-    self.log.debug("Get stats request %s %s " % (self.name, str(ofp)))
+    self.log.debug("Get stats request %s %s ", self.name, str(ofp))
 
     def desc_stats(ofp):
       return ofp_desc_stats(mfr_desc="BadAssEmulatedPoxSwitch(TM)",
@@ -247,14 +247,14 @@ class SoftwareSwitch(EventMixin):
       raise AttributeError("Unsupported stats request type %d" % ofp.type)
 
     reply = ofp_stats_reply(xid=ofp.xid, body=handler(ofp))
-    self.log.debug("Sending stats reply %s %s" % (self.name, str(reply)))
+    self.log.debug("Sending stats reply %s %s", self.name, str(reply))
     self.send(reply)
 
   def _receive_set_config(self, config):
-    self.log.debug("Set config %s %s" % (self.name, str(config)))
+    self.log.debug("Set config %s %s", self.name, str(config))
 
   def _receive_vendor(self, vendor):
-    self.log.debug("Vendor %s %s" % (self.name, str(vendor)))
+    self.log.debug("Vendor %s %s", self.name, str(vendor))
     # We don't support vendor extensions, so send an OFP_ERROR, per page 42 of spec
     err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
     self.send(err)
@@ -265,7 +265,7 @@ class SoftwareSwitch(EventMixin):
   def send_hello(self):
     """Send hello
     """
-    self.log.debug("Send hello %s " % self.name)
+    self.log.debug("Send hello %s ", self.name)
     msg = ofp_hello()
     self.send(msg)
 
@@ -275,7 +275,7 @@ class SoftwareSwitch(EventMixin):
     and empty packet by default
     """
     assert_type("packet", packet, ethernet)
-    self.log.debug("Send PacketIn %s " % self.name)
+    self.log.debug("Send PacketIn %s ", self.name)
     if (reason == None):
       reason = ofp_packet_in_reason_rev_map['OFPR_NO_MATCH']
     if (buffer_id == None):
@@ -291,7 +291,7 @@ class SoftwareSwitch(EventMixin):
   def send_echo(self, xid=0):
     """Send echo request
     """
-    self.log.debug("Send echo %s" % self.name)
+    self.log.debug("Send echo %s", self.name)
     msg = ofp_echo_request()
     self.send(msg)
 
@@ -357,7 +357,7 @@ class SoftwareSwitch(EventMixin):
         raise RuntimeError("Invalid physical output port: %x" % port_no)
       if port_no in self.down_port_nos:
         #raise RuntimeError("output port %x currently down!" % port_no)
-        self.log.warn("Port %d is currently down. Dropping packet" % port_no)
+        self.log.warn("Port %d is currently down. Dropping packet", port_no)
       self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
     if out_port < OFPP_MAX:
@@ -394,10 +394,10 @@ class SoftwareSwitch(EventMixin):
     """ output and release a packet from the buffer """
     buffer_id = buffer_id - 1
     if(buffer_id >= len(self.packet_buffer)):
-      self.log.warn("Invalid output buffer id: %x" % buffer_id)
+      self.log.warn("Invalid output buffer id: %x", buffer_id)
       return
     if(self.packet_buffer[buffer_id] is None):
-      self.log.warn("Buffer %x has already been flushed" % buffer_id)
+      self.log.warn("Buffer %x has already been flushed", buffer_id)
       return
     (packet, in_port) = self.packet_buffer[buffer_id]
     self._process_actions_for_packet(actions, packet, in_port)
