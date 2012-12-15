@@ -77,7 +77,7 @@ class LearningSwitch (EventMixin, Entity):
 
   def _handle_PacketIn (self, packet_in_event):
     """ Event handler for PacketIn events: run the learning switch algorithm """
-    self.log.debug("PacketIn_handler! packet_in_event: %s" % (str(packet_in_event)))
+    self.log.debug("PacketIn_handler! packet_in_event: %s", str(packet_in_event))
 
     def flood ():
       """ Floods the packet """
@@ -95,13 +95,13 @@ class LearningSwitch (EventMixin, Entity):
       flood() # 2a
     else:
       if packet.dst not in self.macToPort:
-        self.log.debug("port for %s unknown -- flooding" % (packet.dst,))
+        self.log.debug("port for %s unknown -- flooding", packet.dst)
         flood() # 2ba
       else:
         # 2bb
         port = self.macToPort[packet.dst]
-        self.log.debug("installing flow for %s.%i -> %s.%i" %
-                  (packet.src, packet_in_event.port, packet.dst, port))
+        self.log.debug("installing flow for %s.%i -> %s.%i",
+                  packet.src, packet_in_event.port, packet.dst, port)
         # TODO: there should really be a static method in pox.openflow that constructs this
         # this packet for us.
         msg = of.ofp_flow_mod()

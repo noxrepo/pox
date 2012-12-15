@@ -84,7 +84,7 @@ def getLogger (name=None, moreFrames=0):
       o += msg
       if o == _squelch:
         if time.time() >= _squelchTime:
-          l.debug("[Previous message repeated %i more times]" % (g['_squelchCount']+1,))
+          l.debug("[Previous message repeated %i more times]", g['_squelchCount']+1)
           g['_squelchCount'] = 0
           g['_squelchTime'] = time.time() + SQUELCH_TIME
         else:
@@ -92,7 +92,7 @@ def getLogger (name=None, moreFrames=0):
       else:
         g['_squelch'] = o
         if g['_squelchCount'] > 0:
-          l.debug("[Previous message repeated %i more times]" % (g['_squelchCount'],))
+          l.debug("[Previous message repeated %i more times]", g['_squelchCount'])
         g['_squelchCount'] = 0
         g['_squelchTime'] = time.time() + SQUELCH_TIME
         l.debug(o)
@@ -118,7 +118,7 @@ def _revent_exception_hook (source, event, args, kw, exc_info):
     elif issubclass(t, Event): t = t.__name__
   except:
     pass
-  log.exception("Exception while handling %s!%s...\n" % (c,t))
+  log.exception("Exception while handling %s!%s...\n", c,t)
 import pox.lib.revent.revent
 pox.lib.revent.revent.handleEventException = _revent_exception_hook
 
@@ -261,17 +261,17 @@ class POXCore (EventMixin):
       log.info("Down.")
 
   def goUp (self):
-    log.debug(self.version_string + " going up...")
+    log.debug("%s going up...", self.version_string)
 
     import platform
     py = "{impl} ({vers}/{build})".format(
      impl=platform.python_implementation(),
      vers=platform.python_version(),
      build=platform.python_build()[1].replace("  "," "))
-    log.debug("Running on " + py)
+    log.debug("Running on %s", py)
 
     self.raiseEvent(GoingUpEvent())
-    log.info(self.version_string + " is up.")
+    log.info("%s is up.", self.version_string)
     self.raiseEvent(UpEvent())
 
   def hasComponent (self, name):
@@ -303,7 +303,7 @@ class POXCore (EventMixin):
     """
     #TODO: weak references?
     if name in self.components:
-      log.warn("Warning: Registered '%s' multipled times" % (name,))
+      log.warn("Warning: Registered '%s' multipled times", name)
     self.components[name] = component
     self.raiseEventNoErrors(ComponentRegistered, name, component)
     
@@ -337,7 +337,7 @@ class POXCore (EventMixin):
     for c in got:
       components.remove(c)
     if len(components) == 0:
-      log.debug(sink.__class__.__name__ + " ready")
+      log.debug("%s ready", sink.__class__.__name__)
       return True
     return False
 

@@ -88,7 +88,7 @@ def _trace_thread_proc ():
         if time.time() - last_time > 3:
           if stopAt is not None:
             warned = f
-            log.warning("Stuck at:\n" + f)
+            log.warning("Stuck at:\n%s", f)
 
       #from pox.core import core
       #core.f = f

@@ -256,9 +256,9 @@ class Discovery (EventMixin):
     for link,timestamp in self.adjacency.iteritems():
       if curtime - timestamp > LINK_TIMEOUT:
         deleteme.append(link)
-        log.info('link timeout: %s.%i -> %s.%i' %
-                 (dpidToStr(link.dpid1), link.port1,
-                  dpidToStr(link.dpid2), link.port2))
+        log.info('link timeout: %s.%i -> %s.%i',
+                 dpidToStr(link.dpid1), link.port1,
+                  dpidToStr(link.dpid2), link.port2)
 
     if deleteme:
       self._deleteLinks(deleteme)
@@ -372,9 +372,9 @@ class Discovery (EventMixin):
 
     if link not in self.adjacency:
       self.adjacency[link] = time.time()
-      log.info('link detected: %s.%i -> %s.%i' %
-               (dpidToStr(link.dpid1), link.port1,
-                dpidToStr(link.dpid2), link.port2))
+      log.info('link detected: %s.%i -> %s.%i',
+               dpidToStr(link.dpid1), link.port1,
+                dpidToStr(link.dpid2), link.port2)
       #self.raiseEventNoErrors(LinkEvent, True, link)
       
       # Create NOM link and add it to the NOM

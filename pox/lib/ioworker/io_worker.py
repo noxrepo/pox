@@ -24,7 +24,7 @@ class JSONIOWorker(object):
     self.worker.on_line_received = self._receive_line
 
     if on_json_received is None:
-      on_json_received = lambda worker, json_hash: log.warn("Received json_hash: %s, but no delegate yet" % json_hash)
+      on_json_received = lambda worker, json_hash: log.warn("Received json_hash: %s, but no delegate yet", json_hash)
 
     self.on_json_received = on_json_received
 
@@ -100,7 +100,7 @@ class IOWorker(object):
     self.send_buf += data
 
   def _push_receive_data(self, new_data):
-    log.debug("IOWorker._push_receive_data: new_data=%s" % repr(new_data))
+    log.debug("IOWorker._push_receive_data: new_data=%s", repr(new_data))
     # notify client of new received data. called by a Select loop
     self.receive_buf += new_data
     self._on_data_receive(self)
@@ -124,9 +124,9 @@ class IOWorker(object):
     # Throw out the first l bytes of the send buffer
     # Called by Select loop
     assert(len(self.send_buf)>=l)
-    log.debug("IOWorker._consume_send_buf: _consuming %d bytes of send_buf is %s" % (l, repr(self.send_buf)))
+    log.debug("IOWorker._consume_send_buf: _consuming %d bytes of send_buf is %s", l, repr(self.send_buf))
     self.send_buf = self.send_buf[l:]
-    log.debug("IOWorker._consume_send_buf: send_buf is now %s" % repr(self.send_buf))
+    log.debug("IOWorker._consume_send_buf: send_buf is now %s", repr(self.send_buf))
 
   def close(self):
     """ Close this socket """
@@ -235,7 +235,7 @@ class RecocoIOLoop(Task):
               worker.close()
               self._workers.discard(worker)
           except socket.error as (s_errno, strerror):
-            log.error("Socket error: " + strerror)
+            log.error("Socket error: %s", strerror)
             worker.close()
             self._workers.discard(worker)
 
@@ -247,7 +247,7 @@ class RecocoIOLoop(Task):
               worker._consume_send_buf(l)
           except socket.error as (s_errno, strerror):
             if s_errno != errno.EAGAIN:
-              log.error("Socket error: " + strerror)
+              log.error("Socket error: %s", strerror)
               worker.close()
               self._workers.discard(worker)
 

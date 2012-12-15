@@ -99,7 +99,7 @@ class DistributedController(EventMixin, nom.Controller):
         self.log.warn("message was not a dict!")
         return
 
-      self.log.debug("Message received, type: %s-" % r.keys())
+      self.log.debug("Message received, type: %s-", r.keys())
 
       if "nom_update" in r:
         self.nom_update(r["nom_update"])
@@ -122,12 +122,12 @@ class DistributedController(EventMixin, nom.Controller):
           handler for network events.
     """
     xid, id2entity = update
-    self.log.debug("nom_update %d" % xid)
+    self.log.debug("nom_update %d", xid)
     self.nom.deserializeAndMerge(id2entity)
 
     update_ack = UpdateACK(xid, self.name)
     self._server_connection.send({"nom_update_ack":update_ack})
-    self.log.debug("Sent nom_update_ack %d, %s" % update_ack)
+    self.log.debug("Sent nom_update_ack %d, %s", update_ack)
 
     # TODO: react to the change in the nom, by firing queued events to
     # subclass' ?

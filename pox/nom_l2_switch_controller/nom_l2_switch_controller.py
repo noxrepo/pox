@@ -42,7 +42,7 @@ class nom_l2_switch_controller (Controller):
 
   def _handle_topology_SwitchJoin(self, switchjoin_event):
     """ Convert switches into Learning Switches """
-    log.debug("Switch Join! %s " % switchjoin_event)
+    log.debug("Switch Join! %s ", switchjoin_event)
     switch = switchjoin_event.switch
     name = "learning_" + switch.name
     core.topology.addEntity(LearningSwitch(name, switch))

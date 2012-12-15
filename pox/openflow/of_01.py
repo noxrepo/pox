@@ -90,7 +90,7 @@ def handle_FEATURES_REPLY (con, msg):
   nexus = core.OpenFlowConnectionArbiter.getNexus(con)
   if nexus is None:
     # Cancel connection
-    con.info("No OpenFlow nexus for " +
+    con.info("No OpenFlow nexus for %s",
              pox.lib.util.dpidToStr(msg.datapath_id))
     con.disconnect()
     return
@@ -155,7 +155,7 @@ def handle_PACKET_IN (con, msg): #A
 #    con.ofnexus.raiseEvent(PacketIn(con, msg, p))
 
 def handle_ERROR_MSG (con, msg): #A
-  log.error(str(con) + " OpenFlow Error:\n" +
+  log.error("%s OpenFlow Error:\n%s", str(con),
             msg.show(str(con) + " Error: ").strip())
   con.ofnexus.raiseEvent(ErrorIn, con, msg)
   con.raiseEvent(ErrorIn, con, msg)
@@ -363,9 +363,9 @@ deferredSender = DeferredSender()
 
 class DummyOFNexus (object):
   def raiseEvent (self, event, *args, **kw):
-    log.warning("%s raised on dummy OpenFlow nexus" % event)
+    log.warning("%s raised on dummy OpenFlow nexus", event)
   def raiseEvent (self, event, *args, **kw):
-    log.warning("%s raised on dummy OpenFlow nexus" % event)
+    log.warning("%s raised on dummy OpenFlow nexus", event)
   def _disconnect (self, dpid):
     log.warning("%s disconnected on dummy OpenFlow nexus",
                 pox.lib.util.dpidToStr(dpid))
@@ -604,8 +604,8 @@ class Connection (EventMixin):
     l = len(self.buf)
     while l > 4:
       if ord(self.buf[0]) != of.OFP_VERSION:
-        log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) +
-                    ") on connection " + str(self))
+        log.warning("Bad OpenFlow version (%s) on connection %s",
+                str(ord(self.buf[0])), str(self))
         return False
       # OpenFlow parsing occurs here:
       ofp_type = ord(self.buf[1])
@@ -638,7 +638,7 @@ class Connection (EventMixin):
     if more:
       if ofp.type not in [of.OFPST_FLOW, of.OFPST_TABLE,
                                 of.OFPST_PORT, of.OFPST_QUEUE]:
-        log.error("Don't know how to aggregate stats message of type " +
+        log.error("Don't know how to aggregate stats message of type %s",
                   str(ofp.type))
         self._previous_stats = []
         return
@@ -649,10 +649,10 @@ class Connection (EventMixin):
         self._previous_stats.append(ofp)
       else:
         log.error("Was expecting continued stats of type %i with xid %i, " +
-                  "but got type %i with xid %i" %
-                  (self._previous_stats_reply.xid,
+                  "but got type %i with xid %i",
+                  self._previous_stats_reply.xid,
                     self._previous_stats_reply.type,
-                    ofp.xid, ofp.type))
+                    ofp.xid, ofp.type)
         self._previous_stats = [ofp]
     else:
       self._previous_stats = [ofp]
@@ -662,7 +662,7 @@ class Connection (EventMixin):
       s = self._previous_stats
       self._previous_stats = []
       if handler is None:
-        log.warn("No handler for stats of type " +
+        log.warn("No handler for stats of type %s",
                  str(self._previous_stats[0].type))
         return
       handler(self, s)
@@ -712,8 +712,8 @@ class OpenFlow_01_Task (Task):
     listener.listen(16)
     sockets.append(listener)
 
-    log.debug("Listening for connections on %s:%s" %
-              (self.address, self.port))
+    log.debug("Listening for connections on %s:%s",
+              self.address, self.port)
 
     con = None
     while core.running:
@@ -774,7 +774,7 @@ class OpenFlow_01_Task (Task):
             doTraceback = False
 
         if doTraceback:
-          log.exception("Exception reading connection " + str(con))
+          log.exception("Exception reading connection %s", str(con))
 
         if con is listener:
           log.error("Exception on OpenFlow listener.  Aborting.")

@@ -275,14 +275,14 @@ class TCPMessengerConnection (MessengerConnection, Task):
     self._close()
 
   def run (self):
-    log.debug("%s started" % (self,))
+    log.debug("%s started", self)
     while self.isConnected():
       d = yield Recv(self._socket)
       if d is None or len(d) == 0:
         break
       self._recv_raw(d)
     self._close()
-    log.debug("%s stopped" % (self,))
+    log.debug("%s stopped", self)
 
   #TODO: __str__ with port numbers, etc
 
@@ -321,7 +321,8 @@ class TCPMessengerSource (Task):
     listener.bind(self._addr)
     listener.listen(0)
 
-    log.debug("Listening for connections on %s:%i" % (self._addr))
+    log.debug("Listening for connections on %s:%i", (self._addr[0],
+              self._addr[1]))
     core.messenger.raiseEventNoErrors(MessengerListening())
 
     con = None

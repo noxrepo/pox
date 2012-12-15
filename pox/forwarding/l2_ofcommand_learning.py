@@ -66,7 +66,7 @@ class dumb_l2_switch (EventMixin):
       return
   
     if not con in self.st:
-      log.info('registering new switch ' + str(dpid))
+      log.info('registering new switch %s', str(dpid))
       self.st[con] = {}
   
     # don't forward lldp packets
@@ -90,11 +90,11 @@ class dumb_l2_switch (EventMixin):
       dst = self.st[con][srcaddr.toStr()]            # raw?
       if dst[0] != inport:
         # but from a different port
-        log.info('MAC has moved from '+str(dst)+'to'+str(inport))
+        log.info('MAC has moved from %s to %s', str(dst), str(inport))
       else:
         return
     else:
-      log.info('learned MAC '+srcaddr.toStr()+' on Switch %s, Port %d'% (con.dpid,inport))
+      log.info('learned MAC %s on Switch %s, Port %d', srcaddr.toStr(), con.dpid,inport)
       
     # learn or update timestamp of entry
     self.st[con][srcaddr.toStr()] = (inport, time(), packet)           # raw?
@@ -116,7 +116,7 @@ class dumb_l2_switch (EventMixin):
   
       else:
         # We know the outport, set up a flow
-        log.info('installing flow for ' + str(packet))
+        log.info('installing flow for %s', str(packet))
         match = ofcommand.extractMatch(packet)
         actions = [ofcommand.Output(prt[0])]
         ofcommand.addFlowEntry(con, inport, match, actions, bufid)

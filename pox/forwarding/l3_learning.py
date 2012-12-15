@@ -120,11 +120,11 @@ class l3_switch (EventMixin):
 
         prt = self.arpTable[dpid][dstaddr].port
         if prt == inport:
-          log.warning("%i %i not sending packet for %s back out of the input port" % (
-           dpid, inport, str(dstaddr)))
+          log.warning("%i %i not sending packet for %s back out of the input port",
+           dpid, inport, str(dstaddr))
         else:
-          log.debug("%i %i installing flow for %s => %s out port %i" % (dpid,
-            inport, str(packet.next.srcip), str(dstaddr), prt))
+          log.debug("%i %i installing flow for %s => %s out port %i", dpid,
+            inport, str(packet.next.srcip), str(dstaddr), prt)
 
           msg = of.ofp_flow_mod(command=of.OFPFC_ADD,
                                 idle_timeout=FLOW_IDLE_TIMEOUT,
@@ -173,8 +173,8 @@ class l3_switch (EventMixin):
                   r.hwsrc = self.arpTable[dpid][a.protodst].mac
                   e = ethernet(type=packet.type, src=r.hwsrc, dst=a.hwsrc)
                   e.set_payload(r)
-                  log.debug("%i %i answering ARP for %s" % (dpid, inport,
-                   str(r.protosrc)))
+                  log.debug("%i %i answering ARP for %s", dpid, inport,
+                   str(r.protosrc))
                   msg = of.ofp_packet_out()
                   msg.data = e.pack()
                   msg.actions.append(of.ofp_action_output(port =
@@ -184,9 +184,9 @@ class l3_switch (EventMixin):
                   return
 
       # Didn't know how to answer or otherwise handle this ARP, so just flood it
-      log.debug("%i %i flooding ARP %s %s => %s" % (dpid, inport,
+      log.debug("%i %i flooding ARP %s %s => %s", dpid, inport,
        {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
-       'op:%i' % (a.opcode,)), str(a.protosrc), str(a.protodst)))
+       'op:%i' % (a.opcode,)), str(a.protosrc), str(a.protodst))
 
       msg = of.ofp_packet_out(in_port = inport, action = of.ofp_action_output(port = of.OFPP_FLOOD))
       if event.ofp.buffer_id is of.NO_BUFFER:

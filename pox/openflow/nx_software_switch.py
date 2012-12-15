@@ -55,7 +55,7 @@ class NXSoftwareSwitch(SoftwareSwitch):
 
     self.connection_in_action = connection
     if not self.check_rights(msg, connection):
-      self.log.warn("Message %s not allowed for slave controller %d" % (ofp, connection.ID))
+      self.log.warn("Message %s not allowed for slave controller %d", ofp, connection.ID)
       self.send_error(connection)
     else:
       SoftwareSwitch.on_message_received(self, connection, msg)
@@ -80,7 +80,7 @@ class NXSoftwareSwitch(SoftwareSwitch):
         c.send(message)
         connections_used.append(c)
     elif self.connection_in_action:
-      #self.log.info("Sending %s to active connection %d" % (str(message), self.connection_in_action.ID))
+      #self.log.info("Sending %s to active connection %d", (str(message), self.connection_in_action.ID))
       self.connection_in_action.send(message)
       connections_used.append(self.connection_in_action)
     else:
@@ -92,12 +92,12 @@ class NXSoftwareSwitch(SoftwareSwitch):
         others = [c for c in self.connections if self.role_by_conn[c.ID] == nx.ROLE_OTHER]
         if len(others) > 0:
           self.next_other = self.next_other % len(others)
-          #self.log.info("Sending %s to 'other' connection %d" % (str(message), self.next_other))
+          #self.log.info("Sending %s to 'other' connection %d", (str(message), self.next_other))
           others[self.next_other].send(message)
           connections_used.append(others[self.next_other])
           self.next_other += 1
         else:
-          self.log.info("Could not find any connection to send messages %s" % str(message))
+          self.log.info("Could not find any connection to send messages %s", str(message))
     return connections_used
 
   def add_connection(self, connection):
@@ -117,7 +117,7 @@ class NXSoftwareSwitch(SoftwareSwitch):
           self.role_by_conn[c.ID] = nx.ROLE_SLAVE
 
   def _receive_vendor(self, vendor, connection):
-    self.log.debug("Vendor %s %s" % (self.name, str(vendor)))
+    self.log.debug("Vendor %s %s", self.name, str(vendor))
     if(vendor.vendor == nx.VENDOR_ID):
       try:
         data = nx.unpack_vendor_data_nx(vendor.data)

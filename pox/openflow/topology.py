@@ -107,14 +107,14 @@ class OpenFlowTopology (EventMixin):
     sw = self.topology.getEntityByID(event.dpid)
     if sw is not None:
       if sw._connection is not None:
-        log.warn("Switch %s connected, but... it's already connected!" %
-                 (dpidToStr(event.dpid),))
+        log.warn("Switch %s connected, but... it's already connected!",
+                 dpidToStr(event.dpid))
       else:
-        log.info("Switch %s reconnected!" %
-                 (dpidToStr(event.dpid),))
+        log.info("Switch %s reconnected!",
+                 dpidToStr(event.dpid))
     else:
       sw = OpenFlowSwitch(event.dpid)
-      log.info("Switch " + dpidToStr(event.dpid) + " connected")
+      log.info("Switch %s connected", dpidToStr(event.dpid))
       self.topology.addEntity(sw)
       #sw.raiseEvent(SwitchConnectionUp(sw, event.connection))
         
@@ -123,14 +123,14 @@ class OpenFlowTopology (EventMixin):
   def _handle_openflow_ConnectionDown (self, event):
     sw = self.topology.getEntityByID(event.dpid)
     if sw is None:
-      log.warn("Switch %s disconnected, but... it doesn't exist!" %
-               (dpidToStr(event.dpid),))
+      log.warn("Switch %s disconnected, but... it doesn't exist!",
+               dpidToStr(event.dpid))
     else:
       if sw._connection is None:
-        log.warn("Switch %s disconnected, but... it's wasn't connected!" %
-                 (dpidToStr(event.dpid),))
+        log.warn("Switch %s disconnected, but... it's wasn't connected!",
+                 dpidToStr(event.dpid))
       sw._connection = None
-      log.info("Switch " + str(event.dpid) + " disconnected")
+      log.info("Switch %s disconnected", event.dpid)
 
 
 class OpenFlowPort (Port):

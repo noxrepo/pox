@@ -191,12 +191,12 @@ class dhcp(packet_base):
         self.parsed = True
 
         if self.hlen > 16:
-            self.warn('(dhcp parse) DHCP hlen %u too long' % (self.hlen),)
+            self.warn('(dhcp parse) DHCP hlen %u too long', self.hlen)
             return
 
         for i in range(4):
             if dhcp.MAGIC[i] != self.magic[i]:
-                self.warn('(dhcp parse) bad DHCP magic value %s' %
+                self.warn('(dhcp parse) bad DHCP magic value %s',
                           str(self.magic))
                 return
 
@@ -210,8 +210,8 @@ class dhcp(packet_base):
         if dhcp.OVERLOAD_OPT in self.options:
             opt_val = self.options[dhcp.OVERLOAD_OPT]
             if opt_val[0] != 1:
-                self.warn('DHCP overload option has bad len %u' %
-                          (opt_val[0],))
+                self.warn('DHCP overload option has bad len %u',
+                          opt_val[0])
                 return
             if opt_val[1] == 1 or opt_val[1] == 3:
                 self.parseOptionSegment(self.file)

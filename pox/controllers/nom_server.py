@@ -75,7 +75,7 @@ class NomServer (EventMixin):
         event.con.addListener(MessageReceived, self._handle_MessageReceived, weak=True)
         controller_name = msg['nom_server_handshake']
         self.register_client(controller_name, event.con)
-        log.debug("- started conversation with %s" % controller_name)
+        log.debug("- started conversation with %s", controller_name)
       else:
         log.debug("- ignoring")
     except:
@@ -89,7 +89,7 @@ class NomServer (EventMixin):
         log.warn("message was not a dict!")
         return
 
-      log.debug("MessageRecieved -%s" % str(r.keys()))
+      log.debug("MessageRecieved -%s", str(r.keys()))
 
       if r.get("bye",False):
         log.debug("- goodbye!")
@@ -113,7 +113,7 @@ class NomServer (EventMixin):
     log.info("nom_server: initialization completed")
 
   def register_client(self, client_name, connection):
-    log.info("register %s" % client_name)
+    log.info("register %s", client_name)
     self.registered[client_name] = connection
     # TODO: can we assume that nom is booted?
     self.nom.addEntity(nom.Controller(client_name))
@@ -132,7 +132,7 @@ class NomServer (EventMixin):
     xid = self._next_update_xid()
     update = NomUpdate(xid, serialized)
     conn.send({"nom_update":update})
-    log.debug("get answer %d sent" % xid)
+    log.debug("get answer %d sent", xid)
 
   def put(self, id2entity):
     # TODO: does nom_server need to send back an ACK?
@@ -142,7 +142,7 @@ class NomServer (EventMixin):
     # TODO: rather than send a snapshot of the entire nom, use
     #       an rsync-like stream of Updates
     for client_name in self.registered.keys():
-      log.debug("invalidating/updating %s" % client_name)
+      log.debug("invalidating/updating %s", client_name)
       connection = self.registered[client_name]
       # Push out the new nom
       self.get(connection)

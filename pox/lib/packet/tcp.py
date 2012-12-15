@@ -84,7 +84,7 @@ class tcp_opt:
         elif self.type == tcp_opt.TSOPT:
             return struct.pack('!BBII',self.type,10,self.val[0],self.val[1])
         else:
-            lg.info('(tcp_opt to_bytes) warning, unknown option type ' +
+            lg.info('(tcp_opt to_bytes) warning, unknown option type %s',
                     str(self.type))
             return ''
 

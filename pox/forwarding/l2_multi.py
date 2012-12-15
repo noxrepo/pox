@@ -210,7 +210,7 @@ class Switch (EventMixin):
 
     self._install_path(p, match, event.ofp.buffer_id)
     log.debug("Installing path for %s -> %s %04x (%i hops)", match.dl_src, match.dl_dst, match.dl_type, len(p))
-    #log.debug("installing path for %s.%i -> %s.%i" %
+    #log.debug("installing path for %s.%i -> %s.%i",
     #          (src[0].dpid, src[1], dst[0].dpid, dst[1]))
 
   def _handle_PacketIn (self, event):
@@ -272,7 +272,7 @@ class Switch (EventMixin):
       flood()
     else:
       if packet.dst not in mac_map:
-        log.debug("%s unknown -- flooding" % (packet.dst,))
+        log.debug("%s unknown -- flooding", packet.dst)
         flood()
       else:
         dest = mac_map[packet.dst]
@@ -282,7 +282,7 @@ class Switch (EventMixin):
 
   def disconnect (self):
     if self.connection is not None:
-      log.debug("Disconnect %s" % (self.connection,))
+      log.debug("Disconnect %s", self.connection)
       self.connection.removeListeners(self._listeners)
       self.connection = None
       self._listeners = None
@@ -294,7 +294,7 @@ class Switch (EventMixin):
     if self.ports is None:
       self.ports = connection.features.ports
     self.disconnect()
-    log.debug("Connect %s" % (connection,))
+    log.debug("Connect %s", connection)
     self.connection = connection
     self._listeners = self.listenTo(connection)
 

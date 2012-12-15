@@ -373,7 +373,7 @@ class ttl:
         assert(self.tlv_type == 3)
         self.strlen = typelen & 0x01ff
         if (self.strlen != 2):
-            lg.info('(ttl tlv parse) length incorrect (should be 2) %u' % (self.strlen))
+            lg.info('(ttl tlv parse) length incorrect (should be 2) %u', self.strlen)
             return
         (self.ttl,) = struct.unpack("!H",self.arr[2:4])
         self.parsed = True
@@ -405,7 +405,7 @@ class end_tlv:
         assert(self.tlv_type == lldp.END_TLV)
         self.strlen = typelen & 0x01ff
         if self.strlen != 0:
-            lg.info('(tl end parse) length incorrect (should be 0) %u' % (self.strlen))
+            lg.info('(tl end parse) length incorrect (should be 0) %u', self.strlen)
             return
         self.parsed = True
 

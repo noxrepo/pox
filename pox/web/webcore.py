@@ -125,14 +125,14 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
     return method()
 
   def log_request (self, code = '-', size = '-'):
-    log.debug(self.prefix + (':"%s" %s %s' % 
-              (self.requestline, str(code), str(size))))
+    log.debug('%s:"%s" %s %s', self.prefix,
+              self.requestline, str(code), str(size))
 
   def log_error (self, fmt, *args):
     log.error(self.prefix + ':' + (fmt % args))
 
   def log_message (self, fmt, *args):
-    log.info(self.prefix + ':' + (fmt % args))
+    log.info("%s:%s", self.prefix, (fmt % args))
 
 
 class CoreHandler (SplitRequestHandler):
@@ -400,10 +400,10 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
               self.requestline, str(code), str(size))
 
   def log_error (self, fmt, *args):
-    log.error('splitter:' + fmt % args)
+    log.error('splitter: %s', fmt % args)
 
   def log_message (self, fmt, *args):
-    log.info('splitter:' + fmt % args)
+    log.info('splitter: %s', fmt % args)
 
   def handle_one_request(self):
     self.raw_requestline = self.rfile.readline()

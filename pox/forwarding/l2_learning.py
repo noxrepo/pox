@@ -135,7 +135,7 @@ class LearningSwitch (EventMixin):
         self.connection.send(msg)
 
     self.macToPort[packet.src] = event.port # 1
-    log.debug("Installing entry: mac %s -> port %i" % (packet.src, event.port))
+    log.debug("Installing entry: mac %s -> port %i", packet.src, event.port)
 
     if not self.transparent:
       if packet.type == packet.LLDP_TYPE or packet.dst.isBridgeFiltered(): # 2
@@ -146,19 +146,19 @@ class LearningSwitch (EventMixin):
       flood() # 3a
     else:
       if packet.dst not in self.macToPort: # 4
-        log.debug("DPID %s: Port for %s unknown -- flooding" % (dpidToStr(event.dpid), packet.dst))
+        log.debug("DPID %s: Port for %s unknown -- flooding", dpidToStr(event.dpid), packet.dst)
         flood() # 4a
       else:
         port = self.macToPort[packet.dst]
         if port == event.port: # 5
           # 5a
-          log.warning("DPID %s: Same port for packet from %s -> %s.  Drop." %
-                      (dpidToStr(event.dpid), packet.src, packet.dst, port) )
+          log.warning("DPID %s: Same port for packet from %s -> %s.  Drop.",
+                      dpidToStr(event.dpid), packet.src, packet.dst, port)
           drop(10)
           return
         # 6
-        log.debug("DPID %s: installing flow for %s.%i -> %s.%i" %
-                  (dpidToStr(event.dpid), packet.src, event.port, packet.dst, port))
+        log.debug("DPID %s: installing flow for %s.%i -> %s.%i",
+                  dpidToStr(event.dpid), packet.src, event.port, packet.dst, port)
         msg = of.ofp_flow_mod()
         msg.match = of.ofp_match.from_packet(packet)
         msg.idle_timeout = 10
@@ -184,7 +184,7 @@ class l2_learning (EventMixin):
     self.transparent = transparent
 
   def _handle_ConnectionUp (self, event):
-    log.debug("Connection %s" % (event.connection,))
+    log.debug("Connection %s", event.connection)
     LearningSwitch(event.connection, self.transparent)
 
 

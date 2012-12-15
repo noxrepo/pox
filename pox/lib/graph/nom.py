@@ -238,7 +238,7 @@ class NOM (Graph, EventMixin):
   def removeEntity (self, entity):
     if entity in self:
       self.remove(entity)
-      self.log.info(str(entity) + " left")
+      self.log.info("%s left %s", str(entity))
       self.raiseEvent(EntityLeave, entity)
 
   def addEntity (self, entity):

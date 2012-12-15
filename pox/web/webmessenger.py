@@ -59,7 +59,7 @@ class HTTPMessengerConnection (MessengerConnection):
 
   def _check_timeout (self):
     if (time.time() - self._touched) > 120:
-      log.info("Session " + self.session_key + " timed out")
+      log.info("Session %s timed out", self.session_key)
       self._close()
 
   def _new_tx_seq (self):

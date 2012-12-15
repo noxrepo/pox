@@ -36,7 +36,7 @@ class Monitoring (EventMixin):
     print event.__dict__
     if "dpid" in event.msg:
       dpid = event.msg["dpid"]
-      log.debug("Requesting stats from %s" %dpid)
+      log.debug("Requesting stats from %s",dpid)
       if event.msg["command"] == "flowstats":
         msg = of.ofp_flow_stats_request()
         core.openflow.sendToDPID(dpid, msg.pack())

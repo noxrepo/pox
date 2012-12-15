@@ -301,7 +301,7 @@ def makePinger ():
       ei = sys.exc_info()
       ei = traceback.format_exception_only(ei[0], ei[1])
       ei = ''.join(ei).strip()
-      log.warning("makePinger: connect exception:\n" + ei)
+      log.warning("makePinger: connect exception:\n%s", ei)
       return False
 
     rlist, wlist,elist = select.select([l], [], [l], 2)
