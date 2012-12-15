@@ -109,7 +109,7 @@ def handle_FEATURES_REPLY (con, msg):
               msg.datapath_id))
       con.disconnect()
     else:
-      con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
+      con.info("Connected to %s", pox.lib.util.dpidToStr(msg.datapath_id))
       import time
       con.connect_time = time.time()
       #for p in msg.ports: print(p.show())
@@ -473,14 +473,14 @@ class Connection (EventMixin):
 
   def msg (self, m):
     #print str(self), m
-    log.debug(str(self) + " " + str(m))
+    log.debug("of_01 %s %s", str(self), str(m))
   def err (self, m):
     #print str(self), m
-    log.error(str(self) + " " + str(m))
+    log.error("of_01 %s %s", str(self), str(m))
   def info (self, m):
     pass
     #print str(self), m
-    log.info(str(self) + " " + str(m))
+    log.info("of_01 %s %s", str(self), str(m))
 
   def __init__ (self, sock):
     self._previous_stats = []
