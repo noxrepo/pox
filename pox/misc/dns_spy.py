@@ -17,24 +17,55 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-This component spies on DNS replies.
+This component spies on DNS replies, stores the results, and raises events
+when things are looked up or when its stored mappings are updated.
 
-Similar to NOX's DNSSpy component.
+Similar to NOX's DNSSpy component, but with more features.
 """
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 import pox.lib.packet as pkt
+import pox.lib.packet.dns as pkt_dns
+
 from pox.lib.addresses import IPAddr
+from pox.lib.revent import *
 
 log = core.getLogger()
 
-class DNSSpy (object):
+
+class DNSUpdate (Event):
+  def __init__ (self, item):
+    Event.__init__()
+    self.item = item
+
+class DNSLookup (Event):
+  def __init__ (self, rr):
+    Event.__init__()
+
+    self.name = rr.name
+    self.qtype = rr.qtype
+
+    self.rr = rr
+    for t in pkt_dns.rrtype_to_str.values():
+      setattr(self, t, False)
+    t = pkt_dns.rrtype_to_str.get(rr.qtype)
+    if t is not None:
+      setattr(self, t, True)
+      setattr(self, "OTHER", False)
+    else:
+      setattr(self, "OTHER", True)
+
+
+class DNSSpy (EventMixin):
+  _eventMixin_events = set([ DNSUpdate, DNSLookup ])
+
   def __init__ (self, install_flow = True):
     self._install_flow = install_flow
 
     self.ip_to_name = {}
     self.name_to_ip = {}
+    self.cname = {}
 
     core.openflow.addListeners(self)
 
@@ -54,12 +85,15 @@ class DNSSpy (object):
   def lookup (self, something):
     if something in self.name_to_ip:
       return self.name_to_ip[something]
+    if something in self.cname:
+      return self.lookup(self.cname[something])
     try:
       return self.ip_to_name.get(IPAddr(something))
     except:
       return None
 
   def _record (self, ip, name):
+    # Handle reverse lookups correctly?
     modified = False
     val = self.ip_to_name.setdefault(ip, [])
     if name not in val:
@@ -73,22 +107,43 @@ class DNSSpy (object):
 
     return modified
 
+  def _record_cname (self, name, cname):
+    modified = False
+    val = self.cname.setdefault(name, [])
+    if name not in val:
+      val.insert(0, cname)
+      modified = True
+
+    return modified
+
   def _handle_PacketIn (self, event):
     p = event.parsed.find('dns')
 
     if p is not None and p.parsed:
       log.debug(p)
 
-      for answer in p.answers:
-        if answer.qtype == pkt.dns.rr.A_TYPE:
-          if self._record(answer.rddata, answer.name):
-            log.info("add dns entry: %s %s" % (answer.rddata, answer.name))
+      for q in p.questions:
+        if q.qclass != 1: continue # Internet only
+        self.raiseEvent(DNSLookup, q)
 
+      def process_q (entry):
+        if entry.qclass != 1:
+          # Not internet
+          return
+
+        if entry.qtype == pkt.dns.rr.CNAME_TYPE:
+          if self._record_cname(entry.name, entry.rddata):
+            self.raiseEvent(DNSUpdate, entry.name)
+            log.info("add cname entry: %s %s" % (entry.rddata, entry.name))
+        elif entry.qtype == pkt.dns.rr.A_TYPE:
+          if self._record(entry.rddata, entry.name):
+            self.raiseEvent(DNSUpdate, entry.name)
+            log.info("add dns entry: %s %s" % (entry.rddata, entry.name))
+
+      for answer in p.answers:
+        process_q(answer)
       for addition in p.additional:
-        if addition.qtype == pkt.dns.rr.A_TYPE: 
-          if self._record(addition.rddata, addition.name):
-            log.info("additional dns entry: %s %s" % (addition.rddata,
-                                                      addition.name))
+        process_q(addition)
 
 
 def launch (no_flow = False):
