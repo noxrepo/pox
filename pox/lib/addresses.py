@@ -129,6 +129,10 @@ class EthAddr (object):
     	and (ord(self._value[4]) == 0x00)
     	and (ord(self._value[5]) <= 0x0F))
 
+  @property
+  def is_bridge_filtered (self):
+    return self.isBridgeFiltered
+
   def isGlobal (self):
     """
     Returns True if this is a globally unique (OUI enforced) address.
