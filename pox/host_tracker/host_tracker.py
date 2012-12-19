@@ -254,7 +254,7 @@ class host_tracker (EventMixin):
     if packet.type == ethernet.LLDP_TYPE:    # Ignore LLDP packets
       return
     # This should use Topology later 
-    if core.openflow_discovery.isSwitchOnlyPort(dpid, inport):
+    if not core.openflow_discovery.is_edge_port(dpid, inport):
       # No host should be right behind a switch-only port
       log.debug("%i %i ignoring packetIn at switch-only port", dpid, inport)
       return

@@ -65,6 +65,10 @@ _ipproto_to_str[47] = 'GRE'
 _ipproto_to_str[89] = 'OSPF'
 
 
+class MalformedException (RuntimeError):
+  pass
+
+
 class TruncatedException (RuntimeError):
   pass
 

@@ -144,7 +144,7 @@ def _handle (event):
         if p.port_no < of.OFPP_MAX:
           flood = p.port_no in tree_ports
           if not flood:
-            if not core.openflow_discovery.isSwitchOnlyPort(sw, p.port_no):
+            if core.openflow_discovery.is_edge_port(sw, p.port_no):
               flood = True
           if _prev[sw][p.port_no] is flood:
             continue # Skip

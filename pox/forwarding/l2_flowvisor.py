@@ -99,7 +99,7 @@ def _handle_PacketIn (event):
         # Not a normal port
         continue
 
-      if core.openflow_discovery.isSwitchOnlyPort(event.dpid, p):
+      if not core.openflow_discovery.is_edge_port(event.dpid, p):
         # If the port isn't a switch-to-switch port, it's fine to flood
         # through it.  But if it IS a switch-to-switch port, we only
         # want to use it if it's on the spanning tree.
