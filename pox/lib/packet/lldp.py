@@ -215,8 +215,44 @@ class lldp (packet_base):
 #======================================================================
 #                          TLV definitions
 #======================================================================
-    
-class chassis_id:
+
+class tlv_base (object):
+  """
+  Supertype for LLDP TLVs
+  """
+  pass
+
+
+class simple_tlv (tlv_base):
+  #tlv_type = <type>
+  def __init__ (self, raw = None):
+    self.parsed = False
+    self.len    = 0
+    self.arr    = raw
+    self.next   = b''
+    if raw is not None:
+      self.parse()
+
+  def fill (self, strval):
+    self.len  = len(strval)
+    self.next = strval
+
+  # assume lldp has done the type/len checking
+  def parse (self):
+    (typelen,) = struct.unpack("!H",self.arr[0:2])
+    self.tlv_type = typelen >> 9
+    self.len  = typelen & 0x01ff
+    self.next = self.arr[2:]
+    self.parsed = True
+
+  def pack (self):
+    typelen = 0
+    typelen = self.tlv_type << 9
+    typelen = typelen | (self.len & 0x01ff)
+    return struct.pack('!H', typelen) + self.next
+
+
+class chassis_id (tlv_base):
   tlv_type = lldp.CHASSIS_ID_TLV
 
   SUB_CHASSIS  = 1 # IETF RFC 2737
@@ -285,7 +321,8 @@ class chassis_id:
 
     return ''.join(['<chasis ID:',id_str,'>'])
 
-class port_id:
+
+class port_id (tlv_base):
   tlv_type = lldp.PORT_ID_TLV
 
   SUB_IF_ALIAS = 1 # IETF RFC 2863
@@ -350,7 +387,8 @@ class port_id:
     pack_str = '!HB'+str(self.strlen-1)+'s'
     return struct.pack(pack_str, typelen, self.subtype, self.id)
 
-class ttl:
+
+class ttl (tlv_base):
   tlv_type = lldp.TTL_TLV
 
   def __init__ (self, raw = None, **kw):
@@ -391,7 +429,8 @@ class ttl:
     pack_str = '!HB'+str(self.strlen-1)+'s'
     return struct.pack('!HH', typelen, self.ttl)
 
-class end_tlv:
+
+class end_tlv (tlv_base):
   tlv_type = lldp.END_TLV
 
   def __init__ (self, raw = None):
@@ -422,41 +461,16 @@ class end_tlv:
     typelen = typelen | (self.strlen & 0x01ff)
     return struct.pack('!H', typelen)
 
-class basic_tlv (object):
-  #tlv_type = <type>
-  def __init__ (self, raw = None):
-    self.parsed = False
-    self.len    = 0
-    self.arr    = raw
-    self.next   = b''
-    if raw is not None:
-      self.parse()
 
-  def fill (self, strval):
-    self.len  = len(strval)
-    self.next = strval
-
-  # assume lldp has done the type/len checking
-  def parse (self):
-    (typelen,) = struct.unpack("!H",self.arr[0:2])
-    self.tlv_type = typelen >> 9
-    self.len  = typelen & 0x01ff
-    self.next = self.arr[2:]
-    self.parsed = True
-
-  def pack (self):
-    typelen = 0
-    typelen = self.tlv_type << 9
-    typelen = typelen | (self.len & 0x01ff)
-    return struct.pack('!H', typelen) + self.next
-
-class unknown_tlv (basic_tlv):
+class unknown_tlv (simple_tlv):
   tlv_type = None
 
-class system_description (basic_tlv):
+
+class system_description (simple_tlv):
   tlv_type = lldp.SYSTEM_DESC_TLV
 
-class management_address (object):
+
+class management_address (tlv_base):
   tlv_type = lldp.MANAGEMENT_ADDR_TLV
 
   def __init__ (self, raw = None):
@@ -500,19 +514,21 @@ class management_address (object):
     r += self.object_identifier
     return r
 
-class system_name (basic_tlv):
+
+class system_name (simple_tlv):
   tlv_type = lldp.SYSTEM_NAME_TLV
 
-class organizationally_specific (basic_tlv):
+
+class organizationally_specific (simple_tlv):
   tlv_type = lldp.ORGANIZATIONALLY_SPECIFIC_TLV
   def __init__ (self, raw = None):
     self.oui = '\x00\x00\x00'
     self.subtype = 0
     self.next = bytes()
-    basic_tlv.__init__ (self, raw)
+    simple_tlv.__init__ (self, raw)
     
   def parse (self):
-    basic_tlv.parse(self)
+    simple_tlv.parse(self)
     (self.oui,self.subtype) = struct.unpack("3sB", self.next[0:4])
     self.next = self.next[4:]
 
@@ -522,10 +538,12 @@ class organizationally_specific (basic_tlv):
     typelen = typelen | (self.len & 0x01ff)
     return struct.pack('!H3sB', typelen, self.oui, self.subtype)+self.next
 
-class port_description (basic_tlv):
+
+class port_description (simple_tlv):
   tlv_type = lldp.PORT_DESC_TLV
 
-class system_capabilities (basic_tlv):
+
+class system_capabilities (simple_tlv):
   tlv_type = lldp.SYSTEM_CAP_TLV
 
   cap_names = ["Other", "Repeater", "Bridge", "WLAN Access Point",
@@ -535,10 +553,10 @@ class system_capabilities (basic_tlv):
   def __init__ (self, raw = None):
     self.caps = [False] * 16
     self.enabled_caps = [False] * 16
-    basic_tlv.__init__ (self, raw)
+    simple_tlv.__init__ (self, raw)
     
   def parse (self):
-    basic_tlv.parse(self)
+    simple_tlv.parse(self)
     (cap,en) = struct.unpack("!HH", self.next)
     del self.caps[:]
     del self.enabled_caps[:]
