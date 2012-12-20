@@ -73,6 +73,7 @@ class Tk (object):
     self._q = deque()
     self.dialog = MessageBoxer(self)
     self.root = None
+    self.automatic_quit = True
 
   def do_ex (self, code, rv=None, args=[], kw={}):
     self._q.append((code, rv, args, kw))
@@ -110,6 +111,9 @@ class Tk (object):
 
     # Become live once in a while so that signals get handled
     def timer ():
+      if self.automatic_quit and core.running == False:
+        root.quit()
+        return
       root.after(500, timer)
     timer()
 
