@@ -77,8 +77,9 @@ def handle_ECHO_REQUEST (con, msg): #S
   con.send(reply)
 
 def handle_FLOW_REMOVED (con, msg): #A
-  con.ofnexus.raiseEventNoErrors(FlowRemoved, con, msg)
-  con.raiseEventNoErrors(FlowRemoved, con, msg)
+  e = con.ofnexus.raiseEventNoErrors(FlowRemoved, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(FlowRemoved, con, msg)
 
 def handle_FEATURES_REPLY (con, msg):
   connecting = con.connect_time == None
@@ -88,8 +89,9 @@ def handle_FEATURES_REPLY (con, msg):
 
   if not connecting:
     con.ofnexus._connect(con)
-    con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
-    con.raiseEventNoErrors(FeaturesReceived, con, msg)
+    e = con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(FeaturesReceived, con, msg)
     return
 
   nexus = core.OpenFlowConnectionArbiter.getNexus(con)
@@ -116,10 +118,12 @@ def handle_FEATURES_REPLY (con, msg):
       con.info("connected")
       import time
       con.connect_time = time.time()
-      con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
-      con.raiseEventNoErrors(ConnectionUp, con, msg)
-      con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
-      con.raiseEventNoErrors(FeaturesReceived, con, msg)
+      e = con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
+      if e is None or e.halt != True:
+        con.raiseEventNoErrors(ConnectionUp, con, msg)
+      e = con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
+      if e is None or e.halt != True:
+        con.raiseEventNoErrors(FeaturesReceived, con, msg)
     con.removeListeners(listeners)
   listeners.append(con.addListener(BarrierIn, finish_connecting))
 
@@ -138,14 +142,15 @@ def handle_FEATURES_REPLY (con, msg):
     con.send(of.ofp_switch_config(miss_send_len =
                                   con.ofnexus.miss_send_len))
   if con.ofnexus.clear_flows_on_connect:
-    con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
+    con.send(of.ofp_flow_mod(match=of.ofp_match(),command=of.OFPFC_DELETE))
 
   con.send(barrier)
 
 
 def handle_STATS_REPLY (con, msg):
-  con.ofnexus.raiseEventNoErrors(RawStatsReply, con, msg)
-  con.raiseEventNoErrors(RawStatsReply, con, msg)
+  e = con.ofnexus.raiseEventNoErrors(RawStatsReply, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(RawStatsReply, con, msg)
   con._incoming_stats_reply(msg)
 
 def handle_PORT_STATUS (con, msg): #A
@@ -153,67 +158,74 @@ def handle_PORT_STATUS (con, msg): #A
     con.ports._forget(msg.desc)
   else:
     con.ports._update(msg.desc)
-  con.ofnexus.raiseEventNoErrors(PortStatus, con, msg)
-  con.raiseEventNoErrors(PortStatus, con, msg)
+  e = con.ofnexus.raiseEventNoErrors(PortStatus, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(PortStatus, con, msg)
 
 def handle_PACKET_IN (con, msg): #A
-  con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
-  con.raiseEventNoErrors(PacketIn, con, msg)
-#  if PacketIn in con.ofnexus._eventMixin_handlers:
-#    p = ethernet(msg.data)
-#    con.ofnexus.raiseEventNoErrors(PacketIn(con, msg, p))
+  e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(PacketIn, con, msg)
 
 def handle_ERROR_MSG (con, msg): #A
   err = ErrorIn(con, msg)
-  con.ofnexus.raiseEventNoErrors(err)
-  con.raiseEventNoErrors(err)
+  e = con.ofnexus.raiseEventNoErrors(err)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(err)
   if err.should_log:
     log.error(str(con) + " OpenFlow Error:\n" +
               msg.show(str(con) + " Error: ").strip())
 
 def handle_BARRIER (con, msg):
-  con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)
-  con.raiseEventNoErrors(BarrierIn, con, msg)
+  e = con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(BarrierIn, con, msg)
 
 # handlers for stats replies
 def handle_OFPST_DESC (con, parts):
   msg = parts[0].body
-  con.ofnexus.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
-  con.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
+  e = con.ofnexus.raiseEventNoErrors(SwitchDescReceived,con,parts[0],msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
 
 def handle_OFPST_FLOW (con, parts):
   msg = []
   for part in parts:
     msg.extend(part.body)
-  con.ofnexus.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
-  con.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
+  e = con.ofnexus.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
 
 def handle_OFPST_AGGREGATE (con, parts):
   msg = parts[0].body
-  con.ofnexus.raiseEventNoErrors(AggregateFlowStatsReceived, con,
-                                 parts[0], msg)
-  con.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
+  e = con.ofnexus.raiseEventNoErrors(AggregateFlowStatsReceived, con,
+                                     parts[0], msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
 
 def handle_OFPST_TABLE (con, parts):
   msg = []
   for part in parts:
     msg.extend(part.body)
-  con.ofnexus.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
-  con.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
+  e = con.ofnexus.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
 
 def handle_OFPST_PORT (con, parts):
   msg = []
   for part in parts:
     msg.extend(part.body)
-  con.ofnexus.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
-  con.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
+  e = con.ofnexus.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
 
 def handle_OFPST_QUEUE (con, parts):
   msg = []
   for part in parts:
     msg.extend(part.body)
-  con.ofnexus.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
-  con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
+  e = con.ofnexus.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
 
 
 # A list, where the index is an OFPT, and the value is a libopenflow
