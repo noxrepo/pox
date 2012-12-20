@@ -15,8 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
-import pxpcap as pcapc
+try:
+  import pxpcap as pcapc
+except:
+  # We can at least import the rest
+  pass
+
 from pox.lib.addresses import IPAddr, EthAddr
+import parser
 from threading import Thread
 import pox.lib.packet as pkt
 import copy
@@ -200,10 +206,13 @@ class Filter (object):
       pcapc.freecode(self._pprogram)
 
 
-_link_type_names = {}
-for k,v in copy.copy(pcapc.__dict__).iteritems():
-  if k.startswith("DLT_"):
-    _link_type_names[v] = k
+try:
+  _link_type_names = {}
+  for k,v in copy.copy(pcapc.__dict__).iteritems():
+    if k.startswith("DLT_"):
+      _link_type_names[v] = k
+except:
+  pass
 
 def get_link_type_name (dlt):
   return _link_type_names.get(dlt, "<Unknown " + str(dlt) + ">")
