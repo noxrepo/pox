@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 # Copyright 2008 (C) Nicira, Inc.
 #
 # This file is part of POX.
@@ -355,10 +355,11 @@ class dns(packet_base):
 
     @classmethod
     def _read_dns_name_from_index(cls, l, index, retlist):
+      try:
         while True:
             chunk_size = ord(l[index])
 
-            # check whether we have in internal pointer
+            # check whether we have an internal pointer
             if (chunk_size & 0xc0) == 0xc0:
                 # pull out offset from last 14 bits
                 offset = ((ord(l[index]) & 0x3) << 8 ) | ord(l[index+1])
@@ -371,6 +372,8 @@ class dns(packet_base):
             retlist.append(l[index : index + chunk_size])
             index += chunk_size
         return index
+      except IndexError:
+        raise Trunc("incomplete name")
 
     @classmethod
     def read_dns_name_from_index(cls, l, index):
