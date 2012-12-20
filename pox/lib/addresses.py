@@ -131,7 +131,7 @@ class EthAddr (object):
 
   @property
   def is_bridge_filtered (self):
-    return self.isBridgeFiltered
+    return self.isBridgeFiltered()
 
   def isGlobal (self):
     """
