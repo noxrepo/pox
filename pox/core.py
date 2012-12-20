@@ -257,6 +257,14 @@ class POXCore (EventMixin):
     """
     Shut down POX.
     """
+    import threading
+    if threading.current_thread() is self.scheduler._thread:
+      t = threading.Thread(target=self._quit)
+      t.start()
+    else:
+      self._quit()
+
+  def _quit (self):
     if self.running:
       self.running = False
       log.info("Going down...")
