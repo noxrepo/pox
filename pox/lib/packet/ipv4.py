@@ -122,7 +122,7 @@ class ipv4(packet_base):
         self.frag  = self.frag & 0x1fff
 
         if self.v != ipv4.IPv4:
-            self.msg('ip parse) warning IP version %u not IPv4' % self.v)
+            self.msg('(ip parse) warning IP version %u not IPv4' % self.v)
             return
         elif self.hl < 5:
             self.msg('(ip parse) warning IP header %u longer than len %u' \
