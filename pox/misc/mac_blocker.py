@@ -87,6 +87,8 @@ def move_entry (from_list, from_set, to_list, to_set):
   from_set.remove(mac)
 
   if clear_tables_on_change:
+    # This is coming from another thread, so don't just send -- use
+    # callLater so that it happens from the coop thread.
     core.callLater(clear_flows)
 
 def do_block ():
