@@ -272,6 +272,23 @@ class OpenFlowConnectionArbiter (EventMixin):
     return e.nexus
 
 
+class ConnectionDict (dict):
+  def __iter__ (self):
+    return self.itervalues()
+
+  def __contains__ (self, item):
+    v = dict.__contains__(self, item)
+    if v: return v
+    return item in self.values()
+
+  @property
+  def dpids (self):
+    return self.keys()
+
+  def iter_dpids (self):
+    return self.iterkeys()
+
+
 class OpenFlowNexus (EventMixin):
   """
   Main point of OpenFlow interaction.
@@ -306,7 +323,7 @@ class OpenFlowNexus (EventMixin):
   clear_flows_on_connect = True
 
   def __init__ (self):
-    self._connections = {} # DPID -> Connection
+    self._connections = ConnectionDict() # DPID -> Connection
 
     from pox.core import core
 
@@ -314,7 +331,7 @@ class OpenFlowNexus (EventMixin):
 
   @property
   def connections (self):
-    return self._connections.values()
+    return self._connections
 
   def getConnection (self, dpid):
     """
