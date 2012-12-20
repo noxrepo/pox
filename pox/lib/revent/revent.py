@@ -286,13 +286,16 @@ class EventMixin (object):
       if rv is False:
         self.removeListener(eid)
       if rv is True:
+        if classCall: event.halt = True
         break
       if type(rv) == tuple:
         if len(rv) >= 2 and rv[1] == True:
           self.removeListener(eid)
         if len(rv) >= 1 and rv[0]:
+          if classCall: event.halt = True
           break
         if len(rv) == 0:
+          if classCall: event.halt = True
           break
       #if classCall and hasattr(event, "halt") and event.halt:
       if classCall and event.halt:
