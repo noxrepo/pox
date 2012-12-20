@@ -72,14 +72,19 @@ class Tk (object):
   def __init__ (self):
     self._q = deque()
     self.dialog = MessageBoxer(self)
+    self.root = None
 
   def do_ex (self, code, rv=None, args=[], kw={}):
     self._q.append((code, rv, args, kw))
+    self._ping()
+
+  def _ping (self):
+    if not self.root: return
     self.root.event_generate('<<Ping>>', when='tail')
 
   def do (__self, __code, __rv=None, *args, **kw):
     __self._q.append((__code, __rv, args, kw))
-    __self.root.event_generate('<<Ping>>', when='tail')
+    __self._ping()
     
   def _dispatch (self, event):
     while len(self._q):
@@ -109,6 +114,9 @@ class Tk (object):
     timer()
 
     self.root.withdraw()
+
+    self._dispatch(None)
+
     try:
       root.mainloop()
     except KeyboardInterrupt:
