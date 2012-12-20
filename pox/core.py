@@ -358,6 +358,9 @@ class POXCore (EventMixin):
     if component is None:
       component = name
       name = component.__class__.__name__
+      if hasattr(component, '_core_name'):
+        # Default overridden
+        name = component._core_name
 
     if name in self.components:
       log.warn("Warning: Registered '%s' multipled times" % (name,))
