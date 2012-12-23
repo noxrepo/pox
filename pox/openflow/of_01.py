@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -28,13 +28,18 @@ from pox.lib.revent.revent import EventMixin
 import datetime
 from pox.lib.socketcapture import CaptureSocket
 import pox.openflow.debug
-from pox.openflow.util import make_type_to_class_table
+from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow import *
 
 log = core.getLogger()
 
 import socket
 import select
+
+# List where the index is an OpenFlow message type (OFPT_xxx), and
+# the values are unpack functions that unpack the wire format of that
+# type into a message object.
+unpackers = make_type_to_unpacker_table()
 
 try:
   PIPE_BUF = select.PIPE_BUF
@@ -139,13 +144,19 @@ def handle_FEATURES_REPLY (con, msg):
   #TODO: Add a timeout for finish_connecting
 
   if con.ofnexus.miss_send_len is not None:
-    con.send(of.ofp_switch_config(miss_send_len =
+    con.send(of.ofp_set_config(miss_send_len =
                                   con.ofnexus.miss_send_len))
   if con.ofnexus.clear_flows_on_connect:
     con.send(of.ofp_flow_mod(match=of.ofp_match(),command=of.OFPFC_DELETE))
 
   con.send(barrier)
 
+  """
+  # Hack for old versions of cbench
+  class C (object):
+    xid = barrier.xid
+  finish_connecting(C())
+  """
 
 def handle_STATS_REPLY (con, msg):
   e = con.ofnexus.raiseEventNoErrors(RawStatsReply, con, msg)
@@ -227,10 +238,6 @@ def handle_OFPST_QUEUE (con, parts):
   if e is None or e.halt != True:
     con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
 
-
-# A list, where the index is an OFPT, and the value is a libopenflow
-# class for that type
-classes = []
 
 # A list, where the index is an OFPT, and the value is a function to
 # call for that type
@@ -699,22 +706,30 @@ class Connection (EventMixin):
     if len(d) == 0:
       return False
     self.buf += d
-    l = len(self.buf)
-    while l > 4:
-      if ord(self.buf[0]) != of.OFP_VERSION:
-        log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) +
-                    ") on connection " + str(self))
-        return False
-      # OpenFlow parsing occurs here:
-      ofp_type = ord(self.buf[1])
-      packet_length = ord(self.buf[2]) << 8 | ord(self.buf[3])
-      if packet_length > l: break
-      msg = classes[ofp_type]()
-      # msg.unpack implicitly only examines its own bytes, and not trailing
-      # bytes 
-      msg.unpack(self.buf)
-      self.buf = self.buf[packet_length:]
-      l = len(self.buf)
+    buf_len = len(self.buf)
+
+
+    offset = 0
+    while buf_len - offset >= 8: # 8 bytes is minimum OF message size
+      # We pull the first four bytes of the OpenFlow header off by hand
+      # (using ord) to find the version/length/type so that we can
+      # correctly call libopenflow to unpack it.
+
+      if ord(self.buf[offset]) != of.OFP_VERSION:
+        log.warning("Bad OpenFlow version (0x%02x) on connection %s"
+                    % (ord(self.buf[offset]), self))
+        return False # Throw connection away
+
+      ofp_type = ord(self.buf[offset+1])
+
+      msg_length = ord(self.buf[offset+2]) << 8 | ord(self.buf[offset+3])
+
+      if buf_len - offset < msg_length: break
+
+      new_offset,msg = unpackers[ofp_type](self.buf, offset)
+      assert new_offset - offset == msg_length
+      offset = new_offset
+
       try:
         h = handlers[ofp_type]
         h(self, msg)
@@ -723,6 +738,10 @@ class Connection (EventMixin):
                       "%s %s", self,self,
                       ("\n" + str(self) + " ").join(str(msg).split('\n')))
         continue
+
+    if offset != 0:
+      self.buf = self.buf[offset:]
+
     return True
 
   def _incoming_stats_reply (self, ofp):
@@ -878,7 +897,6 @@ class OpenFlow_01_Task (Task):
 
     #pox.core.quit()
 
-classes.extend( make_type_to_class_table())
 
 handlers.extend([None] * (1 + sorted(handlerMap.keys(), reverse=True)[0]))
 for h in handlerMap:

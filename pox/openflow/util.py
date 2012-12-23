@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -16,9 +16,13 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 import pox.openflow.libopenflow_01 as of
+import struct
 
-# See "classes"
+
 def make_type_to_class_table ():
+  """
+  DEPRECATED
+  """
   classes = {}
   max = -1
   d = of.__dict__
@@ -34,3 +38,18 @@ def make_type_to_class_table ():
     raise "Bad protocol to class mapping"
 
   return [classes[i] for i in range(0, max)]
+
+
+def make_type_to_unpacker_table ():
+  """
+  Returns a list of unpack methods.
+
+  The resulting list maps OpenFlow types to functions which unpack
+  data for those types into message objects.
+  """
+
+  top = max(of._message_type_to_class)
+
+  r = [of._message_type_to_class[i].unpack_new for i in range(0, top)]
+
+  return r

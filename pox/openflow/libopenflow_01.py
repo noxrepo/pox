@@ -86,13 +86,15 @@ class UnderrunError (RuntimeError):
   pass
 
 def _read (data, offset, length):
-  if (len(data)-offset) < length: raise UnderrunError()
+  if (len(data)-offset) < length:
+    raise UnderrunError("wanted %s bytes but only have %s"
+                        % (length, len(data)-offset))
   return (offset+length, data[offset:offset+length])
 
-def _unpack (data, offset, fmt):
+def _unpack (fmt, data, offset):
   size = struct.calcsize(fmt)
   if (len(data)-offset) < size: raise UnderrunError()
-  return (offset+size, struct.unpack___from(fmt, data, offset))
+  return (offset+size, struct.unpack_from(fmt, data, offset))
 
 def _skip (data, offset, num):
   offset += num
@@ -107,18 +109,18 @@ def _unpad (data, offset, num):
 def _readzs (data, offset, length):
   (offset, d) = _read(data, offset, length)
   d = d.split("\x00", 1)
-  assert len(d[1].replace("\x00", "")) == 0
   #if len(d[1].replace("\x00", "")) > 0:
   #  raise RuntimeError("Non-zero string padding")
+  assert True if (len(d) == 1) else (len(d[1].replace("\x00", "")) == 0)
   return (offset, d[0])
 
 def _readether (data, offset):
   (offset, d) = _read(data, offset, 6)
   return (offset, EthAddr(d))
 
-def _readip (data, offset):
+def _readip (data, offset, networkOrder = True):
   (offset, d) = _read(data, offset, 4)
-  return (offset, IPAddr(d))
+  return (offset, IPAddr(d, networkOrder = networkOrder))
 
 # ----------------------------------------------------------------------
 
@@ -170,9 +172,14 @@ class ofp_base (object):
 
   @classmethod
   def unpack_new (cls, raw, offset=0):
-    assert offset == 0 # Not implemented yet
+    """
+    Unpacks wire format into the appropriate message object.
+
+    Returns newoffset,object
+    """
     o = cls()
-    r = o.unpack(raw)#, offset)
+    r,length = o.unpack(raw, offset)
+    assert (r-offset) == length
     return (r, o)
 
 
@@ -213,6 +220,20 @@ def openflow_c_message (*args, **kw):
 def openflow_s_message (*args, **kw):
   return openflow_message(switch=True, *args, **kw)
 
+_queue_prop_type_to_class = {}
+_queue_prop_class_to_types = {} # Do we need this?
+ofp_queue_prop_type_rev_map = {}
+ofp_queue_prop_type_map = {}
+
+def openflow_queue_prop (queue_prop_type, type_val):
+  ofp_queue_prop_type_rev_map[queue_prop_type] = type_val
+  ofp_queue_prop_type_map[type_val] = queue_prop_type
+  def f (c):
+    c.property = type_val
+    _queue_prop_type_to_class[type_val] = c
+    _queue_prop_class_to_types.setdefault(c, set()).add(type_val)
+    return c
+  return f
 
 _action_type_to_class = {}
 _action_class_to_types = {} # Do we need this?
@@ -498,6 +519,7 @@ NO_BUFFER = 4294967295
 
 #1. Openflow Header
 class ofp_header (ofp_base):
+  _MIN_LENGTH = 8
   def __init__ (self, **kw):
     self.version = OFP_VERSION
     #self.header_type = None # Set via class decorator
@@ -524,18 +546,19 @@ class ofp_header (ofp_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!BBHL", self.version, self.header_type,
         len(self), self.xid)
     return packed
 
-  def unpack (self, binaryString):
-    if len(binaryString) < 8:
-      return binaryString
-    #FIXME: self._length is a temporary hack
-    (self.version, self.header_type, self._length, self.xid) = \
-        struct.unpack_from("!BBHL", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    return offset,length
+
+  def _unpack_header (self, raw, offset):
+    offset,(self.version, self.header_type, length, self.xid) = \
+        _unpack("!BBHL", raw, offset)
+    return offset,length
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -574,16 +597,30 @@ class ofp_stats_body_base (ofp_base):
   # decorator will do it for you.
   _type = None
 
+  """
+  def unpack (self, data, offset=0, avail=None):
+  """
 
 class ofp_action_base (ofp_base):
   """
   Base class for actions
 
-  This is sort of the equivalent of ofp_action_header like the spec.
+  This is sort of the equivalent of ofp_action_header in the spec.
   However, ofp_action_header as the spec defines it is not super
   useful for us, as it has the padding in it.
   """
   type = None
+
+
+class ofp_queue_prop_base (ofp_base):
+  """
+  Base class for queue properties
+
+  This is sort of the equivalent of ofp_queue_prop_header in the spec.
+  However, ofp_queue_prop_header as the spec defines it is not super
+  useful for us, as it has the padding in it.
+  """
+  property = None
 
 
 #2. Common Structures
@@ -619,21 +656,24 @@ class ofp_phy_port (ofp_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!H", self.port_no)
-    packed += self.hw_addr if isinstance(self.hw_addr, bytes) else self.hw_addr.toRaw()
+    packed += (self.hw_addr if isinstance(self.hw_addr, bytes) else
+               self.hw_addr.toRaw())
     packed += self.name.ljust(16,'\0')
-    packed += struct.pack("!LLLLLL", self.config, self.state, self.curr, self.advertised, self.supported, self.peer)
+    packed += struct.pack("!LLLLLL", self.config, self.state, self.curr,
+                          self.advertised, self.supported, self.peer)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 48):
-      return binaryString
-    (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
-    self.hw_addr = EthAddr(binaryString[2:8])
-    self.name = binaryString[8:24].replace("\0","")
-    (self.config, self.state, self.curr, self.advertised, self.supported, self.peer) = struct.unpack_from("!LLLLLL", binaryString, 24)
-    return binaryString[48:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.port_no,) = _unpack("!H", raw, offset)
+    offset,self.hw_addr = _readether(raw, offset)
+    offset,self.name = _readzs(raw, offset, OFP_MAX_PORT_NAME_LEN)
+    offset,(self.config, self.state, self.curr, self.advertised,
+            self.supported, self.peer) = _unpack("!LLLLLL", raw, offset)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -697,18 +737,23 @@ class ofp_packet_queue (ofp_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!LH", self.queue_id, len(self))
     packed += _PAD2 # Pad
     for i in self.properties:
       packed += i.pack()
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.queue_id, length) = struct.unpack_from("!LH", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.queue_id, length) = _unpack("!LH", raw, offset)
+    offset = _skip(raw, offset, 2)
+    length -= (4 + 2 + 2)
+
+    offset,self.properties = _unpack_queue_props(raw, length, offset)
+
+    assert offset - _offset == len(self)
+    return offset
 
   def __len__ (self):
     l = 8
@@ -735,34 +780,38 @@ class ofp_packet_queue (ofp_base):
     return outstr
 
 
-class ofp_queue_prop_header (ofp_base):
+class ofp_queue_prop_generic (ofp_queue_prop_base):
+  _MIN_LENGTH = 8
   def __init__ (self, **kw):
-    self.property = 0
+    self.property = None # Purposely bad
+    self.data = _PAD4
 
     initHelper(self, kw)
 
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!HH", self.property, len(self))
-    packed += _PAD4 # Pad
+    packed += self.data
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.property, length) = struct.unpack_from("!HH", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.property, length) = _unpack("!HH", raw, offset)
+    offset,self.data = _read(raw, offset, length-4)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
-    return 8
+    return 4 + len(self.data)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.property != other.property: return False
     if len(self) != len(other): return False
+    if self.data != other.data: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -773,9 +822,15 @@ class ofp_queue_prop_header (ofp_base):
     outstr += prefix + 'len: ' + str(len(self)) + '\n'
     return outstr
 
+
+@openflow_queue_prop('OFPQT_NONE', 0)
+class ofp_queue_prop_none (ofp_queue_prop_generic):
+  pass
+
+
+@openflow_queue_prop('OFPQT_MIN_RATE', 1)
 class ofp_queue_prop_min_rate (ofp_base):
   def __init__ (self, **kw):
-    self.prop_header = ofp_queue_prop_header()
     self.rate = 0
 
     initHelper(self, kw)
@@ -783,18 +838,21 @@ class ofp_queue_prop_min_rate (ofp_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
-    packed += self.prop_header.pack()
+    packed = b""
+    packed += struct.pack("!HH", self.property, len(self))
+    packed += _PAD4
     packed += struct.pack("!H", self.rate)
     packed += _PAD6
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 16):
-      return binaryString
-    self.prop_header.unpack(binaryString[0:])
-    (self.rate,) = struct.unpack_from("!H", binaryString, 8)
-    return binaryString[16:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.property, length, pad) = \
+        _unpack("!HHL", raw, offset)
+    offset,(self.rate,) = _unpack("!H", raw, offset)
+    offset = _skip(raw, offset, 6)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -802,7 +860,7 @@ class ofp_queue_prop_min_rate (ofp_base):
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.prop_header != other.prop_header: return False
+    if self.property != other.property: return False
     if self.rate != other.rate: return False
     return True
 
@@ -810,8 +868,8 @@ class ofp_queue_prop_min_rate (ofp_base):
 
   def show (self, prefix=''):
     outstr = ''
-    outstr += prefix + 'prop_header: \n'
-    self.prop_header.show(prefix + '  ')
+    outstr += prefix + 'property: ' + str(self.property) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'rate: ' + str(self.rate) + '\n'
     return outstr
 
@@ -1029,7 +1087,7 @@ class ofp_match (ofp_base):
   def pack (self, flow_mod=False):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     if self.adjust_wildcards and flow_mod:
       wc = self._wire_wildcards(self.wildcards)
     else:
@@ -1154,26 +1212,27 @@ class ofp_match (ofp_base):
   def is_exact (self):
     return not self.is_wildcarded
 
-  def unpack (self, binaryString, flow_mod=False):
-    if (len(binaryString) < self.__len__()):
-      return binaryString
-    (wildcards, self._in_port) = struct.unpack_from("!LH",binaryString, 0)
-    self._dl_src = EthAddr(struct.unpack_from("!BBBBBB",binaryString, 6))
-    self._dl_dst = EthAddr(struct.unpack_from("!BBBBBB",binaryString, 12))
-    (self._dl_vlan, self._dl_vlan_pcp) = \
-        struct.unpack_from("!HB", binaryString, 18)
-    (self._dl_type, self._nw_tos, self._nw_proto) = \
-        struct.unpack_from("!HBB", binaryString, 22)
-    (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = \
-        struct.unpack_from("!LLHH", binaryString, 28)
-    self._nw_src = IPAddr(self._nw_src)
-    self._nw_dst = IPAddr(self._nw_dst)
+  def unpack (self, raw, offset=0, flow_mod=False):
+    _offset = offset
+    offset,(wildcards, self._in_port) = _unpack("!LH",raw, offset)
+    offset,self._dl_src = _readether(raw, offset)
+    offset,self._dl_dst = _readether(raw, offset)
+    offset,(self._dl_vlan, self._dl_vlan_pcp) = \
+        _unpack("!HB", raw, offset)
+    offset = _skip(raw, offset, 1)
+    offset,(self._dl_type, self._nw_tos, self._nw_proto) = \
+        _unpack("!HBB", raw, offset)
+    offset = _skip(raw, offset, 2)
+    offset,self._nw_src = _readip(raw, offset)
+    offset,self._nw_dst = _readip(raw, offset)
+    offset,(self._tp_src, self._tp_dst) = _unpack("!HH", raw, offset)
 
     # Only unwire wildcards for flow_mod
     self.wildcards = self._normalize_wildcards(
         self._unwire_wildcards(wildcards) if flow_mod else wildcards)
 
-    return binaryString[len(self):]
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1326,18 +1385,17 @@ class ofp_action_generic (ofp_action_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!HH", self.type, len(self))
-    packed += _PAD4 # Pad
+    packed += self.data
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, length) = struct.unpack_from("!HH", binaryString, 0)
-    if len(binaryString) < length: return binaryString
-    self.data = binaryString[4:4+length]
-    return binaryString[length:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length) = _unpack("!HH", raw, offset)
+    offset,self.data = _read(raw, offset, length-4)
+    assert offset - _offset == len(self)
+    return offset
 
   def __len__ (self):
     return 4 + len(self.data)
@@ -1345,6 +1403,7 @@ class ofp_action_generic (ofp_action_base):
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.type != other.type: return False
+    if self.data != other.data: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -1370,15 +1429,17 @@ class ofp_action_output (ofp_action_base):
 
     assert self._assert()
 
-    packed = ""
-    packed += struct.pack("!HHHH", self.type, len(self), self.port, self.max_len)
+    packed = b""
+    packed += struct.pack("!HHHH", self.type, len(self), self.port,
+                          self.max_len)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, length, self.port, self.max_len) = struct.unpack_from("!HHHH", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length, self.port, self.max_len) = \
+        _unpack("!HHHH", raw, offset)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1414,18 +1475,19 @@ class ofp_action_enqueue (ofp_action_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!HHH", self.type, len(self), self.port)
     packed += _PAD6 # Pad
     packed += struct.pack("!L", self.queue_id)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 16):
-      return binaryString
-    (self.type, length, self.port) = struct.unpack_from("!HHH", binaryString, 0)
-    (self.queue_id,) = struct.unpack_from("!L", binaryString, 12)
-    return binaryString[16:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length, self.port) = _unpack("!HHH", raw, offset)
+    offset = _skip(raw, offset, 6)
+    offset,(self.queue_id,) = _unpack("!L", raw, offset)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1459,11 +1521,12 @@ class ofp_action_strip_vlan (ofp_action_base):
     packed = struct.pack("!HHi", self.type, len(self), 0)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, length) = struct.unpack_from("!HH", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length) = _unpack("!HH", raw, offset)
+    offset = _skip(raw, offset, 4)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1494,16 +1557,19 @@ class ofp_action_vlan_vid (ofp_action_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!HHH", self.type, len(self), self.vlan_vid)
     packed += _PAD2 # Pad
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, length, self.vlan_vid) = struct.unpack_from("!HHH", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length, self.vlan_vid) = \
+        _unpack("!HHH", raw, offset)
+    offset = _skip(raw, offset, 2)
+    #TODO: check length for this and other actions
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1536,16 +1602,18 @@ class ofp_action_vlan_pcp (ofp_action_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!HHB", self.type, len(self), self.vlan_pcp)
     packed += _PAD3 # Pad
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, length, self.vlan_pcp) = struct.unpack_from("!HHB", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length, self.vlan_pcp) = \
+        _unpack("!HHB", raw, offset)
+    offset = _skip(raw, offset, 3)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1599,7 +1667,7 @@ class ofp_action_dl_addr (ofp_action_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!HH", self.type, len(self))
     if isinstance(self.dl_addr, EthAddr):
       packed += self.dl_addr.toRaw()
@@ -1608,12 +1676,13 @@ class ofp_action_dl_addr (ofp_action_base):
     packed += _PAD6
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 16):
-      return binaryString
-    (self.type, length) = struct.unpack_from("!HH", binaryString, 0)
-    self.dl_addr = EthAddr(struct.unpack_from("!BBBBBB", binaryString, 4))
-    return binaryString[16:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length) = _unpack("!HH", raw, offset)
+    offset,self.dl_addr = _readether(raw, offset)
+    offset = _skip(raw, offset, 6)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1660,16 +1729,17 @@ class ofp_action_nw_addr (ofp_action_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
-    packed += struct.pack("!HHl", self.type, len(self), self.nw_addr.toSigned())
+    packed = b""
+    packed += struct.pack("!HHl", self.type, len(self),
+                          self.nw_addr.toSigned())
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, length, self.nw_addr) = struct.unpack_from("!HHL", binaryString, 0)
-    self.nw_addr = IPAddr(self.nw_addr, networkOrder=False)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length) = _unpack("!HH", raw, offset)
+    offset,self.nw_addr = _readip(raw, offset)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1700,16 +1770,17 @@ class ofp_action_nw_tos (ofp_action_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!HHB", self.type, len(self), self.nw_tos)
     packed += _PAD3
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, length, self.nw_tos) = struct.unpack_from("!HHB", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length, self.nw_tos) = _unpack("!HHB", raw, offset)
+    offset = _skip(raw, offset, 3)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1752,16 +1823,18 @@ class ofp_action_tp_port (ofp_action_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!HHH", self.type, len(self), self.tp_port)
     packed += _PAD2
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, length, self.tp_port) = struct.unpack_from("!HHH", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length, self.tp_port) = \
+        _unpack("!HHH", raw, offset)
+    offset = _skip(raw, offset, 2)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1794,15 +1867,16 @@ class ofp_action_vendor_header (ofp_action_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!HHL", self.type, len(self), self.vendor)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.type, length, self.vendor) = struct.unpack_from("!HHL", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length, self.vendor) = _unpack("!HHL", raw, offset)
+    # Need to parse rest of body here
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -1828,8 +1902,6 @@ class ofp_action_vendor_header (ofp_action_base):
 #3. Controller-to-Switch Messages
 
 ##3.1 Handshake
-# was ofp_switch_features
-#TODO: Set name back?
 @openflow_s_message("OFPT_FEATURES_REPLY", 6,
     reply_to="ofp_features_request")
 class ofp_features_reply (ofp_header):
@@ -1848,34 +1920,33 @@ class ofp_features_reply (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
-    packed += struct.pack("!QLB", self.datapath_id, self.n_buffers, self.n_tables)
+    packed += struct.pack("!QLB", self.datapath_id, self.n_buffers,
+                          self.n_tables)
     packed += _PAD3
     packed += struct.pack("!LL", self.capabilities, self.actions)
     for i in self.ports:
       packed += i.pack()
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 32):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.datapath_id, self.n_buffers, self.n_tables) = struct.unpack_from("!QLB", binaryString, 8)
-    (self.capabilities, self.actions) = struct.unpack_from("!LL", binaryString, 24)
-    portCount = (self._length - 32) / len(ofp_phy_port)
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.datapath_id, self.n_buffers, self.n_tables) = \
+        _unpack("!QLB", raw, offset)
+    offset = _skip(raw, offset, 3)
+    offset,(self.capabilities, self.actions) = _unpack("!LL", raw, offset)
+    portCount = (length - 32) / len(ofp_phy_port)
     self.ports = []
     for i in xrange(0, portCount):
       p = ofp_phy_port()
-      p.unpack(binaryString[32+i*len(ofp_phy_port):])
+      offset = p.unpack(raw, offset)
       self.ports.append(p)
-    return binaryString[self._length:]
+    assert length == len(self)
+    return offset,length
 
   def __len__ (self):
-    l = 32
-    for _ in self.ports:
-      l += len(ofp_phy_port)
-    return l
+    return 32 + len(self.ports) * len(ofp_phy_port)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -1903,13 +1974,12 @@ class ofp_features_reply (ofp_header):
     for obj in self.ports:
       outstr += obj.show(prefix + '  ')
     return outstr
-
 ofp_switch_features = ofp_features_reply
 
 
 ##3.2 Switch Configuration
 @openflow_c_message("OFPT_SET_CONFIG", 9)
-class ofp_switch_config (ofp_header):
+class ofp_set_config (ofp_header): # uses ofp_switch_config
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.flags = 0
@@ -1920,17 +1990,16 @@ class ofp_switch_config (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.flags, self.miss_send_len)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 12):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.flags, self.miss_send_len) = struct.unpack_from("!HH", binaryString, 8)
-    return binaryString[12:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.flags, self.miss_send_len) = _unpack("!HH", raw, offset)
+    assert length == len(self)
+    return offset,length
 
   @staticmethod
   def __len__ ():
@@ -2026,10 +2095,13 @@ class ofp_flow_mod (ofp_header):
         # Or just duplicate the actions? (I think that's the best idea)
 
     assert self._assert()
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += self.match.pack(flow_mod=True)
-    packed += struct.pack("!QHHHHLHH", self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self._buffer_id, self.out_port, self.flags)
+    packed += struct.pack("!QHHHHLHH", self.cookie, self.command,
+                          self.idle_timeout, self.hard_timeout,
+                          self.priority, self._buffer_id, self.out_port,
+                          self.flags)
     for i in self.actions:
       packed += i.pack()
 
@@ -2038,15 +2110,17 @@ class ofp_flow_mod (ofp_header):
       packed += po.pack()
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 72):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    self.match.unpack(binaryString[8:], flow_mod=True)
-    (self.cookie, self.command, self.idle_timeout, self.hard_timeout, self.priority, self._buffer_id, self.out_port, self.flags) = struct.unpack_from("!QHHHHLHH", binaryString, 8 + len(self.match))
-    self.actions, offset = _unpack_actions(binaryString, self._length-(32 + len(self.match)), 32 + len(self.match))
-    assert offset == self._length
-    return binaryString[offset:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset = self.match.unpack(raw, offset, flow_mod=True)
+    offset,(self.cookie, self.command, self.idle_timeout,
+            self.hard_timeout, self.priority, self._buffer_id,
+            self.out_port, self.flags) = \
+            _unpack("!QHHHHLHH", raw, offset)
+    offset,self.actions = _unpack_actions(raw,
+        length-(32 + len(self.match)), offset)
+    assert length == len(self)
+    return offset,length
 
   def __len__ (self):
     l = 32 + len(self.match)
@@ -2114,7 +2188,7 @@ class ofp_port_mod (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port_no)
     if isinstance(self.hw_addr, bytes):
@@ -2125,14 +2199,15 @@ class ofp_port_mod (ofp_header):
     packed += _PAD4
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 32):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.port_no,) = struct.unpack_from("!H", binaryString, 8)
-    self.hw_addr = EthAddr(binaryString[10:16])
-    (self.config, self.mask, self.advertise) = struct.unpack_from("!LLL", binaryString, 16)
-    return binaryString[32:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.port_no,) = _unpack("!H", raw, offset)
+    offset,self.hw_addr = _readether(raw, offset)
+    offset,(self.config, self.mask, self.advertise) = \
+        _unpack("!LLL", raw, offset)
+    offset = _skip(raw, offset, 4)
+    assert length == len(self)
+    return offset,length
 
   @staticmethod
   def __len__ ():
@@ -2173,18 +2248,18 @@ class ofp_queue_get_config_request (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port)
     packed += _PAD2
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 12):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.port,) = struct.unpack_from("!H", binaryString, 8)
-    return binaryString[12:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.port,) = _unpack("!H", raw, offset)
+    offset = _skip(raw, offset, 2)
+    assert length == len(self)
+    return offset,length
 
   @staticmethod
   def __len__ ():
@@ -2219,7 +2294,7 @@ class ofp_queue_get_config_reply (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += struct.pack("!H", self.port)
     packed += _PAD6
@@ -2227,12 +2302,26 @@ class ofp_queue_get_config_reply (ofp_header):
       packed += i.pack()
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 16):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.port,) = struct.unpack_from("!H", binaryString, 8)
-    return binaryString[16:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.port,) = _unpack("!H", raw, offset)
+    offset = _skip(raw, offset, 6)
+    remaining = length - 6 - 2 - len(ofp_header)
+
+    del self.queues[:]
+
+    # Not tested; probably buggy
+    while remaining > 0:
+      q = ofp_packet_queue()
+      _offset = q.unpack(raw, offset)
+      l = _offset - offset
+      offset = _offset
+      if l < 1: raise RuntimeError("Can't parse")
+      remaining -= l
+      self.queues.append(q)
+
+    assert length == len(self)
+    return offset,length
 
   def __len__ (self):
     l = 16
@@ -2267,8 +2356,8 @@ class ofp_stats_request (ofp_header):
     ofp_header.__init__(self)
     self.type = None # Try to guess
     self.flags = 0
-    self.body = b''
-    self._body_data = (None, None)
+    self._body = b''
+    self._body_packed = None # Cache
 
     initHelper(self, kw)
 
@@ -2277,42 +2366,60 @@ class ofp_stats_request (ofp_header):
       if isinstance(self.body, ofp_stats_body_base):
         self.type = self.body._type
       else:
-        raise RuntimeError("Can't determine body type; specify it explicitly")
+        raise RuntimeError("Can't determine body type; specify it "
+                           + "explicitly")
 
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.flags)
-    packed += self.body_data
+    packed += self._pack_body()
     return packed
 
-  @property
-  def body_data (self):
-    if self._body_data[0] is not self.body:
+  def _pack_body (self):
+    if self._body_packed is None:
       if hasattr(self.body, 'pack'):
-        self._body_data = (self.body, self.body.pack())
+        self._body_packed = self._body.pack()
       else:
-        self._body_data = (self.body, self.body)
-    return self._body_data[1]
+        self._body_packed = self._body
+    return self._body_packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 12):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.type, self.flags) = struct.unpack_from("!HH", binaryString, 8)
-    self.body = binaryString[12:self._length]
-    return binaryString[self._length:]
+  @property
+  def body (self):
+    return self._body
+  @body.setter
+  def body (self, data):
+    self._body = data
+    self._body_packed_cache = None
+
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.type, self.flags) = _unpack("!HH", raw, offset)
+    offset,body = _read(raw, offset, length - 12)
+    si = _stats_type_to_class_info.get(self.type)
+    if si is None:
+      self.body = ofp_generic_stats_body()
+      self.body.unpack(body, 0, len(body))
+    else:
+      if si.request is None:
+        raise RuntimeError("No request for " + str(si))
+      self.body = si.request()
+      self.body.unpack(body, 0, len(body))
+      #TODO: assert entire body is unpacked
+
+    assert length == len(self)
+    return offset,length
 
   def __len__ (self):
-    return 12 + len(self.body_data)
+    return 12 + len(self._pack_body())
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
     if self.type != other.type: return False
     if self.flags != other.flags: return False
-    if self.body_data != other.body_data: return False
+    if self._pack_body() != other._pack_body(): return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
@@ -2370,22 +2477,21 @@ class ofp_stats_reply (ofp_header):
       if isinstance(self.body, ofp_stats_body_base):
         self.type = self.body._type
       else:
-        raise RuntimeError("Can't determine body type; specify it explicitly")
+        raise RuntimeError("Can't determine body type; specify it "
+                           + "explicitly")
 
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.flags)
     packed += self.body_data
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 12):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.type, self.flags) = struct.unpack_from("!HH", binaryString, 8)
-    packed = binaryString[12:self._length]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.type, self.flags) = _unpack("!HH", raw, offset)
+    offset,packed = _read(raw, offset, length - 12)
     t = _stats_type_to_class_info.get(self.type)
     if t is None:
       #FIXME: Put in a generic container?
@@ -2397,18 +2503,20 @@ class ofp_stats_reply (ofp_header):
       else:
         if not t.reply_is_list:
           self.body = t.reply()
-          self.body.unpack(packed)
+          self.body.unpack(packed, 0, len(packed))
         else:
           prev_len = len(packed)
           self.body = []
           while len(packed):
             part = t.reply()
-            packed = part.unpack(packed)
+            off = part.unpack(packed, 0, len(packed))
+            packed = packed[off:]
             assert len(packed) != prev_len
             prev_len = len(packed)
             self.body.append(part)
 
-    return binaryString[self._length:]
+    assert length == len(self)
+    return offset,length
 
   def __len__ (self):
     return 12 + len(self.body)
@@ -2471,7 +2579,7 @@ class ofp_desc_stats (ofp_stats_body_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += self.mfr_desc.ljust(256,'\0')
     packed += self.hw_desc.ljust(256,'\0')
     packed += self.sw_desc.ljust(256,'\0')
@@ -2479,15 +2587,15 @@ class ofp_desc_stats (ofp_stats_body_base):
     packed += self.dp_desc.ljust(256,'\0')
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 1056):
-      return binaryString
-    self.mfr_desc = binaryString[0:256].replace("\0","")
-    self.hw_desc = binaryString[256:512].replace("\0","")
-    self.sw_desc = binaryString[512:768].replace("\0","")
-    self.serial_num = binaryString[768:800].replace("\0","")
-    self.dp_desc = binaryString[800:1056].replace("\0","")
-    return binaryString[1056:]
+  def unpack (self, raw, offset, avail):
+    _offset = offset
+    offset,self.mfr_desc   = _readzs(raw, offset, DESC_STR_LEN)
+    offset,self.hw_desc    = _readzs(raw, offset, DESC_STR_LEN)
+    offset,self.sw_desc    = _readzs(raw, offset, DESC_STR_LEN)
+    offset,self.serial_num = _readzs(raw, offset, SERIAL_NUM_LEN)
+    offset,self.dp_desc    = _readzs(raw, offset, DESC_STR_LEN)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -2516,6 +2624,35 @@ class ofp_desc_stats (ofp_stats_body_base):
 ofp_desc_stats_reply = ofp_desc_stats
 
 
+# This next one is weird.  It only exists so that the type-guessing
+# will work for requests.  I don't think it's really needed, though.
+@openflow_stats_request('OFPST_DESC', 0)
+class ofp_desc_stats_request (ofp_stats_body_base):
+  def __init__ (self, **kw):
+    pass
+
+  def pack (self):
+    return b""
+
+  def unpack (self, raw, offset, avail):
+    if avail != 0:
+      raise RuntimeError("Expected empty body")
+    return offset
+
+  @staticmethod
+  def __len__ ():
+    return 0
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    return True
+
+  def __ne__ (self, other): return not self.__eq__(other)
+
+  def show (self, prefix=''):
+    return "<empty>"
+
+
 @openflow_stats_request('OFPST_FLOW', 1)
 class ofp_flow_stats_request (ofp_stats_body_base):
   def __init__ (self, **kw):
@@ -2532,17 +2669,19 @@ class ofp_flow_stats_request (ofp_stats_body_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += self.match.pack()
     packed += struct.pack("!BBH", self.table_id, 0, self.out_port)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 44):
-      return binaryString
-    self.match.unpack(binaryString[0:])
-    (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, len(self.match))
-    return binaryString[len(self)]
+  def unpack (self, raw, offset, avail):
+    _offset = offset
+    offset = self.match.unpack(raw, offset)
+    offset,(self.table_id, pad, self.out_port) = \
+        _unpack("!BBH", raw, offset)
+    assert pad == 0
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -2592,26 +2731,35 @@ class ofp_flow_stats (ofp_stats_body_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!HBB", len(self), self.table_id, 0)
     packed += self.match.pack()
-    packed += struct.pack("!LLHHH", self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout)
+    packed += struct.pack("!LLHHH", self.duration_sec,
+                          self.duration_nsec, self.priority,
+                          self.idle_timeout, self.hard_timeout)
     packed += _PAD6 # Pad
-    packed += struct.pack("!QQQ", self.cookie, self.packet_count, self.byte_count)
+    packed += struct.pack("!QQQ", self.cookie, self.packet_count,
+                          self.byte_count)
     for i in self.actions:
       packed += i.pack()
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 48 + len(self.match)):
-      return binaryString
-    (length, self.table_id, pad) = struct.unpack_from("!HBB", binaryString, 0)
-    self.match.unpack(binaryString[4:])
-    (self.duration_sec, self.duration_nsec, self.priority, self.idle_timeout, self.hard_timeout) = struct.unpack_from("!LLHHH", binaryString, 4 + len(self.match))
-    (self.cookie, self.packet_count, self.byte_count) = struct.unpack_from("!QQQ", binaryString, 24 + len(self.match))
-    self.actions,offset = _unpack_actions(binaryString, length - (48 + len(self.match)), 48 + len(self.match))
-    assert offset == length
-    return binaryString[offset:]
+  def unpack (self, raw, offset, avail):
+    _offset = offset
+    offset,(length, self.table_id, pad) = _unpack("!HBB", raw, offset)
+    assert pad == 0
+    offset = self.match.unpack(raw, offset)
+    offset,(self.duration_sec, self.duration_nsec, self.priority,
+            self.idle_timeout, self.hard_timeout) = \
+            _unpack("!LLHHH", raw, offset)
+    offset = _skip(raw, offset, 6)
+    offset,(self.cookie, self.packet_count, self.byte_count) = \
+        _unpack("!QQQ", raw, offset)
+    assert (offset - _offset) == 48 + len(self.match)
+    offset,self.actions = _unpack_actions(raw,
+        length - (48 + len(self.match)), offset)
+    assert offset - _offset == len(self)
+    return offset
 
   def __len__ (self):
     l = 48 + len(self.match)
@@ -2675,17 +2823,19 @@ class ofp_aggregate_stats_request (ofp_stats_body_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += self.match.pack()
     packed += struct.pack("!BBH", self.table_id, 0, self.out_port)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 4 + len(self.match)):
-      return binaryString
-    self.match.unpack(binaryString[0:])
-    (self.table_id, pad, self.out_port) = struct.unpack_from("!BBH", binaryString, len(self.match))
-    return binaryString[44:]
+  def unpack (self, raw, offset, avail):
+    _offset = offset
+    offset = self.match.unpack(raw, offset)
+    offset,(self.table_id, pad, self.out_port) = \
+        _unpack("!BBH", raw, offset)
+    assert pad == 0
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -2721,16 +2871,19 @@ class ofp_aggregate_stats (ofp_stats_body_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
-    packed += struct.pack("!QQL", self.packet_count, self.byte_count, self.flow_count)
+    packed = b""
+    packed += struct.pack("!QQL", self.packet_count, self.byte_count,
+                          self.flow_count)
     packed += _PAD4 # Pad
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 24):
-      return binaryString
-    (self.packet_count, self.byte_count, self.flow_count) = struct.unpack_from("!QQL", binaryString, 0)
-    return binaryString[24:]
+  def unpack (self, raw, offset, avail):
+    _offset = offset
+    offset,(self.packet_count, self.byte_count, self.flow_count) = \
+        _unpack("!QQL", raw, offset)
+    offset = _skip(raw, offset, 4)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -2777,20 +2930,25 @@ class ofp_table_stats (ofp_stats_body_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!B", self.table_id)
     packed += _PAD3
     packed += self.name.ljust(32,'\0')
-    packed += struct.pack("!LLLQQ", self.wildcards, self.max_entries, self.active_count, self.lookup_count, self.matched_count)
+    packed += struct.pack("!LLLQQ", self.wildcards, self.max_entries,
+                          self.active_count, self.lookup_count,
+                          self.matched_count)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 64):
-      return binaryString
-    (self.table_id,) = struct.unpack_from("!B", binaryString, 0)
-    self.name = binaryString[4:36].replace("\0","")
-    (self.wildcards, self.max_entries, self.active_count, self.lookup_count, self.matched_count) = struct.unpack_from("!LLLQQ", binaryString, 36)
-    return binaryString[64:]
+  def unpack (self, raw, offset, avail):
+    _offset = offset
+    offset,(self.table_id,) = _unpack("!B", raw, offset)
+    offset = _skip(raw, offset, 3)
+    offset,self.name = _readzs(raw, offset, OFP_MAX_TABLE_NAME_LEN)
+    offset,(self.wildcards, self.max_entries, self.active_count,
+            self.lookup_count, self.matched_count) = \
+            _unpack("!LLLQQ", raw, offset)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -2831,16 +2989,17 @@ class ofp_port_stats_request (ofp_stats_body_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!H", self.port_no)
     packed += _PAD6
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
-    return binaryString[8:]
+  def unpack (self, raw, offset, avail):
+    _offset = offset
+    offset,(self.port_no,) = _unpack("!H", raw, offset)
+    offset = _skip(raw, offset, 6)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -2881,18 +3040,28 @@ class ofp_port_stats (ofp_stats_body_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!H", self.port_no)
     packed += _PAD6
-    packed += struct.pack("!QQQQQQQQQQQQ", self.rx_packets, self.tx_packets, self.rx_bytes, self.tx_bytes, self.rx_dropped, self.tx_dropped, self.rx_errors, self.tx_errors, self.rx_frame_err, self.rx_over_err, self.rx_crc_err, self.collisions)
+    packed += struct.pack("!QQQQQQQQQQQQ", self.rx_packets,
+                          self.tx_packets, self.rx_bytes, self.tx_bytes,
+                          self.rx_dropped, self.tx_dropped,
+                          self.rx_errors, self.tx_errors,
+                          self.rx_frame_err, self.rx_over_err,
+                          self.rx_crc_err, self.collisions)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 104):
-      return binaryString
-    (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
-    (self.rx_packets, self.tx_packets, self.rx_bytes, self.tx_bytes, self.rx_dropped, self.tx_dropped, self.rx_errors, self.tx_errors, self.rx_frame_err, self.rx_over_err, self.rx_crc_err, self.collisions) = struct.unpack_from("!QQQQQQQQQQQQ", binaryString, 8)
-    return binaryString[104:]
+  def unpack (self, raw, offset, avail):
+    _offset = offset
+    offset,(self.port_no,) = _unpack("!H", raw, offset)
+    offset = _skip(raw, offset, 6)
+    offset,(self.rx_packets, self.tx_packets, self.rx_bytes,
+            self.tx_bytes, self.rx_dropped, self.tx_dropped,
+            self.rx_errors, self.tx_errors, self.rx_frame_err,
+            self.rx_over_err, self.rx_crc_err, self.collisions) = \
+            _unpack("!QQQQQQQQQQQQ", raw, offset)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -2964,18 +3133,18 @@ class ofp_queue_stats_request (ofp_stats_body_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!H", self.port_no)
     packed += _PAD2
     packed += struct.pack("!L", self.queue_id)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
-    (self.queue_id,) = struct.unpack_from("!L", binaryString, 4)
-    return binaryString[8:]
+  def unpack (self, raw, offset, avail):
+    _offset = offset
+    offset,(self.port_no,pad,self.queue_id) = _unpack("!HHL", raw, offset)
+    assert pad == 0
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -3010,18 +3179,20 @@ class ofp_queue_stats (ofp_stats_body_base):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += struct.pack("!H", self.port_no)
     packed += _PAD2
-    packed += struct.pack("!LQQQ", self.queue_id, self.tx_bytes, self.tx_packets, self.tx_errors)
+    packed += struct.pack("!LQQQ", self.queue_id, self.tx_bytes,
+                          self.tx_packets, self.tx_errors)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 32):
-      return binaryString
-    (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
-    (self.queue_id, self.tx_bytes, self.tx_packets, self.tx_errors) = struct.unpack_from("!LQQQ", binaryString, 4)
-    return binaryString[32:]
+  def unpack (self, raw, offset, avail):
+    _offset = offset
+    offset,(self.port_no, pad, self.queue_id, self.tx_bytes,
+            self.tx_packets, self.tx_errors) = \
+            _unpack("!HHLQQQ", raw, offset)
+    assert offset - _offset == len(self)
+    return offset
 
   @staticmethod
   def __len__ ():
@@ -3049,46 +3220,94 @@ class ofp_queue_stats (ofp_stats_body_base):
 ofp_queue_stats_reply = ofp_queue_stats
 
 
+@openflow_stats_request("OFPST_VENDOR", 65535, is_list = False)
 @openflow_stats_reply("OFPST_VENDOR", 65535, is_list = False)
-#FIXME
 class ofp_vendor_stats_generic (ofp_stats_body_base):
+  _MIN_LENGTH = 4
   def __init__ (self, **kw):
+    self.vendor = None
+    self.data = b""
 
     initHelper(self, kw)
+
+  def _pack_body (self):
+    if hasattr(self.data, "pack"):
+      return self.data.pack()
+    else:
+      return self.data
 
   def pack (self):
     assert self._assert()
 
-    packed = ""
-    packed += struct.pack("!H", self.port_no)
-    packed += _PAD2
-    packed += struct.pack("!LQQQ", self.queue_id, self.tx_bytes, self.tx_packets, self.tx_errors)
+    packed = struct.pack("!L", self.vendor)
+    packed += self._pack_body()
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 32):
-      return binaryString
-    (self.port_no,) = struct.unpack_from("!H", binaryString, 0)
-    (self.queue_id, self.tx_bytes, self.tx_packets, self.tx_errors) = struct.unpack_from("!LQQQ", binaryString, 4)
-    return binaryString[32:]
+  def unpack (self, raw, offset, avail):
+    if avail is None: RuntimeError("Requires length")
+    _offset = offset
+    offset,(self.vendor,) = _unpack("!L", raw, offset)
+    offset,self.data = _read(raw, offset, avail-4)
+    return offset
 
   @staticmethod
   def __len__ ():
-    return 32
+    return 4+len(self._pack_body())
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
-    if self.port_no != other.port_no: return False
-    if self.queue_id != other.queue_id: return False
-    if self.tx_bytes != other.tx_bytes: return False
-    if self.tx_packets != other.tx_packets: return False
-    if self.tx_errors != other.tx_errors: return False
+    if self.vendor != other.vendor: return False
+    if self.data != other.data: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
 
   def show (self, prefix=''):
     outstr = ''
+    outstr += prefix + 'vendor id: ' + str(self.vendor) + '\n'
+    outstr += prefix + 'data len: ' + str(len(self.data)) + '\n'
+    return outstr
+
+
+class ofp_generic_stats_body (ofp_stats_body_base):
+  _MIN_LENGTH = 0
+  def __init__ (self, **kw):
+    self.data = b""
+
+    initHelper(self, kw)
+
+  def _pack_body (self):
+    if hasattr(self.data, "pack"):
+      return self.data.pack()
+    else:
+      return self.data
+
+  def pack (self):
+    assert self._assert()
+
+    packed += self._pack_body()
+    return packed
+
+  def unpack (self, raw, offset, avail):
+    if avail is None: RuntimeError("Requires length")
+    _offset = offset
+    offset,self.data = _read(raw, offset, avail)
+    return offset
+
+  @staticmethod
+  def __len__ ():
+    return len(self._pack_body())
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.data != other.data: return False
+    return True
+
+  def __ne__ (self, other): return not self.__eq__(other)
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'data len: ' + str(len(self.data)) + '\n'
     return outstr
 
 
@@ -3167,15 +3386,21 @@ class ofp_packet_out (ofp_header):
       struct.pack("!LHH", self._buffer_id, self.in_port, actions_len),
       actions))
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 16):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self._buffer_id, self.in_port, actions_len) = struct.unpack_from("!LHH", binaryString, 8)
-    self.actions,offset = _unpack_actions(binaryString, actions_len, 16)
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self._buffer_id, self.in_port, actions_len) = \
+        _unpack("!LHH", raw, offset)
+    offset,self.actions = _unpack_actions(raw, actions_len, offset)
 
-    self.data = binaryString[offset:self._length] if offset < self._length else None
-    return binaryString[self._length:]
+    remaining = length - (offset - _offset)
+    if remaining <= 0:
+      self.data = None
+    else:
+      offset,self.data = _read(raw, offset, remaining)
+
+    assert length == len(self)
+    return offset,length
 
   def __len__ (self):
     return 16 + reduce(operator.add, (len(a) for a in self.actions),
@@ -3218,15 +3443,14 @@ class ofp_barrier_reply (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    return binaryString[8:]
+  #def unpack (self, raw, offset=0):
+  #  offset,length = self._unpack_header(raw, offset)
+  #  assert length == len(self)
+  #  return offset,length
 
   @staticmethod
   def __len__ ():
@@ -3257,15 +3481,14 @@ class ofp_barrier_request (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    return binaryString[8:]
+  #def unpack (self, raw, offset=0):
+  #  offset,length = self._unpack_header(raw, offset)
+  #  assert length == len(self)
+  #  return offset,length
 
   @staticmethod
   def __len__ ():
@@ -3342,10 +3565,12 @@ class ofp_packet_in (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
-    packed += struct.pack("!LHHBB", self._buffer_id, self.total_len, self.in_port, self.reason, 0)
+    packed += struct.pack("!LHHBB", self._buffer_id, self.total_len,
+                          self.in_port, self.reason, 0)
     packed += self.data
+    #TODO: Padding?  See __len__
     return packed
 
   @property
@@ -3353,17 +3578,19 @@ class ofp_packet_in (ofp_header):
     if self.buffer_id is not None: return True
     return len(self.data) == self.total_len
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 18):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self._buffer_id, self._total_len, self.in_port, self.reason, pad) = struct.unpack_from("!LHHBB", binaryString, 8)
-    if (len(binaryString) < self._length):
-      return binaryString
-    self.data = binaryString[18:self._length]
-    return binaryString[self._length:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self._buffer_id, self._total_len, self.in_port, self.reason,
+            pad) = _unpack("!LHHBB", raw, offset)
+    offset,self.data = _read(raw, offset, length-18)
+    assert length == len(self)
+    return offset,length
 
   def __len__ (self):
+    #FIXME: This is probably wrong, but it's not clear from the
+    #       spec what's supposed to be going on here.
+    #if len(self.data) < 2:
+    #  return 20 + len(self.data)
     return 18 + len(self.data)
 
   def __eq__ (self, other):
@@ -3413,25 +3640,30 @@ class ofp_flow_removed (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += self.match.pack()
     packed += struct.pack("!QHB", self.cookie, self.priority, self.reason)
     packed += _PAD
-    packed += struct.pack("!LLH", self.duration_sec, self.duration_nsec, self.idle_timeout)
+    packed += struct.pack("!LLH", self.duration_sec, self.duration_nsec,
+                          self.idle_timeout)
     packed += _PAD2
     packed += struct.pack("!QQ", self.packet_count, self.byte_count)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < len(self)):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    self.match.unpack(binaryString[8:])
-    (self.cookie, self.priority, self.reason) = struct.unpack_from("!QHB", binaryString, 8 + len(self.match))
-    (self.duration_sec, self.duration_nsec, self.idle_timeout) = struct.unpack_from("!LLH", binaryString, 20 + len(self.match))
-    (self.packet_count, self.byte_count) = struct.unpack_from("!QQ", binaryString, 32 + len(self.match))
-    return binaryString[len(self):]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset = self.match.unpack(raw, offset)
+    offset,(self.cookie, self.priority, self.reason) = \
+        _unpack("!QHB", raw, offset)
+    offset = _skip(raw, offset, 1)
+    offset,(self.duration_sec, self.duration_nsec, self.idle_timeout) = \
+        _unpack("!LLH", raw, offset)
+    offset = _skip(raw, offset, 2)
+    offset,(self.packet_count, self.byte_count) = \
+        _unpack("!QQ", raw, offset)
+    assert length == len(self)
+    return offset,length
 
   @staticmethod
   def __len__ ():
@@ -3487,20 +3719,20 @@ class ofp_port_status (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += struct.pack("!B", self.reason)
     packed += _PAD * 7 # Pad
     packed += self.desc.pack()
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 64):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.reason,) = struct.unpack_from("!B", binaryString, 8)
-    self.desc.unpack(binaryString[16:])
-    return binaryString[64:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.reason,) = _unpack("!B", raw, offset)
+    offset = _skip(raw, offset, 7)
+    offset = self.desc.unpack(raw, offset)
+    assert length == len(self)
+    return offset,length
 
   @staticmethod
   def __len__ ():
@@ -3532,26 +3764,25 @@ class ofp_error (ofp_header):
     ofp_header.__init__(self)
     self.type = 0
     self.code = 0
-    self.data = []
+    self.data = b''
 
     initHelper(self, kw)
 
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.code)
-    for i in self.data:
-      packed += struct.pack("!B",i)
+    packed += self.data
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 12):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.type, self.code) = struct.unpack_from("!HH", binaryString, 8)
-    return binaryString[12:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.type, self.code) = _unpack("!HH", raw, offset)
+    offfset,self.data = _read(raw, offset, length - 12)
+    assert length == len(self)
+    return offset,length
 
   def __len__ (self):
     return 12 + len(self.data)
@@ -3596,15 +3827,14 @@ class ofp_hello (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    return binaryString[8:]
+  #def unpack (self, raw, offset=0):
+  #  offset,length = self._unpack_header(raw, offset)
+  #  assert length == len(self)
+  #  return offset,length
 
   @staticmethod
   def __len__ ():
@@ -3641,16 +3871,11 @@ class ofp_echo_request (ofp_header):
     packed += self.body
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    # Note that we trust the header to be correct here
-    if len(binaryString) < self._length:
-      return binaryString
-    l = self._length - 8
-    self.body = binaryString[8:8+l]
-    return binaryString[8 + l:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,self.body = _read(raw, offset, length - 8)
+    assert length == len(self)
+    return offset,length
 
   def __len__ (self):
     return 8 + len(self.body)
@@ -3689,16 +3914,11 @@ class ofp_echo_reply (ofp_header):
     packed += self.body
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    # Note that we trust the header to be correct here
-    if len(binaryString) < self._length:
-      return binaryString
-    l = self._length - 8
-    self.body = binaryString[8:8+l]
-    return binaryString[8 + l:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,self.body = _read(raw, offset, length - 8)
+    assert length == len(self)
+    return offset,length
 
   def __len__ (self):
     return 8 + len(self.body)
@@ -3720,52 +3940,17 @@ class ofp_echo_reply (ofp_header):
     return outstr
 
 
-class ofp_vendor_header (ofp_header):
-  def __init__ (self, **kw):
-    ofp_header.__init__(self)
-    self.header_type = OFPT_VENDOR
-    self.vendor = 0
-
-    initHelper(self, kw)
-
-  def pack (self):
-    assert self._assert()
-
-    packed = ""
-    packed += ofp_header.pack(self)
-    packed += struct.pack("!L", self.vendor)
-    return packed
-
-  def unpack (self, binaryString):
-    if (len(binaryString) < 12):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.vendor,) = struct.unpack_from("!L", binaryString, 8)
-    return binaryString[12:]
-
-  @staticmethod
-  def __len__ ():
-    return 12
-
-  def __eq__ (self, other):
-    if type(self) != type(other): return False
-    if not ofp_header.__eq__(self, other): return False
-    if self.vendor != other.vendor: return False
-    return True
-
-  def __ne__ (self, other): return not self.__eq__(other)
-
-  def show (self, prefix=''):
-    outstr = ''
-    outstr += prefix + 'header: \n'
-    outstr += ofp_header.show(self, prefix + '  ')
-    outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
-    return outstr
+class ofp_vendor_base (ofp_header):
+  """
+  Base class for vendor messages
+  """
+  pass
 
 
 @openflow_sc_message("OFPT_VENDOR", 4)
-class ofp_vendor (ofp_header):
+class ofp_vendor_generic (ofp_vendor_base):
   _MIN_LENGTH = 12
+
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.vendor = 0
@@ -3775,7 +3960,7 @@ class ofp_vendor (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += struct.pack("!L", self.vendor)
     if hasattr(self.data, "pack"):
@@ -3784,15 +3969,11 @@ class ofp_vendor (ofp_header):
       packed += self.data
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 12):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.vendor,) = struct.unpack_from("!L", binaryString, 8)
-    if len(binaryString) < self._length:
-      return binaryString
-    self.data = binaryString[12:self._length]
-    return binaryString[self._length:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.vendor,) = _unpack("!L", raw, offset)
+    offset,self.data = _read(raw, offset, length-12)
+    return offset,length
 
   def __len__ (self):
     return 12 + len(self.data)
@@ -3811,7 +3992,7 @@ class ofp_vendor (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
-    outstr += prefix + 'data: ' + self.data + '\n'
+    outstr += prefix + 'datalen: ' + len(self.data) + '\n'
     return outstr
 
 
@@ -3826,15 +4007,15 @@ class ofp_features_request (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    return binaryString[8:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    return raw[8:]
+    assert length == len(self)
+    return offset,length
 
   @staticmethod
   def __len__ ():
@@ -3865,15 +4046,14 @@ class ofp_get_config_request (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 8):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    return binaryString[8:]
+  #def unpack (self, raw, offset=0):
+  #  offset,length = self._unpack_header(raw, offset)
+  #  assert length == len(self)
+  #  return offset,length
 
   @staticmethod
   def __len__ ():
@@ -3895,7 +4075,7 @@ class ofp_get_config_request (ofp_header):
 
 @openflow_s_message("OFPT_GET_CONFIG_REPLY", 8,
     reply_to="ofp_get_config_request")
-class ofp_get_config_reply (ofp_header):
+class ofp_get_config_reply (ofp_header): # uses ofp_switch_config
   def __init__ (self, **kw):
     ofp_header.__init__(self)
     self.flags = 0
@@ -3906,18 +4086,17 @@ class ofp_get_config_reply (ofp_header):
   def pack (self):
     assert self._assert()
 
-    packed = ""
+    packed = b""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.flags, self.miss_send_len)
     return packed
 
-  def unpack (self, binaryString):
-    if (len(binaryString) < 12):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.flags, self.miss_send_len) = \
-        struct.unpack_from("!HH", binaryString, 8)
-    return binaryString[12:]
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    offset,(self.flags, self.miss_send_len) = \
+        _unpack("!HH", raw, offset)
+    assert length == len(self)
+    return offset,length
 
   @staticmethod
   def __len__ ():
@@ -3941,93 +4120,44 @@ class ofp_get_config_reply (ofp_header):
     return outstr
 
 
-@openflow_c_message("OFPT_SET_CONFIG", 9)
-class ofp_set_config (ofp_header):
-  def __init__ (self, **kw):
-    ofp_header.__init__(self)
-    self.flags = 0
-    self.miss_send_len = OFP_DEFAULT_MISS_SEND_LEN
-
-    initHelper(self, kw)
-
-  def pack (self):
-    assert self._assert()
-
-    packed = ""
-    packed += ofp_header.pack(self)
-    packed += struct.pack("!HH", self.flags, self.miss_send_len)
-    return packed
-
-  def unpack (self, binaryString):
-    if (len(binaryString) < 12):
-      return binaryString
-    ofp_header.unpack(self, binaryString[0:])
-    (self.flags, self.miss_send_len) = \
-        struct.unpack_from("!HH", binaryString, 8)
-    return binaryString[12:]
-
-  @staticmethod
-  def __len__ ():
-    return 12
-
-  def __eq__ (self, other):
-    if type(self) != type(other): return False
-    if not ofp_header.__eq__(self, other): return False
-    if self.flags != other.flags: return False
-    if self.miss_send_len != other.miss_send_len: return False
-    return True
-
-  def __ne__ (self, other): return not self.__eq__(other)
-
-  def show (self, prefix=''):
-    outstr = ''
-    outstr += prefix + 'header: \n'
-    outstr += ofp_header.show(self, prefix + '  ')
-    outstr += prefix + 'flags: ' + str(self.flags) + '\n'
-    outstr += prefix + 'miss_send_len: ' + str(self.miss_send_len) + '\n'
-    return outstr
-
-
-def _get_type (o):
+def _unpack_queue_props (b, length, offset=0):
   """
-  Gets the OpenFlow type for the given class or object.
-
-  If the given class/object is not an OpenFlow type,
-  returns None.
-
-  For example, if o is an ofp_flow_mod, it returns
-  OFPT_FLOW_MOD (14).
+  Parses queue props from a buffer
+  b is a buffer (bytes)
+  offset, if specified, is where in b to start decoding
+  returns (next_offset, [Pops])
   """
-  #TODO: Replace with a more efficient version.  A
-  #      good way to do this might be to set a class
-  #      variable __type on initialization.
-  if o.__class__ is object:
-    c = o.__name__
-  else:
-    c = o.__class__.__name__
-  if not c.startswith("ofp_"): return None
-  c = c.split("ofp_", 1)[1]
-  if (c.endswith("_stats_request") or c.endswith("_stats_reply") or
-      c.endswith("_stats")):
-    c = c.rsplit("_stats", 1)[0].upper()
-    c = "OFPST_" + c
-    return ofp_stats_type_rev_map.get(c)
-  #TODO: For non-stats
-
+  if (len(b) - offset) < length: raise UnderrunError
+  props = []
+  end = length + offset
+  while offset < end:
+    (t,l) = struct.unpack_from("!HH", b, offset)
+    if (len(b) - offset) < l: raise UnderrunError
+    a = _queue_prop_type_to_class.get(t)
+    if a is None:
+      # Use generic prop header for unknown type
+      a = ofp_queue_prop_generic()
+    else:
+      a = a()
+    a.unpack(b[offset:offset+l])
+    assert len(a) == l
+    props.append(a)
+    offset += l
+  return (offset, props)
 
 def _unpack_actions (b, length, offset=0):
   """
   Parses actions from a buffer
   b is a buffer (bytes)
-  offset, if specified is where in b to start decoding
-  returns ([Actions], next_offset)
+  offset, if specified, is where in b to start decoding
+  returns (next_offset, [Actions])
   """
-  if (len(b) - offset) < length: return ([], offset)
+  if (len(b) - offset) < length: raise UnderrunError
   actions = []
   end = length + offset
   while offset < end:
     (t,l) = struct.unpack_from("!HH", b, offset)
-    if (len(b) - offset) < l: return ([], offset)
+    if (len(b) - offset) < l: raise UnderrunError
     a = _action_type_to_class.get(t)
     if a is None:
       # Use generic action header for unknown type
@@ -4038,7 +4168,7 @@ def _unpack_actions (b, length, offset=0):
     assert len(a) == l
     actions.append(a)
     offset += l
-  return (actions, offset)
+  return (offset, actions)
 
 def _init ():
   def formatMap (name, m):

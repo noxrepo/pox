@@ -124,7 +124,7 @@ class ofp_command_test(unittest.TestCase):
   # custom map of POX class to header type, for validation
   ofp_type = {
     ofp_features_reply: OFPT_FEATURES_REPLY,
-    ofp_switch_config: OFPT_SET_CONFIG,
+    ofp_set_config: OFPT_SET_CONFIG,
     ofp_flow_mod: OFPT_FLOW_MOD,
     ofp_port_mod: OFPT_PORT_MOD,
     ofp_queue_get_config_request: OFPT_QUEUE_GET_CONFIG_REQUEST,
@@ -141,7 +141,7 @@ class ofp_command_test(unittest.TestCase):
     ofp_hello: OFPT_HELLO,
     ofp_echo_request: OFPT_ECHO_REQUEST,
     ofp_echo_reply: OFPT_ECHO_REPLY,
-    ofp_vendor: OFPT_VENDOR,
+    ofp_vendor_generic: OFPT_VENDOR,
     ofp_features_request: OFPT_FEATURES_REQUEST,
     ofp_get_config_request: OFPT_GET_CONFIG_REQUEST,
     ofp_get_config_reply: OFPT_GET_CONFIG_REPLY,
@@ -194,7 +194,8 @@ class ofp_command_test(unittest.TestCase):
   def test_pack_all_comands_simple(self):
     xid_gen = itertools.count()
     for cls in ( ofp_features_reply,
-                   ofp_switch_config,
+                   ofp_set_config,
+                   ofp_get_config_reply,
                    ofp_flow_mod,
                    ofp_port_mod,
                    ofp_queue_get_config_request,
@@ -219,9 +220,10 @@ class ofp_command_test(unittest.TestCase):
       args = {}
 
       # Customize initializer
-      if cls in (ofp_stats_reply, ofp_stats_request):
-        # These need a body set
+      if cls is ofp_stats_reply:
         args['body'] = ofp_desc_stats(sw_desc="POX")
+      elif cls is ofp_stats_request:
+        args['body'] = ofp_vendor_stats_generic(vendor=0xcafe)
 
       o = cls(xid=xid, **args)
       self._test_pack_unpack(o, xid)
