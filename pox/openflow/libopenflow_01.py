@@ -179,7 +179,7 @@ class ofp_base (object):
     """
     o = cls()
     r,length = o.unpack(raw, offset)
-    assert (r-offset) == length
+    assert (r-offset) == length, o
     return (r, o)
 
 
@@ -3780,7 +3780,7 @@ class ofp_error (ofp_header):
   def unpack (self, raw, offset=0):
     offset,length = self._unpack_header(raw, offset)
     offset,(self.type, self.code) = _unpack("!HH", raw, offset)
-    offfset,self.data = _read(raw, offset, length - 12)
+    offset,self.data = _read(raw, offset, length - 12)
     assert length == len(self)
     return offset,length
 
@@ -3813,7 +3813,8 @@ class ofp_error (ofp_header):
     outstr += prefix + 'type: ' + str(t) + '\n'
     outstr += prefix + 'code: ' + str(c) + '\n'
     if len(self.data):
-      outstr += prefix + 'data: ' + str(self.data) + '\n'
+      outstr += prefix + 'datalen: %s\n' % (len(self.data),)
+      outstr += prefix + hexdump(self.data).replace("\n", "\n" + prefix)
     return outstr.strip()
 
 
