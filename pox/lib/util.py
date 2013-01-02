@@ -384,25 +384,34 @@ def hexdump (data):
 class TimeoutError(StandardError):
   pass
 
-def connect_socket_with_backoff(address, port, max_backoff_seconds=32):
+def connect_socket_with_backoff(address_or_tuple, port=None, max_backoff_seconds=32):
   '''
   Connect to the given address and port. If the connection attempt fails, 
   exponentially back off, up to the max backoff
   
   return the connected socket, or raise an exception if the connection was unsuccessful
   '''
+  if port is None:
+    server_info = address_or_tuple
+    sock_type = socket.AF_UNIX
+  else:
+    server_info = (address_or_tuple, port)
+    sock_type = socket.AF_INET
   backoff_seconds = 1
   sock = None
-  print >>sys.stderr, "connect_socket_with_backoff(address=%s, port=%d)" % (address, port)
+  print >>sys.stderr, "connect_socket_with_backoff %s" % str(server_info)
   while True:
     try:
-      sock = socket.socket()
-      sock.connect( (address, port) )
+      sock = socket.socket(sock_type, socket.SOCK_STREAM)
+      sock.connect( server_info )
       break
     except socket.error as e:
-      print >>sys.stderr, "Error connecting to %s:%d -- %s. Backing off %d seconds ..." % (address, port, str(e), backoff_seconds)
+      print >>sys.stderr, "Error connecting to %s" % str(server_info)
+      print >>sys.stderr, ("-- %s. Backing off %d seconds ..." %
+                           (str(e), backoff_seconds))
       if backoff_seconds >= max_backoff_seconds:
-        raise TimeoutError("Could not connect to controller %s:%d" % (address, port))
+        raise TimeoutError("Could not connect to controller %s" %
+                           str(server_info))
       else:
         time.sleep(backoff_seconds)
       backoff_seconds <<= 1

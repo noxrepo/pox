@@ -596,6 +596,7 @@ class Connection (EventMixin):
 
     Note: This function will block if data is not available.
     """
+    print("SOCKET READ")
     d = self.sock.recv(2048)
     if len(d) == 0:
       return False
@@ -705,9 +706,9 @@ class OpenFlow_01_Task (Task):
     # List of open sockets/connections to select on
     sockets = []
 
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    listener.bind((self.address, self.port))
+    listener.bind("../sts_socket_pipe")
     listener.listen(16)
     sockets.append(listener)
 
