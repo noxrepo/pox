@@ -596,7 +596,6 @@ class Connection (EventMixin):
 
     Note: This function will block if data is not available.
     """
-    print("SOCKET READ")
     d = self.sock.recv(2048)
     if len(d) == 0:
       return False
@@ -694,8 +693,14 @@ class OpenFlow_01_Task (Task):
   """
   def __init__ (self, port = 6633, address = '0.0.0.0'):
     Task.__init__(self)
-    self.port = int(port)
-    self.address = address
+    if port is None:
+      # Unix domain socket
+      self.server_info = address
+      self.sock_type = socket.AF_UNIX
+    else:
+      # Normal TCP socket
+      self.server_info = (address, int(port))
+      self.sock_type = socket.AF_INET
 
     core.addListener(pox.core.GoingUpEvent, self._handle_GoingUpEvent)
 
@@ -706,14 +711,13 @@ class OpenFlow_01_Task (Task):
     # List of open sockets/connections to select on
     sockets = []
 
-    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    listener = socket.socket(self.sock_type, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    listener.bind("../sts_socket_pipe")
+    listener.bind(self.server_info)
     listener.listen(16)
     sockets.append(listener)
 
-    log.debug("Listening for connections on %s:%s",
-              self.address, self.port)
+    log.debug("Listening for connections on %s" % str(self.server_info))
 
     con = None
     while core.running:
@@ -801,9 +805,24 @@ for h in handlerMap:
 
 
 def launch (port = 6633, address = "0.0.0.0"):
+  ''' if address is a filename rather than an IP address, will use Unix domain
+  sockets instead of TCP sockets'''
   if core.hasComponent('of_01'):
     return None
-  l = OpenFlow_01_Task(port = int(port), address = address)
+
+  if (re.match("[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}", address) or
+      address == "localhost"):
+    # Normal TCP socket
+    l = OpenFlow_01_Task(port=int(port), address=address)
+  else:
+    # Unix domain socket -- address is a filename
+    # Make sure the socket does not already exist
+    try:
+      os.unlink(address)
+    except OSError:
+      if os.path.exists(address):
+        raise RuntimeError("can't remove PIPE socket %s" % str(address))
+    l = OpenFlow_01_Task(address=address, port=None)
+
   core.register("of_01", l)
   return l
-

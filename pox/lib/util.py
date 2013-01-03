@@ -384,18 +384,23 @@ def hexdump (data):
 class TimeoutError(StandardError):
   pass
 
-def connect_socket_with_backoff(address_or_tuple, port=None, max_backoff_seconds=32):
+def connect_socket_with_backoff(address="localhost", port=None, max_backoff_seconds=32):
   '''
   Connect to the given address and port. If the connection attempt fails, 
-  exponentially back off, up to the max backoff
+  exponentially back off, up to the max backoff.
+
+  To connect to a Unix domain socket, specify address as a filename, and leave
+  port=None
   
   return the connected socket, or raise an exception if the connection was unsuccessful
   '''
   if port is None:
-    server_info = address_or_tuple
+    # Unix domain socket
+    server_info = address
     sock_type = socket.AF_UNIX
   else:
-    server_info = (address_or_tuple, port)
+    # Normal TCP socket
+    server_info = (address, port)
     sock_type = socket.AF_INET
   backoff_seconds = 1
   sock = None

@@ -362,14 +362,6 @@ def print_thread_states():
       traceback.print_exc(file=sys.stdout)
 
 def main ():
-  # Make sure the socket does not already exist
-  server_address = "../sts_socket_pipe"
-  try:
-    os.unlink(server_address)
-  except OSError:
-    if os.path.exists(server_address):
-      raise RuntimeError("can't remove PIPE socket")
-
   setup_logging()
   _monkeypatch_console()
   try:
