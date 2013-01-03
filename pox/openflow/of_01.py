@@ -37,6 +37,7 @@ log = core.getLogger()
 
 import socket
 import select
+import re
 
 try:
   PIPE_BUF = select.PIPE_BUF
