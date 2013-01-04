@@ -1857,30 +1857,139 @@ class ofp_action_tp_port (ofp_action_base):
     return outstr
 
 
-@openflow_action('OFPAT_VENDOR', 65535)
-class ofp_action_vendor_header (ofp_action_base):
-  def __init__ (self, **kw):
-    self.vendor = 0
+class ofp_action_vendor_base (ofp_action_base):
+  """
+  Base class for vendor actions
+  """
+  type = 65535 # OFPAT_VENDOR
 
+  def _eq (self, other):
+    """
+    Return True if equal
+
+    Overide this.
+    """
+    return True
+
+  def _init (self, kw):
+    """
+    Initialize fields
+
+    Overide this.
+    """
+    pass
+
+  def _pack_body (self):
+    """
+    Pack body.
+    """
+    return b""
+
+  def _unpack_body (self, raw, offset, avail):
+    """
+    Unpack body in raw starting at offset.
+
+    Return new offset
+    """
+    return offset
+
+  def _body_length (self):
+    """
+    Return length of body.
+
+    Optionally override this.
+    """
+    return len(self._pack_body())
+
+  def _show (self, prefix):
+    """
+    Format additional fields as text
+    """
+    return ""
+
+  def __init__ (self, **kw):
+    self._init(kw)
+    assert hasattr(self, 'vendor')
+    #self.vendor = 0
     initHelper(self, kw)
+
+  def _pack_body (self):
+    if hasattr(self.body, 'pack'):
+      return self.body.pack()
+    else:
+      return bytes(self.body)
 
   def pack (self):
     assert self._assert()
 
+    body = self._pack_body()
+
     packed = b""
-    packed += struct.pack("!HHL", self.type, len(self), self.vendor)
+    packed += struct.pack("!HHL", self.type, 8 + len(body), self.vendor)
+    packed += body
     return packed
 
   def unpack (self, raw, offset=0):
     _offset = offset
     offset,(self.type, length, self.vendor) = _unpack("!HHL", raw, offset)
-    # Need to parse rest of body here
+    offset = self._unpack_body(raw, offset, length - 8)
     assert offset - _offset == len(self)
     return offset
 
-  @staticmethod
-  def __len__ ():
-    return 8
+  def __len__ (self):
+    return 8 + self._body_length()
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if len(self) != len(other): return False
+    if self.vendor != other.vendor: return False
+    return self._eq(other)
+
+  def __ne__ (self, other): return not self.__eq__(other)
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
+    outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
+    outstr += self._show(prefix)
+    return outstr
+
+
+@openflow_action('OFPAT_VENDOR', 65535)
+class ofp_action_vendor_generic (ofp_action_base):
+  def __init__ (self, **kw):
+    self.vendor = 0
+    self.body = b""
+
+    initHelper(self, kw)
+
+  def _pack_body (self):
+    if hasattr(self.body, 'pack'):
+      return self.body.pack()
+    else:
+      return bytes(self.body)
+
+  def pack (self):
+    assert self._assert()
+
+    body = self._pack_body()
+
+    packed = b""
+    packed += struct.pack("!HHL", self.type, 8 + len(body), self.vendor)
+    packed += body
+    return packed
+
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length, self.vendor) = _unpack("!HHL", raw, offset)
+    offset,self.body = _read(raw, offset, length - 8)
+    assert offset - _offset == len(self)
+    return offset
+
+  def __len__ (self):
+    return 8 + len(self._pack_body())
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
@@ -3942,6 +4051,7 @@ class ofp_echo_reply (ofp_header):
 
 
 class ofp_vendor_base (ofp_header):
+  header_type = 4 # OFPT_VENDOR
   """
   Base class for vendor messages
   """
@@ -3951,6 +4061,7 @@ class ofp_vendor_base (ofp_header):
 @openflow_sc_message("OFPT_VENDOR", 4)
 class ofp_vendor_generic (ofp_vendor_base):
   _MIN_LENGTH = 12
+  _collect_raw = False
 
   def __init__ (self, **kw):
     ofp_header.__init__(self)
@@ -3971,9 +4082,12 @@ class ofp_vendor_generic (ofp_vendor_base):
     return packed
 
   def unpack (self, raw, offset=0):
+    _offset = offset
     offset,length = self._unpack_header(raw, offset)
     offset,(self.vendor,) = _unpack("!L", raw, offset)
     offset,self.data = _read(raw, offset, length-12)
+    if self._collect_raw:
+      self.raw = raw[_offset, _offset+length]
     return offset,length
 
   def __len__ (self):
@@ -3993,7 +4107,8 @@ class ofp_vendor_generic (ofp_vendor_base):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
-    outstr += prefix + 'datalen: ' + len(self.data) + '\n'
+    outstr += prefix + 'datalen: ' + str(len(self.data)) + '\n'
+    #outstr += prefix + hexdump(self.data).replace("\n", "\n" + prefix)
     return outstr
 
 

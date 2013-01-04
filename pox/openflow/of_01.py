@@ -238,6 +238,9 @@ def handle_OFPST_QUEUE (con, parts):
   if e is None or e.halt != True:
     con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
 
+def handle_VENDOR (con, msg):
+  log.info("Vendor msg: " + str(msg))
+
 
 # A list, where the index is an OFPT, and the value is a function to
 # call for that type
@@ -256,6 +259,7 @@ handlerMap = {
   of.OFPT_BARRIER_REPLY : handle_BARRIER,
   of.OFPT_STATS_REPLY : handle_STATS_REPLY,
   of.OFPT_FLOW_REMOVED : handle_FLOW_REMOVED,
+  of.OFPT_VENDOR : handle_VENDOR,
 }
 
 statsHandlerMap = {
@@ -898,10 +902,12 @@ class OpenFlow_01_Task (Task):
     #pox.core.quit()
 
 
-handlers.extend([None] * (1 + sorted(handlerMap.keys(), reverse=True)[0]))
-for h in handlerMap:
-  handlers[h] = handlerMap[h]
-  #print handlerMap[h]
+def _set_handlers ():
+  handlers.extend([None] * (1 + sorted(handlerMap.keys(),reverse=True)[0]))
+  for h in handlerMap:
+    handlers[h] = handlerMap[h]
+    #print handlerMap[h]
+_set_handlers()
 
 
 def launch (port = 6633, address = "0.0.0.0"):
