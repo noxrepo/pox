@@ -2250,6 +2250,7 @@ class ofp_flow_mod (ofp_header):
     if self.out_port != other.out_port: return False
     if self.flags != other.flags: return False
     if self.actions != other.actions: return False
+    if self.data != other.data: return False
     return True
 
   def __ne__ (self, other): return not self.__eq__(other)
