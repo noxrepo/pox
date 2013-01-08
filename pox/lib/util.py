@@ -214,57 +214,59 @@ def initHelper (obj, kw):
       + "unexpected keyword argument '" + k + "'")
     setattr(obj, k, v)
 
+class Pinger(object):
+  pass
+
+class PipePinger (Pinger):
+  def __init__ (self, pair):
+    self._w = pair[1]
+    self._r = pair[0]
+    assert os is not None
+
+  def ping (self):
+    if os is None: return #TODO: Is there a better fix for this?
+    os.write(self._w, ' ')
+
+  def fileno (self):
+    return self._r
+
+  def pongAll (self):
+    #TODO: make this actually read all
+    os.read(self._r, 1024)
+
+  def pong (self):
+    os.read(self._r, 1)
+
+  def __del__ (self):
+    try:
+      os.close(self._w)
+    except:
+      pass
+    try:
+      os.close(self._r)
+    except:
+      pass
+
+class SocketPinger (Pinger):
+  def __init__ (self, pair):
+    self._w = pair[1]
+    self._r = pair[0]
+  def ping (self):
+    self._w.send(' ')
+  def pong (self):
+    self._r.recv(1)
+  def pongAll (self):
+    #TODO: make this actually read all
+    self._r.recv(1024)
+  def fileno (self):
+    return self._r.fileno()
+
 def makePinger ():
   """
   A pinger is basically a thing to let you wake a select().
   On Unix systems, this makes a pipe pair.  But on Windows, select() only
   works with sockets, so it makes a pair of connected sockets.
   """
-
-  class PipePinger (object):
-    def __init__ (self, pair):
-      self._w = pair[1]
-      self._r = pair[0]
-      assert os is not None
-
-    def ping (self):
-      if os is None: return #TODO: Is there a better fix for this?
-      os.write(self._w, ' ')
-
-    def fileno (self):
-      return self._r
-
-    def pongAll (self):
-      #TODO: make this actually read all
-      os.read(self._r, 1024)
-
-    def pong (self):
-      os.read(self._r, 1)
-
-    def __del__ (self):
-      try:
-        os.close(self._w)
-      except:
-        pass
-      try:
-        os.close(self._r)
-      except:
-        pass
-
-  class SocketPinger (object):
-    def __init__ (self, pair):
-      self._w = pair[1]
-      self._r = pair[0]
-    def ping (self):
-      self._w.send(' ')
-    def pong (self):
-      self._r.recv(1)
-    def pongAll (self):
-      #TODO: make this actually read all
-      self._r.recv(1024)
-    def fileno (self):
-      return self._r.fileno()
-
   #return PipePinger((os.pipe()[0],os.pipe()[1]))  # To test failure case
 
   if os.name == "posix":
