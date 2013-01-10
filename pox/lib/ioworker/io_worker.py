@@ -20,6 +20,7 @@ log.debug = lambda msg, *args: None
 
 class JSONIOWorker(object):
   def __init__(self, io_worker, on_json_received=None):
+    self.io_worker = io_worker
     self.worker = LineIOWorker(io_worker)
     self.worker.on_line_received = self._receive_line
 
