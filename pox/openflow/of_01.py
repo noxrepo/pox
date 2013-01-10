@@ -763,6 +763,7 @@ class OpenFlow_01_Task (Task):
               #print str(newcon) + " connected"
             else:
               if con.read() is False:
+                log.warn("Closing socket due to False read()!")
                 con.close()
                 sockets.remove(con)
       except exceptions.KeyboardInterrupt:
