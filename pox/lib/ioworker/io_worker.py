@@ -60,7 +60,7 @@ class LineIOWorker(object):
   on_line_received = property(get_on_line_received, set_on_line_received)
 
   def _receive_data(self, io_worker):
-    data = io_worker.peek_receive_buf()
+    data = str(io_worker.peek_receive_buf())
     length = 0
 
     while True:
