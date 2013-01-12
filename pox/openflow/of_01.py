@@ -624,6 +624,8 @@ class Connection (EventMixin):
         raise
       except AttributeError:
         raise
+      except KeyError:
+        raise
       except:
         log.exception("%s: Exception while handling OpenFlow message:\n" +
                       "%s %s", self,self,
@@ -771,6 +773,8 @@ class OpenFlow_01_Task (Task):
       except ValueError:
         raise
       except AttributeError:
+        raise
+      except KeyError:
         raise
       except:
         doTraceback = True
