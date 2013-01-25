@@ -165,7 +165,7 @@ def handle_STATS_REPLY (con, msg):
   con._incoming_stats_reply(msg)
 
 def handle_PORT_STATUS (con, msg): #A
-  if msg.reason == of.OFPRR_DELETE:
+  if msg.reason == of.OFPPR_DELETE:
     con.ports._forget(msg.desc)
   else:
     con.ports._update(msg.desc)
