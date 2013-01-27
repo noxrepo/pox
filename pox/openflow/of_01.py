@@ -776,6 +776,8 @@ class OpenFlow_01_Task (Task):
         raise
       except KeyError:
         raise
+      except RuntimeError:
+        raise
       except:
         doTraceback = True
         if sys.exc_info()[0] is socket.error:
