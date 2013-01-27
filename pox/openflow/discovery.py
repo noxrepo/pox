@@ -71,6 +71,7 @@ class LLDPSender (object):
 
   def addSwitch (self, dpid, ports):
     """ Ports are (portNum, portAddr) """
+    log.debug("discovery.addSwitch(dpid=%d, ports=%s)" % (dpid, str(ports)))
     self._packets = [p for p in self._packets if p.dpid != dpid]
 
     for portNum, portAddr in ports:
@@ -112,6 +113,7 @@ class LLDPSender (object):
     end of the queue.
     """
     item = self._packets.pop(0)
+    log.debug("discovery._timerHandler: send %s" % str(item))
     self._packets.append(item)
     core.openflow.sendToDPID(item.dpid, item.packet)
 
