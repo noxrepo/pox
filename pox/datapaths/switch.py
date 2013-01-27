@@ -79,6 +79,7 @@ class SoftwareSwitch(EventMixin):
 
     # set of port numbers that are currently down
     self.down_port_nos = set()
+    self.no_flood_ports = set()
 
     ## (OpenFlow Handler map)
     self.ofp_handlers = {
@@ -93,6 +94,7 @@ class SoftwareSwitch(EventMixin):
        ofp_type_rev_map['OFPT_SET_CONFIG'] : self._receive_set_config,
        ofp_type_rev_map['OFPT_STATS_REQUEST'] : self._receive_stats_request,
        ofp_type_rev_map['OFPT_VENDOR'] : self._receive_vendor,
+       ofp_type_rev_map['OFPT_PORT_MOD'] : self._receive_port_mod,
        # Proactive responses
        ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
        # TODO: many more packet types to process
@@ -253,6 +255,20 @@ class SoftwareSwitch(EventMixin):
   def _receive_set_config(self, config):
     self.log.debug("Set config %s %s", self.name, str(config))
 
+  def _receive_port_mod(self, port_mod):
+    self.log.debug("Port Mod %s %s", self.name, str(port_mod))
+    if port_mod.port_no not in self.ports:
+      # TODO(cs): should actually send a PORT_MOD_FAILED message back
+      self.log.warn("No such port %d" % port_mod.port_no)
+    port = self.ports[port_mod.port_no]
+    if port.hw_addr != port_mod.hw_addr:
+      self.log.warn("Incorrect h/w address %s. s/b %s" % (port_mod.hw_addr, port.hw_addr))
+    if port_mod.mask & OFPPC_NO_FLOOD:
+      self.log.debug("Disabling flooding on port %s" % port)
+      self.no_flood_ports.add(port)
+    if port_mod.mask != OFPPC_NO_FLOOD:
+      self.log.warn("Unsupported PORT_MOD!")
+
   def _receive_vendor(self, vendor):
     self.log.debug("Vendor %s %s", self.name, str(vendor))
     # We don't support vendor extensions, so send an OFP_ERROR, per page 42 of spec
@@ -367,7 +383,7 @@ class SoftwareSwitch(EventMixin):
     elif out_port == OFPP_FLOOD or out_port == OFPP_ALL:
       # no support for spanning tree yet -> flood=all
       for (no,port) in self.ports.iteritems():
-        if no != in_port:
+        if no != in_port and port not in self.no_flood_ports:
           real_send(port)
     elif out_port == OFPP_CONTROLLER:
       buffer_id = self._buffer_packet(packet, in_port)
