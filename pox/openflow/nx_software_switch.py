@@ -55,7 +55,7 @@ class NXSoftwareSwitch(SoftwareSwitch):
 
     self.connection_in_action = connection
     if not self.check_rights(msg, connection):
-      self.log.warn("Message %s not allowed for slave controller %d", ofp, connection.ID)
+      self.log.warn("Message %s not allowed for slave controller %d", msg, connection.ID)
       self.send_error(connection)
     else:
       SoftwareSwitch.on_message_received(self, connection, msg)
