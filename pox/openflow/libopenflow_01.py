@@ -1014,6 +1014,9 @@ class ofp_action_output (object):
     outstr += prefix + 'max_len: ' + str(self.max_len) + '\n'
     return outstr
 
+  def __repr__(self):
+    return "ofp_action_output(port=%s)" % str(self.port)
+
 class ofp_action_enqueue (object):
   def __init__ (self, **kw):
     self.type = OFPAT_ENQUEUE
