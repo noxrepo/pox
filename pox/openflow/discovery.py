@@ -71,7 +71,6 @@ class LLDPSender (object):
 
   def addSwitch (self, dpid, ports):
     """ Ports are (portNum, portAddr) """
-    log.debug("discovery.addSwitch(dpid=%d, ports=%s)" % (dpid, str(ports)))
     self._packets = [p for p in self._packets if p.dpid != dpid]
 
     for portNum, portAddr in ports:
@@ -113,7 +112,6 @@ class LLDPSender (object):
     end of the queue.
     """
     item = self._packets.pop(0)
-    log.debug("discovery._timerHandler: send %s" % str(item))
     self._packets.append(item)
     core.openflow.sendToDPID(item.dpid, item.packet)
 
@@ -373,7 +371,7 @@ class Discovery (EventMixin):
 
     if link not in self.adjacency:
       self.adjacency[link] = time.time()
-      log.info('link detected: %s.%i -> %s.%i' %
+      log.info('link detected: %s.%i -> %s.%i',
                (dpidToStr(link.dpid1), link.port1,
                 dpidToStr(link.dpid2), link.port2))
       self.raiseEventNoErrors(LinkEvent, True, link)
