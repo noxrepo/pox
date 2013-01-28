@@ -371,6 +371,7 @@ class SoftwareSwitch(EventMixin):
       # The OF spec states that packets should not be forwarded out their
       # in_port unless OFPP_IN_PORT is explicitly used.
       if port_no == in_port and not allow_in_port:
+        self.log.warn("out_port %d == in_port. Dropping" % (out_port,))
         return
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
