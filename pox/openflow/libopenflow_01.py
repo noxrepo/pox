@@ -3147,7 +3147,7 @@ class ofp_packet_in (ofp_header):
     outstr += prefix + '_total_len: ' + str(self._total_len) + '\n'
     outstr += prefix + 'in_port: ' + str(self.in_port) + '\n'
     outstr += prefix + 'reason: ' + str(self.reason) + '\n'
-    outstr += prefix + 'data: ' + str(self.data) + '\n'
+    outstr += prefix + 'data: ' + repr(self.data) + '\n'
     return outstr
 
 ofp_packet_in_reason_rev_map = {
