@@ -6,7 +6,8 @@ You can place a pypy distribution alongside pox.py (in a directory
 named "pypy"), and POX will run with pypy (this can be a significant
 performance boost!).
 
-POX currently communicates with OpenFlow 1.0 switches.
+POX currently communicates with OpenFlow 1.0 switches and includes
+special support for Open vSwitch.
 
 pox.py boots up POX. It takes a list of module names on the command line,
 locates the modules, calls their launch() function (if it exists), and
