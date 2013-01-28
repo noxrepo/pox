@@ -121,7 +121,7 @@ class ethernet(packet_base):
                 ethernet.getNameForType(self.type),']'))
     if self.next is None:
       return s
-    elif isinstance(type(self.next), bytes):
+    elif isinstance(self.next, bytes):
       return s + '|<' + str(len(self.next)) + ' bytes>'
     else:
       return s + "|" + str(self.next)
