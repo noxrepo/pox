@@ -9,7 +9,6 @@ Copyright(C) 2009, Stanford University
 Date November 2009
 Created by ykk
 """
-
 # TODO: Don't have SoftwareSwitch take a socket object... Should really have a
 # OF_01 like task that listens for socket connections, creates a new socket,
 # wraps it in a OFConnection object, and calls SoftwareSwitch._handle_ConnectionUp
@@ -366,9 +365,12 @@ class SoftwareSwitch(EventMixin):
         packet: instance of ethernet
         out_port, in_port: the integer port number """
     assert_type("packet", packet, ethernet, none_ok=False)
-    def real_send(port_no):
+    def real_send(port_no, allow_in_port = False):
       if type(port_no) == ofp_phy_port:
         port_no = port_no.port_no
+      if port_no == in_port:
+        if allow_in_port != True:
+          return
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
       if port_no in self.down_port_nos:
@@ -379,7 +381,7 @@ class SoftwareSwitch(EventMixin):
     if out_port < OFPP_MAX:
       real_send(out_port)
     elif out_port == OFPP_IN_PORT:
-      real_send(in_port)
+      real_send(in_port, allow_in_port = True)
     elif out_port == OFPP_FLOOD or out_port == OFPP_ALL:
       # no support for spanning tree yet -> flood=all
       for (no,port) in self.ports.iteritems():
