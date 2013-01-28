@@ -365,12 +365,13 @@ class SoftwareSwitch(EventMixin):
         packet: instance of ethernet
         out_port, in_port: the integer port number """
     assert_type("packet", packet, ethernet, none_ok=False)
-    def real_send(port_no, allow_in_port = False):
+    def real_send(port_no, allow_in_port=False):
       if type(port_no) == ofp_phy_port:
         port_no = port_no.port_no
-      if port_no == in_port:
-        if allow_in_port != True:
-          return
+      # The OF spec states that packets should not be forwarded out their
+      # in_port unless OFPP_IN_PORT is explicitly used.
+      if port_no == in_port and not allow_in_port:
+        return
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
       if port_no in self.down_port_nos:
@@ -381,7 +382,7 @@ class SoftwareSwitch(EventMixin):
     if out_port < OFPP_MAX:
       real_send(out_port)
     elif out_port == OFPP_IN_PORT:
-      real_send(in_port, allow_in_port = True)
+      real_send(in_port, allow_in_port=True)
     elif out_port == OFPP_FLOOD or out_port == OFPP_ALL:
       # no support for spanning tree yet -> flood=all
       for (no,port) in self.ports.iteritems():
