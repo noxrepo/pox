@@ -123,7 +123,7 @@ class NXSoftwareSwitch(SoftwareSwitch):
         data = nx.unpack_vendor_data_nx(vendor.data)
         if isinstance(data, nx.role_request_data):
           self.set_role(connection, data.role)
-          reply = of.ofp_vendor(vendor = nx.VENDOR_ID, data = nx.role_reply_data(role = data.role))
+          reply = of.ofp_vendor(xid=vendor.xid, vendor = nx.VENDOR_ID, data = nx.role_reply_data(role = data.role))
           self.send(reply)
           return
       except NotImplementedError:
