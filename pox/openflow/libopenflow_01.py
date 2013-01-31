@@ -3661,7 +3661,7 @@ class ofp_vendor (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
-    outstr += prefix + 'data: ' + self.data + '\n'
+    outstr += prefix + 'data: ' + ( repr(self.data[:8]) if len(self.data) < 8 else "[%d bytes]"%len(self.data) ) + '\n'
     return outstr
 
 class ofp_features_request (ofp_header):
