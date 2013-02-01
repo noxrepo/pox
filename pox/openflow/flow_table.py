@@ -175,9 +175,9 @@ class FlowTable (EventMixin):
       if len(actions) > 0:
         last_action = actions[-1]
         if type(last_action) == ofp_action_output:
-          outgoing_port = last_action.port.port_no
+          outgoing_port = last_action.port#.port_no
           if outgoing_port == port_no:
-            entries.apend(entry)
+            entries.append(entry)
     return entries
 
   def matching_entries(self, match, priority=0, strict=False, out_port=None):
