@@ -237,7 +237,7 @@ class PipePinger (Pinger):
   def pong (self):
     os.read(self._r, 1)
 
-  def __del__ (self):
+  def close(self):
     try:
       os.close(self._w)
     except:
@@ -246,6 +246,8 @@ class PipePinger (Pinger):
       os.close(self._r)
     except:
       pass
+  def __del__ (self):
+    self.close()
 
 class SocketPinger (Pinger):
   def __init__ (self, pair):
@@ -260,6 +262,17 @@ class SocketPinger (Pinger):
     self._r.recv(1024)
   def fileno (self):
     return self._r.fileno()
+  def close(self):
+    try:
+      os.close(self._w)
+    except:
+      pass
+    try:
+      os.close(self._r)
+    except:
+      pass
+  def __del__ (self):
+    self.close()
 
 def makePinger ():
   """
