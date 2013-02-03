@@ -2639,6 +2639,8 @@ class ofp_stats_reply (ofp_header):
     return offset,length
 
   def __len__ (self):
+    if isinstance(self.body, list):
+      return 12 + sum(len(part) for part in self.body)
     return 12 + len(self.body)
 
   def __eq__ (self, other):
