@@ -351,7 +351,7 @@ class NOMFlowTable(EventMixin):
         else:
           removed.extend(self.flow_table.remove_matching_entries(entry.match, entry.priority, strict=command == NOMFlowTable.REMOVE_STRICT))
         #print "op: %s, pending: %s" % (op, self.pending)
-        self.pending.remove(op)
+        if op in self.pending: self.pending.remove(op)
       del self.pending_barrier_to_ops[barrier.xid]
       self.raiseEvent(FlowTableModification(added = added, removed=removed))
       return EventHalt
