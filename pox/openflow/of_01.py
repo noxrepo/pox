@@ -719,12 +719,16 @@ class Connection (EventMixin):
       # (using ord) to find the version/length/type so that we can
       # correctly call libopenflow to unpack it.
 
-      if ord(self.buf[offset]) != of.OFP_VERSION:
-        log.warning("Bad OpenFlow version (0x%02x) on connection %s"
-                    % (ord(self.buf[offset]), self))
-        return False # Throw connection away
-
       ofp_type = ord(self.buf[offset+1])
+
+      if ord(self.buf[offset]) != of.OFP_VERSION:
+        if ofp_type == of.OFPT_HELLO:
+          # We let this through and hope the other side switches down.
+          pass
+        else:
+          log.warning("Bad OpenFlow version (0x%02x) on connection %s"
+                      % (ord(self.buf[offset]), self))
+          return False # Throw connection away
 
       msg_length = ord(self.buf[offset+2]) << 8 | ord(self.buf[offset+3])
 
