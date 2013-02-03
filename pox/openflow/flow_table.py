@@ -313,7 +313,7 @@ class NOMFlowTable(EventMixin):
       todo = map(lambda(e): (NOMFlowTable.ADD, e), self.flow_table.entries) + self.pending
     else:
       todo = [ op for op in self.pending
-          if op not in self.pending_op_to_barrier or (self.pending_op_to_barrier[op][1] + NOMFlowTable.TIME_OUT) < time.time ]
+          if op not in self.pending_op_to_barrier or (self.pending_op_to_barrier[op][1] + NOMFlowTable.TIME_OUT) < time.time() ]
 
     for op in todo:
       fmod_xid = self.switch.xid_generator()
