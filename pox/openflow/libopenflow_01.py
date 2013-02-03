@@ -970,6 +970,16 @@ class ofp_match (ofp_base):
     n.wildcards = self.wildcards
     return n
 
+  def flip (self):
+    """
+    Return version of this match with src and dst fields swapped
+    """
+    reversed = self.clone()
+    for field in ('dl','nw','tp'):
+      setattr(reversed, field + '_src', getattr(self, field + '_dst'))
+      setattr(reversed, field + '_dst', getattr(self, field + '_src'))
+    return reversed
+
   def __init__ (self, **kw):
     for k,v in ofp_match_data.iteritems():
       setattr(self, '_' + k, v[0])
