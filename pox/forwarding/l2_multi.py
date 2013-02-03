@@ -16,9 +16,15 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-A messy first shot at a standalone L2 switch that learns ethernet
-addresses across the entire network and picks short paths between
-them.
+A shortest-path forwarding application.
+
+This is a standalone L2 switch that learns ethernet addresses
+across the entire network and picks short paths between them.
+
+You shouldn't really write an application this way -- you should
+keep more state in the controller (that is, your flow tables),
+and/or you should make your topology more static.  However, this
+does (mostly) work. :)
 
 Depends on openflow.discovery
 Works with openflow.spanning_tree
@@ -27,9 +33,10 @@ Works with openflow.spanning_tree
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.revent import *
+from pox.lib.recoco import Timer
 from collections import defaultdict
 from pox.openflow.discovery import Discovery
-from pox.lib.util import dpidToStr
+from pox.lib.util import dpid_to_str
 import time
 
 log = core.getLogger()
@@ -46,14 +53,34 @@ mac_map = {}
 # [sw1][sw2] -> (distance, intermediate)
 path_map = defaultdict(lambda:defaultdict(lambda:(None,None)))
 
+# Waiting path.  (dpid,xid)->WaitingPath
+waiting_paths = {}
+
 # Time to not flood in seconds
 FLOOD_HOLDDOWN = 5
+
+# Flow timeouts
+FLOW_IDLE_TIMEOUT = 10
+FLOW_HARD_TIMEOUT = 30
+
+# How long is allowable to set up a path?
+PATH_SETUP_TIME = 4
 
 
 def _calc_paths ():
   """
   Essentially Floyd-Warshall algorithm
   """
+
+  def dump ():
+    for i in sws:
+      for j in sws:
+        a = path_map[i][j][0]
+        #a = adjacency[i][j]
+        if a is None: a = "*"
+        print a,
+      print
+
   sws = switches.values()
   path_map.clear()
   for k in sws:
@@ -62,15 +89,7 @@ def _calc_paths ():
       path_map[k][j] = (1,None)
     path_map[k][k] = (0,None) # distance, intermediate
 
-  """
-  for i in sws:
-    for j in sws:
-      a = path_map[i][j][0]
-      #a = adjacency[i][j]
-      if a is None: a = "*"
-      print a,
-    print
-  """
+  #dump()
 
   for k in sws:
     for i in sws:
@@ -83,16 +102,14 @@ def _calc_paths ():
               # i -> k -> j is better than existing
               path_map[i][j] = (ikj_dist, k)
 
-  """
-  print "--------------------"
-  for i in sws:
-    for j in sws:
-      print path_map[i][j][0],
-    print
-  """
+  #print "--------------------"
+  #dump()
 
 
 def _get_raw_path (src, dst):
+  """
+  Get a raw path (just a list of nodes to traverse)
+  """
   if len(path_map) == 0: _calc_paths()
   if src is dst:
     # We're here!
@@ -108,31 +125,100 @@ def _get_raw_path (src, dst):
 
 
 def _check_path (p):
-  for i in range(len(p) - 1):
-    if adjacency[p[i][0]][p[i+1][0]] != p[i][1]:
+  """
+  Make sure that a path is actually a string of nodes with connected ports
+
+  returns True if path is valid
+  """
+  for a,b in zip(p[:-1],p[1:]):
+    if adjacency[a[0]][b[0]] != a[2]:
+      return False
+    if adjacency[b[0]][a[0]] != b[2]:
       return False
   return True
 
 
-def _get_path (src, dst, final_port):
-  #print "path from",src,"to",dst
+def _get_path (src, dst, first_port, final_port):
+  """
+  Gets a cooked path -- a list of (node,in_port,out_port)
+  """
+  # Start with a raw path...
   if src == dst:
     path = [src]
   else:
     path = _get_raw_path(src, dst)
     if path is None: return None
     path = [src] + path + [dst]
-#  print "raw:    ",path
-  r = []
-  for s1,s2 in zip(path[:-1],path[1:]):
-    port = adjacency[s1][s2]
-    r.append((s1,port))
-  r.append((dst, final_port))
-#  print "cooked: ",r
 
-  assert _check_path(r)
+  # Now add the ports
+  r = []
+  in_port = first_port
+  for s1,s2 in zip(path[:-1],path[1:]):
+    out_port = adjacency[s1][s2]
+    r.append((s1,in_port,out_port))
+    in_port = adjacency[s2][s1]
+  r.append((dst,in_port,final_port))
+
+  assert _check_path(r), "Illegal path!"
 
   return r
+
+
+class WaitingPath (object):
+  """
+  A path which is waiting for its path to be established
+  """
+  def __init__ (self, path, packet):
+    """
+    xids is a sequence of (dpid,xid)
+    first_switch is the DPID where the packet came from
+    packet is something that can be sent in a packet_out
+    """
+    self.expires_at = time.time() + PATH_SETUP_TIME
+    self.path = path
+    self.first_switch = path[0][0].dpid
+    self.xids = set()
+    self.packet = packet
+
+    if len(waiting_paths) > 1000:
+      WaitingPath.expire_waiting_paths()
+
+  def add_xid (self, dpid, xid):
+    self.xids.add((dpid,xid))
+    waiting_paths[(dpid,xid)] = self
+
+  @property
+  def is_expired (self):
+    return time.time() >= self.expires_at
+
+  def notify (self, event):
+    """
+    Called when a barrier has been received
+    """
+    self.xids.discard((event.dpid,event.xid))
+    if len(self.xids) == 0:
+      # Done!
+      if self.packet:
+        log.debug("Sending delayed packet out %s"
+                  % (dpid_to_str(self.first_switch),))
+        msg = of.ofp_packet_out(data=self.packet,
+            action=of.ofp_action_output(port=of.OFPP_TABLE))
+        core.openflow.sendToDPID(self.first_switch, msg)
+
+      core.l2_multi.raiseEvent(PathInstalled(self.path))
+
+
+  @staticmethod
+  def expire_waiting_paths ():
+    packets = set(waiting_paths.values())
+    killed = 0
+    for p in packets:
+      if p.is_expired:
+        killed += 1
+        for entry in p.xids:
+          waiting_paths.pop(entry, None)
+    if killed:
+      log.error("%i paths failed to install" % (killed,))
 
 
 class PathInstalled (Event):
@@ -153,27 +239,31 @@ class Switch (EventMixin):
     self._connected_at = None
 
   def __repr__ (self):
-    return dpidToStr(self.dpid)
+    return dpid_to_str(self.dpid)
 
-  def _install (self, switch, port, match, buf = None):
+  def _install (self, switch, in_port, out_port, match, buf = None):
     msg = of.ofp_flow_mod()
     msg.match = match
-    msg.idle_timeout = 10
-    msg.hard_timeout = 30
-    msg.actions.append(of.ofp_action_output(port = port))
+    msg.match.in_port = in_port
+    msg.idle_timeout = FLOW_IDLE_TIMEOUT
+    msg.hard_timeout = FLOW_HARD_TIMEOUT
+    msg.actions.append(of.ofp_action_output(port = out_port))
     msg.buffer_id = buf
     switch.connection.send(msg)
 
-  def _install_path (self, p, match, buffer_id = None):
-    for sw,port in p[1:]:
-      self._install(sw, port, match)
+  def _install_path (self, p, match, packet_in=None):
+    wp = WaitingPath(p, packet_in)
+    for sw,in_port,out_port in p:
+      self._install(sw, in_port, out_port, match)
+      msg = of.ofp_barrier_request()
+      sw.connection.send(msg)
+      wp.add_xid(sw.dpid,msg.xid)
 
-    self._install(p[0][0], p[0][1], match, buffer_id)
-
-    core.l2_multi.raiseEvent(PathInstalled(p))
-
-  def install_path (self, dst_sw, last_port, match, event):#buffer_id, packet):
-    p = _get_path(self, dst_sw, last_port)
+  def install_path (self, dst_sw, last_port, match, event):
+    """
+    Attempts to install a path between this switch and some destination
+    """
+    p = _get_path(self, dst_sw, event.port, last_port)
     if p is None:
       log.warning("Can't get from %s to %s", match.dl_src, match.dl_dst)
 
@@ -187,7 +277,7 @@ class Switch (EventMixin):
 
         from pox.lib.addresses import EthAddr
         e = pkt.ethernet()
-        e.src = EthAddr(dpidToStr(self.dpid)) #FIXME: Hmm...
+        e.src = EthAddr(dpid_to_str(self.dpid)) #FIXME: Hmm...
         e.dst = match.dl_src
         e.type = e.IP_TYPE
         ipp = pkt.ipv4()
@@ -213,10 +303,17 @@ class Switch (EventMixin):
 
       return
 
-    self._install_path(p, match, event.ofp.buffer_id)
-    log.debug("Installing path for %s -> %s %04x (%i hops)", match.dl_src, match.dl_dst, match.dl_type, len(p))
-    #log.debug("installing path for %s.%i -> %s.%i" %
-    #          (src[0].dpid, src[1], dst[0].dpid, dst[1]))
+    log.debug("Installing path for %s -> %s %04x (%i hops)",
+        match.dl_src, match.dl_dst, match.dl_type, len(p))
+
+    # We have a path -- install it
+    self._install_path(p, match, event.ofp)
+
+    # Now reverse it and install it backwards
+    # (we'll just assume that will work)
+    p = [(sw,out_port,in_port) for sw,in_port,out_port in p]
+    self._install_path(p, match.flip())
+
 
   def _handle_PacketIn (self, event):
     def flood ():
@@ -248,9 +345,8 @@ class Switch (EventMixin):
       drop()
       return
 
-    #print packet.src,"*",loc,oldloc
     if oldloc is None:
-      if packet.src.isMulticast() == False:
+      if packet.src.is_multicast == False:
         mac_map[packet.src] = loc # Learn position for ethaddr
         log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
     elif oldloc != loc:
@@ -258,24 +354,23 @@ class Switch (EventMixin):
       if loc[1] not in adjacency[loc[0]].values():
         # New place is another "plain" port (probably)
         log.debug("%s moved from %s.%i to %s.%i?", packet.src,
-                  dpidToStr(oldloc[0].connection.dpid), oldloc[1],
-                  dpidToStr(   loc[0].connection.dpid),    loc[1])
-        if packet.src.isMulticast() == False:
+                  dpid_to_str(oldloc[0].connection.dpid), oldloc[1],
+                  dpid_to_str(   loc[0].connection.dpid),    loc[1])
+        if packet.src.is_multicast == False:
           mac_map[packet.src] = loc # Learn position for ethaddr
           log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
-      elif packet.dst.isMulticast() == False:
+      elif packet.dst.is_multicast == False:
         # New place is a switch-to-switch port!
         #TODO: This should be a flood.  It'd be nice if we knew.  We could
         #      check if the port is in the spanning tree if it's available.
         #      Or maybe we should flood more carefully?
-        log.warning("Packet from %s arrived at %s.%i without flow",# -- dropping",
-                    packet.src, dpidToStr(self.dpid), event.port)
+        log.warning("Packet from %s arrived at %s.%i without flow",
+                    packet.src, dpid_to_str(self.dpid), event.port)
         #drop()
         #return
 
 
-
-    if packet.dst.isMulticast():
+    if packet.dst.is_multicast:
       log.debug("Flood multicast from %s", packet.src)
       flood()
     else:
@@ -284,7 +379,6 @@ class Switch (EventMixin):
         flood()
       else:
         dest = mac_map[packet.dst]
-        #print packet.dst, "is on", dest
         match = of.ofp_match.from_packet(packet)
         self.install_path(dest[0], dest[1], match, event)
 
@@ -316,8 +410,6 @@ class Switch (EventMixin):
 
   def _handle_ConnectionDown (self, event):
     self.disconnect()
-    pass
-
 
 
 class l2_multi (EventMixin):
@@ -327,8 +419,11 @@ class l2_multi (EventMixin):
   ])
 
   def __init__ (self):
-    self.listenTo(core.openflow, priority=0)
-    self.listenTo(core.openflow_discovery)
+    # Listen to dependencies
+    def startup ():
+      core.openflow.addListeners(self, priority=0)
+      core.openflow_discovery.addListeners(self)
+    core.call_when_ready(startup, ('openflow','openflow_discovery'))
 
   def _handle_LinkEvent (self, event):
     def flip (link):
@@ -344,7 +439,7 @@ class l2_multi (EventMixin):
     # For link removals, this makes sure that we don't use a
     # path that may have been broken.
     #NOTE: This could be radically improved! (e.g., not *ALL* paths break)
-    clear = of.ofp_flow_mod(match=of.ofp_match(),command=of.OFPFC_DELETE)
+    clear = of.ofp_flow_mod(command=of.OFPFC_DELETE)
     for sw in switches.itervalues():
       if sw.connection is None: continue
       sw.connection.send(clear)
@@ -402,11 +497,17 @@ class l2_multi (EventMixin):
     else:
       sw.connect(event.connection)
 
+  def _handle_BarrierIn (self, event):
+    wp = waiting_paths.pop((event.dpid,event.xid), None)
+    if not wp:
+      #log.info("No waiting packet %s,%s", event.dpid, event.xid)
+      return
+    #log.debug("Notify waiting packet %s,%s", event.dpid, event.xid)
+    wp.notify(event)
+
 
 def launch ():
-  if 'openflow_discovery' not in core.components:
-    import pox.openflow.discovery as discovery
-    core.registerNew(discovery.Discovery)
-    
   core.registerNew(l2_multi)
 
+  timeout = min(max(PATH_SETUP_TIME, 5) * 2, 15)
+  Timer(timeout, WaitingPath.expire_waiting_paths, recurring=True)
