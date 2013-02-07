@@ -443,11 +443,14 @@ class POXCore (EventMixin):
           changed = True
 
   def listen_to_dependencies (self, sink, components=None, attrs=True,
-                              short_attrs=False):
+                              short_attrs=False, listen_args={}):
     """
     Look through *sink* for handlers named like _handle_component_event.
     Use that to build a list of components, and append any components
     explicitly specified by *components*.
+
+    listen_args is a dict of "component_name"={"arg_name":"arg_value",...},
+    allowing you to specify additional arguments to addListeners().
 
     When all the referenced components are registered, do the following:
     1) Set up all the event listeners
@@ -475,6 +478,9 @@ class POXCore (EventMixin):
       c = '_'.join(c.split("_")[2:-1])
       components.add(c)
 
+    if set(listen_args).difference(components):
+      log.error("Specified listen_args for missing component(s): %s" %
+                (" ".join(set(listen_args).difference(components)),))
 
     def done (sink, components, attrs, short_attrs):
       if attrs or short_attrs:
@@ -486,7 +492,9 @@ class POXCore (EventMixin):
           setattr(sink, attrname, getattr(self, c))
       for c in components:
         if hasattr(getattr(self, c), "_eventMixin_events"):
-          getattr(self, c).addListeners(sink, prefix=c)
+          kwargs = {"prefix":c}
+          kwargs.update(listen_args.get(c, {}))
+          getattr(self, c).addListeners(sink, **kwargs)
       getattr(sink, "_all_dependencies_met", lambda : None)()
 
 
