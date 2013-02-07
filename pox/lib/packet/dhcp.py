@@ -327,7 +327,7 @@ class dhcp(packet_base):
         In general, a much better way to add options should just be
         to add them to the .options dictionary.
         """
-        
+
         self._raw_options += chr(code)
         if length is None:
             if val is None:
