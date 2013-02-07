@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2013 James McCauley
 # Copyright 2008 (C) Nicira, Inc.
 #
 # This file is part of POX.
@@ -57,11 +57,15 @@
 #
 #======================================================================
 import struct
+import string
 from packet_utils import *
 
 from packet_base import packet_base
 import pox.lib.util as util
 from pox.lib.addresses import *
+
+_dhcp_option_unpackers = {}
+
 
 class dhcp(packet_base):
     "DHCP Packet struct"
@@ -90,17 +94,22 @@ class dhcp(packet_base):
 
     SUBNET_MASK_OPT = 1
     GATEWAY_OPT = 3
+    ROUTERS_OPT = 3 # Synonym for above
+    TIME_SERVERS_OPT = 4
     DNS_SERVER_OPT = 6
     HOST_NAME_OPT = 12
     DOMAIN_NAME_OPT = 15
     MTU_OPT = 26
     BCAST_ADDR_OPT = 28
 
+    VENDOR_OPT = 43
+
     REQUEST_IP_OPT = 50
     REQUEST_LEASE_OPT = 51
     OVERLOAD_OPT = 52
     SERVER_ID_OPT = 54
     PARAM_REQ_OPT = 55
+    ERROR_MSG_OPT = 56
     T1_OPT = 58
     T2_OPT = 59
     CLIENT_ID_OPT = 61
@@ -128,7 +137,7 @@ class dhcp(packet_base):
         self.chaddr = None
         self.sname = b''
         self.file = b''
-        self.magic = b''
+        self.magic = self.MAGIC
         self._raw_options = b''
 
         if raw is not None:
@@ -157,8 +166,11 @@ class dhcp(packet_base):
             s += ' '.join(["{0:02x}".format(x) for x in self.chaddr])
         s += ' magic:'+' '.join(
             ["{0:02x}".format(ord(x)) for x in self.magic])
-        s += ' options:'+' '.join(["{0:02x}".format(ord(x)) for x in
-                                  self._raw_options])
+        #s += ' options:'+' '.join(["{0:02x}".format(ord(x)) for x in
+        #                          self._raw_options])
+        if len(self.options):
+          s += ' options:'
+          s += ','.join(repr(x) for x in self.options.values())
         s += ']'
         return s
 
@@ -203,7 +215,19 @@ class dhcp(packet_base):
 
         self._raw_options = raw[240:]
         self.parseOptions()
+        self.unpackOptions()
         self.parsed = True
+
+    def unpackOptions(self):
+      for k,v in self.options.items():
+        unpack = _dhcp_option_unpackers.get(k, DHCPRawOption.unpack)
+        try:
+          self.options[k] = unpack(v,k)
+        except Exception as e:
+          self.warn("(dhcp parse) bad option %s: %s" % (k,e))
+          #import traceback
+          #traceback.print_exc()
+          self.options[k] = DHCPRawOption.unpack(v,k,True)
 
     def parseOptions(self):
         self.options = util.DirtyDict()
@@ -258,6 +282,8 @@ class dhcp(packet_base):
         for k,v in self.options.iteritems():
             if k == dhcp.END_OPT: continue
             if k == dhcp.PAD_OPT: continue
+            if isinstance(v, DHCPOption):
+                v = v.pack()
             if isinstance(v, bytes) and (len(v) > 255):
                 # Long option, per RFC 3396
                 v = [v[i:i+255] for i in range(0, len(v), 255)]
@@ -272,6 +298,11 @@ class dhcp(packet_base):
         if isinstance(self.options, util.DirtyDict):
             self.options.dirty = False
 
+    def add_option(self, option, code=None):
+      if code is None:
+        code = option.CODE
+      self.options[code] = option
+
     def hdr(self, payload):
         if isinstance(self.options, util.DirtyDict):
             if self.options.dirty:
@@ -281,12 +312,15 @@ class dhcp(packet_base):
 
         if isinstance(self.chaddr, EthAddr):
           chaddr = self.chaddr.toRaw() + (b'\x00' * 10)
-        fmt = '!BBBBIHHIIII16s64s128s4s%us' % (len(self._raw_options),)
+        fmt = '!BBBBIHHiiii16s64s128s4s'
         return struct.pack(fmt, self.op, self.htype, self.hlen,
                            self.hops, self.xid, self.secs, self.flags,
-                           self.ciaddr, self.yiaddr, self.siaddr,
-                           self.giaddr, chaddr, self.sname, self.file,
-                           self.magic, self._raw_options)
+                           IPAddr(self.ciaddr).toSigned(),
+                           IPAddr(self.yiaddr).toSigned(),
+                           IPAddr(self.siaddr).toSigned(),
+                           IPAddr(self.giaddr).toSigned(),
+                           chaddr, self.sname, self.file,
+                           self.magic) + self._raw_options
 
     def appendRawOption (self, code, val = None, length = None):
         """
@@ -302,3 +336,264 @@ class dhcp(packet_base):
         self._raw_options += chr(length)
         self._raw_options += val
 
+
+def dhcp_option_def (msg_type):
+  """
+  DPCP Option decorator
+  """
+  def f (cls):
+    _dhcp_option_unpackers[msg_type] = cls.unpack
+    cls.CODE = msg_type
+    return cls
+  return f
+
+class DHCPOption (object):
+  CODE = None
+
+  @classmethod
+  def unpack (cls, data, code = None):
+    pass
+
+  def pack (self):
+    return b''
+
+  @property
+  def _name (self):
+    n = type(self).__name__
+    if n.startswith("DHCP"): n = n[4:]
+    if n.endswith("Option"): n = n[:-6]
+    if n == "": return "Option"
+    return n
+
+class DHCPRawOption (DHCPOption):
+  def __init__ (self, data = b'', bad = False):
+    self.data = data
+    self.bad = bad # True if option wasn't parsed right
+
+  @classmethod
+  def unpack (cls, data, code = None, bad = False):
+    self = cls()
+    self.data = data
+    self.bad = bad
+    self.CODE = code
+    return self
+
+  def pack (self):
+    return self.data
+
+  def __repr__ (self):
+    data = self.data
+    if not all(ord(c)<127 and c in string.printable for c in data):
+      data = " ".join("%02x" % (ord(x),) for x in data)
+    else:
+      data = "".join(x if ord(x) >= 32 else "." for x in data)
+    if len(data) > 30:
+      data = data[:30] + "..."
+    n = self._name
+    if n == 'Raw': n += str(self.CODE)
+    return "%s(%s)" % (n, data)
+
+class DHCPIPOptionBase (DHCPOption):
+  """
+  Superclass for options which are an IP address
+  """
+  def __init__ (self, addr = None):
+    self.addr = IPAddr(0) if addr is None else IPAddr(addr)
+
+  @classmethod
+  def unpack (cls, data, code = None):
+    self = cls()
+    if len(data) != 4: raise RuntimeError("Bad option length")
+    self.addr = IPAddr(data)
+    return self
+
+  def pack (self):
+    return self.addr.toRaw()
+
+  def __repr__ (self):
+    return "%s(%s)" % (self._name, self.addr)
+
+class DHCPIPsOptionBase (DHCPOption):
+  """
+  Superclass for options which are a list of IP addresses
+  """
+  def __init__ (self, addrs=[]):
+    if isinstance(addrs, (basestring,IPAddr)):
+      self.addrs = [IPAddr(addrs)]
+    else:
+      self.addrs = [IPAddr(a) for a in addrs]
+
+  @classmethod
+  def unpack (cls, data, code = None):
+    self = cls()
+    if (len(data) % 4) != 0: raise RuntimeError("Bad option length")
+    while len(data):
+      self.addrs.append(IPAddr(data[:4]))
+      data = data[4:]
+    return self
+
+  def pack (self):
+    r = b''
+    for addr in self.addrs:
+      r += addr.toRaw()
+    return r
+
+  @property
+  def addr (self):
+    if len(self.addrs) == 0: return None
+    return self.addrs[0]
+
+  def __repr__ (self):
+    return "%s(%s)" % (self._name, self.addrs)
+
+class DHCPSecondsOptionBase (DHCPOption):
+  """
+  Superclass for options which are a number of seconds as 4 bytes
+  """
+  def __init__ (self, seconds = None):
+    self.seconds = seconds
+
+  @classmethod
+  def unpack (cls, data, code = None):
+    self = cls()
+    if len(data) != 4: raise RuntimeError("Bad option length")
+    self.seconds = struct.unpack('!I', data)
+    return self
+
+  def pack (self):
+    return struct.pack('!I', self.seconds)
+
+  def __repr__ (self):
+    return "%s(%s)" % (self._name, self.seconds)
+
+@dhcp_option_def(dhcp.MSG_TYPE_OPT)
+class DHCPMsgTypeOption (DHCPOption):
+  def __init__ (self, type=None):
+    self.type = type
+
+  @classmethod
+  def unpack (cls, data, code = None):
+    self = cls()
+    if len(data) != 1: raise RuntimeError("Bad option length")
+    self.type = ord(data[0])
+    return self
+
+  def pack (self):
+    return chr(self.type)
+
+  def __repr__ (self):
+    t = {
+        1:'DISCOVER',
+        2:'OFFER',
+        3:'REQUEST',
+        4:'DECLINE',
+        5:'ACK',
+        6:'NAK',
+        7:'RELEASE',
+        8:'INFORM',
+    }.get(self.type, "TYPE"+str(self.type))
+    return "%s(%s)" % (self._name, t)
+
+@dhcp_option_def(dhcp.SUBNET_MASK_OPT)
+class DHCPSubnetMaskOption (DHCPIPOptionBase):
+  pass
+
+@dhcp_option_def(dhcp.ROUTERS_OPT)
+class DHCPRoutersOption (DHCPIPsOptionBase):
+  pass
+
+@dhcp_option_def(dhcp.TIME_SERVERS_OPT)
+class DHCPTimeServersOption (DHCPIPsOptionBase):
+  pass
+
+@dhcp_option_def(dhcp.DNS_SERVER_OPT)
+class DHCPDNSServersOption (DHCPIPsOptionBase):
+  pass
+
+@dhcp_option_def(dhcp.HOST_NAME_OPT)
+class DHCPHostNameOption (DHCPRawOption):
+  pass
+
+@dhcp_option_def(dhcp.DOMAIN_NAME_OPT)
+class DHCPDomainNameOption (DHCPRawOption):
+  pass
+
+@dhcp_option_def(dhcp.BCAST_ADDR_OPT)
+class DHCPBroadcastAddressOption (DHCPIPOptionBase):
+  pass
+
+@dhcp_option_def(dhcp.VENDOR_OPT)
+class DHCPVendorOption (DHCPRawOption):
+  pass
+
+@dhcp_option_def(dhcp.REQUEST_IP_OPT)
+class DHCPRequestIPOption (DHCPIPOptionBase):
+  pass
+
+@dhcp_option_def(dhcp.REQUEST_LEASE_OPT)
+class DHCPIPAddressLeaseTimeOption (DHCPSecondsOptionBase):
+  pass
+
+@dhcp_option_def(dhcp.OVERLOAD_OPT)
+class DHCPOptionOverloadOption (DHCPOption):
+  def __init__ (self, value = None):
+    self.value = value
+
+  @classmethod
+  def unpack (cls, data, code = None):
+    self = cls()
+    if len(data) != 1: raise RuntimeError("Bad option length")
+    self.value = ord(data[0])
+    return self
+
+  def pack (self):
+    return chr(self.type)
+
+  def __repr__ (self):
+    return "%s(%s)" % (self._name, self.value)
+
+@dhcp_option_def(dhcp.SERVER_ID_OPT)
+class DHCPServerIdentifierOption (DHCPIPOptionBase):
+  pass
+
+@dhcp_option_def(dhcp.ERROR_MSG_OPT)
+class DHCPErrorMessageOption (DHCPRawOption):
+  pass
+
+@dhcp_option_def(dhcp.T1_OPT)
+class DHCPRenewalTimeOption (DHCPSecondsOptionBase):
+  pass
+
+@dhcp_option_def(dhcp.T2_OPT)
+class DHCPRebindingTimeOption (DHCPSecondsOptionBase):
+  pass
+
+@dhcp_option_def(dhcp.PARAM_REQ_OPT)
+class DHCPParameterRequestOption (DHCPOption):
+  def __init__ (self, options = []):
+    self.options = options
+
+  @classmethod
+  def unpack (cls, data, code = None):
+    self = cls()
+    self.options = [ord(x) for x in data]
+    return self
+
+  def pack (self):
+    return b''.join(chr(x) for x in self.options)
+
+  def __repr__ (self):
+    names = []
+    for o in sorted(self.options):
+      n = _dhcp_option_unpackers.get(o)
+      if n is None or not hasattr(n, 'im_self'):
+        n = "Opt/" + str(o)
+      else:
+        n = n.im_self.__name__
+        if n.startswith("DHCP"): n = n[4:]
+        if n.endswith("Option"): n = n[:-6]
+        if n == "": n = "Opt"
+        n += '/' + str(o)
+      names.append(n)
+
+    return "%s(%s)" % (self._name, " ".join(names))
