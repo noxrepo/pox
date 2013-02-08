@@ -107,6 +107,8 @@ class DHCPD (EventMixin):
       self.exec_discover(event, p)
     elif t.type == p.REQUEST_MSG:
       self.exec_request(event, p)
+    elif t.type == p.RELEASE_MSG:
+      self.exec_release(event, p)
 
   def reply (self, event, msg):
     orig = event.parsed.find('dhcp')
@@ -142,6 +144,18 @@ class DHCPD (EventMixin):
     msg.add_option(pkt.DHCP.DHCPMsgTypeOption(msg.NAK_MSG))
     msg.siaddr = self.ip_addr
     self.reply(event, msg)
+
+  def exec_release (self, event, p):
+    src = event.parsed.src
+    if src != p.chaddr:
+      log.warn("%s tried to release %s with bad chaddr" % (src,p.ciaddr))
+      return
+    if self.leases.get(p.chaddr) != p.ciaddr:
+      log.warn("%s tried to release unleased %s" % (src,p.ciaddr))
+      return
+    del self.leases[p.chaddr]
+    self.pool.append(p.ciaddr)
+    log.info("%s released %s" % (src,p.ciaddr))
 
   def exec_request (self, event, p):
     if not p.REQUEST_IP_OPT in p.options:
