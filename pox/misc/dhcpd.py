@@ -220,7 +220,7 @@ class DHCPD (EventMixin):
       if offer is None:
         if len(self.pool) == 0:
           log.error("Out of IP addresses")
-          #TODO: Send a NAK or something?
+          self.nak(event)
           return
 
         offer = self.pool[0]
