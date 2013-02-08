@@ -18,15 +18,15 @@
 """
 A very quick and dirty DHCP server
 
-This is currently missing lots of features and isn't incredibly
-configurable or anything.  Send pull requests. ;)
+This is currently missing lots of features and sort of limited with
+respect to subnets and so on, but it's a start.
 """
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 import pox.lib.packet as pkt
 
-from pox.lib.addresses import IPAddr,EthAddr
+from pox.lib.addresses import IPAddr,EthAddr,parse_cidr
 from pox.lib.addresses import IP_BROADCAST, IP_ANY
 from pox.lib.revent import *
 from pox.lib.util import dpid_to_str
@@ -58,22 +58,203 @@ class DHCPLease (Event):
     self._nak = True
 
 
+class AddressPool (object):
+  """
+  Superclass for DHCP address pools
+
+  Note that it's just a subset of a list (thus, you can always just use
+  a list as a pool).  The one exception is an optional "subnet_mask" hint.
+
+  It probably makes sense to change this abstraction so that we can more
+  easily return addresses from multiple ranges, and because some things
+  (e.g., getitem) are potentially difficult to implement and not particularly
+  useful (since we only need to remove a single item at a time).
+  """
+  def __init__ (self):
+    """
+    Initialize this pool.
+    """
+    pass
+
+  def __contains__ (self, item):
+    """
+    Is this IPAddr in the pool?
+    """
+    return False
+
+  def append (self, item):
+    """
+    Add this IP address back into the pool
+    """
+    pass
+
+  def remove (self, item):
+    """
+    Remove this IPAddr from the pool
+    """
+    pass
+
+  def __len__ (self):
+    """
+    Returns number of IP addresses in the pool
+    """
+    return 0
+
+  def __getitem__ (self, index):
+    """
+    Get an IPAddr from the pool.
+
+    Note that this will only be called with index = 0!
+    """
+    pass
+
+
+class SimpleAddressPool (AddressPool):
+  """
+  Simple AddressPool for simple subnet based pools.
+  """
+  def __init__ (self, network = "192.168.0.0/24", first = 1, last = None,
+                count = None):
+    """
+    Simple subnet-based address pool
+
+    Allocates count IP addresses out of network/network_size, starting
+    with the first'th.  You may specify the end of the range with either
+    last (to specify the last'th address to use) or count to specify the
+    number to use.  If both are None, use up to the end of all
+    legal addresses.
+
+    Example for all of 192.168.x.x/16:
+      SimpleAddressPool("192.168.0.0/16", 1, 65534)
+    """
+    network,network_size = parse_cidr(network)
+
+    self.first = first
+    self.network_size = network_size
+    self.host_size = 32-network_size
+    self.network = IPAddr(network)
+
+    if last is None and count is None:
+      self.last = (1 << self.host_size) - 2
+    elif last is not None:
+      self.last = last
+    elif count is not None:
+      self.last = self.first + count - 1
+    else:
+      raise RuntimeError("Cannot specify both last and count")
+
+    self.removed = set()
+
+    if self.count <= 0: raise RuntimeError("Bad first/last range")
+    if first == 0: raise RuntimeError("Can't allocate 0th address")
+    if self.host_size < 0 or self.host_size > 32:
+      raise RuntimeError("Bad network")
+    if IPAddr(self.last | self.network.toUnsigned()) not in self:
+      raise RuntimeError("Bad first/last range")
+
+  def __repr__ (self):
+    return str(self)
+
+  def __str__ (self):
+    t = self.network.toUnsigned()
+    t = (IPAddr(t|self.first),IPAddr(t|self.last))
+    return "<Addresses from %s to %s>" % t
+
+  @property
+  def subnet_mask (self):
+    return IPAddr(((1<<self.network_size)-1) << self.host_size)
+
+  @property
+  def count (self):
+    return self.last - self.first + 1
+
+  def __contains__ (self, item):
+    item = IPAddr(item)
+    if item in self.removed: return False
+    n = item.toUnsigned()
+    mask = (1<<self.host_size)-1
+    nm = (n & mask) | self.network.toUnsigned()
+    if nm != n: return False
+    if (n & mask) == mask: return False
+    if (n & mask) < self.first: return False
+    if (n & mask) > self.last: return False
+    return True
+
+  def append (self, item):
+    item = IPAddr(item)
+    if item not in self.removed:
+      if item in self:
+        raise RuntimeError("%s is already in this pool" % (item,))
+      else:
+        raise RuntimeError("%s does not belong in this pool" % (item,))
+    self.removed.remove(item)
+
+  def remove (self, item):
+    item = IPAddr(item)
+    if item not in self:
+      raise RuntimeError("%s not in this pool" % (item,))
+    self.removed.add(item)
+
+  def __len__ (self):
+    return (self.last-self.first+1) - len(self.removed)
+
+  def __getitem__ (self, index):
+    if index < 0:
+      raise RuntimeError("Negative indices not allowed")
+    if index >= len(self):
+      raise IndexError("Item does not exist")
+    c = self.first
+
+    # Use a heuristic to find the first element faster (we hope)
+    # Note this means that removing items changes the order of
+    # our "list".
+    c += len(self.removed)
+    while c > self.last:
+      c -= self.count
+
+    while True:
+      addr = IPAddr(c | self.network.toUnsigned())
+      if addr not in self.removed:
+        assert addr in self
+        index -= 1
+        if index < 0: return addr
+      c += 1
+      if c > self.last: c -= self.count
+
+
 class DHCPD (EventMixin):
   _eventMixin_events = set([DHCPLease])
 
-  def __init__ (self, ip_address = "192.168.0.254", router_address = None,
-                dns_address = None, subnet = None, install_flow = True):
+  def __init__ (self, ip_address = "192.168.0.254", router_address = (),
+                dns_address = (), pool = None, subnet = None,
+                install_flow = True):
+
+    def fix_addr (addr, backup):
+      if addr is None: return None
+      if addr is (): return IPAddr(backup)
+      return IPAddr(addr)
+
     self._install_flow = install_flow
 
     self.ip_addr = IPAddr(ip_address)
-    self.router_addr = IPAddr(router_address or ip_address)
-    self.dns_addr = IPAddr(dns_address or self.router_addr)
-    self.subnet = IPAddr(subnet or "255.255.255.0")
+    self.router_addr = fix_addr(router_address, ip_address)
+    self.dns_addr = fix_addr(dns_address, self.router_addr)
+
+    if pool is None:
+      self.pool = [IPAddr("192.168.0."+str(x)) for x in range(100,199)]
+      self.subnet = IPAddr(subnet or "255.255.255.0")
+    else:
+      self.pool = pool
+      self.subnet = subnet
+      if hasattr(pool, 'subnet_mask'):
+        self.subnet = pool.subnet_mask
+      if self.subnet is None:
+        raise RuntimeError("You must specify a subnet mask or use a "
+                           "pool with a subnet hint")
 
     self.lease_time = 60 * 60 # An hour
     #TODO: Actually make them expire :)
 
-    self.pool = [IPAddr("192.168.0."+str(x)) for x in range(100,199)]
     self.offers = {} # Eth -> IP we offered
     self.leases = {} # Eth -> IP we leased
 
@@ -252,12 +433,51 @@ class DHCPD (EventMixin):
     """
     if msg.SUBNET_MASK_OPT in wanted_opts:
       msg.add_option(pkt.DHCP.DHCPSubnetMaskOption(self.subnet))
-    if msg.ROUTERS_OPT in wanted_opts:
+    if msg.ROUTERS_OPT in wanted_opts and self.router_addr is not None:
       msg.add_option(pkt.DHCP.DHCPRoutersOption(self.router_addr))
-    if msg.DNS_SERVER_OPT in wanted_opts:
+    if msg.DNS_SERVER_OPT in wanted_opts and self.dns_addr is not None:
       msg.add_option(pkt.DHCP.DHCPDNSServersOption(self.dns_addr))
     msg.add_option(pkt.DHCP.DHCPIPAddressLeaseTimeOption(self.lease_time))
 
 
-def launch (no_flow = False):
-  core.registerNew(DHCPD, install_flow = not no_flow)
+def launch (no_flow = False,
+            network = "192.168.0.0/24",            # Address range
+            first = 100, last = 199, count = None, # Address range
+            ip = "192.168.0.254",
+            router = (),                   # Auto
+            dns = ()):                     # Auto
+  """
+  Launch DHCP server
+
+  Defaults to serving 192.168.0.100 to 192.168.0.199
+
+  network  Subnet to allocate addresses from
+  first    First'th address in subnet to use (256 is x.x.1.0 in a /16)
+  last     Last'th address in subnet to use
+  count    Alternate way to specify last address to use
+  ip       IP to use for DHCP server
+  router   Router IP to tell clients. Defaults to 'ip'. 'None' will
+           stop the server from telling clients anything
+  dns      DNS IP to tell clients.  Defaults to 'router'.  'None' will
+           stop the server from telling clients anything.
+  """
+  def fixint (i):
+    i = str(i)
+    if i.lower() == "none": return None
+    if i.lower() == "true": return None
+    return int(i)
+  def fix (i):
+    i = str(i)
+    if i.lower() == "none": return None
+    if i.lower() == "true": return None
+    if i == '()': return ()
+    return i
+  first,last,count = map(fixint,(first,last,count))
+  router,dns = map(fix,(router,dns))
+
+  pool = SimpleAddressPool(network = network, first = first, last = last,
+                           count = count)
+
+  core.registerNew(DHCPD, install_flow = not no_flow, pool = pool,
+                   ip_address = ip, router_address = router,
+                   dns_address = dns)
