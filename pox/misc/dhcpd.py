@@ -27,6 +27,7 @@ import pox.openflow.libopenflow_01 as of
 import pox.lib.packet as pkt
 
 from pox.lib.addresses import IPAddr,EthAddr
+from pox.lib.addresses import IP_BROADCAST, IP_ANY
 from pox.lib.revent import *
 from pox.lib.util import dpid_to_str
 
@@ -97,6 +98,11 @@ class DHCPD (EventMixin):
       return
 
     if p.op != p.BOOTREQUEST:
+      return
+
+    # Is it to us?  (Or at least not specifically NOT to us...)
+    ipp = event.parsed.find('ipv4')
+    if ipp.dstip not in (IP_ANY,IP_BROADCAST,self.ip_addr):
       return
 
     t = p.options.get(p.MSG_TYPE_OPT)
