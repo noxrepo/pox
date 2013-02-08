@@ -109,17 +109,22 @@ class DHCPD (EventMixin):
       self.exec_request(event, p)
 
   def reply (self, event, msg):
+    orig = event.parsed.find('dhcp')
+    broadcast = (orig.flags & orig.BROADCAST_FLAG) != 0
     msg.op = msg.BOOTREPLY
     msg.chaddr = event.parsed.src
     msg.htype = 1
     msg.hlen = 6
-    msg.xid = event.parsed.find('dhcp').xid
+    msg.xid = orig.xid
     msg.add_option(pkt.DHCP.DHCPServerIdentifierOption(self.ip_addr))
 
     ethp = pkt.ethernet(src=ip_for_event(event),dst=event.parsed.src)
     ethp.type = pkt.ethernet.IP_TYPE
     ipp = pkt.ipv4(srcip = self.ip_addr)
     ipp.dstip = event.parsed.find('ipv4').srcip
+    if broadcast:
+      ipp.dstip = IP_BROADCAST
+      ethp.dst = pkt.ETHERNET.ETHER_BROADCAST
     ipp.protocol = ipp.UDP_PROTOCOL
     udpp = pkt.udp()
     udpp.srcport = pkt.dhcp.SERVER_PORT
