@@ -258,6 +258,10 @@ class DHCPD (EventMixin):
     self.offers = {} # Eth -> IP we offered
     self.leases = {} # Eth -> IP we leased
 
+    if self.ip_addr in self.pool:
+      log.debug("Removing my own IP (%s) from address pool", self.ip_addr)
+      self.pool.remove(self.ip_addr)
+
     core.openflow.addListeners(self)
 
   def _handle_ConnectionUp (self, event):
