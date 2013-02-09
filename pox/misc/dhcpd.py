@@ -444,16 +444,28 @@ class DHCPD (EventMixin):
     msg.add_option(pkt.DHCP.DHCPIPAddressLeaseTimeOption(self.lease_time))
 
 
-def launch (no_flow = False,
+def default (no_flow = False,
             network = "192.168.0.0/24",            # Address range
             first = 100, last = 199, count = None, # Address range
             ip = "192.168.0.254",
             router = (),                   # Auto
             dns = ()):                     # Auto
   """
+  Launch DHCP server defaulting to 192.168.0.100-199
+  """
+  launch(no_flow, network, first, last, count, ip, router, dns)
+
+
+def launch (no_flow = False,
+            network = "192.168.0.0/24",            # Address range
+            first = 1, last = None, count = None, # Address range
+            ip = "192.168.0.254",
+            router = (),                   # Auto
+            dns = ()):                     # Auto
+  """
   Launch DHCP server
 
-  Defaults to serving 192.168.0.100 to 192.168.0.199
+  Defaults to serving 192.168.0.1 to 192.168.0.253
 
   network  Subnet to allocate addresses from
   first    First'th address in subnet to use (256 is x.x.1.0 in a /16)
@@ -485,3 +497,5 @@ def launch (no_flow = False,
   core.registerNew(DHCPD, install_flow = not no_flow, pool = pool,
                    ip_address = ip, router_address = router,
                    dns_address = dns)
+
+  log.debug("DHCP serving a%s", str(pool)[2:-1])
