@@ -52,16 +52,13 @@ import random
 import hashlib
 import base64
 
-#from pox.messenger.messenger import MessengerConnection
-
 from pox.core import core
 
 import os
 import posixpath
 import urllib
 import cgi
-import shutil
-import mimetypes
+import errno
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -80,6 +77,7 @@ def _setAttribs (parent, child):
   setattr(child, 'parent', parent)
 
 import SimpleHTTPServer
+from SimpleHTTPServer import SimpleHTTPRequestHandler
 
 
 class SplitRequestHandler (BaseHTTPRequestHandler):
@@ -195,196 +193,127 @@ class CoreHandler (SplitRequestHandler):
       self.wfile.write(r)
 
 
-class StaticContentHandler (SplitRequestHandler):
-    # This is basically SimpleHTTPRequestHandler from Python, but
-    # modified to serve from given directories and to inherit from
-    # SplitRequestHandler.
+class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
+  # We slightly modify SimpleHTTPRequestHandler to serve from given
+  # directories and inherit from from Python, but
+  # modified to serve from given directories and to inherit from
+  # SplitRequestHandler.
 
-    """Simple HTTP request handler with GET and HEAD commands.
+  """
+  A SplitRequestHandler for serving static content
 
-    This serves files from the current directory and any of its
-    subdirectories.  The MIME type for files is determined by
-    calling the .guess_type() method.
+  This is largely the same as the Python SimpleHTTPRequestHandler, but
+  we modify it to serve from arbitrary directories at arbitrary
+  positions in the URL space.
+  """
 
-    The GET and HEAD requests are identical except that the HEAD
-    request omits the actual contents of the file.
+  server_version = "StaticContentHandler/1.0"
 
+  def send_head (self):
+    # We override this and handle the directory redirection case because
+    # we want to include the per-split prefix.
+    path = self.translate_path(self.path)
+    if os.path.isdir(path):
+      if not self.path.endswith('/'):
+        self.send_response(301)
+        self.send_header("Location", self.prefix + self.path + "/")
+        self.end_headers()
+        return None
+    return SimpleHTTPRequestHandler.send_head(self)
+
+  def list_directory (self, dirpath):
+    # dirpath is an OS path
+    try:
+      d = os.listdir(dirpath)
+    except OSError as e:
+      if e.errno == errno.EACCES:
+        self.send_error(403, "This directory is not listable")
+      elif e.errno == errno.ENOENT:
+        self.send_error(404, "This directory does not exist")
+      else:
+        self.send_error(400, "Unknown error")
+      return None
+    d.sort(key=str.lower)
+    r = StringIO()
+    r.write("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2 Final//EN\">\n")
+    path = posixpath.join(self.prefix, cgi.escape(self.path).lstrip("/"))
+    r.write("<html><head><title>" + path + "</title></head>\n")
+    r.write("<body><pre>")
+    parts = path.rstrip("/").split("/")
+    r.write('<a href="/">/</a>')
+    for i,part in enumerate(parts):
+      link = urllib.quote("/".join(parts[:i+1]))
+      if i > 0: part += "/"
+      r.write('<a href="%s">%s</a>' % (link, cgi.escape(part)))
+    r.write("\n" + "-" * (0+len(path)) + "\n")
+
+    dirs = []
+    files = []
+    for f in d:
+      if f.startswith("."): continue
+      if os.path.isdir(os.path.join(dirpath, f)):
+        dirs.append(f)
+      else:
+        files.append(f)
+
+    def entry (n, rest=''):
+      link = urllib.quote(n)
+      name = cgi.escape(n)
+      r.write('<a href="%s">%s</a>\n' % (link,name+rest))
+
+    for f in dirs:
+      entry(f, "/")
+    for f in files:
+      entry(f)
+
+    r.write("</pre></body></html>")
+    r.seek(0)
+    self.send_response(200)
+    self.send_header("Content-Type", "text/html")
+    self.send_header("Content-Length", str(len(r.getvalue())))
+    self.end_headers()
+    return r
+
+  def translate_path (self, path, include_prefix = True):
+    """
+    Translate a web-path to a local filesystem path
+
+    Odd path elements (e.g., ones that contain local filesystem path
+    separators) are stripped.
     """
 
-    server_version = "StaticContentHandler/1.0"
+    def fixpath (p):
+      o = []
+      skip = 0
+      while True:
+        p,tail = posixpath.split(p)
+        if p in ('/','') and tail == '': break
+        if tail in ('','.', os.path.curdir, os.path.pardir): continue
+        if os.path.sep in tail: continue
+        if os.path.altsep and os.path.altsep in tail: continue
+        if os.path.splitdrive(tail)[0] != '': continue
 
-    def do_GET(self):
-        """Serve a GET request."""
-        f = self.send_head()
-        if f:
-            self.copyfile(f, self.wfile)
-            f.close()
+        if tail == '..':
+          skip += 1
+          continue
+        if skip:
+          skip -= 1
+          continue
+        o.append(tail)
+      o.reverse()
+      return o
 
-    def do_HEAD(self):
-        """Serve a HEAD request."""
-        f = self.send_head()
-        if f:
-            f.close()
-
-    def send_head(self):
-        """Common code for GET and HEAD commands.
-
-        This sends the response code and MIME headers.
-
-        Return value is either a file object (which has to be copied
-        to the outputfile by the caller unless the command was HEAD,
-        and must be closed by the caller under all circumstances), or
-        None, in which case the caller has nothing further to do.
-
-        """
-        path = self.translate_path(self.path)
-        f = None
-        if os.path.isdir(path):
-            if not self.path.endswith('/'):
-                # redirect browser - doing basically what apache does
-                self.send_response(301)
-                self.send_header("Location", self.prefix + self.path + "/")
-                self.end_headers()
-                return None
-            for index in "index.html", "index.htm":
-                index = os.path.join(path, index)
-                if os.path.exists(index):
-                    path = index
-                    break
-            else:
-                return self.list_directory(path)
-        ctype = self.guess_type(path)
-        try:
-            # Always read in binary mode. Opening files in text mode may
-            # cause newline translations, making the actual size of the
-            # content transmitted *less* than the content-length!
-            f = open(path, 'rb')
-        except IOError:
-            self.send_error(404, "File not found")
-            return None
-        self.send_response(200)
-        self.send_header("Content-type", ctype)
-        fs = os.fstat(f.fileno())
-        self.send_header("Content-Length", str(fs[6]))
-        self.send_header("Last-Modified",self.date_time_string(fs.st_mtime))
-        self.end_headers()
-        return f
-
-    def list_directory(self, path):
-        """Helper to produce a directory listing (absent index.html).
-
-        Return value is either a file object, or None (indicating an
-        error).  In either case, the headers are sent, making the
-        interface the same as for send_head().
-
-        """
-        try:
-            list = os.listdir(path)
-        except os.error:
-            self.send_error(404, "No permission to list directory")
-            return None
-        list.sort(key=lambda a: a.lower())
-        f = StringIO()
-        displaypath = cgi.escape(urllib.unquote(self.path))
-        f.write('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
-        f.write("<html>\n<title>Directory listing for %s</title>\n" %
-                displaypath)
-        f.write("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
-        f.write("<hr>\n<ul>\n")
-        f.write('<li><a href=".."><i>Parent Directory</i></a>\n')
-        for name in list:
-            fullname = os.path.join(path, name)
-            displayname = linkname = name
-            # Append / for directories or @ for symbolic links
-            if os.path.isdir(fullname):
-                displayname = name + "/"
-                linkname = name + "/"
-            if os.path.islink(fullname):
-                displayname = name + "@"
-                # a link to a directory displays with @ and links with /
-            f.write('<li><a href="%s">%s</a>\n'
-                    % (urllib.quote(linkname), cgi.escape(displayname)))
-        f.write("</ul>\n<hr>\n</body>\n</html>\n")
-        length = f.tell()
-        f.seek(0)
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.send_header("Content-Length", str(length))
-        self.end_headers()
-        return f
-
-    def translate_path(self, path):
-        """Translate a /-separated PATH to the local filename syntax.
-
-        Components that mean special things to the local file system
-        (e.g. drive or directory names) are ignored.  (XXX They should
-        probably be diagnosed.)
-
-        """
-        # abandon query parameters
-        path = path.split('?',1)[0]
-        path = path.split('#',1)[0]
-        path = posixpath.normpath(urllib.unquote(path))
-        words = path.split('/')
-        words = filter(None, words)
-        #path = os.getcwd()
-        path = os.path.abspath(self.args['root'])
-        for word in words:
-            drive, word = os.path.splitdrive(word)
-            head, word = os.path.split(word)
-            if word in (os.curdir, os.pardir): continue
-            path = os.path.join(path, word)
-        return path
-
-    def copyfile(self, source, outputfile):
-        """Copy all data between two file objects.
-
-        The SOURCE argument is a file object open for reading
-        (or anything with a read() method) and the DESTINATION
-        argument is a file object open for writing (or
-        anything with a write() method).
-
-        The only reason for overriding this would be to change
-        the block size or perhaps to replace newlines by CRLF
-        -- note however that this the default server uses this
-        to copy binary data as well.
-
-        """
-        shutil.copyfileobj(source, outputfile)
-
-    def guess_type(self, path):
-        """Guess the type of a file.
-
-        Argument is a PATH (a filename).
-
-        Return value is a string of the form type/subtype,
-        usable for a MIME Content-type header.
-
-        The default implementation looks the file's extension
-        up in the table self.extensions_map, using application/octet-stream
-        as a default; however it would be permissible (if
-        slow) to look inside the data to make a better guess.
-
-        """
-
-        base, ext = posixpath.splitext(path)
-        if ext in self.extensions_map:
-            return self.extensions_map[ext]
-        ext = ext.lower()
-        if ext in self.extensions_map:
-            return self.extensions_map[ext]
-        else:
-            return self.extensions_map['']
-
-    if not mimetypes.inited:
-        mimetypes.init() # try to read system mime.types
-    extensions_map = mimetypes.types_map.copy()
-    extensions_map.update({
-        '': 'application/octet-stream', # Default
-        '.py': 'text/plain',
-        '.c': 'text/plain',
-        '.h': 'text/plain',
-        })
+    # Remove query string / fragment
+    if "?" in path: path = path[:path.index("?")]
+    if "#" in path: path = path[:path.index("#")]
+    path = fixpath(path)
+    if path:
+      path = os.path.join(*path)
+    else:
+      path = ''
+    if include_prefix:
+      path = os.path.join(os.path.abspath(self.args['root']), path)
+    return path
 
 
 def wrapRequestHandler (handlerClass):
