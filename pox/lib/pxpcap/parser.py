@@ -82,6 +82,7 @@ class PCapParser (object):
     if len(self._buf) < self._cap_size: return
     data = self._buf[:self._cap_size]
     self._buf = self._buf[self._cap_size:]
+    self._proc = self._proc_header
     self._packet(data)
 
   def feed (self, data):
