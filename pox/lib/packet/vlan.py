@@ -83,12 +83,11 @@ class vlan(packet_base):
 
         self.parsed = True
 
-        # Don't know what to do about a VLAN'd VLAN...
-        assert self.eth_type != 0x8100
+        self.next = ethernet.parse_next(self,self.eth_type,raw,vlan.MIN_LEN)
 
-        if self.eth_type in ethernet.type_parsers:
-            self.next = ethernet.type_parsers[self.eth_type]\
-             (raw=raw[vlan.MIN_LEN:],prev=self)
+    @property
+    def effective_ethertype (self):
+      return ethernet._get_effective_ethertype(self)
 
     @property
     def type (self):
