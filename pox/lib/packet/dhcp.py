@@ -234,13 +234,13 @@ class dhcp(packet_base):
         self.parseOptionSegment(self._raw_options)
         if dhcp.OVERLOAD_OPT in self.options:
             opt_val = self.options[dhcp.OVERLOAD_OPT]
-            if opt_val[0] != 1:
+            if len(opt_val) != 1:
                 self.warn('DHCP overload option has bad len %u' %
-                          (opt_val[0],))
+                          (len(opt_val),))
                 return
-            if opt_val[1] == 1 or opt_val[1] == 3:
+            if opt_val == 1 or opt_val == 3:
                 self.parseOptionSegment(self.file)
-            if opt_val[1] == 2 or opt_val[1] == 3:
+            if opt_val == 2 or opt_val == 3:
                 self.parseOptionSegment(self.sname)
 
     def parseOptionSegment(self, barr):
@@ -457,7 +457,7 @@ class DHCPSecondsOptionBase (DHCPOption):
   def unpack (cls, data, code = None):
     self = cls()
     if len(data) != 4: raise RuntimeError("Bad option length")
-    self.seconds = struct.unpack('!I', data)
+    self.seconds, = struct.unpack('!I', data)
     return self
 
   def pack (self):
@@ -547,7 +547,7 @@ class DHCPOptionOverloadOption (DHCPOption):
     return self
 
   def pack (self):
-    return chr(self.type)
+    return chr(self.value)
 
   def __repr__ (self):
     return "%s(%s)" % (self._name, self.value)
