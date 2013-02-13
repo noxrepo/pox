@@ -386,12 +386,11 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
       if handler is None:
         handler = self
         if not self.path.endswith('/'):
-          # redirect browser - doing basically what apache does
+          # Handle splits like directories
           self.send_response(301)
-          print "redirect to ",self.path+'/'
           self.send_header("Location", self.path + "/")
           self.end_headers()
-          continue
+          break
 
       break
 
