@@ -202,14 +202,14 @@ class dns(packet_base):
           if term: o += '\x00'
           return o
 
-        def putName (name):
+        def putName (s, name):
           pre = ''
           post = name
           while True:
             at = s.find(makeName(post, True))
             if at == -1:
               post = post.split('.', 1)
-              pre = '.'.join(pre, post[0])
+              pre = pre + "." + post[0]
               if len(post) == 1:
                 if len(pre) == 0:
                   s += '\x00'
@@ -222,23 +222,24 @@ class dns(packet_base):
                 s += makeName(pre, False)
               s += struct.pack("!H", at | 0xc0)
               break
+          return s
 
         for r in self.questions:
-          putName(r.name)
+          s = putName(s, r.name)
           s += struct.pack("!HH", r.qtype, r.qclass)
 
         for r in self.answers:
-          putName(r.name)
+          s = putName(s, r.name)
           s += struct.pack("!HHIH", r.qtype, r.qclass, r.ttl, len(r.rddata))
           s += r.rddata
 
         for r in self.authorities:
-          putName(r.name)
+          s = putName(s, r.name)
           s += struct.pack("!HHIH", r.qtype, r.qclass, r.ttl, len(r.rddata))
           s += r.rddata
 
         for r in self.additional:
-          putName(r.name)
+          s = putName(s, r.name)
           s += struct.pack("!HHIH", r.qtype, r.qclass, r.ttl, len(r.rddata))
           s += r.rddata
 
