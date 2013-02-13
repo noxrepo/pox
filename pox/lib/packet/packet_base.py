@@ -114,6 +114,17 @@ class packet_base (object):
         m = []
         while p is not None:
           if not isinstance(p, packet_base):
+            if isinstance(p, bytes):
+              if len(p) == 0:
+                m.append("[0 bytes]")
+                break
+              s = ''
+              for t in range(min(len(p), 5)):
+                s += "%02x " % (ord(p[t]),)
+              if len(p) > 5: s += "..."
+              s = s.rstrip()
+              m.append("[%s bytes: " % (len(p),) + s + "]")
+              break
             try:
               l = len(p)
               m.append("[%s l:%i]" % (p.__class__.__name__, l))
