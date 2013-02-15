@@ -27,25 +27,38 @@ At the moment, it only works on the primary OF nexus, and it
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.recoco import Timer
+import time
 
 log = core.getLogger()
 
 def _handle_timer (ofnexus):
   er = of.ofp_echo_request().pack()
-  count = len(ofnexus._connections)
-  ##if count != 0: log.debug("Sending echo requests")
-  for dpid,con in ofnexus._connections.iteritems():
+  count = len(ofnexus.connections)
+  t = time.time()
+  dead = []
+
+  for dpid,con in ofnexus.connections.iteritems():
+    if t - con.idle_time > (_interval+_switch_timeout):
+      dead.append(con)
+      continue
     con.send(er)
 
+  for con in dead:
+    con.disconnect("timed out")
+
+
 _running = False
+_switch_timeout = 3 # This amount beyond interval
+_interval = None
 
 def launch (interval = 20):
-  interval = float(interval)
+  global _interval
+  _interval = float(interval)
   def start ():
     global _running
     if _running:
       log.error("Keepalive already running")
       return
     _running = True
-    Timer(interval, _handle_timer, recurring=True, args=(core.openflow,))
+    Timer(_interval, _handle_timer, recurring=True, args=(core.openflow,))
   core.call_when_ready(start, "openflow", __name__)

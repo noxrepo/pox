@@ -26,6 +26,7 @@ import pox
 import pox.lib.util
 from pox.lib.revent.revent import EventMixin
 import datetime
+import time
 from pox.lib.socketcapture import CaptureSocket
 import pox.openflow.debug
 from pox.openflow.util import make_type_to_unpacker_table
@@ -121,7 +122,6 @@ def handle_FEATURES_REPLY (con, msg):
       con.disconnect()
     else:
       con.info("connected")
-      import time
       con.connect_time = time.time()
       e = con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
       if e is None or e.halt != True:
@@ -612,6 +612,7 @@ class Connection (EventMixin):
     self.features = None
     self.disconnected = False
     self.connect_time = None
+    self.idle_time = time.time()
 
     self.send(of.ofp_hello())
 
@@ -638,7 +639,7 @@ class Connection (EventMixin):
     """
     already = False
     if self.disconnected:
-      self.err("already disconnected!")
+      self.msg("already disconnected")
       already = True
     self.info(msg)
     self.disconnected = True
@@ -862,6 +863,7 @@ class OpenFlow_01_Task (Task):
               except:
                 pass
 
+          timestamp = time.time()
           for con in rlist:
             if con is listener:
               new_sock = listener.accept()[0]
@@ -874,6 +876,7 @@ class OpenFlow_01_Task (Task):
               sockets.append( newcon )
               #print str(newcon) + " connected"
             else:
+              con.idle_time = timestamp
               if con.read() is False:
                 con.close()
                 sockets.remove(con)
