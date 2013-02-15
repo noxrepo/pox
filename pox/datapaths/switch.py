@@ -31,7 +31,7 @@ Created by ykk
 from pox.lib.util import assert_type
 from pox.lib.revent import Event, EventMixin
 from pox.openflow.libopenflow_01 import *
-from pox.openflow.util import make_type_to_class_table
+from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow.flow_table import SwitchFlowTable
 from pox.lib.packet import *
 
@@ -630,8 +630,8 @@ class OFConnection (object):
     OFConnection.ID += 1
     self.ID = OFConnection.ID
     self.log = logging.getLogger("ControllerConnection(id=%d)" % self.ID)
-    ## OpenFlow Message map
-    self.ofp_msgs = make_type_to_class_table()
+    self.unpackers = make_type_to_unpacker_table()
+
     self.on_message_received = None
 
   def set_message_handler(self, handler):
@@ -672,8 +672,8 @@ class OFConnection (object):
 
       # msg.unpack implicitly only examines its own bytes, and not trailing
       # bytes
-      msg_obj = self.ofp_msgs[ofp_type]()
-      msg_obj.unpack(message)
+      new_offset, msg_obj = self.unpackers[ofp_type](message, 0)
+      assert new_offset == packet_length
 
       io_worker.consume_receive_buf(packet_length)
 
