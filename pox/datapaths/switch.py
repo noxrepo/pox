@@ -305,11 +305,13 @@ class SoftwareSwitch(EventMixin):
 
       # FIXME: for now, we assume that there is always physical link present
       # and that the link state depends only on the configuration.
+      old_state = port.state & OFPPS_LINK_DOWN
       port.state = port.state & ~OFPPS_LINK_DOWN
       if port.config & OFPPC_PORT_DOWN:
         port.state = port.state | OFPPS_LINK_DOWN
-
-    #self.send_port_status(port, OFPPR_MODIFY) # (Only for when STP makes changes?)
+      new_state = port.state & OFPPS_LINK_DOWN
+      if old_state != new_state:
+        self.send_port_status(port, OFPPR_MODIFY)
 
     if mask != 0:
       self.log.warn("Unsupported PORT_MOD flags: %08x" % (mask,))
