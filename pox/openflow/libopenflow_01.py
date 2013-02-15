@@ -4142,7 +4142,6 @@ class ofp_features_request (ofp_header):
 
   def unpack (self, raw, offset=0):
     offset,length = self._unpack_header(raw, offset)
-    return raw[8:]
     assert length == len(self)
     return offset,length
 
