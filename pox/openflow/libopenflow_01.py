@@ -949,7 +949,7 @@ class ofp_match (ofp_base):
           # Not IP or ARP
           self.nw_src = IPAddr(0)
           self.nw_dst = IPAddr(0)
-          eelf.nw_proto = 0
+          self.nw_proto = 0
         self.nw_tos = 0
         self.tp_src = 0
         self.tp_dst = 0
