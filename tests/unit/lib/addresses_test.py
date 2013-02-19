@@ -25,16 +25,11 @@ from copy import copy
 
 class MockEthAddrTest(unittest.TestCase):
   def test_basic(self):
-    self.assertEqual("00:11:22:33:44:55", str(EthAddr("00:11:22:33:44:55")), "str(eth) doesn't match original string")
-
-#  def test_int_ctor(self):
-#    int_val = EthAddr("00:00:00:00:01:00").toInt()
-#    self.assertEqual(int_val, 1<<8)
-#    with_int_ctor = EthAddr(int_val)
-#    self.assertEqual(int_val, with_int_ctor.toInt())
-#    self.assertEqual(str(with_int_ctor), "00:00:00:00:01:00")
-
-class MockIPAddrTest (unittest.TestCase):
-  def test_in_network (self):
-    self.assertTrue(IPAddr("192.168.1.1").inNetwork("192.168.1.0/24"))
-
+    self.assertEqual("00:11:22:33:44:55", EthAddr("00:11:22:33:44:55").toStr(), "toString doesn't match original string")
+    
+  def test_int_ctor(self):
+    int_val = EthAddr("00:00:00:00:01:00").toInt()
+    self.assertEqual(int_val, 1<<8)
+    with_int_ctor = EthAddr(int_val) 
+    self.assertEqual(int_val, with_int_ctor.toInt())
+    self.assertEqual(str(with_int_ctor), "00:00:00:00:01:00")

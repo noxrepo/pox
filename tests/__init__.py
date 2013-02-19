@@ -9,7 +9,7 @@ _tests = []
 def _up (e):
   log.info("Starting")
   for test in _tests:
-    log.info("Test " + test)
+    log.info("Test %s", test)
     if __main__.doImport("tests." + test) is True:
       log.error("Test %s not found", test)
       return
