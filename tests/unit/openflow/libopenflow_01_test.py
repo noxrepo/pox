@@ -47,7 +47,7 @@ class ofp_match_test(unittest.TestCase):
       self.assertTrue( ((m.wildcards & bitmask) >> shift) >= 32)
 
       # set a bunch of ip addresses with or without networks
-      for ipnet in ( "10.0.0.0/8", "172.16.0.0/16", "192.168.24.0/24", "1.2.3.4/30", "212.11.225.3"):
+      for ipnet in ( "10.0.0.0/8", "172.16.1.0/16", "192.168.24.0/24", "1.2.3.4/30", "212.11.225.3"):
         parts = ipnet.split("/")
         ip = parts[0]
         bits = int(parts[1]) if len(parts)>1 else 32
@@ -90,7 +90,6 @@ class ofp_match_test(unittest.TestCase):
       self.assertFalse(ref.matches_with_wildcards(other), "%s - %s should NOT match %s " % (msg, ref.show(), other.show()))
 
     ref = create()
-    print ref
 
     # same instances match
     assertMatch(ref, ref)
@@ -124,7 +123,7 @@ class ofp_command_test(unittest.TestCase):
   # custom map of POX class to header type, for validation
   ofp_type = {
     ofp_features_reply: OFPT_FEATURES_REPLY,
-    ofp_set_config: OFPT_SET_CONFIG,
+    ofp_switch_config: OFPT_SET_CONFIG,
     ofp_flow_mod: OFPT_FLOW_MOD,
     ofp_port_mod: OFPT_PORT_MOD,
     ofp_queue_get_config_request: OFPT_QUEUE_GET_CONFIG_REQUEST,
@@ -141,7 +140,7 @@ class ofp_command_test(unittest.TestCase):
     ofp_hello: OFPT_HELLO,
     ofp_echo_request: OFPT_ECHO_REQUEST,
     ofp_echo_reply: OFPT_ECHO_REPLY,
-    ofp_vendor_generic: OFPT_VENDOR,
+    ofp_vendor: OFPT_VENDOR,
     ofp_features_request: OFPT_FEATURES_REQUEST,
     ofp_get_config_request: OFPT_GET_CONFIG_REQUEST,
     ofp_get_config_reply: OFPT_GET_CONFIG_REPLY,
@@ -184,18 +183,13 @@ class ofp_command_test(unittest.TestCase):
   def test_header_pack_unpack(self):
     for kw in ( { "header_type": OFPT_PACKET_OUT, "xid": 1 },
                 { "header_type": OFPT_FLOW_MOD, "xid": 2 }):
-      # Can't directly pack a header, since it has no length...
-      class H (ofp_header):
-        def __len__ (self):
-          return 8
-      o = H(**kw)
+      o = ofp_header(**kw)
       self._test_pack_unpack(o, kw["xid"], kw["header_type"])
 
   def test_pack_all_comands_simple(self):
     xid_gen = itertools.count()
     for cls in ( ofp_features_reply,
-                   ofp_set_config,
-                   ofp_get_config_reply,
+                   ofp_switch_config,
                    ofp_flow_mod,
                    ofp_port_mod,
                    ofp_queue_get_config_request,
@@ -217,15 +211,7 @@ class ofp_command_test(unittest.TestCase):
                    ofp_get_config_reply,
                    ofp_set_config ):
       xid = xid_gen.next()
-      args = {}
-
-      # Customize initializer
-      if cls is ofp_stats_reply:
-        args['body'] = ofp_desc_stats(sw_desc="POX")
-      elif cls is ofp_stats_request:
-        args['body'] = ofp_vendor_stats_generic(vendor=0xcafe)
-
-      o = cls(xid=xid, **args)
+      o = cls(xid=xid)
       self._test_pack_unpack(o, xid)
 
   out = ofp_action_output
@@ -241,7 +227,7 @@ class ofp_command_test(unittest.TestCase):
 
     for actions in self.some_actions:
       for attrs in ( { 'data': packet }, { 'buffer_id': 5 } ):
-        xid = xid_gen()
+        xid = xid_gen.next()
         o = ofp_packet_out(xid=xid, actions=actions, **attrs)
         self._test_pack_unpack(o, xid, OFPT_PACKET_OUT)
 
@@ -287,7 +273,7 @@ class ofp_command_test(unittest.TestCase):
       for actions in self.some_actions:
         for command in ( OFPFC_ADD, OFPFC_DELETE, OFPFC_DELETE_STRICT, OFPFC_MODIFY_STRICT, OFPFC_MODIFY_STRICT ):
           for attrs in ( {}, { 'buffer_id' : 123 }, { 'idle_timeout': 5, 'hard_timeout': 10 } ):
-            xid = xid_gen()
+            xid = xid_gen.next()
             o = ofp_flow_mod(xid=xid, command=command, match = match, actions=actions, **attrs)
             unpacked = self._test_pack_unpack(o, xid, OFPT_FLOW_MOD)
 
@@ -333,12 +319,12 @@ class ofp_action_test(unittest.TestCase):
     self.assertEquals(extract_num(p, 4,2), 80)
     p = c(ofp_action_tp_port.set_src, OFPAT_SET_TP_SRC, { 'tp_port' : 22987 }, 8)
     self.assertEquals(extract_num(p, 4,2), 22987)
-#    c(ofp_action_push_mpls, OFPAT_PUSH_MPLS, {'ethertype':0x8847}, 8)
-#    c(ofp_action_pop_mpls, OFPAT_POP_MPLS, {'ethertype':0x0800}, 8)
-#    c(ofp_action_mpls_dec_ttl, OFPAT_DEC_MPLS_TTL, {}, 8)
-#    c(ofp_action_mpls_label, OFPAT_SET_MPLS_LABEL, {'mpls_label': 0xa1f}, 8)
-#    c(ofp_action_mpls_tc, OFPAT_SET_MPLS_TC, {'mpls_tc': 0xac}, 8)
-#    c(ofp_action_mpls_ttl, OFPAT_SET_MPLS_TTL, {'mpls_ttl': 0xaf}, 8)
+    c(ofp_action_push_mpls, OFPAT_PUSH_MPLS, {'ethertype':0x8847}, 8)
+    c(ofp_action_pop_mpls, OFPAT_POP_MPLS, {'ethertype':0x0800}, 8)
+    c(ofp_action_mpls_dec_ttl, OFPAT_DEC_MPLS_TTL, {}, 8)
+    c(ofp_action_mpls_label, OFPAT_SET_MPLS_LABEL, {'mpls_label': 0xa1f}, 8)
+    c(ofp_action_mpls_tc, OFPAT_SET_MPLS_TC, {'mpls_tc': 0xac}, 8)
+    c(ofp_action_mpls_ttl, OFPAT_SET_MPLS_TTL, {'mpls_ttl': 0xaf}, 8)
 
 if __name__ == '__main__':
   unittest.main()

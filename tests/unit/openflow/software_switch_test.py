@@ -12,25 +12,27 @@ from pox.datapaths.switch import *
 
 class MockConnection(object):
   def __init__(self):
-    self.ofp_handlers = {}
     self.received = []
 
   @property
   def last(self):
     return self.received[-1]
 
+  def set_message_handler(self, handler):
+    self.on_message_received = handler
+
   def to_switch(self, msg):
-    self.ofp_handlers[msg.header_type](msg)
+    self.on_message_received(self, msg)
 
   # from switch
   def send(self, msg):
     self.received.append(msg)
 
-class SwitchImplTest(unittest.TestCase):
+class SoftwareSwitchTest(unittest.TestCase):
 
   def setUp(self):
     self.conn = MockConnection()
-    self.switch = SwitchImpl(1, name="sw1")
+    self.switch = SoftwareSwitch(1, name="sw1")
     self.switch.set_connection(self.conn)
     self.packet = ethernet(src=EthAddr("00:00:00:00:00:01"), dst=EthAddr("00:00:00:00:00:02"),
             payload=ipv4(srcip=IPAddr("1.2.3.4"), dstip=IPAddr("1.2.3.5"),
@@ -126,7 +128,7 @@ class SwitchImplTest(unittest.TestCase):
     event = received[0]
     self.assertEqual(event.port.port_no,3)
     self.assertEqual(event.packet, self.packet)
-    
+
   def test_take_port_down(self):
     c = self.conn
     s = self.switch
@@ -134,60 +136,25 @@ class SwitchImplTest(unittest.TestCase):
     p = self.switch.ports.values()[0]
     s.take_port_down(p)
     new_num_ports = len(self.switch.ports)
-    self.assertTrue(new_num_ports == original_num_ports - 1, "Should have removed the port")
+    self.assertTrue(p.port_no in self.switch.down_port_nos,
+                    "Should have added port_no to down ports")
     self.assertEqual(len(c.received), 1)
     self.assertTrue(isinstance(c.last, ofp_port_status),
           "should have received port_status but got %s" % c.last)
     self.assertTrue(c.last.reason == OFPPR_DELETE)
-  
+
   def test_bring_port_up(self):
     c = self.conn
     s = self.switch
-    original_num_ports = len(self.switch.ports)
-    p = ofp_phy_port(port_no=1234)
+    p = ofp_phy_port(port_no=1)
+    s.take_port_down(p)
     s.bring_port_up(p)
-    new_num_ports = len(self.switch.ports)
-    self.assertTrue(new_num_ports == original_num_ports + 1, "Should have added the port")
-    self.assertEqual(len(c.received), 1)
+    self.assertFalse(p.port_no in self.switch.down_port_nos,
+                     "Should have removed the port from down_port_nos")
+    self.assertEqual(len(c.received), 2)
     self.assertTrue(isinstance(c.last, ofp_port_status),
           "should have received port_status but got %s" % c.last)
     self.assertTrue(c.last.reason == OFPPR_ADD)
-
-  def test_port_mod_failed(self):
-    c = self.conn
-
-    # test wrong port
-    msg = ofp_port_mod()
-    msg.port_no = 1234
-    c.to_switch(msg)
-    self.assertEqual(len(c.received), 1)
-    self.assertTrue(isinstance(c.last, ofp_error))
-    self.assertTrue(c.last.type == OFPET_PORT_MOD_FAILED)
-    self.assertTrue(c.last.code == OFPPMFC_BAD_PORT)
-
-    # test wrong hw_addr
-    msg.port_no = 1
-    msg.hw_addr = EthAddr("11:22:33:44:55:66")
-    c.to_switch(msg)
-    self.assertEqual(len(c.received), 2)
-    self.assertTrue(isinstance(c.last, ofp_error))
-    self.assertTrue(c.last.type == OFPET_PORT_MOD_FAILED)
-    self.assertTrue(c.last.code == OFPPMFC_BAD_HW_ADDR)
-
-  def test_port_mod_link_down(self):
-    c = self.conn
-    s = self.switch
-
-    # test wrong port
-    msg = ofp_port_mod()
-    msg.port_no = 1
-    msg.hw_addr = s.ports[1].hw_addr
-    msg.mask = OFPPC_PORT_DOWN
-    msg.config = OFPPC_PORT_DOWN
-    c.to_switch(msg)
-    self.assertEqual(len(c.received), 1)
-    self.assertTrue(isinstance(c.last, ofp_port_status))
-
 
 if __name__ == '__main__':
   unittest.main()
