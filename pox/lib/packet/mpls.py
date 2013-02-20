@@ -34,6 +34,7 @@ import struct
 
 from packet_base import packet_base
 from ethernet import ethernet
+from ipv4 import ipv4
 
 from packet_utils       import *
 
@@ -76,7 +77,9 @@ class mpls(packet_base):
         self.tc = ((label_low_tc_s & 0xf) >> 1)
         self.label = (label_high << 4) | (label_low_tc_s >> 4)
         self.parsed = True
-        self.next = raw[mpls.MIN_LEN:]
+        #self.next = raw[mpls.MIN_LEN:]
+        # parse next as IPv4
+        self.next = ipv4(raw[mpls.MIN_LEN:], self)
 
     def hdr(self, payload):
         label = self.label & 0xfffff
