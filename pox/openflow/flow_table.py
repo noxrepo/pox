@@ -135,7 +135,7 @@ class FlowTable (EventMixin):
     # [ (cookie, match, counters, actions),
     #   (cookie, match, counters, actions),
     #    ...                        ]
-    # 
+    #
     # Implies O(N) lookup for now. TODO: fix
     self._table = []
 
@@ -199,7 +199,7 @@ class FlowTable (EventMixin):
     return remove_flows
 
   def entry_for_packet(self, packet, in_port):
-    """ return the highest priority flow table entry that matches the given packet 
+    """ return the highest priority flow table entry that matches the given packet
     on the given in_port, or None if no matching entry is found. """
     packet_match = ofp_match.from_packet(packet, in_port)
 
@@ -210,13 +210,13 @@ class FlowTable (EventMixin):
       return None
 
 class SwitchFlowTable(FlowTable):
-  """ 
+  """
   Model a flow table for our switch implementation. Handles the behavior in response
-  to the OF messages send to the switch 
+  to the OF messages send to the switch
   """
 
   def process_flow_mod(self, flow_mod):
-    """ Process a flow mod sent to the switch 
+    """ Process a flow mod sent to the switch
     @return a tuple (added|modified|removed, [list of affected entries])
     """
     if(flow_mod.flags & OFPFF_CHECK_OVERLAP): raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
@@ -248,7 +248,7 @@ class SwitchFlowTable(FlowTable):
 
 class NOMFlowTable(EventMixin):
   _eventMixin_events = set([FlowTableModification])
-  """ 
+  """
   Model a flow table for use in our NOM model. Keep in sync with a switch through a
   connection.
   """
