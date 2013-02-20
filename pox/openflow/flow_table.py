@@ -1,4 +1,4 @@
-# Copyright 2011
+# Copyright 2011,2012,2013 Colin Scott
 #
 # This file is part of POX.
 #
@@ -14,12 +14,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
+
 """
 Implementation of an OpenFlow flow table
-
-@author: Colin Scott (cs@cs.berkeley.edu)
-
 """
+
 from collections import namedtuple
 from libopenflow_01 import *
 from pox.lib.revent import *
