@@ -30,7 +30,7 @@ class SwitchImplTest(unittest.TestCase):
 
   def setUp(self):
     self.conn = MockConnection()
-    self.switch = SwitchImpl(1, name="sw1")
+    self.switch = SoftwareSwitch(1, name="sw1")
     self.switch.set_connection(self.conn)
     self.packet = ethernet(src=EthAddr("00:00:00:00:00:01"), dst=EthAddr("00:00:00:00:00:02"),
             payload=ipv4(srcip=IPAddr("1.2.3.4"), dstip=IPAddr("1.2.3.5"),
