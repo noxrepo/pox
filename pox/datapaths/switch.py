@@ -273,23 +273,23 @@ class SoftwareSwitch(EventMixin):
     self.log.debug("Set config %s %s", self.name, str(config))
 
   def _receive_port_mod(self, port_mod):
-    self.log.debug("Get port modification request %s %s", self.name, str(ofp))
-    port_no = ofp.port_no
+    self.log.debug("Get port modification request %s %s", self.name, str(port_mod))
+    port_no = port_mod.port_no
     if port_no not in self.ports:
       err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT)
       self.send(err)
       return
     port = self.ports[port_no]
-    if port.hw_addr != ofp.hw_addr:
+    if port.hw_addr != port_mod.hw_addr:
       err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_HW_ADDR)
       self.send(err)
       return
 
-    mask = ofp.mask
+    mask = port_mod.mask
 
     if mask & OFPPC_NO_FLOOD:
       mask ^= OFPPC_NO_FLOOD
-      port.config = (port.config & ~OFPPC_NO_FLOOD) | (ofp.config & OFPPC_NO_FLOOD)
+      port.config = (port.config & ~OFPPC_NO_FLOOD) | (port_mod.config & OFPPC_NO_FLOOD)
       #TODO: Make sure .config syncs with no_flood_ports, or generate that .config
       #      at query time based on no_flood_ports
       if port.config & OFPPC_NO_FLOOD:
@@ -301,7 +301,7 @@ class SoftwareSwitch(EventMixin):
 
     if mask & OFPPC_PORT_DOWN:
       mask ^= OFPPC_PORT_DOWN
-      port.config = (port.config & ~OFPPC_PORT_DOWN) | (ofp.config & OFPPC_PORT_DOWN)
+      port.config = (port.config & ~OFPPC_PORT_DOWN) | (port_mod.config & OFPPC_PORT_DOWN)
       # Note (Peter Peresini): Although the spec is not clear about it,
       # we will assume that config.OFPPC_PORT_DOWN implies state.OFPPS_LINK_DOWN.
       # This is consistent with Open vSwitch.
