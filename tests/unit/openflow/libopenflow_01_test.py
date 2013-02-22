@@ -90,7 +90,7 @@ class ofp_match_test(unittest.TestCase):
       self.assertFalse(ref.matches_with_wildcards(other), "%s - %s should NOT match %s " % (msg, ref.show(), other.show()))
 
     ref = create()
-    print ref
+    #print ref
 
     # same instances match
     assertMatch(ref, ref)
