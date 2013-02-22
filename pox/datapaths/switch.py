@@ -270,7 +270,7 @@ class SoftwareSwitch(EventMixin):
     self.log.debug("Set config %s %s", self.name, str(config))
 
   def _receive_port_mod(self, port_mod):
-    self.log.debug("Get port modification request %s %s " % (self.name, str(ofp)))
+    self.log.debug("Get port modification request %s %s", self.name, str(ofp))
     port_no = ofp.port_no
     if port_no not in self.ports:
       err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT)
@@ -290,10 +290,10 @@ class SoftwareSwitch(EventMixin):
       #TODO: Make sure .config syncs with no_flood_ports, or generate that .config
       #      at query time based on no_flood_ports
       if port.config & OFPPC_NO_FLOOD:
-        self.log.debug("Disabling flooding on port %s" % port)
+        self.log.debug("Disabling flooding on port %s", port)
         self.no_flood_ports.add(port)
       else:
-        self.log.debug("Enabling flooding on port %s" % port)
+        self.log.debug("Enabling flooding on port %s", port)
         self.no_flood_ports.discard(port)
 
     if mask & OFPPC_PORT_DOWN:
@@ -314,7 +314,7 @@ class SoftwareSwitch(EventMixin):
         self.send_port_status(port, OFPPR_MODIFY)
 
     if mask != 0:
-      self.log.warn("Unsupported PORT_MOD flags: %08x" % (mask,))
+      self.log.warn("Unsupported PORT_MOD flags: %08x", mask)
 
   def _receive_vendor(self, vendor):
     self.log.debug("Vendor %s %s", self.name, str(vendor))
@@ -419,7 +419,7 @@ class SoftwareSwitch(EventMixin):
       # The OF spec states that packets should not be forwarded out their
       # in_port unless OFPP_IN_PORT is explicitly used.
       if port_no == in_port and not allow_in_port:
-        self.log.warn("out_port %d == in_port. Dropping" % (out_port,))
+        self.log.warn("out_port %d == in_port. Dropping", out_port)
         return
       if port_no not in self.ports:
         raise RuntimeError("Invalid physical output port: %x" % port_no)
@@ -618,11 +618,11 @@ class OFConnection (object):
 
   # These methods are called externally by IOWorker
   def msg (self, m):
-    self.log.debug(str(self) + " " + str(m))
+    self.log.debug("%s %s", str(self), str(m))
   def err (self, m):
-    self.log.error(str(self) + " " + str(m))
+    self.log.error("%s %s", str(self), str(m))
   def info (self, m):
-    self.log.info(str(self) + " " + str(m))
+    self.log.info("%s %s", str(self), str(m))
 
   def __init__ (self, io_worker):
     self.io_worker = io_worker
@@ -631,7 +631,7 @@ class OFConnection (object):
     self.error_handler = None
     OFConnection.ID += 1
     self.ID = OFConnection.ID
-    self.log = logging.getLogger("ControllerConnection(id=%d)" % self.ID)
+    self.log = logging.getLogger("ControllerConnection(id=%d)" % (self.ID,))
     self.unpackers = make_type_to_unpacker_table()
 
     self.on_message_received = None
@@ -660,7 +660,7 @@ class OFConnection (object):
         break
 
       if ord(message[0]) != OFP_VERSION:
-        e = ValueError("Bad OpenFlow version (" + str(ord(message[0])) + ") on connection " + str(self))
+        e = ValueError("Bad OpenFlow version (%s) on connection %s", ord(message[0]), str(self))
         if self.error_handler:
           return self.error_handler(e)
         else:
