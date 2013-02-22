@@ -41,6 +41,7 @@ import inspect
 import itertools
 import logging
 
+
 class DpPacketOut (Event):
   """ Event raised when a dataplane packet is sent out a port """
   def __init__ (self, node, packet, port):
@@ -52,8 +53,10 @@ class DpPacketOut (Event):
     # For backwards compatability:
     self.switch = node
 
+
 def _default_port_list(num_ports=4, prefix=0):
   return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x" % (prefix % 255, i))) for i in range(1, num_ports+1)]
+
 
 class SoftwareSwitch(EventMixin):
   _eventMixin_events = set([DpPacketOut])
@@ -603,6 +606,7 @@ class SoftwareSwitch(EventMixin):
   def __repr__(self):
     return "SoftwareSwitch(dpid=%d, num_ports=%d)" % (self.dpid, len(self.ports))
 
+
 class OFConnection (object):
   """ A codec for OpenFlow messages. Decodes and encodes OpenFlow messages (ofp_message)
       into byte arrays.
@@ -702,6 +706,7 @@ class OFConnection (object):
 
   def __str__ (self):
     return "[Con " + str(self.ID) + "]"
+
 
 class SwitchCapabilities:
   """
