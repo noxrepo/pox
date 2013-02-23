@@ -92,9 +92,6 @@ class SoftwareSwitch (EventMixin):
     # set of port numbers that are currently down
     self.down_port_nos = set()
 
-    # Set of ports that won't flood
-    self.no_flood_ports = set()
-
     if features is not None:
       self.features = features
     else:
@@ -303,15 +300,11 @@ class SoftwareSwitch (EventMixin):
 
     if mask & OFPPC_NO_FLOOD:
       mask ^= OFPPC_NO_FLOOD
-      #TODO: Make sure .config syncs with no_flood_ports, or generate that
-      #      .config at query time based on no_flood_ports
-      change = port.set_config(port_mod.config, OFPPC_NO_FLOOD)
-      if port.config & OFPPC_NO_FLOOD:
-        if change: self.log.debug("Disabling flooding on port %s", port)
-        self.no_flood_ports.add(port)
-      else:
-        if change: self.log.debug("Enabling flooding on port %s", port)
-        self.no_flood_ports.discard(port)
+      if port.set_config(port_mod.config, OFPPC_NO_FLOOD):
+        if port.config & OFPPC_NO_FLOOD:
+          self.log.debug("Disabling flooding on port %s", port)
+        else:
+          self.log.debug("Enabling flooding on port %s", port)
 
     if mask & OFPPC_PORT_DOWN:
       mask ^= OFPPC_PORT_DOWN
@@ -473,11 +466,15 @@ class SoftwareSwitch (EventMixin):
       real_send(out_port)
     elif out_port == OFPP_IN_PORT:
       real_send(in_port, allow_in_port=True)
-    elif out_port == OFPP_FLOOD or out_port == OFPP_ALL:
-      # no support for spanning tree yet -> flood=all
-      for (no,port) in self.ports.iteritems():
-        if no != in_port and port not in self.no_flood_ports:
-          real_send(port)
+    elif out_port == OFPP_FLOOD:
+      for no,port in self.ports.iteritems():
+        if no == in_port: continue
+        if port.config & OFPPC_NO_FLOOD: continue
+        real_send(port)
+    elif out_port == OFPP_ALL:
+      for no,port in self.ports.iteritems():
+        if no == in_port: continue
+        real_send(port)
     elif out_port == OFPP_CONTROLLER:
       buffer_id = self._buffer_packet(packet, in_port)
       self.send_packet_in(in_port, buffer_id, packet, self.xid_count(),
