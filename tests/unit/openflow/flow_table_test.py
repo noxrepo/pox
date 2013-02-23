@@ -161,7 +161,7 @@ class MockSwitch(EventMixin):
   def __init__(self):
     EventMixin.__init__(self)
     self.connected = True
-    self.xid_generator = itertools.count(1).next
+    self._xid_generator = itertools.count(1).next
     self.sent = []
 
   def send(self, msg):
