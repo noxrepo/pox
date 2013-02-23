@@ -91,6 +91,7 @@ def handle_FEATURES_REPLY (con, msg):
   connecting = con.connect_time == None
   con.features = msg
   con.original_ports._ports = set(msg.ports)
+  con.ports._reset()
   con.dpid = msg.datapath_id
 
   if not connecting:
@@ -474,6 +475,10 @@ class PortCollection (object):
     self._ports = set()
     self._masks = set()
     self._chain = None
+
+  def _reset (self):
+    self._ports.clear()
+    self._masks.clear()
 
   def _forget (self, port_no):
     self._masks.add(port_no)
