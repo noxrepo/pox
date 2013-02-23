@@ -138,7 +138,7 @@ class NXSoftwareSwitch (SoftwareSwitch):
 
   def _rx_vendor (self, vendor, connection):
     self.log.debug("Vendor %s %s", self.name, str(vendor))
-    if(vendor.vendor == nx.VENDOR_ID):
+    if vendor.vendor == nx.VENDOR_ID:
       try:
         data = nx.unpack_vendor_data_nx(vendor.data)
         if isinstance(data, nx.role_request_data):

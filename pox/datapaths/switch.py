@@ -193,7 +193,7 @@ class SoftwareSwitch (EventMixin):
     """
     self.log.debug("Flow mod: %s", ofp.show())
     self.table.process_flow_mod(ofp)
-    if(ofp.buffer_id > 0):
+    if ofp.buffer_id > 0:
       self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id)
 
   def _rx_packet_out (self, packet_out, connection):
@@ -202,10 +202,10 @@ class SoftwareSwitch (EventMixin):
     """
     self.log.debug("Packet out: %s", packet_out.show())
 
-    if(packet_out.data):
+    if packet_out.data:
       self._process_actions_for_packet(packet_out.actions, packet_out.data,
                                        packet_out.in_port)
-    elif(packet_out.buffer_id > 0):
+    elif packet_out.buffer_id > 0:
       self._process_actions_for_packet_from_buffer(packet_out.actions,
                                                    packet_out.buffer_id)
     else:
@@ -393,7 +393,7 @@ class SoftwareSwitch (EventMixin):
     assert assert_type("in_port", in_port, int, none_ok=False)
 
     entry = self.table.entry_for_packet(packet, in_port)
-    if(entry != None):
+    if entry is not None:
       entry.touch_packet(len(packet))
       self._process_actions_for_packet(entry.actions, packet, in_port)
     else:
@@ -512,10 +512,10 @@ class SoftwareSwitch (EventMixin):
     output and release a packet from the buffer
     """
     buffer_id = buffer_id - 1
-    if(buffer_id >= len(self.packet_buffer)):
+    if buffer_id >= len(self.packet_buffer):
       self.log.warn("Invalid output buffer id: %x", buffer_id)
       return
-    if(self.packet_buffer[buffer_id] is None):
+    if self.packet_buffer[buffer_id] is None:
       self.log.warn("Buffer %x has already been flushed", buffer_id)
       return
     (packet, in_port) = self.packet_buffer[buffer_id]
@@ -559,23 +559,23 @@ class SoftwareSwitch (EventMixin):
       packet.dst = action.dl_addr
       return packet
     def set_nw_src (action, packet):
-      if(isinstance(packet.next, ipv4)):
+      if isinstance(packet.next, ipv4):
         packet.next.nw_src = action.nw_addr
       return packet
     def set_nw_dst (action, packet):
-      if(isinstance(packet.next, ipv4)):
+      if isinstance(packet.next, ipv4):
         packet.next.nw_dst = action.nw_addr
       return packet
     def set_nw_tos (action, packet):
-      if(isinstance(packet.next, ipv4)):
+      if isinstance(packet.next, ipv4):
         packet.next.tos = action.nw_tos
       return packet
     def set_tp_src (action, packet):
-      if(isinstance(packet.next, udp) or isinstance(packet.next, tcp)):
+      if isinstance(packet.next, udp) or isinstance(packet.next, tcp):
         packet.next.srcport = action.tp_port
       return packet
     def set_tp_dst (action, packet):
-      if(isinstance(packet.next, udp) or isinstance(packet.next, tcp)):
+      if isinstance(packet.next, udp) or isinstance(packet.next, tcp):
         packet.next.dstport = action.tp_port
       return packet
     def enqueue (action, packet):
@@ -647,8 +647,8 @@ class SoftwareSwitch (EventMixin):
 #      if action.type is ofp_action_resubmit:
 #        self.process_packet(packet, in_port)
 #        return
-      if(action.type not in handler_map):
-        raise NotImplementedError("Unknown action type: %x " % type)
+      if action.type not in handler_map:
+        raise NotImplementedError("Unknown action type: %x " % (action.type,))
       packet = handler_map[action.type](action, packet)
 
   def __repr__ (self):
