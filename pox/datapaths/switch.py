@@ -59,30 +59,30 @@ class SoftwareSwitch (EventMixin):
   _eventMixin_events = set([DpPacketOut])
 
   def __init__ (self, dpid, name=None, ports=4, miss_send_len=128,
-                n_buffers=100, features=None):
+                max_buffers=100, features=None):
     """
     Initialize switch
      - ports is a list of ofp_phy_ports
     """
     if name is None: name = dpid_to_str(dpid)
-    ##Datapath id of switch
-    self.dpid = dpid
-    ## Human-readable name of the switch
     self.name = name
-    self.log = logging.getLogger(self.name)
-    ##Number of buffers
+
     if isinstance(ports, int):
       ports = _generate_ports(num_ports=ports, prefix=dpid)
-    self.n_buffers = n_buffers
+
+    self.dpid = dpid
+    self.max_buffers = max_buffers
+    self.miss_send_len = miss_send_len
+
     self.table = SwitchFlowTable()
+    self.log = logging.getLogger(self.name)
+    self.xid_count = xid_generator()
+    self._connection = None
+
     # buffer for packets during packet_in
     self.packet_buffer = []
 
-    self.miss_send_len = miss_send_len
-
-    self.xid_count = xid_generator(1)
-
-    ## Hash of port_no -> openflow.pylibopenflow_01.ofp_phy_ports
+    # Map port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
     self.port_stats = {}
     for port in ports:
@@ -91,15 +91,15 @@ class SoftwareSwitch (EventMixin):
 
     # set of port numbers that are currently down
     self.down_port_nos = set()
+
+    # Set of ports that won't flood
     self.no_flood_ports = set()
 
-
-    self._connection = None
-
-    ##Features
     if features is not None:
       self.features = features
     else:
+      # Set up default features
+
       self.features = SwitchFeatures()
       self.features.flow_stats = True
       self.features.table_stats = True
@@ -183,7 +183,7 @@ class SoftwareSwitch (EventMixin):
     self.log.debug("Reply features request of xid %s %s", str(ofp), self.name)
     msg = ofp_features_reply(datapath_id = self.dpid,
                              xid = ofp.xid,
-                             n_buffers = self.n_buffers,
+                             n_buffers = self.max_buffers,
                              n_tables = 1,
                              capabilities = self.features.capability_bits,
                              actions = self.features.action_bits,
@@ -504,7 +504,7 @@ class SoftwareSwitch (EventMixin):
         self.packet_buffer[i] = (packet, in_port)
         return i + 1
     # No -- create a new slow
-    if len(self.packet_buffer) >= self.n_buffers:
+    if len(self.packet_buffer) >= self.max_buffers:
       # No buffers available!
       return None
     self.packet_buffer.append( (packet, in_port) )
