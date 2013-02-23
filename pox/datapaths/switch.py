@@ -449,16 +449,15 @@ class SoftwareSwitch (EventMixin):
     def real_send (port_no, allow_in_port=False):
       if type(port_no) == ofp_phy_port:
         port_no = port_no.port_no
-      # The OF spec states that packets should not be forwarded out their
-      # in_port unless OFPP_IN_PORT is explicitly used.
       if port_no == in_port and not allow_in_port:
         self.log.warn("out_port %d == in_port. Dropping", out_port)
         return
       if port_no not in self.ports:
-        raise RuntimeError("Invalid physical output port: %x" % port_no)
+        self.log.warn("Port %d is invalid. Dropping packet", port_no)
+        return
       if port_no in self.down_port_nos:
-        #raise RuntimeError("output port %x currently down!" % port_no)
         self.log.warn("Port %d is currently down. Dropping packet", port_no)
+        return
       if self.ports[port_no].state & OFPPS_LINK_DOWN:
         self.log.debug("Sending packet on a port which is down!")
         return
