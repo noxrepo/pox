@@ -41,8 +41,7 @@ class DpPacketOut (Event):
     self.node = node
     self.packet = packet
     self.port = port
-    # For backwards compatability:
-    self.switch = node
+    self.switch = node # For backwards compatability
 
 
 def _generate_ports (num_ports=4, prefix=0):
@@ -50,9 +49,7 @@ def _generate_ports (num_ports=4, prefix=0):
           % (prefix % 255, i))) for i in range(1, num_ports+1)]
 
 
-class SoftwareSwitch (EventMixin):
-  _eventMixin_events = set([DpPacketOut])
-
+class SoftwareSwitchBase (object):
   def __init__ (self, dpid, name=None, ports=4, miss_send_len=128,
                 max_buffers=100, features=None):
     """
@@ -435,7 +432,7 @@ class SoftwareSwitch (EventMixin):
 
     This is called by the more general _output_packet().
     """
-    self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
+    self.log.info("Sending packet %s out port %s", str(packet), port_no)
 
   def _output_packet (self, packet, out_port, in_port, max_len=None):
     """
@@ -659,6 +656,18 @@ class SoftwareSwitch (EventMixin):
     return "%s(dpid=%s, num_ports=%d)" % (type(self).__name__,
                                           dpid_to_str(self.dpid),
                                           len(self.ports))
+
+
+class SoftwareSwitch (SoftwareSwitchBase, EventMixin):
+  _eventMixin_events = set([DpPacketOut])
+
+  def _output_packet_physical (self, packet, port_no):
+    """
+    send a packet out a single physical port
+
+    This is called by the more general _output_packet().
+    """
+    self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
 
 class OFConnection (object):
