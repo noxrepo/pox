@@ -3615,7 +3615,7 @@ class ofp_barrier_reply (ofp_header):
     return outstr
 
 
-@openflow_s_message("OFPT_BARRIER_REQUEST", 18,
+@openflow_c_message("OFPT_BARRIER_REQUEST", 18,
     request_for="ofp_barrier_reply")
 class ofp_barrier_request (ofp_header):
   def __init__ (self, **kw):
