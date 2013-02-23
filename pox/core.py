@@ -190,7 +190,8 @@ class POXCore (EventMixin):
     self.running = True
     self.components = {}
 
-    self.version = (0,0,0)
+    self.version = (0,1,0)
+    self.version_name = "betta"
     print(self.banner)
 
     self.scheduler = recoco.Scheduler(daemon=True)
@@ -199,12 +200,12 @@ class POXCore (EventMixin):
 
   @property
   def banner (self):
-    return "{0} / Copyright 2011-2012 James McCauley, et al.".format(
+    return "{0} / Copyright 2011-2013 James McCauley, et al.".format(
      self.version_string)
 
   @property
   def version_string (self):
-    return "POX " + '.'.join(map(str, self.version))
+    return "POX %s (%s)" % ('.'.join(map(str,self.version)),self.version_name)
 
   def callDelayed (_self, _seconds, _func, *args, **kw):
     """
