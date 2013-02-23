@@ -162,14 +162,14 @@ class SoftwareSwitch (EventMixin):
       self.log.debug("Asked to send message %s, but not connected", message)
 
   def _rx_hello (self, ofp, connection):
-    self.log.debug("Receive hello %s", self.name)
+    self.log.debug("Received hello")
     self.send_hello()
 
   def _rx_echo_request (self, ofp, connection):
     """
     Handles echo requests
     """
-    self.log.debug("Reply echo of xid: %s %s", str(ofp), self.name)
+    self.log.debug("Reply echo of xid: %s", str(ofp))
     msg = ofp_echo_reply(xid=ofp.xid)
     self.send(msg)
 
@@ -177,7 +177,7 @@ class SoftwareSwitch (EventMixin):
     """
     Handles feature requests
     """
-    self.log.debug("Reply features request of xid %s %s", str(ofp), self.name)
+    self.log.debug("Reply features request of xid %s", str(ofp))
     msg = ofp_features_reply(datapath_id = self.dpid,
                              xid = ofp.xid,
                              n_buffers = self.max_buffers,
@@ -191,7 +191,7 @@ class SoftwareSwitch (EventMixin):
     """
     Handles flow mods
     """
-    self.log.debug("Flow mod %s: %s", self.name, ofp.show())
+    self.log.debug("Flow mod: %s", ofp.show())
     self.table.process_flow_mod(ofp)
     if(ofp.buffer_id > 0):
       self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id)
@@ -213,20 +213,20 @@ class SoftwareSwitch (EventMixin):
                     "don't know what to send")
 
   def _rx_echo_reply (self, ofp, connection):
-    self.log.debug("Echo reply: %s %s", str(ofp), self.name)
+    self.log.debug("Echo reply: %s", str(ofp))
 
   def _rx_barrier_request (self, ofp, connection):
-    self.log.debug("Barrier request %s %s", self.name, str(ofp))
+    self.log.debug("Barrier request %s", str(ofp))
     msg = ofp_barrier_reply(xid = ofp.xid)
     self.send(msg)
 
   def _rx_get_config_request (self, ofp, connection):
-    self.log.debug("Get config request %s %s ", self.name, str(ofp))
+    self.log.debug("Get config request %s ", str(ofp))
     msg = ofp_get_config_reply(xid = ofp.xid)
     self.send(msg)
 
   def _rx_stats_request (self, ofp, connection):
-    self.log.debug("Get stats request %s %s ", self.name, str(ofp))
+    self.log.debug("Get stats request %s", str(ofp))
 
     def desc_stats (ofp):
       return ofp_desc_stats(mfr_desc="POX",
@@ -276,15 +276,14 @@ class SoftwareSwitch (EventMixin):
       raise AttributeError("Unsupported stats request type %d" % ofp.type)
 
     reply = ofp_stats_reply(xid=ofp.xid, body=handler(ofp))
-    self.log.debug("Sending stats reply %s %s", self.name, str(reply))
+    self.log.debug("Sending stats reply %s", str(reply))
     self.send(reply)
 
   def _rx_set_config (self, config, connection):
-    self.log.debug("Set config %s %s", self.name, str(config))
+    self.log.debug("Set config %s", str(config))
 
   def _rx_port_mod (self, port_mod, connection):
-    self.log.debug("Get port modification request %s %s", self.name,
-                   str(port_mod))
+    self.log.debug("Get port modification request %s", str(port_mod))
     port_no = port_mod.port_no
     if port_no not in self.ports:
       err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT)
@@ -327,7 +326,7 @@ class SoftwareSwitch (EventMixin):
       self.log.warn("Unsupported PORT_MOD flags: %08x", mask)
 
   def _rx_vendor (self, vendor, connection):
-    self.log.debug("Vendor %s %s", self.name, str(vendor))
+    self.log.debug("Vendor %s", str(vendor))
     # We don't support vendor extensions, so send an OFP_ERROR, per
     # page 42 of spec
     err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
@@ -337,7 +336,7 @@ class SoftwareSwitch (EventMixin):
     """
     Send hello
     """
-    self.log.debug("Send hello %s ", self.name)
+    self.log.debug("Send hello")
     msg = ofp_hello()
     self.send(msg)
 
@@ -349,7 +348,7 @@ class SoftwareSwitch (EventMixin):
     if hasattr(packet, 'pack'):
       packet = packet.pack()
     assert assert_type("packet", packet, bytes)
-    self.log.debug("Send PacketIn %s ", self.name)
+    self.log.debug("Send PacketIn")
     if reason is None:
       reason = OFPR_NO_MATCH
     if data_length is not None and len(packet) > data_length:
@@ -367,7 +366,7 @@ class SoftwareSwitch (EventMixin):
     """
     Send echo request
     """
-    self.log.debug("Send echo %s", self.name)
+    self.log.debug("Send echo")
     msg = ofp_echo_request()
     self.send(msg)
 
