@@ -102,15 +102,15 @@ class SoftwareSwitchBase (object):
       #self.features.arp_match_ip = True
 
       self.features.act_output = True
-      #self.features.act_enqueue = True
-      #self.features.act_strip_vlan = True
+      self.features.act_enqueue = True
+      self.features.act_strip_vlan = True
       self.features.act_set_vlan_vid = True
       self.features.act_set_vlan_pcp = True
       self.features.act_set_dl_dst = True
       self.features.act_set_dl_src = True
       self.features.act_set_nw_dst = True
       self.features.act_set_nw_src = True
-      #self.features.act_set_nw_tos = True
+      self.features.act_set_nw_tos = True
       self.features.act_set_tp_dst = True
       self.features.act_set_tp_src = True
       #self.features.act_vendor = True
@@ -127,7 +127,7 @@ class SoftwareSwitchBase (object):
 
   def rx_message (self, connection, msg):
     """
-    Handle an incoming message
+    Handle an incoming OpenFlow message
     """
     ofp_type = msg.header_type
     h = self.ofp_handlers.get(ofp_type)
