@@ -24,9 +24,6 @@ Copyright(C) 2009, Stanford University
 Date November 2009
 Created by ykk
 """
-# TODO: Don't have SoftwareSwitch take a socket object... Should really have a
-# OF_01 like task that listens for socket connections, creates a new socket,
-# wraps it in a OFConnection object, and calls SoftwareSwitch._handle_ConnectionUp
 
 from pox.lib.util import assert_type, initHelper, dpid_to_str
 from pox.lib.revent import Event, EventMixin
