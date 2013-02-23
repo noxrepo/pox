@@ -39,6 +39,7 @@ from pox.lib.revent import *
 from collections import defaultdict
 from pox.openflow.discovery import Discovery
 from pox.lib.util import dpidToStr
+from pox.lib.recoco import Timer
 
 log = core.getLogger()
 
@@ -126,6 +127,7 @@ def _reset (event):
   # When a switch connects, forget about previous port states
   _prev[event.dpid].clear()
 
+
 def _handle (event):
   # When links change, update spanning tree
 
@@ -153,16 +155,53 @@ def _handle (event):
           #print sw,p.port_no,flood
           #TODO: Check results
 
-          pm = of.ofp_port_mod( port_no=p.port_no,
+          pm = of.ofp_port_mod(port_no=p.port_no,
                                hw_addr=p.hw_addr,
                                config = 0 if flood else of.OFPPC_NO_FLOOD,
-                               mask = of.OFPPC_NO_FLOOD )
+                               mask = of.OFPPC_NO_FLOOD)
           con.send(pm)
+
+          _invalidate_ports(con.dpid)
     if change_count:
       log.info("%i ports changed", change_count)
   except:
     _prev.clear()
     log.exception("Couldn't push spanning tree")
+
+
+_dirty_switches = {} # A map dpid_with_dirty_ports->Timer
+_coalesce_period = 2 # Seconds to wait between features requests
+
+def _invalidate_ports (dpid):
+  """
+  Registers the fact that port info for dpid may be out of date
+
+  When the spanning tree adjusts the port flags, the port config bits
+  we keep in the Connection become out of date.  We don't want to just
+  set them locally because an in-flight port status message could
+  overwrite them.  We also might not want to assume they get set the
+  way we want them.  SO, we do send a features request, but we wait a
+  moment before sending it so that we can potentially coalesce several.
+
+  TLDR: Port information for this switch may be out of date for around
+        _coalesce_period seconds.
+  """
+  if dpid in _dirty_switches:
+    # We're already planning to check
+    return
+  t = Timer(_coalesce_period, _check_ports, args=(dpid,))
+  _dirty_switches[dpid] = t
+
+def _check_ports (dpid):
+  """
+  Sends a features request to the given dpid
+  """
+  _dirty_switches.pop(dpid,None)
+  con = core.openflow.getConnection(dpid)
+  if con is None: return
+  con.send(of.ofp_barrier_request())
+  con.send(of.ofp_features_request())
+  log.debug("Requested switch features for %s", str(con))
 
 
 def launch ():
