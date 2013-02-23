@@ -273,7 +273,7 @@ class SoftwareSwitch (EventMixin):
     if ofp.type in stats_handlers:
       handler = stats_handlers[ofp.type]
     else:
-      raise AttributeError("Unsupported stats request type %d" % ofp.type)
+      raise AttributeError("Unsupported stats request type %d" % (ofp.type,))
 
     reply = ofp_stats_reply(xid=ofp.xid, body=handler(ofp))
     self.log.debug("Sending stats reply %s", str(reply))
@@ -486,7 +486,7 @@ class SoftwareSwitch (EventMixin):
       # out_port will not be OFPP_TABLE
       self.process_packet(packet, in_port)
     else:
-      raise("Unsupported virtual output port: %x" % out_port)
+      raise("Unsupported virtual output port: %d" % (out_port,))
 
   def _buffer_packet (self, packet, in_port=None):
     """
@@ -513,10 +513,10 @@ class SoftwareSwitch (EventMixin):
     """
     buffer_id = buffer_id - 1
     if buffer_id >= len(self.packet_buffer):
-      self.log.warn("Invalid output buffer id: %x", buffer_id)
+      self.log.warn("Invalid output buffer id: %d", buffer_id)
       return
     if self.packet_buffer[buffer_id] is None:
-      self.log.warn("Buffer %x has already been flushed", buffer_id)
+      self.log.warn("Buffer %d has already been flushed", buffer_id)
       return
     (packet, in_port) = self.packet_buffer[buffer_id]
     self._process_actions_for_packet(actions, packet, in_port)
