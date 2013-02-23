@@ -28,6 +28,7 @@ Created by ykk
 from pox.lib.util import assert_type, initHelper, dpid_to_str
 from pox.lib.revent import Event, EventMixin
 from pox.openflow.libopenflow_01 import *
+import pox.openflow.libopenflow_01 as of
 from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow.flow_table import SwitchFlowTable
 from pox.lib.packet import *
@@ -96,24 +97,6 @@ class SoftwareSwitch (EventMixin):
     self.down_port_nos = set()
     self.no_flood_ports = set()
 
-    ## (OpenFlow Handler map)
-    self.ofp_handlers = {
-       # Reactive handlers
-       OFPT_HELLO : self._receive_hello,
-       OFPT_ECHO_REQUEST : self._receive_echo_request,
-       OFPT_FEATURES_REQUEST : self._receive_features_request,
-       OFPT_FLOW_MOD : self._receive_flow_mod,
-       OFPT_PACKET_OUT : self._receive_packet_out,
-       OFPT_BARRIER_REQUEST : self._receive_barrier_request,
-       OFPT_GET_CONFIG_REQUEST : self._receive_get_config_request,
-       OFPT_SET_CONFIG : self._receive_set_config,
-       OFPT_STATS_REQUEST : self._receive_stats_request,
-       OFPT_VENDOR : self._receive_vendor,
-       OFPT_PORT_MOD : self._receive_port_mod,
-       # Proactive responses
-       OFPT_ECHO_REPLY : self._receive_echo_reply
-       # TODO: many more packet types to process
-    }
 
     self._connection = None
 
@@ -143,6 +126,16 @@ class SoftwareSwitch (EventMixin):
       self.features.act_set_tp_dst = True
       self.features.act_set_tp_src = True
       #self.features.act_vendor = True
+
+    # Set up handlers for incoming OpenFlow messages
+    # That is, self.ofp_handlers[OFPT_FOO] = self._rx_foo
+    self.ofp_handlers = {}
+    for value,name in ofp_type_map.iteritems():
+      name = name.split("OFPT_",1)[-1].lower()
+      h = getattr(self, "_rx_" + name, None)
+      if not h: continue
+      assert of._message_type_to_class[value]._from_controller, name
+      self.ofp_handlers[value] = h
 
   def rx_message (self, connection, msg):
     """
@@ -175,14 +168,11 @@ class SoftwareSwitch (EventMixin):
     else:
       self.log.debug("Asked to send message %s, but not connected", message)
 
-  # ==================================== #
-  #    Reactive OFP processing           #
-  # ==================================== #
-  def _receive_hello (self, ofp, connection):
+  def _rx_hello (self, ofp, connection):
     self.log.debug("Receive hello %s", self.name)
     self.send_hello()
 
-  def _receive_echo_request (self, ofp, connection):
+  def _rx_echo_request (self, ofp, connection):
     """
     Handles echo requests
     """
@@ -190,7 +180,7 @@ class SoftwareSwitch (EventMixin):
     msg = ofp_echo_reply(xid=ofp.xid)
     self.send(msg)
 
-  def _receive_features_request (self, ofp, connection):
+  def _rx_features_request (self, ofp, connection):
     """
     Handles feature requests
     """
@@ -204,7 +194,7 @@ class SoftwareSwitch (EventMixin):
                              ports = self.ports.values())
     self.send(msg)
 
-  def _receive_flow_mod (self, ofp, connection):
+  def _rx_flow_mod (self, ofp, connection):
     """
     Handles flow mods
     """
@@ -213,7 +203,7 @@ class SoftwareSwitch (EventMixin):
     if(ofp.buffer_id > 0):
       self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id)
 
-  def _receive_packet_out (self, packet_out, connection):
+  def _rx_packet_out (self, packet_out, connection):
     """
     Handles packet_outs
     """
@@ -229,20 +219,20 @@ class SoftwareSwitch (EventMixin):
       self.log.warn("packet_out: No data and no buffer_id -- "
                     "don't know what to send")
 
-  def _receive_echo_reply (self, ofp, connection):
+  def _rx_echo_reply (self, ofp, connection):
     self.log.debug("Echo reply: %s %s", str(ofp), self.name)
 
-  def _receive_barrier_request (self, ofp, connection):
+  def _rx_barrier_request (self, ofp, connection):
     self.log.debug("Barrier request %s %s", self.name, str(ofp))
     msg = ofp_barrier_reply(xid = ofp.xid)
     self.send(msg)
 
-  def _receive_get_config_request (self, ofp, connection):
+  def _rx_get_config_request (self, ofp, connection):
     self.log.debug("Get config request %s %s ", self.name, str(ofp))
     msg = ofp_get_config_reply(xid = ofp.xid)
     self.send(msg)
 
-  def _receive_stats_request (self, ofp, connection):
+  def _rx_stats_request (self, ofp, connection):
     self.log.debug("Get stats request %s %s ", self.name, str(ofp))
 
     def desc_stats (ofp):
@@ -296,10 +286,10 @@ class SoftwareSwitch (EventMixin):
     self.log.debug("Sending stats reply %s %s", self.name, str(reply))
     self.send(reply)
 
-  def _receive_set_config (self, config, connection):
+  def _rx_set_config (self, config, connection):
     self.log.debug("Set config %s %s", self.name, str(config))
 
-  def _receive_port_mod (self, port_mod, connection):
+  def _rx_port_mod (self, port_mod, connection):
     self.log.debug("Get port modification request %s %s", self.name,
                    str(port_mod))
     port_no = port_mod.port_no
@@ -347,16 +337,13 @@ class SoftwareSwitch (EventMixin):
     if mask != 0:
       self.log.warn("Unsupported PORT_MOD flags: %08x", mask)
 
-  def _receive_vendor (self, vendor, connection):
+  def _rx_vendor (self, vendor, connection):
     self.log.debug("Vendor %s %s", self.name, str(vendor))
     # We don't support vendor extensions, so send an OFP_ERROR, per
     # page 42 of spec
     err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
     self.send(err)
 
-  # ==================================== #
-  #    Proactive OFP processing          #
-  # ==================================== #
   def send_hello (self):
     """
     Send hello

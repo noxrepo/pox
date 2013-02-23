@@ -136,7 +136,7 @@ class NXSoftwareSwitch (SoftwareSwitch):
         if c != connection:
           self.role_by_conn[c.ID] = nx.ROLE_SLAVE
 
-  def _receive_vendor (self, vendor, connection):
+  def _rx_vendor (self, vendor, connection):
     self.log.debug("Vendor %s %s", self.name, str(vendor))
     if(vendor.vendor == nx.VENDOR_ID):
       try:
@@ -150,4 +150,4 @@ class NXSoftwareSwitch (SoftwareSwitch):
       except NotImplementedError:
         self.send_vendor_error(connection)
     else:
-      return SoftwareSwitch._receive_vendor(self, vendor)
+      return SoftwareSwitch._rx_vendor(self, vendor)
