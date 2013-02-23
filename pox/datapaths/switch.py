@@ -75,6 +75,9 @@ class SoftwareSwitch (EventMixin):
     self.miss_send_len = miss_send_len
 
     self.table = SwitchFlowTable()
+    self._lookup_count = 0
+    self._matched_count = 0
+
     self.log = logging.getLogger(self.name)
     self.xid_count = xid_generator()
     self._connection = None
@@ -246,7 +249,16 @@ class SoftwareSwitch (EventMixin):
       return self.table.aggregate_stats(req.match, out_port)
 
     def table_stats (ofp):
-      return self.table.table_stats()
+      # Some of these may come from the actual table(s) in the future...
+      r = ofp_table_stats()
+      r.table_id = 0
+      r.name = "Default"
+      r.wildcards = OFPFW_ALL
+      r.max_entries = 0x7fFFffFF
+      r.active_count = len(self.table)
+      r.lookup_count = self._lookup_count
+      r.matched_count = self._matched_count
+      return r
 
     def port_stats (ofp):
       req = ofp_port_stats_request().unpack(ofp.body)
@@ -392,8 +404,10 @@ class SoftwareSwitch (EventMixin):
     assert assert_type("packet", packet, ethernet, none_ok=False)
     assert assert_type("in_port", in_port, int, none_ok=False)
 
+    self._lookup_count += 1
     entry = self.table.entry_for_packet(packet, in_port)
     if entry is not None:
+      self._matched_count += 1
       entry.touch_packet(len(packet))
       self._process_actions_for_packet(entry.actions, packet, in_port)
     else:
