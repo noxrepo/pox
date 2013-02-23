@@ -502,12 +502,22 @@ class SoftwareSwitch(EventMixin):
     else:
       raise("Unsupported virtual output port: %x" % out_port)
 
-  def _buffer_packet(self, packet, in_port=None):
-    """ Find a free buffer slot to buffer the packet in. """
+  def _buffer_packet (self, packet, in_port=None):
+    """
+    Buffer packet and return buffer ID
+
+    If no buffer is available, return None.
+    """
+    # Do we have an empty slot?
     for (i, value) in enumerate(self.packet_buffer):
-      if(value==None):
+      if value is None:
+        # Yes -- use it
         self.packet_buffer[i] = (packet, in_port)
         return i + 1
+    # No -- create a new slow
+    if len(self.packet_buffer) >= self.n_buffers:
+      # No buffers available!
+      return None
     self.packet_buffer.append( (packet, in_port) )
     return len(self.packet_buffer)
 
