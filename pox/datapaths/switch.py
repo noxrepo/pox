@@ -237,12 +237,12 @@ class SoftwareSwitch (EventMixin):
 
     def flow_stats (ofp):
       req = ofp_flow_stats_request().unpack(ofp.body)
-      assert self.table_id == TABLE_ALL
+      assert self.table_id in (TABLE_ALL, 0)
       return self.table.flow_stats(req.match, req.out_port)
 
     def aggregate_stats (ofp):
       req = ofp_aggregate_stats_request().unpack(ofp.body)
-      assert self.table_id == TABLE_ALL
+      assert self.table_id in (TABLE_ALL, 0)
       return self.table.aggregate_stats(req.match, out_port)
 
     def table_stats (ofp):
