@@ -59,7 +59,7 @@ class SoftwareSwitch (EventMixin):
   _eventMixin_events = set([DpPacketOut])
 
   def __init__ (self, dpid, name=None, ports=4, miss_send_len=128,
-                n_buffers=100, n_tables=1, features=None):
+                n_buffers=100, features=None):
     """
     Initialize switch
      - ports is a list of ofp_phy_ports
@@ -73,9 +73,6 @@ class SoftwareSwitch (EventMixin):
     self.log = logging.getLogger(self.name)
     ##Number of buffers
     self.n_buffers = n_buffers
-    ##Number of tables
-    self.n_tables= n_tables
-    # Note that there is one switch table in the OpenFlow 1.0 world
     self.table = SwitchFlowTable()
     # buffer for packets during packet_in
     self.packet_buffer = []
@@ -188,7 +185,7 @@ class SoftwareSwitch (EventMixin):
     msg = ofp_features_reply(datapath_id = self.dpid,
                              xid = ofp.xid,
                              n_buffers = self.n_buffers,
-                             n_tables = self.n_tables,
+                             n_tables = 1,
                              capabilities = self.features.capability_bits,
                              actions = self.features.action_bits,
                              ports = self.ports.values())
