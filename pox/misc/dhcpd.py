@@ -278,16 +278,31 @@ class DHCPD (EventMixin):
       event.connection.send(msg)
 
   def _handle_PacketIn (self, event):
-    p = event.parsed.find('dhcp')
-    if p is None or not p.parsed:
+    # Is it to us?  (Or at least not specifically NOT to us...)
+    ipp = event.parsed.find('ipv4')
+    if not ipp or not ipp.parsed:
+      return
+    if ipp.dstip not in (IP_ANY,IP_BROADCAST,self.ip_addr):
+      return
+    nwp = ipp.payload
+    if not nwp or not nwp.parsed or not isinstance(nwp, pkt.udp):
+      return
+    if nwp.srcport != pkt.dhcp.CLIENT_PORT:
+      return
+    if nwp.dstport != pkt.dhcp.SERVER_PORT:
+      return
+    p = nwp.payload
+    if not p:
+      log.debug("%s: no packet", str(event.connection))
+      return
+    if not isinstance(p, pkt.dhcp):
+      log.debug("%s: packet is not DHCP", str(event.connection))
+      return
+    if not p.parsed:
+      log.debug("%s: DHCP packet not parsed", str(event.connection))
       return
 
     if p.op != p.BOOTREQUEST:
-      return
-
-    # Is it to us?  (Or at least not specifically NOT to us...)
-    ipp = event.parsed.find('ipv4')
-    if ipp.dstip not in (IP_ANY,IP_BROADCAST,self.ip_addr):
       return
 
     t = p.options.get(p.MSG_TYPE_OPT)

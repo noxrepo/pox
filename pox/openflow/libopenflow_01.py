@@ -638,6 +638,29 @@ class ofp_phy_port (ofp_base):
     self.peer = 0
     initHelper(self, kw)
 
+  def enable_config (self, mask):
+    """
+    Turn on selected config bits
+    """
+    return self.set_config(0xffFFffFF, mask)
+
+  def disable_config (self, mask):
+    """
+    Turn off selected config bits
+    """
+    return self.set_config(0, mask)
+
+  def set_config (self, config, mask):
+    """
+    Updates the specified config bits
+
+    Returns which bits were changed
+    """
+    old = self.config
+    self.config &= ~mask
+    self.config |= config
+    return old ^ self.config
+
   def __str__ (self):
     return "%s:%i" % (self.name, self.port_no)
 
