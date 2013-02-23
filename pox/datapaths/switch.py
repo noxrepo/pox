@@ -50,7 +50,7 @@ class DpPacketOut (Event):
     self.switch = node
 
 
-def _default_port_list (num_ports=4, prefix=0):
+def _generate_ports (num_ports=4, prefix=0):
   return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x"
           % (prefix % 255, i))) for i in range(1, num_ports+1)]
 
@@ -72,12 +72,12 @@ class SoftwareSwitch (EventMixin):
       self.name = str(dpid)
     self.log = logging.getLogger(self.name)
     ##Number of buffers
+    if isinstance(ports, int):
+      ports = _generate_ports(num_ports=ports, prefix=dpid)
     self.n_buffers = n_buffers
     self.table = SwitchFlowTable()
     # buffer for packets during packet_in
     self.packet_buffer = []
-    if(ports == None or isinstance(ports, int)):
-      ports=_default_port_list(num_ports=ports, prefix=dpid)
 
     self.miss_send_len = miss_send_len
 
