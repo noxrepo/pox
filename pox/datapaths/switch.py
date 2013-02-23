@@ -28,7 +28,7 @@ Created by ykk
 # OF_01 like task that listens for socket connections, creates a new socket,
 # wraps it in a OFConnection object, and calls SoftwareSwitch._handle_ConnectionUp
 
-from pox.lib.util import assert_type, initHelper
+from pox.lib.util import assert_type, initHelper, dpid_to_str
 from pox.lib.revent import Event, EventMixin
 from pox.openflow.libopenflow_01 import *
 from pox.openflow.util import make_type_to_unpacker_table
@@ -52,7 +52,8 @@ class DpPacketOut (Event):
 
 
 def _default_port_list(num_ports=4, prefix=0):
-  return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x" % (prefix % 255, i))) for i in range(1, num_ports+1)]
+  return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x"
+          % (prefix % 255, i))) for i in range(1, num_ports+1)]
 
 
 class SoftwareSwitch(EventMixin):
@@ -148,11 +149,13 @@ class SoftwareSwitch(EventMixin):
   def on_message_received(self, connection, msg):
     ofp_type = msg.header_type
     if ofp_type not in self.ofp_handlers:
-      raise RuntimeError("No handler for ofp_type %s(%d)" % (ofp_type_map.get(ofp_type), ofp_type))
+      raise RuntimeError("No handler for ofp_type %s(%d)"
+                         % (ofp_type_map.get(ofp_type), ofp_type))
     h = self.ofp_handlers[ofp_type]
 
-    # figure out wether the handler supports the 'connection' argument, if so attach it
-    # (handlers for NX extended switches sometimes need to know which connection a
+    # figure out wether the handler supports the 'connection' argument; if
+    # so attach it (handlers for NX extended switches sometimes need to
+    # know which connection a
     # particular message was received on)
     argspec = inspect.getargspec(h)
     if "connection" in argspec.args or argspec.keywords:
@@ -168,7 +171,11 @@ class SoftwareSwitch(EventMixin):
     self._connection = connection
 
   def send(self, message):
-    """ Send a message to this switches communication partner. If the switch is not connected, the message is silently dropped. """
+    """
+    Send a message to this switch's communication partner
+
+    If the switch is not connected, the message is silently dropped.
+    """
 
     if self._connection:
       self._connection.send(message)
@@ -180,7 +187,6 @@ class SoftwareSwitch(EventMixin):
   # ==================================== #
   def _receive_hello(self, ofp):
     self.log.debug("Receive hello %s", self.name)
-    # How does the OpenFlow protocol prevent an infinite loop of Hello messages?
     self.send_hello()
 
   def _receive_echo(self, ofp):
@@ -194,7 +200,9 @@ class SoftwareSwitch(EventMixin):
     """Reply to feature request
     """
     self.log.debug("Reply features request of xid %s %s", str(ofp), self.name)
-    msg = ofp_features_reply(datapath_id = self.dpid, xid = ofp.xid, n_buffers = self.n_buffers,
+    msg = ofp_features_reply(datapath_id = self.dpid,
+                             xid = ofp.xid,
+                             n_buffers = self.n_buffers,
                              n_tables = self.n_tables,
                              capabilities = self.features.capability_bits,
                              actions = self.features.action_bits,
@@ -216,11 +224,14 @@ class SoftwareSwitch(EventMixin):
     self.log.debug("Packet out: %s", packet_out.show())
 
     if(packet_out.data):
-      self._process_actions_for_packet(packet_out.actions, packet_out.data, packet_out.in_port)
+      self._process_actions_for_packet(packet_out.actions, packet_out.data,
+                                       packet_out.in_port)
     elif(packet_out.buffer_id > 0):
-      self._process_actions_for_packet_from_buffer(packet_out.actions, packet_out.buffer_id)
+      self._process_actions_for_packet_from_buffer(packet_out.actions,
+                                                   packet_out.buffer_id)
     else:
-      self.log.warn("packet_out: No data and no buffer_id -- don't know what to send")
+      self.log.warn("packet_out: No data and no buffer_id -- "
+                    "don't know what to send")
 
   def _receive_echo_reply(self, ofp):
     self.log.debug("Echo reply: %s %s", str(ofp), self.name)
@@ -239,11 +250,11 @@ class SoftwareSwitch(EventMixin):
     self.log.debug("Get stats request %s %s ", self.name, str(ofp))
 
     def desc_stats(ofp):
-      return ofp_desc_stats(mfr_desc="BadAssEmulatedPoxSwitch(TM)",
-                            hw_desc="your finest emulated asics",
-                            sw_desc="pox. reliable, fast, stable. Choose 0 (or more?)",
+      return ofp_desc_stats(mfr_desc="POX",
+                            hw_desc=core._get_platform_info(),
+                            sw_desc=core.version_string,
                             serial_num=str(self.dpid),
-                            dp_desc="high performance emuswitch. Several packets per second have been observed (but not by reliable witnesses)")
+                            dp_desc=type(self).__name__)
 
     def flow_stats(ofp):
       req = ofp_flow_stats_request().unpack(ofp.body)
@@ -293,7 +304,8 @@ class SoftwareSwitch(EventMixin):
     self.log.debug("Set config %s %s", self.name, str(config))
 
   def _receive_port_mod(self, port_mod):
-    self.log.debug("Get port modification request %s %s", self.name, str(port_mod))
+    self.log.debug("Get port modification request %s %s", self.name,
+                   str(port_mod))
     port_no = port_mod.port_no
     if port_no not in self.ports:
       err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT)
@@ -309,25 +321,25 @@ class SoftwareSwitch(EventMixin):
 
     if mask & OFPPC_NO_FLOOD:
       mask ^= OFPPC_NO_FLOOD
-      port.config = (port.config & ~OFPPC_NO_FLOOD) | (port_mod.config & OFPPC_NO_FLOOD)
-      #TODO: Make sure .config syncs with no_flood_ports, or generate that .config
-      #      at query time based on no_flood_ports
+      #TODO: Make sure .config syncs with no_flood_ports, or generate that
+      #      .config at query time based on no_flood_ports
+      change = port.set_config(port_mod.config, OFPPC_NO_FLOOD)
       if port.config & OFPPC_NO_FLOOD:
-        self.log.debug("Disabling flooding on port %s", port)
+        if change: self.log.debug("Disabling flooding on port %s", port)
         self.no_flood_ports.add(port)
       else:
-        self.log.debug("Enabling flooding on port %s", port)
+        if change: self.log.debug("Enabling flooding on port %s", port)
         self.no_flood_ports.discard(port)
 
     if mask & OFPPC_PORT_DOWN:
       mask ^= OFPPC_PORT_DOWN
-      port.config = (port.config & ~OFPPC_PORT_DOWN) | (port_mod.config & OFPPC_PORT_DOWN)
+      change = port.set_config(port_mod.config, OFPPC_PORT_DOWN)
       # Note (Peter Peresini): Although the spec is not clear about it,
-      # we will assume that config.OFPPC_PORT_DOWN implies state.OFPPS_LINK_DOWN.
-      # This is consistent with Open vSwitch.
+      # we will assume that config.OFPPC_PORT_DOWN implies
+      # state.OFPPS_LINK_DOWN.  This is consistent with Open vSwitch.
 
-      # FIXME: for now, we assume that there is always physical link present
-      # and that the link state depends only on the configuration.
+      #TODO: for now, we assume that there is always physical link present
+      #      and that the link state depends only on the configuration.
       old_state = port.state & OFPPS_LINK_DOWN
       port.state = port.state & ~OFPPS_LINK_DOWN
       if port.config & OFPPC_PORT_DOWN:
@@ -341,7 +353,8 @@ class SoftwareSwitch(EventMixin):
 
   def _receive_vendor(self, vendor):
     self.log.debug("Vendor %s %s", self.name, str(vendor))
-    # We don't support vendor extensions, so send an OFP_ERROR, per page 42 of spec
+    # We don't support vendor extensions, so send an OFP_ERROR, per
+    # page 42 of spec
     err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
     self.send(err)
 
@@ -355,7 +368,8 @@ class SoftwareSwitch(EventMixin):
     msg = ofp_hello()
     self.send(msg)
 
-  def send_packet_in(self, in_port, buffer_id=None, packet=b'', xid=None, reason=None, data_length=None):
+  def send_packet_in(self, in_port, buffer_id=None, packet=b'', xid=None,
+                     reason=None, data_length=None):
     """Send PacketIn
     Assume no match as reason, buffer_id = 0xFFFFFFFF,
     and empty packet by default
@@ -372,8 +386,8 @@ class SoftwareSwitch(EventMixin):
 
     if xid == None:
       xid = self.xid_count()
-    msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
-                        data = packet)
+    msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id,
+                        reason = reason, data = packet)
 
     self.send(msg)
 
@@ -413,10 +427,15 @@ class SoftwareSwitch(EventMixin):
     else:
       # no matching entry
       buffer_id = self._buffer_packet(packet, in_port)
-      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(), reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
+      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(),
+                          reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
 
   def take_port_down(self, port):
-    ''' Take the given port down, and send a port_status message to the controller '''
+    '''
+    Take the given port down
+
+    Sends a port_status message to the controller
+    '''
     port_no = port.port_no
     if port_no not in self.ports:
       raise RuntimeError("port_no %d not in %s's ports" % (port_no, str(self)))
@@ -424,7 +443,11 @@ class SoftwareSwitch(EventMixin):
     self.send_port_status(port, OFPPR_DELETE)
 
   def bring_port_up(self, port):
-    ''' Bring the given port up, and send a port_status message to the controller '''
+    '''
+    Bring the given port up
+
+    Sends a port_status message to the controller
+    '''
     port_no = port.port_no
     self.down_port_nos.discard(port_no)
     self.ports[port_no] = port
@@ -468,7 +491,8 @@ class SoftwareSwitch(EventMixin):
           real_send(port)
     elif out_port == OFPP_CONTROLLER:
       buffer_id = self._buffer_packet(packet, in_port)
-      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(), reason=OFPR_ACTION, data_length=max_len)
+      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(),
+                          reason=OFPR_ACTION, data_length=max_len)
     elif out_port == OFPP_TABLE:
       # There better be a table entry there, else we get infinite recurision
       # between switch<->controller
@@ -555,7 +579,7 @@ class SoftwareSwitch(EventMixin):
         packet.next.dstport = action.tp_port
       return packet
     def enqueue(action, packet):
-      self.log.warn("output_enqueue not supported yet. Performing regular output")
+      self.log.warn("Enqueue not supported.  Performing regular output.")
       return output_packet(action.tp_port, packet)
 #    def push_mpls_tag(action, packet):
 #      bottom_of_stack = isinstance(packet.next, mpls)
@@ -628,19 +652,23 @@ class SoftwareSwitch(EventMixin):
       packet = handler_map[action.type](action, packet)
 
   def __repr__(self):
-    return "SoftwareSwitch(dpid=%d, num_ports=%d)" % (self.dpid, len(self.ports))
+    return "%s(dpid=%s, num_ports=%d)" % (type(self).__name__,
+                                          dpid_to_str(self.dpid),
+                                          len(self.ports))
 
 
 class OFConnection (object):
-  """ A codec for OpenFlow messages. Decodes and encodes OpenFlow messages (ofp_message)
-      into byte arrays.
+  """
+  A codec for OpenFlow messages.
 
-      Wraps an io_worker that does the actual io work, and calls a receiver_callbac
-      function when a new message as arrived.
+  Decodes and encodes OpenFlow messages (ofp_message) into byte arrays.
+
+  Wraps an io_worker that does the actual io work, and calls a
+  receiver_callback function when a new message as arrived.
   """
 
-  # Unlike of_01.Connection, this is persistent (at least until we implement a proper
-  # recoco Connection Listener loop)
+  # Unlike of_01.Connection, this is persistent (at least until we implement
+  # a proper recoco Connection Listener loop)
   # Globally unique identifier for the Connection instance
   ID = 0
 
@@ -688,7 +716,8 @@ class OFConnection (object):
         break
 
       if ord(message[0]) != OFP_VERSION:
-        e = ValueError("Bad OpenFlow version (%s) on connection %s", ord(message[0]), str(self))
+        e = ValueError("Bad OpenFlow version (%s) on connection %s",
+                       ord(message[0]), str(self))
         if self.error_handler:
           return self.error_handler(e)
         else:
@@ -725,7 +754,9 @@ class OFConnection (object):
     self.io_worker.close()
 
   def get_controller_id(self):
-    ''' Return a tuple of the controller's (address, port) we are connected to'''
+    '''
+    Return a tuple of the controller's (address, port) we are connected to
+    '''
     return self.controller_id
 
   def __str__ (self):
