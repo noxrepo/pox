@@ -40,7 +40,9 @@ import logging
 
 
 class DpPacketOut (Event):
-  """ Event raised when a dataplane packet is sent out a port """
+  """
+  Event raised when a dataplane packet is sent out a port
+  """
   def __init__ (self, node, packet, port):
     assert assert_type("packet", packet, ethernet, none_ok=False)
     Event.__init__(self)
@@ -51,20 +53,20 @@ class DpPacketOut (Event):
     self.switch = node
 
 
-def _default_port_list(num_ports=4, prefix=0):
+def _default_port_list (num_ports=4, prefix=0):
   return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x"
           % (prefix % 255, i))) for i in range(1, num_ports+1)]
 
 
-class SoftwareSwitch(EventMixin):
+class SoftwareSwitch (EventMixin):
   _eventMixin_events = set([DpPacketOut])
 
-  def __init__(self, dpid, name=None, ports=4, miss_send_len=128,
-               n_buffers=100, n_tables=1, features=None):
-    '''
+  def __init__ (self, dpid, name=None, ports=4, miss_send_len=128,
+                n_buffers=100, n_tables=1, features=None):
+    """
     Initialize switch
      - ports is a list of ofp_phy_ports
-    '''
+    """
     ##Datapath id of switch
     self.dpid = dpid
     ## Human-readable name of the switch
@@ -146,7 +148,7 @@ class SoftwareSwitch(EventMixin):
       self.features.act_set_tp_src = True
       #self.features.act_vendor = True
 
-  def on_message_received(self, connection, msg):
+  def on_message_received (self, connection, msg):
     ofp_type = msg.header_type
     if ofp_type not in self.ofp_handlers:
       raise RuntimeError("No handler for ofp_type %s(%d)"
@@ -163,14 +165,14 @@ class SoftwareSwitch(EventMixin):
     else:
       h(msg)
 
-  def set_connection(self, connection):
-    '''
+  def set_connection (self, connection):
+    """
     Set this switch's connection.
-    '''
+    """
     connection.set_message_handler(self.on_message_received)
     self._connection = connection
 
-  def send(self, message):
+  def send (self, message):
     """
     Send a message to this switch's communication partner
 
@@ -185,7 +187,7 @@ class SoftwareSwitch(EventMixin):
   # ==================================== #
   #    Reactive OFP processing           #
   # ==================================== #
-  def _receive_hello(self, ofp):
+  def _receive_hello (self, ofp):
     self.log.debug("Receive hello %s", self.name)
     self.send_hello()
 
@@ -197,8 +199,9 @@ class SoftwareSwitch(EventMixin):
     msg = ofp_echo_reply(xid=ofp.xid)
     self.send(msg)
 
-  def _receive_features_request(self, ofp):
-    """Reply to feature request
+  def _receive_features_request (self, ofp):
+    """
+    Handles feature requests
     """
     self.log.debug("Reply features request of xid %s %s", str(ofp), self.name)
     msg = ofp_features_reply(datapath_id = self.dpid,
@@ -210,17 +213,18 @@ class SoftwareSwitch(EventMixin):
                              ports = self.ports.values())
     self.send(msg)
 
-  def _receive_flow_mod(self, ofp):
-    """Handle flow mod: just print it here
+  def _receive_flow_mod (self, ofp):
+    """
+    Handles flow mods
     """
     self.log.debug("Flow mod %s: %s", self.name, ofp.show())
     self.table.process_flow_mod(ofp)
     if(ofp.buffer_id > 0):
       self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id)
 
-  def _receive_packet_out(self, packet_out):
+  def _receive_packet_out (self, packet_out):
     """
-    Send the packet out the given port
+    Handles packet_outs
     """
     self.log.debug("Packet out: %s", packet_out.show())
 
@@ -234,43 +238,43 @@ class SoftwareSwitch(EventMixin):
       self.log.warn("packet_out: No data and no buffer_id -- "
                     "don't know what to send")
 
-  def _receive_echo_reply(self, ofp):
+  def _receive_echo_reply (self, ofp):
     self.log.debug("Echo reply: %s %s", str(ofp), self.name)
 
-  def _receive_barrier_request(self, ofp):
+  def _receive_barrier_request (self, ofp):
     self.log.debug("Barrier request %s %s", self.name, str(ofp))
     msg = ofp_barrier_reply(xid = ofp.xid)
     self.send(msg)
 
-  def _receive_get_config_request(self, ofp):
+  def _receive_get_config_request (self, ofp):
     self.log.debug("Get config request %s %s ", self.name, str(ofp))
     msg = ofp_get_config_reply(xid = ofp.xid)
     self.send(msg)
 
-  def _receive_stats_request(self, ofp):
+  def _receive_stats_request (self, ofp):
     self.log.debug("Get stats request %s %s ", self.name, str(ofp))
 
-    def desc_stats(ofp):
+    def desc_stats (ofp):
       return ofp_desc_stats(mfr_desc="POX",
                             hw_desc=core._get_platform_info(),
                             sw_desc=core.version_string,
                             serial_num=str(self.dpid),
                             dp_desc=type(self).__name__)
 
-    def flow_stats(ofp):
+    def flow_stats (ofp):
       req = ofp_flow_stats_request().unpack(ofp.body)
       assert self.table_id == TABLE_ALL
       return self.table.flow_stats(req.match, req.out_port)
 
-    def aggregate_stats(ofp):
+    def aggregate_stats (ofp):
       req = ofp_aggregate_stats_request().unpack(ofp.body)
       assert self.table_id == TABLE_ALL
       return self.table.aggregate_stats(req.match, out_port)
 
-    def table_stats(ofp):
+    def table_stats (ofp):
       return self.table.table_stats()
 
-    def port_stats(ofp):
+    def port_stats (ofp):
       req = ofp_port_stats_request().unpack(ofp.body)
       if req.port_no == OFPP_NONE:
         res = ofp_port_stats(port_no=OFPP_NONE)
@@ -280,7 +284,7 @@ class SoftwareSwitch(EventMixin):
       else:
         return self.port_stats[req.port_no]
 
-    def queue_stats(ofp):
+    def queue_stats (ofp):
       raise AttributeError("not implemented")
 
     stats_handlers = {
@@ -301,10 +305,10 @@ class SoftwareSwitch(EventMixin):
     self.log.debug("Sending stats reply %s %s", self.name, str(reply))
     self.send(reply)
 
-  def _receive_set_config(self, config):
+  def _receive_set_config (self, config):
     self.log.debug("Set config %s %s", self.name, str(config))
 
-  def _receive_port_mod(self, port_mod):
+  def _receive_port_mod (self, port_mod):
     self.log.debug("Get port modification request %s %s", self.name,
                    str(port_mod))
     port_no = port_mod.port_no
@@ -352,7 +356,7 @@ class SoftwareSwitch(EventMixin):
     if mask != 0:
       self.log.warn("Unsupported PORT_MOD flags: %08x", mask)
 
-  def _receive_vendor(self, vendor):
+  def _receive_vendor (self, vendor):
     self.log.debug("Vendor %s %s", self.name, str(vendor))
     # We don't support vendor extensions, so send an OFP_ERROR, per
     # page 42 of spec
@@ -362,18 +366,18 @@ class SoftwareSwitch(EventMixin):
   # ==================================== #
   #    Proactive OFP processing          #
   # ==================================== #
-  def send_hello(self):
-    """Send hello
+  def send_hello (self):
+    """
+    Send hello
     """
     self.log.debug("Send hello %s ", self.name)
     msg = ofp_hello()
     self.send(msg)
 
-  def send_packet_in(self, in_port, buffer_id=None, packet=b'', xid=None,
-                     reason=None, data_length=None):
-    """Send PacketIn
-    Assume no match as reason, buffer_id = 0xFFFFFFFF,
-    and empty packet by default
+  def send_packet_in (self, in_port, buffer_id=None, packet=b'', xid=None,
+                      reason=None, data_length=None):
+    """
+    Send PacketIn
     """
     if hasattr(packet, 'pack'):
       packet = packet.pack()
@@ -392,18 +396,21 @@ class SoftwareSwitch(EventMixin):
 
     self.send(msg)
 
-  def send_echo(self, xid=0):
-    """Send echo request
+  def send_echo (self, xid=0):
+    """
+    Send echo request
     """
     self.log.debug("Send echo %s", self.name)
     msg = ofp_echo_request()
     self.send(msg)
 
-  def send_port_status(self, port, reason):
-    '''
+  def send_port_status (self, port, reason):
+    """
+    Send port status
+
     port is an ofp_phy_port
-    reason is one of 'OFPPR_ADD', 'OFPPR_DELETE', 'OFPPR_MODIFY'
-    '''
+    reason is one of OFPPR_xxx
+    """
     assert assert_type("port", port, ofp_phy_port, none_ok=False)
     assert reason in ofp_port_reason_rev_map.values()
     msg = ofp_port_status(desc=port, reason=reason)
@@ -413,10 +420,12 @@ class SoftwareSwitch(EventMixin):
   #   Dataplane processing               #
   # ==================================== #
 
-  def process_packet(self, packet, in_port):
-    """ process a dataplane packet the way a real OpenFlow switch would.
-        packet: an instance of ethernet
-        in_port: the integer port number
+  def process_packet (self, packet, in_port):
+    """
+    process a dataplane packet
+
+    packet: an instance of ethernet
+    in_port: the integer port number
     """
     assert assert_type("packet", packet, ethernet, none_ok=False)
     assert assert_type("in_port", in_port, int, none_ok=False)
@@ -431,24 +440,24 @@ class SoftwareSwitch(EventMixin):
       self.send_packet_in(in_port, buffer_id, packet, self.xid_count(),
                           reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
 
-  def take_port_down(self, port):
-    '''
+  def take_port_down (self, port):
+    """
     Take the given port down
 
     Sends a port_status message to the controller
-    '''
+    """
     port_no = port.port_no
     if port_no not in self.ports:
       raise RuntimeError("port_no %d not in %s's ports" % (port_no, str(self)))
     self.down_port_nos.add(port_no)
     self.send_port_status(port, OFPPR_DELETE)
 
-  def bring_port_up(self, port):
-    '''
+  def bring_port_up (self, port):
+    """
     Bring the given port up
 
     Sends a port_status message to the controller
-    '''
+    """
     port_no = port.port_no
     self.down_port_nos.discard(port_no)
     self.ports[port_no] = port
@@ -458,12 +467,17 @@ class SoftwareSwitch(EventMixin):
   #    Helper Methods                    #
   # ==================================== #
 
-  def _output_packet(self, packet, out_port, in_port, max_len=None):
-    """ send a packet out some port.
-        packet: instance of ethernet
-        out_port, in_port: the integer port number """
+  def _output_packet (self, packet, out_port, in_port, max_len=None):
+    """
+    send a packet out some port.
+
+    packet: instance of ethernet
+    out_port, in_port: the integer port number
+    max_len: maximum packet payload length to send to controller
+    """
     assert assert_type("packet", packet, ethernet, none_ok=False)
-    def real_send(port_no, allow_in_port=False):
+
+    def real_send (port_no, allow_in_port=False):
       if type(port_no) == ofp_phy_port:
         port_no = port_no.port_no
       # The OF spec states that packets should not be forwarded out their
@@ -522,8 +536,10 @@ class SoftwareSwitch(EventMixin):
     self.packet_buffer.append( (packet, in_port) )
     return len(self.packet_buffer)
 
-  def _process_actions_for_packet_from_buffer(self, actions, buffer_id):
-    """ output and release a packet from the buffer """
+  def _process_actions_for_packet_from_buffer (self, actions, buffer_id):
+    """
+    output and release a packet from the buffer
+    """
     buffer_id = buffer_id - 1
     if(buffer_id >= len(self.packet_buffer)):
       self.log.warn("Invalid output buffer id: %x", buffer_id)
@@ -535,71 +551,73 @@ class SoftwareSwitch(EventMixin):
     self._process_actions_for_packet(actions, packet, in_port)
     self.packet_buffer[buffer_id] = None
 
-  def _process_actions_for_packet(self, actions, packet, in_port):
-    """ process the output actions for a packet """
+  def _process_actions_for_packet (self, actions, packet, in_port):
+    """
+    process the output actions for a packet
+    """
     assert assert_type("packet", packet, [ethernet, str], none_ok=False)
     if not isinstance(packet, ethernet):
       packet = ethernet.unpack(packet)
 
-    def output_packet(action, packet):
+    def output_packet (action, packet):
       self._output_packet(packet, action.port, in_port, action.max_len)
       return packet
-    def set_vlan_id(action, packet):
+    def set_vlan_id (action, packet):
       if not isinstance(packet.next, vlan):
         packet.next = vlan(prev = packet.next)
         packet.next.eth_type = packet.type
         packet.type = ethernet.VLAN_TYPE
       packet.id = action.vlan_id
       return packet
-    def set_vlan_pcp(action, packet):
+    def set_vlan_pcp (action, packet):
       if not isinstance(packet.next, vlan):
         packet.next = vlan(prev = packet)
         packet.next.eth_type = packet.type
         packet.type = ethernet.VLAN_TYPE
       packet.pcp = action.vlan_pcp
       return packet
-    def strip_vlan(action, packet):
+    def strip_vlan (action, packet):
       if isinstance(packet.next, vlan):
         packet.type = packet.next.eth_type
         packet.next = packet.next.next
       return packet
-    def set_dl_src(action, packet):
+    def set_dl_src (action, packet):
       packet.src = action.dl_addr
       return packet
-    def set_dl_dst(action, packet):
+    def set_dl_dst (action, packet):
       packet.dst = action.dl_addr
       return packet
-    def set_nw_src(action, packet):
+    def set_nw_src (action, packet):
       if(isinstance(packet.next, ipv4)):
         packet.next.nw_src = action.nw_addr
       return packet
-    def set_nw_dst(action, packet):
+    def set_nw_dst (action, packet):
       if(isinstance(packet.next, ipv4)):
         packet.next.nw_dst = action.nw_addr
       return packet
-    def set_nw_tos(action, packet):
+    def set_nw_tos (action, packet):
       if(isinstance(packet.next, ipv4)):
         packet.next.tos = action.nw_tos
       return packet
-    def set_tp_src(action, packet):
+    def set_tp_src (action, packet):
       if(isinstance(packet.next, udp) or isinstance(packet.next, tcp)):
         packet.next.srcport = action.tp_port
       return packet
-    def set_tp_dst(action, packet):
+    def set_tp_dst (action, packet):
       if(isinstance(packet.next, udp) or isinstance(packet.next, tcp)):
         packet.next.dstport = action.tp_port
       return packet
-    def enqueue(action, packet):
+    def enqueue (action, packet):
       self.log.warn("Enqueue not supported.  Performing regular output.")
       return output_packet(action.tp_port, packet)
-#    def push_mpls_tag(action, packet):
+#    def push_mpls_tag (action, packet):
 #      bottom_of_stack = isinstance(packet.next, mpls)
 #      packet.next = mpls(prev = packet.pack())
 #      if bottom_of_stack:
 #        packet.next.s = 1
 #      packet.type = action.ethertype
 #      return packet
-#    def pop_mpls_tag(action, packet):
+#    def pop_mpls_tag (action, packet):
 #      if not isinstance(packet.next, mpls):
 #        return packet
 #      if not isinstance(packet.next.next, str):
@@ -610,25 +628,25 @@ class SoftwareSwitch(EventMixin):
 #        packet.next = packet.next.next
 #      packet.ethertype = action.ethertype
 #      return packet
-#    def set_mpls_label(action, packet):
+#    def set_mpls_label (action, packet):
 #      if not isinstance(packet.next, mpls):
 #        mock = ofp_action_push_mpls()
 #        packet = push_mpls_tag(mock, packet)
 #      packet.next.label = action.mpls_label
 #      return packet
-#    def set_mpls_tc(action, packet):
+#    def set_mpls_tc (action, packet):
 #      if not isinstance(packet.next, mpls):
 #        mock = ofp_action_push_mpls()
 #        packet = push_mpls_tag(mock, packet)
 #      packet.next.tc = action.mpls_tc
 #      return packet
-#    def set_mpls_ttl(action, packet):
+#    def set_mpls_ttl (action, packet):
 #      if not isinstance(packet.next, mpls):
 #        mock = ofp_action_push_mpls()
 #        packet = push_mpls_tag(mock, packet)
 #      packet.next.ttl = action.mpls_ttl
 #      return packet
-#    def dec_mpls_ttl(action, packet):
+#    def dec_mpls_ttl (action, packet):
 #      if not isinstance(packet.next, mpls):
 #        return packet
 #      packet.next.ttl = packet.next.ttl - 1
@@ -662,7 +680,7 @@ class SoftwareSwitch(EventMixin):
         raise NotImplementedError("Unknown action type: %x " % type)
       packet = handler_map[action.type](action, packet)
 
-  def __repr__(self):
+  def __repr__ (self):
     return "%s(dpid=%s, num_ports=%d)" % (type(self).__name__,
                                           dpid_to_str(self.dpid),
                                           len(self.ports))
@@ -703,7 +721,7 @@ class OFConnection (object):
 
     self.on_message_received = None
 
-  def set_message_handler(self, handler):
+  def set_message_handler (self, handler):
     self.on_message_received = handler
 
   def send (self, data):
@@ -761,13 +779,13 @@ class OFConnection (object):
 
     return True
 
-  def close(self):
+  def close (self):
     self.io_worker.close()
 
-  def get_controller_id(self):
-    '''
+  def get_controller_id (self):
+    """
     Return a tuple of the controller's (address, port) we are connected to
-    '''
+    """
     return self.controller_id
 
   def __str__ (self):
