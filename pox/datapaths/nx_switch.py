@@ -61,6 +61,10 @@ class NXSoftwareSwitch (SoftwareSwitch):
     # (for round robin of async messages)
     self.next_other = 0
 
+    # Set of connections to which we have sent hellos.  This is used to
+    # as part of overriding the single-connection logic in the superclass.
+    self._sent_hellos = set()
+
   def rx_message (self, connection, msg):
     """
     Handles incoming messages
@@ -135,6 +139,12 @@ class NXSoftwareSwitch (SoftwareSwitch):
       for c in self.connections:
         if c != connection:
           self.role_by_conn[c.ID] = nx.ROLE_SLAVE
+
+  def _rx_hello (self, ofp, connection):
+    # Override the usual hello-send logic
+    if connection not in self._sent_hellos:
+      self._sent_hellos.add(connection)
+      self.send_hello(force=True)
 
   def _rx_vendor (self, vendor, connection):
     self.log.debug("Vendor %s %s", self.name, str(vendor))

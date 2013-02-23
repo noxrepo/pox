@@ -65,6 +65,7 @@ class SoftwareSwitchBase (object):
     self.dpid = dpid
     self.max_buffers = max_buffers
     self.miss_send_len = miss_send_len
+    self._has_sent_hello = False
 
     self.table = SwitchFlowTable()
     self._lookup_count = 0
@@ -334,12 +335,14 @@ class SoftwareSwitchBase (object):
     err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
     self.send(err)
 
-  def send_hello (self):
+  def send_hello (self, force = False):
     """
-    Send hello
+    Send hello (once)
     """
-    self.log.debug("Send hello")
-    msg = ofp_hello()
+    if self._has_sent_hello and not force: return
+    self._has_sent_hello = True
+    self.log.debug("Sent hello")
+    msg = ofp_hello(xid=0)
     self.send(msg)
 
   def send_packet_in (self, in_port, buffer_id=None, packet=b'', xid=None,
