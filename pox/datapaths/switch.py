@@ -42,7 +42,7 @@ import logging
 class DpPacketOut (Event):
   """ Event raised when a dataplane packet is sent out a port """
   def __init__ (self, node, packet, port):
-    assert_type("packet", packet, ethernet, none_ok=False)
+    assert assert_type("packet", packet, ethernet, none_ok=False)
     Event.__init__(self)
     self.node = node
     self.packet = packet
@@ -247,12 +247,12 @@ class SoftwareSwitch(EventMixin):
 
     def flow_stats(ofp):
       req = ofp_flow_stats_request().unpack(ofp.body)
-      assert(self.table_id == TABLE_ALL)
+      assert self.table_id == TABLE_ALL
       return self.table.flow_stats(req.match, req.out_port)
 
     def aggregate_stats(ofp):
       req = ofp_aggregate_stats_request().unpack(ofp.body)
-      assert(self.table_id == TABLE_ALL)
+      assert self.table_id == TABLE_ALL
       return self.table.aggregate_stats(req.match, out_port)
 
     def table_stats(ofp):
@@ -389,8 +389,8 @@ class SoftwareSwitch(EventMixin):
     port is an ofp_phy_port
     reason is one of 'OFPPR_ADD', 'OFPPR_DELETE', 'OFPPR_MODIFY'
     '''
-    assert_type("port", port, ofp_phy_port, none_ok=False)
-    assert(reason in ofp_port_reason_rev_map.values())
+    assert assert_type("port", port, ofp_phy_port, none_ok=False)
+    assert reason in ofp_port_reason_rev_map.values()
     msg = ofp_port_status(desc=port, reason=reason)
     self.send(msg)
 
@@ -403,8 +403,8 @@ class SoftwareSwitch(EventMixin):
         packet: an instance of ethernet
         in_port: the integer port number
     """
-    assert_type("packet", packet, ethernet, none_ok=False)
-    assert_type("in_port", in_port, int, none_ok=False)
+    assert assert_type("packet", packet, ethernet, none_ok=False)
+    assert assert_type("in_port", in_port, int, none_ok=False)
 
     entry = self.table.entry_for_packet(packet, in_port)
     if(entry != None):
@@ -438,7 +438,7 @@ class SoftwareSwitch(EventMixin):
     """ send a packet out some port.
         packet: instance of ethernet
         out_port, in_port: the integer port number """
-    assert_type("packet", packet, ethernet, none_ok=False)
+    assert assert_type("packet", packet, ethernet, none_ok=False)
     def real_send(port_no, allow_in_port=False):
       if type(port_no) == ofp_phy_port:
         port_no = port_no.port_no
@@ -502,7 +502,7 @@ class SoftwareSwitch(EventMixin):
 
   def _process_actions_for_packet(self, actions, packet, in_port):
     """ process the output actions for a packet """
-    assert_type("packet", packet, [ethernet, str], none_ok=False)
+    assert assert_type("packet", packet, [ethernet, str], none_ok=False)
     if not isinstance(packet, ethernet):
       packet = ethernet.unpack(packet)
 
