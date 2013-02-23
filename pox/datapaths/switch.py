@@ -193,7 +193,7 @@ class SoftwareSwitch (EventMixin):
     """
     self.log.debug("Flow mod: %s", ofp.show())
     self.table.process_flow_mod(ofp)
-    if ofp.buffer_id > 0:
+    if ofp.buffer_id is not None:
       self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id)
 
   def _rx_packet_out (self, packet_out, connection):
@@ -205,7 +205,7 @@ class SoftwareSwitch (EventMixin):
     if packet_out.data:
       self._process_actions_for_packet(packet_out.actions, packet_out.data,
                                        packet_out.in_port)
-    elif packet_out.buffer_id > 0:
+    elif packet_out.buffer_id is not None:
       self._process_actions_for_packet_from_buffer(packet_out.actions,
                                                    packet_out.buffer_id)
     else:
