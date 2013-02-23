@@ -64,12 +64,11 @@ class SoftwareSwitch (EventMixin):
     Initialize switch
      - ports is a list of ofp_phy_ports
     """
+    if name is None: name = dpid_to_str(dpid)
     ##Datapath id of switch
     self.dpid = dpid
     ## Human-readable name of the switch
     self.name = name
-    if self.name is None:
-      self.name = str(dpid)
     self.log = logging.getLogger(self.name)
     ##Number of buffers
     if isinstance(ports, int):
