@@ -61,11 +61,11 @@ class NXSoftwareSwitch (SoftwareSwitch):
     # (for round robin of async messages)
     self.next_other = 0
 
-  def on_message_received (self, connection, msg):
+  def rx_message (self, connection, msg):
     """
     Handles incoming messages
     
-    @overrides SoftwareSwitch.on_message_received
+    @overrides SoftwareSwitch.rx_message
     """
 
     self.connection_in_action = connection
@@ -74,7 +74,7 @@ class NXSoftwareSwitch (SoftwareSwitch):
                     connection.ID)
       self.send_vendor_error(connection)
     else:
-      SoftwareSwitch.on_message_received(self, connection, msg)
+      SoftwareSwitch.rx_message(self, connection, msg)
 
     self.connection_in_action = None
 
@@ -122,7 +122,7 @@ class NXSoftwareSwitch (SoftwareSwitch):
 
   def add_connection (self, connection):
     self.role_by_conn[connection.ID] = nx.ROLE_OTHER
-    connection.set_message_handler(self.on_message_received)
+    connection.set_message_handler(self.rx_message)
     self.connections.append(connection)
     return connection
 

@@ -144,7 +144,10 @@ class SoftwareSwitch (EventMixin):
       self.features.act_set_tp_src = True
       #self.features.act_vendor = True
 
-  def on_message_received (self, connection, msg):
+  def rx_message (self, connection, msg):
+    """
+    Handle an incoming message
+    """
     ofp_type = msg.header_type
     h = self.ofp_handlers.get(ofp_type)
     if h is None:
@@ -157,7 +160,7 @@ class SoftwareSwitch (EventMixin):
     """
     Set this switch's connection.
     """
-    connection.set_message_handler(self.on_message_received)
+    connection.set_message_handler(self.rx_message)
     self._connection = connection
 
   def send (self, message):
