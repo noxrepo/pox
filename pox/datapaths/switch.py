@@ -102,7 +102,7 @@ class SoftwareSwitch(EventMixin):
     self.ofp_handlers = {
        # Reactive handlers
        OFPT_HELLO : self._receive_hello,
-       OFPT_ECHO_REQUEST : self._receive_echo,
+       OFPT_ECHO_REQUEST : self._receive_echo_request,
        OFPT_FEATURES_REQUEST : self._receive_features_request,
        OFPT_FLOW_MOD : self._receive_flow_mod,
        OFPT_PACKET_OUT : self._receive_packet_out,
@@ -189,8 +189,9 @@ class SoftwareSwitch(EventMixin):
     self.log.debug("Receive hello %s", self.name)
     self.send_hello()
 
-  def _receive_echo(self, ofp):
-    """Reply to echo request
+  def _receive_echo_request (self, ofp):
+    """
+    Handles echo requests
     """
     self.log.debug("Reply echo of xid: %s %s", str(ofp), self.name)
     msg = ofp_echo_reply(xid=ofp.xid)
