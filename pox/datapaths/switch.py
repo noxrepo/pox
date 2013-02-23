@@ -1,4 +1,5 @@
-# Copyright 2012 Colin Scott
+# Copyright 2012,2013 Colin Scott
+# Copyright 2012,2013 James McCauley
 #
 # This file is part of POX.
 #
@@ -16,10 +17,9 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Software OpenFlow Switch
+A software OpenFlow switch
 
-Based heavily on pylibopenflow:
-
+Based partially on pylibopenflow:
 Copyright(C) 2009, Stanford University
 Date November 2009
 Created by ykk
@@ -28,17 +28,14 @@ Created by ykk
 # OF_01 like task that listens for socket connections, creates a new socket,
 # wraps it in a OFConnection object, and calls SoftwareSwitch._handle_ConnectionUp
 
-from pox.lib.util import assert_type
+from pox.lib.util import assert_type, initHelper
 from pox.lib.revent import Event, EventMixin
 from pox.openflow.libopenflow_01 import *
 from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow.flow_table import SwitchFlowTable
 from pox.lib.packet import *
 
-from errno import EAGAIN
-from collections import namedtuple
 import inspect
-import itertools
 import logging
 
 
@@ -61,8 +58,8 @@ def _default_port_list(num_ports=4, prefix=0):
 class SoftwareSwitch(EventMixin):
   _eventMixin_events = set([DpPacketOut])
 
-  def __init__(self, dpid, name=None, ports=4,
-               miss_send_len=128, n_buffers=100, n_tables=1, capabilities=None):
+  def __init__(self, dpid, name=None, ports=4, miss_send_len=128,
+               n_buffers=100, n_tables=1, features=None):
     '''
     Initialize switch
      - ports is a list of ofp_phy_ports
@@ -121,11 +118,32 @@ class SoftwareSwitch(EventMixin):
 
     self._connection = None
 
-    ##Capabilities
-    if (isinstance(capabilities, SwitchCapabilities)):
-      self.capabilities = capabilities
+    ##Features
+    if features is not None:
+      self.features = features
     else:
-      self.capabilities = SwitchCapabilities(miss_send_len)
+      self.features = SwitchFeatures()
+      self.features.flow_stats = True
+      self.features.table_stats = True
+      self.features.port_stats = True
+      #self.features.stp = True
+      #self.features.ip_reasm = True
+      #self.features.queue_stats = True
+      #self.features.arp_match_ip = True
+
+      self.features.act_output = True
+      #self.features.act_enqueue = True
+      #self.features.act_strip_vlan = True
+      self.features.act_set_vlan_vid = True
+      self.features.act_set_vlan_pcp = True
+      self.features.act_set_dl_dst = True
+      self.features.act_set_dl_src = True
+      self.features.act_set_nw_dst = True
+      self.features.act_set_nw_src = True
+      #self.features.act_set_nw_tos = True
+      self.features.act_set_tp_dst = True
+      self.features.act_set_tp_src = True
+      #self.features.act_vendor = True
 
   def on_message_received(self, connection, msg):
     ofp_type = msg.header_type
@@ -178,8 +196,8 @@ class SoftwareSwitch(EventMixin):
     self.log.debug("Reply features request of xid %s %s", str(ofp), self.name)
     msg = ofp_features_reply(datapath_id = self.dpid, xid = ofp.xid, n_buffers = self.n_buffers,
                              n_tables = self.n_tables,
-                             capabilities = self.capabilities.get_capabilities(),
-                             actions = self.capabilities.get_actions(),
+                             capabilities = self.features.capability_bits,
+                             actions = self.features.action_bits,
                              ports = self.ports.values())
     self.send(msg)
 
@@ -580,6 +598,7 @@ class SoftwareSwitch(EventMixin):
 #        return packet
 #      packet.next.ttl = packet.next.ttl - 1
 #      return packet
+
     handler_map = {
         OFPAT_OUTPUT: output_packet,
         OFPAT_SET_VLAN_VID: set_vlan_id,
@@ -713,81 +732,48 @@ class OFConnection (object):
     return "[Con " + str(self.ID) + "]"
 
 
-class SwitchCapabilities:
+class SwitchFeatures (object):
   """
-  Class to hold switch capabilities
+  Stores switch features
+
+  Keeps settings for switch capabilities and supported actions.
+  Automatically has attributes of the form ".act_foo" for all OFPAT_FOO,
+  and ".cap_foo" for all OFPC_FOO (as gathered from libopenflow).
   """
-  def __init__(self, miss_send_len=128):
-    """Initialize
+  def __init__ (self, **kw):
+    self._cap_info = {}
+    for val,name in ofp_capabilities_map.iteritems():
+      name = name[5:].lower() # strip OFPC_
+      name = "cap_" + name
+      setattr(self, name, False)
+      self._cap_info[name] = val
 
-    Copyright(C) 2009, Stanford University
-    Date October 2009
-    Created by ykk
-    """
-    ##Capabilities support by datapath
-    self.flow_stats = False
-    self.table_stats = False
-    self.port_stats = False
-    self.stp = False
-    self.multi_phy_tx = False
-    self.ip_resam = False
-    ##Switch config
-    self.send_exp = None
-    self.ip_frag = 0
-    self.miss_send_len = miss_send_len
-    ##Valid actions
-    self.act_output = True
-    self.act_set_vlan_vid = True
-    self.act_set_vlan_pcp = True
-    self.act_strip_vlan = True
-    self.act_set_dl_src = True
-    self.act_set_dl_dst = True
-    self.act_set_nw_src = True
-    self.act_set_nw_dst = True
-    self.act_set_tp_src = True
-    self.act_set_tp_dst = True
-    self.act_vendor = False
+    self._act_info = {}
+    for val,name in ofp_action_type_map.iteritems():
+      name = name[6:].lower() # strip OFPAT_
+      name = "act_" + name
+      setattr(self, name, False)
+      self._act_info[name] = val
 
-  def get_capabilities(self):
-    """Return value for uint32_t capability field
-    """
-    value = 0
-    if (self.flow_stats):
-      value += ofp_capabilities_rev_map['OFPC_FLOW_STATS']
-    if (self.table_stats):
-      value += ofp_capabilities_rev_map['OFPC_TABLE_STATS']
-    if (self.port_stats):
-      value += ofp_capabilities_rev_map['OFPC_PORT_STATS']
-    if (self.stp):
-      value += ofp_capabilities_rev_map['OFPC_STP']
-    if (self.multi_phy_tx):
-      value += ofp_capabilities_rev_map['OFPC_MULTI_PHY_TX']
-    if (self.ip_resam):
-      value += ofp_capabilities_rev_map['OFPC_IP_REASM']
-    return value
+    initHelper(self, kw)
 
-  def get_actions(self):
-    """Return value for uint32_t action field
+  @property
+  def capability_bits (self):
     """
-    value = 0
-    if (self.act_output):
-      value += (1 << (ofp_action_type_rev_map['OFPAT_OUTPUT']+1))
-    if (self.act_set_vlan_vid):
-      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_VLAN_VID']+1))
-    if (self.act_set_vlan_pcp):
-      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_VLAN_PCP']+1))
-    if (self.act_strip_vlan):
-      value += (1 << (ofp_action_type_rev_map['OFPAT_STRIP_VLAN']+1))
-    if (self.act_set_dl_src):
-      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_DL_SRC']+1))
-    if (self.act_set_dl_dst):
-      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_DL_DST']+1))
-    if (self.act_set_nw_src):
-      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_NW_SRC']+1))
-    if (self.act_set_nw_dst):
-      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_NW_DST']+1))
-    if (self.act_set_tp_src):
-      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_TP_SRC']+1))
-    if (self.act_set_tp_dst):
-      value += (1 << (ofp_action_type_rev_map['OFPAT_SET_TP_DST']+1))
-    return value
+    Value used in features reply
+    """
+    return sum( (v if getattr(self, k) else 0)
+                for k,v in self._cap_info.iteritems() )
+
+  @property
+  def action_bits (self):
+    """
+    Value used in features reply
+    """
+    return sum( (v if getattr(self, k) else 0)
+                for k,v in self._act_info.iteritems() )
+
+  def __str__ (self):
+    l = list(k for k in self._cap_info if getattr(self, k))
+    l += list(k for k in self._act_info if getattr(self, k))
+    return ",".join(l)
