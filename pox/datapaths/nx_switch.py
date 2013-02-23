@@ -19,12 +19,12 @@ import inspect
 
 import pox.openflow.libopenflow_01 as of
 import pox.openflow.nicira_ext as nx
-from pox.datapaths.switch import SwitchImpl, ControllerConnection
+from pox.openflow.software_switch import SoftwareSwitch, OFConnection
 
 _slave_blacklist = set([of.ofp_flow_mod, of.ofp_packet_out, of.ofp_port_mod, of.ofp_barrier_request])
 _messages_for_all = set([of.ofp_port_status])
 
-class NXSwitchImpl(SwitchImpl):
+class NXSoftwareSwitch(SoftwareSwitch):
   """ Extension of the SwichImpl software switch that supports the nicira (NX) vendor extension from
       OpenVSwitch that allows the switch to connect to multiple controllers at the same time.
 
@@ -42,36 +42,25 @@ class NXSwitchImpl(SwitchImpl):
          in ROLE_OTHER
   """
   def __init__(self, *args, **kw):
-    SwitchImpl.__init__(self, *args, **kw)
+    SoftwareSwitch.__init__(self, *args, **kw)
     self.role_by_conn={}
     self.connections = []
     self.connection_in_action = None
-    # index of the next 'other' controller to get a message 
+    # index of the next 'other' controller to get a message
     # (for round robin of async messages)
     self.next_other = 0
 
-    self.beef_up_handlers()
+  def on_message_received(self, connection, msg):
+    """ @overrides SoftwareSwitch.on_message_received"""
 
-  def beef_up_handlers(self):
-    self.orig_handlers = self.ofp_handlers
-    handlers = {}
-    for (command, handler) in self.orig_handlers.iteritems():
-      # note: python has lexical scoping. So I need to convert the
-      # handler variable to a parameter in order to capture the current value
-      def _handle(ofp, connection, handler=handler):
-        self.connection_in_action = connection
-        if not self.check_rights(ofp, connection):
-          self.log.warn("Message %s not allowed for slave controller %d" % (ofp, connection.ID))
-          self.send_error(connection)
-        else:
-          if "connection" in inspect.getargspec(handler)[0]:
-            handler(ofp, connection=connection)
-          else:
-            handler(ofp)
-        self.connection_in_action = None
-      handlers[command] = _handle
-    self.log.info(str(handlers))
-    self.ofp_handlers = handlers
+    self.connection_in_action = connection
+    if not self.check_rights(msg, connection):
+      self.log.warn("Message %s not allowed for slave controller %d", msg, connection.ID)
+      self.send_error(connection)
+    else:
+      SoftwareSwitch.on_message_received(self, connection, msg)
+
+    self.connection_in_action = None
 
   def check_rights(self, ofp, connection):
     if self.role_by_conn[connection.ID] != nx.ROLE_SLAVE:
@@ -85,32 +74,35 @@ class NXSwitchImpl(SwitchImpl):
     connection.send(err)
 
   def send(self, message):
+    connections_used = []
     if type(message) in _messages_for_all:
       for c in self.connections:
         c.send(message)
+        connections_used.append(c)
     elif self.connection_in_action:
-      #self.log.info("Sending %s to active connection %d" % (str(message), self.connection_in_action.ID))
+      #self.log.info("Sending %s to active connection %d", (str(message), self.connection_in_action.ID))
       self.connection_in_action.send(message)
+      connections_used.append(self.connection_in_action)
     else:
       masters = [c for c in self.connections if self.role_by_conn[c.ID] == nx.ROLE_MASTER]
       if len(masters) > 0:
         masters[0].send(message)
+        connections_used.append(masters[0])
       else:
         others = [c for c in self.connections if self.role_by_conn[c.ID] == nx.ROLE_OTHER]
         if len(others) > 0:
           self.next_other = self.next_other % len(others)
-          #self.log.info("Sending %s to 'other' connection %d" % (str(message), self.next_other))
+          #self.log.info("Sending %s to 'other' connection %d", (str(message), self.next_other))
           others[self.next_other].send(message)
+          connections_used.append(others[self.next_other])
           self.next_other += 1
         else:
-          self.log.info("Could not find any connection to send messages %s" % str(message))
-
-  def set_io_worker(self, io_worker):
-    conn = self.add_connection(ControllerConnection(io_worker, self.ofp_handlers))
-    return conn
+          self.log.info("Could not find any connection to send messages %s", str(message))
+    return connections_used
 
   def add_connection(self, connection):
     self.role_by_conn[connection.ID] = nx.ROLE_OTHER
+    connection.set_message_handler(self.on_message_received)
     self.connections.append(connection)
     return connection
 
@@ -125,16 +117,16 @@ class NXSwitchImpl(SwitchImpl):
           self.role_by_conn[c.ID] = nx.ROLE_SLAVE
 
   def _receive_vendor(self, vendor, connection):
-    self.log.debug("Vendor %s %s" % (self.name, str(vendor)))
+    self.log.debug("Vendor %s %s", self.name, str(vendor))
     if(vendor.vendor == nx.VENDOR_ID):
       try:
         data = nx.unpack_vendor_data_nx(vendor.data)
         if isinstance(data, nx.role_request_data):
           self.set_role(connection, data.role)
-          reply = of.ofp_vendor(vendor = nx.VENDOR_ID, data = nx.role_reply_data(role = data.role))
+          reply = of.ofp_vendor(xid=vendor.xid, vendor = nx.VENDOR_ID, data = nx.role_reply_data(role = data.role))
           self.send(reply)
           return
-      except NotImplemented:
+      except NotImplementedError:
         self.send_error(connection)
     else:
-      return SwitchImpl._receive_vendor(self, vendor)
+      return SoftwareSwitch._receive_vendor(self, vendor)
