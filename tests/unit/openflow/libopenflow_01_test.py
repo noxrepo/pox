@@ -192,7 +192,7 @@ class ofp_command_test(unittest.TestCase):
       self._test_pack_unpack(o, kw["xid"], kw["header_type"])
 
   def test_pack_all_comands_simple(self):
-    xid_gen = itertools.count()
+    xid_gen = xid_generator()
     for cls in ( ofp_features_reply,
                    ofp_set_config,
                    ofp_get_config_reply,
@@ -216,7 +216,7 @@ class ofp_command_test(unittest.TestCase):
                    ofp_get_config_request,
                    ofp_get_config_reply,
                    ofp_set_config ):
-      xid = xid_gen.next()
+      xid = xid_gen()
       args = {}
 
       # Customize initializer
