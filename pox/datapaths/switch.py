@@ -100,19 +100,19 @@ class SoftwareSwitch(EventMixin):
     ## (OpenFlow Handler map)
     self.ofp_handlers = {
        # Reactive handlers
-       ofp_type_rev_map['OFPT_HELLO'] : self._receive_hello,
-       ofp_type_rev_map['OFPT_ECHO_REQUEST'] : self._receive_echo,
-       ofp_type_rev_map['OFPT_FEATURES_REQUEST'] : self._receive_features_request,
-       ofp_type_rev_map['OFPT_FLOW_MOD'] : self._receive_flow_mod,
-       ofp_type_rev_map['OFPT_PACKET_OUT'] : self._receive_packet_out,
-       ofp_type_rev_map['OFPT_BARRIER_REQUEST'] : self._receive_barrier_request,
-       ofp_type_rev_map['OFPT_GET_CONFIG_REQUEST'] : self._receive_get_config_request,
-       ofp_type_rev_map['OFPT_SET_CONFIG'] : self._receive_set_config,
-       ofp_type_rev_map['OFPT_STATS_REQUEST'] : self._receive_stats_request,
-       ofp_type_rev_map['OFPT_VENDOR'] : self._receive_vendor,
-       ofp_type_rev_map['OFPT_PORT_MOD'] : self._receive_port_mod,
+       OFPT_HELLO : self._receive_hello,
+       OFPT_ECHO_REQUEST : self._receive_echo,
+       OFPT_FEATURES_REQUEST : self._receive_features_request,
+       OFPT_FLOW_MOD : self._receive_flow_mod,
+       OFPT_PACKET_OUT : self._receive_packet_out,
+       OFPT_BARRIER_REQUEST : self._receive_barrier_request,
+       OFPT_GET_CONFIG_REQUEST : self._receive_get_config_request,
+       OFPT_SET_CONFIG : self._receive_set_config,
+       OFPT_STATS_REQUEST : self._receive_stats_request,
+       OFPT_VENDOR : self._receive_vendor,
+       OFPT_PORT_MOD : self._receive_port_mod,
        # Proactive responses
-       ofp_type_rev_map['OFPT_ECHO_REPLY'] : self._receive_echo_reply
+       OFPT_ECHO_REPLY : self._receive_echo_reply
        # TODO: many more packet types to process
     }
 
@@ -365,7 +365,7 @@ class SoftwareSwitch(EventMixin):
     assert assert_type("packet", packet, bytes)
     self.log.debug("Send PacketIn %s ", self.name)
     if reason is None:
-      reason = ofp_packet_in_reason_rev_map['OFPR_NO_MATCH']
+      reason = OFPR_NO_MATCH
     if data_length is not None and len(packet) > data_length:
       if buffer_id is not None:
         packet = packet[:data_length]
