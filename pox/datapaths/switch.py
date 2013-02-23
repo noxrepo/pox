@@ -85,6 +85,8 @@ class SoftwareSwitch(EventMixin):
     if(ports == None or isinstance(ports, int)):
       ports=_default_port_list(num_ports=ports, prefix=dpid)
 
+    self.miss_send_len = miss_send_len
+
     self.xid_count = xid_generator(1)
 
     ## Hash of port_no -> openflow.pylibopenflow_01.ofp_phy_ports
@@ -335,22 +337,25 @@ class SoftwareSwitch(EventMixin):
     msg = ofp_hello()
     self.send(msg)
 
-  def send_packet_in(self, in_port, buffer_id=None, packet="", xid=None, reason=None):
+  def send_packet_in(self, in_port, buffer_id=None, packet=b'', xid=None, reason=None, data_length=None):
     """Send PacketIn
     Assume no match as reason, buffer_id = 0xFFFFFFFF,
     and empty packet by default
     """
-    assert_type("packet", packet, ethernet)
+    if hasattr(packet, 'pack'):
+      packet = packet.pack()
+    assert assert_type("packet", packet, bytes)
     self.log.debug("Send PacketIn %s ", self.name)
-    if (reason == None):
+    if reason is None:
       reason = ofp_packet_in_reason_rev_map['OFPR_NO_MATCH']
-    if (buffer_id == None):
-      buffer_id = int("0xFFFFFFFF",16)
+    if data_length is not None and len(packet) > data_length:
+      if buffer_id is not None:
+        packet = packet[:data_length]
 
     if xid == None:
       xid = self.xid_count()
     msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id, reason = reason,
-                        data = packet.pack())
+                        data = packet)
 
     self.send(msg)
 
@@ -390,7 +395,7 @@ class SoftwareSwitch(EventMixin):
     else:
       # no matching entry
       buffer_id = self._buffer_packet(packet, in_port)
-      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(), reason=OFPR_NO_MATCH)
+      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(), reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
 
   def take_port_down(self, port):
     ''' Take the given port down, and send a port_status message to the controller '''
@@ -411,7 +416,7 @@ class SoftwareSwitch(EventMixin):
   #    Helper Methods                    #
   # ==================================== #
 
-  def _output_packet(self, packet, out_port, in_port):
+  def _output_packet(self, packet, out_port, in_port, max_len=None):
     """ send a packet out some port.
         packet: instance of ethernet
         out_port, in_port: the integer port number """
@@ -445,7 +450,7 @@ class SoftwareSwitch(EventMixin):
           real_send(port)
     elif out_port == OFPP_CONTROLLER:
       buffer_id = self._buffer_packet(packet, in_port)
-      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(), reason=OFPR_ACTION)
+      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(), reason=OFPR_ACTION, data_length=max_len)
     elif out_port == OFPP_TABLE:
       # There better be a table entry there, else we get infinite recurision
       # between switch<->controller
@@ -484,7 +489,7 @@ class SoftwareSwitch(EventMixin):
       packet = ethernet.unpack(packet)
 
     def output_packet(action, packet):
-      self._output_packet(packet, action.port, in_port)
+      self._output_packet(packet, action.port, in_port, action.max_len)
       return packet
     def set_vlan_id(action, packet):
       if not isinstance(packet.next, vlan):
