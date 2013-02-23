@@ -383,10 +383,6 @@ class SoftwareSwitch (EventMixin):
     msg = ofp_port_status(desc=port, reason=reason)
     self.send(msg)
 
-  # ==================================== #
-  #   Dataplane processing               #
-  # ==================================== #
-
   def process_packet (self, packet, in_port):
     """
     process a dataplane packet
@@ -430,13 +426,19 @@ class SoftwareSwitch (EventMixin):
     self.ports[port_no] = port
     self.send_port_status(port, OFPPR_ADD)
 
-  # ==================================== #
-  #    Helper Methods                    #
-  # ==================================== #
+  def _output_packet_physical (self, packet, port_no):
+    """
+    send a packet out a single physical port
+
+    This is called by the more general _output_packet().
+    """
+    self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
   def _output_packet (self, packet, out_port, in_port, max_len=None):
     """
-    send a packet out some port.
+    send a packet out some port
+
+    This handles virtual ports and does validation.
 
     packet: instance of ethernet
     out_port, in_port: the integer port number
@@ -459,8 +461,8 @@ class SoftwareSwitch (EventMixin):
         self.log.warn("Port %d is currently down. Dropping packet", port_no)
       if self.ports[port_no].state & OFPPS_LINK_DOWN:
         self.log.debug("Sending packet on a port which is down!")
-      else:
-        self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
+        return
+      self._output_packet_physical(packet, port_no)
 
     if out_port < OFPP_MAX:
       real_send(out_port)
