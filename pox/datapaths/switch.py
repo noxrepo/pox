@@ -18,11 +18,6 @@
 
 """
 A software OpenFlow switch
-
-Based partially on pylibopenflow:
-Copyright(C) 2009, Stanford University
-Date November 2009
-Created by ykk
 """
 
 from pox.lib.util import assert_type, initHelper, dpid_to_str
@@ -83,7 +78,7 @@ class SoftwareSwitch (EventMixin):
     self._connection = None
 
     # buffer for packets during packet_in
-    self.packet_buffer = []
+    self._packet_buffer = []
 
     # Map port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
@@ -155,8 +150,6 @@ class SoftwareSwitch (EventMixin):
   def send (self, message):
     """
     Send a message to this switch's communication partner
-
-    If the switch is not connected, the message is silently dropped.
     """
 
     if self._connection:
@@ -375,10 +368,7 @@ class SoftwareSwitch (EventMixin):
     self.send(msg)
 
   def send_echo (self, xid=0):
-    """
-    Send echo request
-    """
-    self.log.debug("Send echo")
+    self.log.debug("Send echo request")
     msg = ofp_echo_request()
     self.send(msg)
 
@@ -509,32 +499,32 @@ class SoftwareSwitch (EventMixin):
     If no buffer is available, return None.
     """
     # Do we have an empty slot?
-    for (i, value) in enumerate(self.packet_buffer):
+    for (i, value) in enumerate(self._packet_buffer):
       if value is None:
         # Yes -- use it
-        self.packet_buffer[i] = (packet, in_port)
+        self._packet_buffer[i] = (packet, in_port)
         return i + 1
     # No -- create a new slow
-    if len(self.packet_buffer) >= self.max_buffers:
+    if len(self._packet_buffer) >= self.max_buffers:
       # No buffers available!
       return None
-    self.packet_buffer.append( (packet, in_port) )
-    return len(self.packet_buffer)
+    self._packet_buffer.append( (packet, in_port) )
+    return len(self._packet_buffer)
 
   def _process_actions_for_packet_from_buffer (self, actions, buffer_id):
     """
     output and release a packet from the buffer
     """
     buffer_id = buffer_id - 1
-    if buffer_id >= len(self.packet_buffer):
+    if buffer_id >= len(self._packet_buffer):
       self.log.warn("Invalid output buffer id: %d", buffer_id)
       return
-    if self.packet_buffer[buffer_id] is None:
+    if self._packet_buffer[buffer_id] is None:
       self.log.warn("Buffer %d has already been flushed", buffer_id)
       return
-    (packet, in_port) = self.packet_buffer[buffer_id]
+    (packet, in_port) = self._packet_buffer[buffer_id]
     self._process_actions_for_packet(actions, packet, in_port)
-    self.packet_buffer[buffer_id] = None
+    self._packet_buffer[buffer_id] = None
 
   def _process_actions_for_packet (self, actions, packet, in_port):
     """
