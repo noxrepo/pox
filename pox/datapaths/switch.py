@@ -81,7 +81,6 @@ class SoftwareSwitchBase (object):
     self._matched_count = 0
 
     self.log = logging.getLogger(self.name)
-    self.xid_count = xid_generator()
     self._connection = None
 
     # buffer for packets during packet_in
@@ -357,8 +356,8 @@ class SoftwareSwitchBase (object):
     msg = ofp_hello(xid=0)
     self.send(msg)
 
-  def send_packet_in (self, in_port, buffer_id=None, packet=b'', xid=None,
-                      reason=None, data_length=None):
+  def send_packet_in (self, in_port, buffer_id=None, packet=b'', reason=None,
+                      data_length=None):
     """
     Send PacketIn
     """
@@ -372,9 +371,7 @@ class SoftwareSwitchBase (object):
       if buffer_id is not None:
         packet = packet[:data_length]
 
-    if xid == None:
-      xid = self.xid_count()
-    msg = ofp_packet_in(xid=xid, in_port = in_port, buffer_id = buffer_id,
+    msg = ofp_packet_in(xid = 0, in_port = in_port, buffer_id = buffer_id,
                         reason = reason, data = packet)
 
     self.send(msg)
@@ -410,7 +407,7 @@ class SoftwareSwitchBase (object):
     else:
       # no matching entry
       buffer_id = self._buffer_packet(packet, in_port)
-      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(),
+      self.send_packet_in(in_port, buffer_id, packet,
                           reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
 
   def take_port_down (self, port):
@@ -488,8 +485,8 @@ class SoftwareSwitchBase (object):
         real_send(port)
     elif out_port == OFPP_CONTROLLER:
       buffer_id = self._buffer_packet(packet, in_port)
-      self.send_packet_in(in_port, buffer_id, packet, self.xid_count(),
-                          reason=OFPR_ACTION, data_length=max_len)
+      self.send_packet_in(in_port, buffer_id, packet, reason=OFPR_ACTION,
+                          data_length=max_len)
     elif out_port == OFPP_TABLE:
       # There better be a table entry there, else we get infinite recurision
       # between switch<->controller

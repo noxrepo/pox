@@ -86,9 +86,9 @@ class SwitchImplTest(unittest.TestCase):
   def test_send_packet_in(self):
     c = self.conn
     s = self.switch
-    s.send_packet_in(in_port=1, buffer_id=123, packet=self.packet, xid=314, reason=OFPR_NO_MATCH)
+    s.send_packet_in(in_port=1, buffer_id=123, packet=self.packet, reason=OFPR_NO_MATCH)
     self.assertEqual(len(c.received), 1)
-    self.assertTrue(isinstance(c.last, ofp_packet_in) and c.last.xid == 314,
+    self.assertTrue(isinstance(c.last, ofp_packet_in) and c.last.xid == 0,
           "should have received packet_in but got %s" % c.last)
     self.assertEqual(c.last.in_port,1)
     self.assertEqual(c.last.buffer_id,123)
