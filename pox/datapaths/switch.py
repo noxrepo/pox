@@ -136,6 +136,7 @@ class SoftwareSwitchBase (object):
       raise RuntimeError("No handler for ofp_type %s(%d)"
                          % (ofp_type_map.get(ofp_type), ofp_type))
 
+    self.log.debug("Got %s with XID %s",ofp_type_rev_map.get(ofp_type),msg.xid)
     h(msg, connection=connection)
 
   def set_connection (self, connection):
@@ -156,14 +157,12 @@ class SoftwareSwitchBase (object):
       self.log.debug("Asked to send message %s, but not connected", message)
 
   def _rx_hello (self, ofp, connection):
-    self.log.debug("Received hello")
     self.send_hello()
 
   def _rx_echo_request (self, ofp, connection):
     """
     Handles echo requests
     """
-    self.log.debug("Reply echo of xid: %s", str(ofp))
     msg = ofp_echo_reply(xid=ofp.xid)
     self.send(msg)
 
@@ -171,7 +170,6 @@ class SoftwareSwitchBase (object):
     """
     Handles feature requests
     """
-    self.log.debug("Reply features request of xid %s", str(ofp))
     msg = ofp_features_reply(datapath_id = self.dpid,
                              xid = ofp.xid,
                              n_buffers = self.max_buffers,
@@ -185,7 +183,7 @@ class SoftwareSwitchBase (object):
     """
     Handles flow mods
     """
-    self.log.debug("Flow mod: %s", ofp.show())
+    self.log.debug("Flow mod details: %s", ofp.show())
     self.table.process_flow_mod(ofp)
     if ofp.buffer_id is not None:
       self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id)
@@ -194,7 +192,7 @@ class SoftwareSwitchBase (object):
     """
     Handles packet_outs
     """
-    self.log.debug("Packet out: %s", packet_out.show())
+    self.log.debug("Packet out details: %s", packet_out.show())
 
     if packet_out.data:
       self._process_actions_for_packet(packet_out.actions, packet_out.data,
@@ -207,21 +205,17 @@ class SoftwareSwitchBase (object):
                     "don't know what to send")
 
   def _rx_echo_reply (self, ofp, connection):
-    self.log.debug("Echo reply: %s", str(ofp))
+    pass
 
   def _rx_barrier_request (self, ofp, connection):
-    self.log.debug("Barrier request %s", str(ofp))
     msg = ofp_barrier_reply(xid = ofp.xid)
     self.send(msg)
 
   def _rx_get_config_request (self, ofp, connection):
-    self.log.debug("Get config request %s ", str(ofp))
     msg = ofp_get_config_reply(xid = ofp.xid)
     self.send(msg)
 
   def _rx_stats_request (self, ofp, connection):
-    self.log.debug("Get stats request %s", str(ofp))
-
     def desc_stats (ofp):
       return ofp_desc_stats(mfr_desc="POX",
                             hw_desc=core._get_platform_info(),
@@ -283,10 +277,9 @@ class SoftwareSwitchBase (object):
     self.send(reply)
 
   def _rx_set_config (self, config, connection):
-    self.log.debug("Set config %s", str(config))
+    pass
 
   def _rx_port_mod (self, port_mod, connection):
-    self.log.debug("Get port modification request %s", str(port_mod))
     port_no = port_mod.port_no
     if port_no not in self.ports:
       err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT)
@@ -329,7 +322,6 @@ class SoftwareSwitchBase (object):
       self.log.warn("Unsupported PORT_MOD flags: %08x", mask)
 
   def _rx_vendor (self, vendor, connection):
-    self.log.debug("Vendor %s", str(vendor))
     # We don't support vendor extensions, so send an OFP_ERROR, per
     # page 42 of spec
     err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
