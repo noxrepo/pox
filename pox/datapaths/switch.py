@@ -55,12 +55,20 @@ class DpPacketOut (Event):
     self.switch = node # For backwards compatability
 
 
-def _generate_port (port_no, prefix=0):
-  return ofp_phy_port(port_no=port_no, hw_addr=EthAddr("00:00:00:00:%2x:%2x"
-          % (prefix % 255, port_no)))
+def _generate_port (port_no, dpid=0):
+  p = ofp_phy_port()
+  p.port_no = port_no
+  p.hw_addr = EthAddr("00:00:00:00:%2x:%2x" % (dpid % 255, port_no))
+  p.name = dpid_to_str(dpid) + "." + str(port_no)
+  # Fill in features sort of arbitrarily
+  p.curr = OFPPF_10MB_HD
+  p.advertised = OFPPF_10MB_HD
+  p.supported = OFPPF_10MB_HD
+  p.peer = OFPPF_10MB_HD
+  return p
 
-def _generate_ports (num_ports=4, prefix=0):
-  return [_generate_port(i, prefix) for i in range(1, num_ports+1)]
+def _generate_ports (num_ports=4, dpid=0):
+  return [_generate_port(i, dpid) for i in range(1, num_ports+1)]
 
 
 class SoftwareSwitchBase (object):
@@ -74,7 +82,7 @@ class SoftwareSwitchBase (object):
     self.name = name
 
     if isinstance(ports, int):
-      ports = _generate_ports(num_ports=ports, prefix=dpid)
+      ports = _generate_ports(num_ports=ports, dpid=dpid)
 
     self.dpid = dpid
     self.max_buffers = max_buffers
