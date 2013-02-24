@@ -20,6 +20,15 @@
 A software OpenFlow switch
 """
 
+"""
+TODO
+----
+* Don't reply to HELLOs -- just send one on connect
+* Pass raw OFP packet to rx handlers as well as parsed
+* Once previous is done, use raw OFP for error data when appropriate
+"""
+
+
 from pox.lib.util import assert_type, initHelper, dpid_to_str
 from pox.lib.revent import Event, EventMixin
 from pox.openflow.libopenflow_01 import *
