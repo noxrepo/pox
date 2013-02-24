@@ -368,11 +368,6 @@ class SoftwareSwitchBase (object):
 
     self.send(msg)
 
-  def send_echo (self, xid=0):
-    self.log.debug("Send echo request")
-    msg = ofp_echo_request()
-    self.send(msg)
-
   def send_port_status (self, port, reason):
     """
     Send port status
