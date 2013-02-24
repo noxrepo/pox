@@ -26,6 +26,8 @@ TODO
 * Don't reply to HELLOs -- just send one on connect
 * Pass raw OFP packet to rx handlers as well as parsed
 * Once previous is done, use raw OFP for error data when appropriate
+* Check self.features to see if various features/actions are enabled,
+  and act appropriately if they're not (rather than just doing them).
 """
 
 
