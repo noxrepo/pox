@@ -334,6 +334,8 @@ class SoftwareSwitchBase (object):
     # We don't support vendor extensions, so send an OFP_ERROR, per
     # page 42 of spec
     err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
+    err.xid = vendor.xid
+    err.data = vendor.pack()
     self.send(err)
 
   def send_hello (self, force = False):
