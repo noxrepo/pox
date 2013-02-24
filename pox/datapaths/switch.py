@@ -218,7 +218,8 @@ class SoftwareSwitchBase (object):
     self.log.debug("Flow mod details: %s", ofp.show())
     self.table.process_flow_mod(ofp)
     if ofp.buffer_id is not None:
-      self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id)
+      self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id,
+                                                   ofp)
 
   def _rx_packet_out (self, packet_out, connection):
     """
@@ -228,10 +229,11 @@ class SoftwareSwitchBase (object):
 
     if packet_out.data:
       self._process_actions_for_packet(packet_out.actions, packet_out.data,
-                                       packet_out.in_port)
+                                       packet_out.in_port, packet_out)
     elif packet_out.buffer_id is not None:
       self._process_actions_for_packet_from_buffer(packet_out.actions,
-                                                   packet_out.buffer_id)
+                                                   packet_out.buffer_id,
+                                                   packet_out)
     else:
       self.log.warn("packet_out: No data and no buffer_id -- "
                     "don't know what to send")
@@ -565,9 +567,13 @@ class SoftwareSwitchBase (object):
     self._packet_buffer.append( (packet, in_port) )
     return len(self._packet_buffer)
 
-  def _process_actions_for_packet_from_buffer (self, actions, buffer_id):
+  def _process_actions_for_packet_from_buffer (self, actions, buffer_id,
+                                               ofp=None):
     """
     output and release a packet from the buffer
+
+    ofp is the message which triggered this processing, if any (used for error
+    generation)
     """
     buffer_id = buffer_id - 1
     if buffer_id >= len(self._packet_buffer):
@@ -577,12 +583,15 @@ class SoftwareSwitchBase (object):
       self.log.warn("Buffer %d has already been flushed", buffer_id)
       return
     (packet, in_port) = self._packet_buffer[buffer_id]
-    self._process_actions_for_packet(actions, packet, in_port)
+    self._process_actions_for_packet(actions, packet, in_port, ofp)
     self._packet_buffer[buffer_id] = None
 
-  def _process_actions_for_packet (self, actions, packet, in_port):
+  def _process_actions_for_packet (self, actions, packet, in_port, ofp=None):
     """
     process the output actions for a packet
+
+    ofp is the message which triggered this processing, if any (used for error
+    generation)
     """
     assert assert_type("packet", packet, (ethernet, bytes), none_ok=False)
     if not isinstance(packet, ethernet):
@@ -594,7 +603,15 @@ class SoftwareSwitchBase (object):
       #  return
       h = self.action_handlers.get(action.type)
       if h is None:
-        raise NotImplementedError("Unknown action type: %x " % (action.type,))
+        self.log.warn("Unknown action type: %x " % (action.type,))
+        err = ofp_error(type=OFPET_BAD_ACTION, code=OFPBAC_BAD_TYPE)
+        if ofp:
+          err.xid = ofp.xid
+          err.data = ofp.pack()
+        else:
+          err.xid = 0
+        self.send(err)
+        return
       packet = h(action, packet, in_port)
 
   def _action_output (self, action, packet, in_port):
