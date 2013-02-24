@@ -388,7 +388,7 @@ class SoftwareSwitchBase (object):
     msg = ofp_port_status(desc=port, reason=reason)
     self.send(msg)
 
-  def process_packet (self, packet, in_port):
+  def rx_packet (self, packet, in_port):
     """
     process a dataplane packet
 
@@ -505,7 +505,7 @@ class SoftwareSwitchBase (object):
       # between switch<->controller
       # Note that this isn't infinite recursion, since the table entry's
       # out_port will not be OFPP_TABLE
-      self.process_packet(packet, in_port)
+      self.rx_packet(packet, in_port)
     else:
       raise("Unsupported virtual output port: %d" % (out_port,))
 
@@ -666,7 +666,7 @@ class SoftwareSwitchBase (object):
     }
     for action in actions:
 #      if action.type is ofp_action_resubmit:
-#        self.process_packet(packet, in_port)
+#        self.rx_packet(packet, in_port)
 #        return
       if action.type not in handler_map:
         raise NotImplementedError("Unknown action type: %x " % (action.type,))

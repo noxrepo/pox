@@ -94,13 +94,13 @@ class SwitchImplTest(unittest.TestCase):
     self.assertEqual(c.last.buffer_id,123)
     self.assertEqual(c.last.data, self.packet.pack())
 
-  def test_process_packet(self):
+  def test_rx_packet(self):
     c = self.conn
     s = self.switch
     received = []
     s.addListener(DpPacketOut, lambda(event): received.append(event))
     # no flow entries -> should result in a packet_in
-    s.process_packet(self.packet, in_port=1)
+    s.rx_packet(self.packet, in_port=1)
     self.assertEqual(len(c.received), 1)
     self.assertTrue(isinstance(c.last, ofp_packet_in),
           "should have received packet_in but got %s" % c.last)
@@ -121,7 +121,7 @@ class SwitchImplTest(unittest.TestCase):
     # now the next packet should go through on the fast path
     c.received = []
     received = []
-    s.process_packet(self.packet, in_port=1)
+    s.rx_packet(self.packet, in_port=1)
     self.assertEqual(len(c.received), 0)
 
     self.assertEqual(len(received), 1)
