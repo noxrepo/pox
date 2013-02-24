@@ -145,6 +145,16 @@ class SoftwareSwitchBase (object):
       assert of._message_type_to_class[value]._from_controller, name
       self.ofp_handlers[value] = h
 
+    # Set up handlers for actions
+    # That is, self.action_handlers[OFPAT_FOO] = self._action_foo
+    #TODO: Refactor this with above
+    self.action_handlers = {}
+    for value,name in ofp_action_type_map.iteritems():
+      name = name.split("OFPAT_",1)[-1].lower()
+      h = getattr(self, "_action_" + name, None)
+      if not h: continue
+      self.action_handlers[value] = h
+
   def rx_message (self, connection, msg):
     """
     Handle an incoming OpenFlow message
@@ -575,126 +585,108 @@ class SoftwareSwitchBase (object):
     if not isinstance(packet, ethernet):
       packet = ethernet.unpack(packet)
 
-    def output_packet (action, packet):
-      self._output_packet(packet, action.port, in_port, action.max_len)
-      return packet
-    def set_vlan_id (action, packet):
-      if not isinstance(packet.next, vlan):
-        packet.next = vlan(prev = packet.next)
-        packet.next.eth_type = packet.type
-        packet.type = ethernet.VLAN_TYPE
-      packet.id = action.vlan_id
-      return packet
-    def set_vlan_pcp (action, packet):
-      if not isinstance(packet.next, vlan):
-        packet.next = vlan(prev = packet)
-        packet.next.eth_type = packet.type
-        packet.type = ethernet.VLAN_TYPE
-      packet.pcp = action.vlan_pcp
-      return packet
-    def strip_vlan (action, packet):
-      if isinstance(packet.next, vlan):
-        packet.type = packet.next.eth_type
-        packet.next = packet.next.next
-      return packet
-    def set_dl_src (action, packet):
-      packet.src = action.dl_addr
-      return packet
-    def set_dl_dst (action, packet):
-      packet.dst = action.dl_addr
-      return packet
-    def set_nw_src (action, packet):
-      if isinstance(packet.next, ipv4):
-        packet.next.nw_src = action.nw_addr
-      return packet
-    def set_nw_dst (action, packet):
-      if isinstance(packet.next, ipv4):
-        packet.next.nw_dst = action.nw_addr
-      return packet
-    def set_nw_tos (action, packet):
-      if isinstance(packet.next, ipv4):
-        packet.next.tos = action.nw_tos
-      return packet
-    def set_tp_src (action, packet):
-      if isinstance(packet.next, udp) or isinstance(packet.next, tcp):
-        packet.next.srcport = action.tp_port
-      return packet
-    def set_tp_dst (action, packet):
-      if isinstance(packet.next, udp) or isinstance(packet.next, tcp):
-        packet.next.dstport = action.tp_port
-      return packet
-    def enqueue (action, packet):
-      self.log.warn("Enqueue not supported.  Performing regular output.")
-      return output_packet(action.tp_port, packet)
-#    def push_mpls_tag (action, packet):
-#      bottom_of_stack = isinstance(packet.next, mpls)
-#      packet.next = mpls(prev = packet.pack())
-#      if bottom_of_stack:
-#        packet.next.s = 1
-#      packet.type = action.ethertype
-#      return packet
-#    def pop_mpls_tag (action, packet):
-#      if not isinstance(packet.next, mpls):
-#        return packet
-#      if not isinstance(packet.next.next, str):
-#        packet.next.next = packet.next.next.pack()
-#      if action.ethertype in ethernet.type_parsers:
-#        packet.next = ethernet.type_parsers[action.ethertype](packet.next.next)
-#      else:
-#        packet.next = packet.next.next
-#      packet.ethertype = action.ethertype
-#      return packet
-#    def set_mpls_label (action, packet):
-#      if not isinstance(packet.next, mpls):
-#        mock = ofp_action_push_mpls()
-#        packet = push_mpls_tag(mock, packet)
-#      packet.next.label = action.mpls_label
-#      return packet
-#    def set_mpls_tc (action, packet):
-#      if not isinstance(packet.next, mpls):
-#        mock = ofp_action_push_mpls()
-#        packet = push_mpls_tag(mock, packet)
-#      packet.next.tc = action.mpls_tc
-#      return packet
-#    def set_mpls_ttl (action, packet):
-#      if not isinstance(packet.next, mpls):
-#        mock = ofp_action_push_mpls()
-#        packet = push_mpls_tag(mock, packet)
-#      packet.next.ttl = action.mpls_ttl
-#      return packet
-#    def dec_mpls_ttl (action, packet):
-#      if not isinstance(packet.next, mpls):
-#        return packet
-#      packet.next.ttl = packet.next.ttl - 1
-#      return packet
-
-    handler_map = {
-        OFPAT_OUTPUT: output_packet,
-        OFPAT_SET_VLAN_VID: set_vlan_id,
-        OFPAT_SET_VLAN_PCP: set_vlan_pcp,
-        OFPAT_STRIP_VLAN: strip_vlan,
-        OFPAT_SET_DL_SRC: set_dl_src,
-        OFPAT_SET_DL_DST: set_dl_dst,
-        OFPAT_SET_NW_SRC: set_nw_src,
-        OFPAT_SET_NW_DST: set_nw_dst,
-        OFPAT_SET_NW_TOS: set_nw_tos,
-        OFPAT_SET_TP_SRC: set_tp_src,
-        OFPAT_SET_TP_DST: set_tp_dst,
-        OFPAT_ENQUEUE: enqueue,
-#        OFPAT_PUSH_MPLS: push_mpls_tag,
-#        OFPAT_POP_MPLS: pop_mpls_tag,
-#        OFPAT_SET_MPLS_LABEL: set_mpls_label,
-#        OFPAT_SET_MPLS_TC: set_mpls_tc,
-#        OFPAT_SET_MPLS_TTL: set_mpls_ttl,
-#        OFPAT_DEC_MPLS_TTL: dec_mpls_ttl,
-    }
     for action in actions:
-#      if action.type is ofp_action_resubmit:
-#        self.rx_packet(packet, in_port)
-#        return
-      if action.type not in handler_map:
+      #if action.type is ofp_action_resubmit:
+      #  self.rx_packet(packet, in_port)
+      #  return
+      h = self.action_handlers.get(action.type)
+      if h is None:
         raise NotImplementedError("Unknown action type: %x " % (action.type,))
-      packet = handler_map[action.type](action, packet)
+      packet = h(action, packet, in_port)
+
+  def _action_output (self, action, packet, in_port):
+    self._output_packet(packet, action.port, in_port, action.max_len)
+    return packet
+  def _action_set_vlan_id (self, action, packet, in_port):
+    if not isinstance(packet.next, vlan):
+      packet.next = vlan(prev = packet.next)
+      packet.next.eth_type = packet.type
+      packet.type = ethernet.VLAN_TYPE
+    packet.id = action.vlan_id
+    return packet
+  def _action_set_vlan_pcp (self, action, packet, in_port):
+    if not isinstance(packet.next, vlan):
+      packet.next = vlan(prev = packet)
+      packet.next.eth_type = packet.type
+      packet.type = ethernet.VLAN_TYPE
+    packet.pcp = action.vlan_pcp
+    return packet
+  def _action_strip_vlan (self, action, packet, in_port):
+    if isinstance(packet.next, vlan):
+      packet.type = packet.next.eth_type
+      packet.next = packet.next.next
+    return packet
+  def _action_set_dl_src (self, action, packet, in_port):
+    packet.src = action.dl_addr
+    return packet
+  def _action_set_dl_dst (self, action, packet, in_port):
+    packet.dst = action.dl_addr
+    return packet
+  def _action_set_nw_src (self, action, packet, in_port):
+    if isinstance(packet.next, ipv4):
+      packet.next.nw_src = action.nw_addr
+    return packet
+  def _action_set_nw_dst (self, action, packet, in_port):
+    if isinstance(packet.next, ipv4):
+      packet.next.nw_dst = action.nw_addr
+    return packet
+  def _action_set_nw_tos (self, action, packet, in_port):
+    if isinstance(packet.next, ipv4):
+      packet.next.tos = action.nw_tos
+    return packet
+  def _action_set_tp_src (self, action, packet, in_port):
+    if isinstance(packet.next, udp) or isinstance(packet.next, tcp):
+      packet.next.srcport = action.tp_port
+    return packet
+  def _action_set_tp_dst (self, action, packet, in_port):
+    if isinstance(packet.next, udp) or isinstance(packet.next, tcp):
+      packet.next.dstport = action.tp_port
+    return packet
+  def _action_enqueue (self, action, packet, in_port):
+    self.log.warn("Enqueue not supported.  Performing regular output.")
+    self._output_packet(packet, action.tp_port, in_port)
+    return packet
+#  def _action_push_mpls_tag (self, action, packet, in_port):
+#    bottom_of_stack = isinstance(packet.next, mpls)
+#    packet.next = mpls(prev = packet.pack())
+#    if bottom_of_stack:
+#      packet.next.s = 1
+#    packet.type = action.ethertype
+#    return packet
+#  def _action_pop_mpls_tag (self, action, packet, in_port):
+#    if not isinstance(packet.next, mpls):
+#      return packet
+#    if not isinstance(packet.next.next, str):
+#      packet.next.next = packet.next.next.pack()
+#    if action.ethertype in ethernet.type_parsers:
+#      packet.next = ethernet.type_parsers[action.ethertype](packet.next.next)
+#    else:
+#      packet.next = packet.next.next
+#    packet.ethertype = action.ethertype
+#    return packet
+#  def _action_set_mpls_label (self, action, packet, in_port):
+#    if not isinstance(packet.next, mpls):
+#      mock = ofp_action_push_mpls()
+#      packet = push_mpls_tag(mock, packet)
+#    packet.next.label = action.mpls_label
+#    return packet
+#  def _action_set_mpls_tc (self, action, packet, in_port):
+#    if not isinstance(packet.next, mpls):
+#      mock = ofp_action_push_mpls()
+#      packet = push_mpls_tag(mock, packet)
+#    packet.next.tc = action.mpls_tc
+#    return packet
+#  def _action_set_mpls_ttl (self, action, packet, in_port):
+#    if not isinstance(packet.next, mpls):
+#      mock = ofp_action_push_mpls()
+#      packet = push_mpls_tag(mock, packet)
+#    packet.next.ttl = action.mpls_ttl
+#    return packet
+#  def _action_dec_mpls_ttl (self, action, packet, in_port):
+#    if not isinstance(packet.next, mpls):
+#      return packet
+#    packet.next.ttl = packet.next.ttl - 1
+#    return packet
 
   def __repr__ (self):
     return "%s(dpid=%s, num_ports=%d)" % (type(self).__name__,
