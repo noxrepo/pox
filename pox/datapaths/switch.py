@@ -28,6 +28,7 @@ TODO
 * Once previous is done, use raw OFP for error data when appropriate
 * Check self.features to see if various features/actions are enabled,
   and act appropriately if they're not (rather than just doing them).
+* Virtual ports currently have no config/state, but probably should.
 """
 
 
@@ -407,6 +408,12 @@ class SoftwareSwitchBase (object):
     """
     assert assert_type("packet", packet, ethernet, none_ok=False)
     assert assert_type("in_port", in_port, int, none_ok=False)
+    port = self.ports.get(in_port)
+    if port is None:
+      self.log.warn("Got packet on missing port %i", in_port)
+      return
+    if port.config & OFPPC_NO_RECV:
+      return
 
     self._lookup_count += 1
     entry = self.table.entry_for_packet(packet, in_port)
@@ -416,6 +423,8 @@ class SoftwareSwitchBase (object):
       self._process_actions_for_packet(entry.actions, packet, in_port)
     else:
       # no matching entry
+      if port.config & OFPPC_NO_PACKET_IN:
+        return
       buffer_id = self._buffer_packet(packet, in_port)
       self.send_packet_in(in_port, buffer_id, packet,
                           reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
@@ -485,6 +494,10 @@ class SoftwareSwitchBase (object):
       if port_no not in self.ports:
         self.log.warn("Dropping packet sent on port %i: Invalid port", port_no)
         return
+      if self.ports[port_no].config & OFPPC_NO_FWD:
+        self.log.warn("Dropping packet sent on port %i: Forwarding disabled",
+                      port_no)
+        return
       if self.ports[port_no].config & OFPPC_PORT_DOWN:
         self.log.warn("Dropping packet sent on port %i: Port down", port_no)
         return
@@ -508,6 +521,7 @@ class SoftwareSwitchBase (object):
         real_send(port)
     elif out_port == OFPP_CONTROLLER:
       buffer_id = self._buffer_packet(packet, in_port)
+      # Should we honor OFPPC_NO_PACKET_IN here?
       self.send_packet_in(in_port, buffer_id, packet, reason=OFPR_ACTION,
                           data_length=max_len)
     elif out_port == OFPP_TABLE:
