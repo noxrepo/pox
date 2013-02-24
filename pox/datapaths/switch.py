@@ -53,9 +53,12 @@ class DpPacketOut (Event):
     self.switch = node # For backwards compatability
 
 
+def _generate_port (port_no, prefix=0):
+  return ofp_phy_port(port_no=port_no, hw_addr=EthAddr("00:00:00:00:%2x:%2x"
+          % (prefix % 255, port_no)))
+
 def _generate_ports (num_ports=4, prefix=0):
-  return [ofp_phy_port(port_no=i, hw_addr=EthAddr("00:00:00:00:%2x:%2x"
-          % (prefix % 255, i))) for i in range(1, num_ports+1)]
+  return [_generate_port(i, prefix) for i in range(1, num_ports+1)]
 
 
 class SoftwareSwitchBase (object):
@@ -92,9 +95,6 @@ class SoftwareSwitchBase (object):
     for port in ports:
       self.ports[port.port_no] = port
       self.port_stats[port.port_no] = ofp_port_stats(port_no=port.port_no)
-
-    # set of port numbers that are currently down
-    self.down_port_nos = set()
 
     if features is not None:
       self.features = features
@@ -410,26 +410,39 @@ class SoftwareSwitchBase (object):
       self.send_packet_in(in_port, buffer_id, packet,
                           reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
 
-  def take_port_down (self, port):
+  def delete_port (self, port):
     """
-    Take the given port down
+    Removes a port
 
     Sends a port_status message to the controller
+
+    Returns the removed phy_port
     """
-    port_no = port.port_no
+    try:
+      port_no = port.port_no
+      assert self.ports[port_no] is port
+    except:
+      port_no = port
+      port = self.ports[port_no]
     if port_no not in self.ports:
-      raise RuntimeError("port_no %d not in %s's ports" % (port_no, str(self)))
-    self.down_port_nos.add(port_no)
+      raise RuntimeError("Can't remove nonexistent port " + str(port_no))
     self.send_port_status(port, OFPPR_DELETE)
+    del self.ports[port_no]
+    return port
 
-  def bring_port_up (self, port):
+  def add_port (self, port):
     """
-    Bring the given port up
+    Adds a port
 
     Sends a port_status message to the controller
     """
-    port_no = port.port_no
-    self.down_port_nos.discard(port_no)
+    try:
+      port_no = port.port_no
+    except:
+      port_no = port
+      port = _generate_port(port_no, self.dpid)
+    if port_no in self.ports:
+      raise RuntimeError("Port %s already exists" % (port_no,))
     self.ports[port_no] = port
     self.send_port_status(port, OFPPR_ADD)
 
@@ -457,16 +470,16 @@ class SoftwareSwitchBase (object):
       if type(port_no) == ofp_phy_port:
         port_no = port_no.port_no
       if port_no == in_port and not allow_in_port:
-        self.log.warn("out_port %d == in_port. Dropping", out_port)
+        self.log.warn("Dropping packet sent on port %i: Input port", port_no)
         return
       if port_no not in self.ports:
-        self.log.warn("Port %d is invalid. Dropping packet", port_no)
+        self.log.warn("Dropping packet sent on port %i: Invalid port", port_no)
         return
-      if port_no in self.down_port_nos:
-        self.log.warn("Port %d is currently down. Dropping packet", port_no)
+      if self.ports[port_no].config & OFPPC_PORT_DOWN:
+        self.log.warn("Dropping packet sent on port %i: Port down", port_no)
         return
       if self.ports[port_no].state & OFPPS_LINK_DOWN:
-        self.log.debug("Sending packet on a port which is down!")
+        self.log.debug("Dropping packet sent on port %i: Link down", port_no)
         return
       self._output_packet_physical(packet, port_no)
 

@@ -129,28 +129,32 @@ class SwitchImplTest(unittest.TestCase):
     self.assertEqual(event.port.port_no,3)
     self.assertEqual(event.packet, self.packet)
 
-  def test_take_port_down(self):
+  def test_delete_port(self):
     c = self.conn
     s = self.switch
     original_num_ports = len(self.switch.ports)
     p = self.switch.ports.values()[0]
-    s.take_port_down(p)
+    s.delete_port(p)
     new_num_ports = len(self.switch.ports)
-    self.assertTrue(p.port_no in self.switch.down_port_nos,
-                    "Should have added port_no to down ports")
+    self.assertTrue(new_num_ports == original_num_ports - 1,
+                    "Should have removed the port")
     self.assertEqual(len(c.received), 1)
     self.assertTrue(isinstance(c.last, ofp_port_status),
           "should have received port_status but got %s" % c.last)
     self.assertTrue(c.last.reason == OFPPR_DELETE)
 
-  def test_bring_port_up(self):
+  def test_add_port(self):
     c = self.conn
     s = self.switch
-    p = ofp_phy_port(port_no=1)
-    s.take_port_down(p)
-    s.bring_port_up(p)
-    self.assertFalse(p.port_no in self.switch.down_port_nos,
-                     "Should have removed the port from down_port_nos")
+    port_count = len(self.switch.ports)
+    old_port = s.delete_port(1)
+    self.assertTrue(port_count - 1 == len(self.switch.ports),
+                    "Should have removed port")
+    self.assertFalse(old_port.port_no in self.switch.ports,
+                     "Should have removedport")
+    s.add_port(old_port)
+    self.assertTrue(old_port.port_no in self.switch.ports,
+                    "Should have added port")
     self.assertEqual(len(c.received), 2)
     self.assertTrue(isinstance(c.last, ofp_port_status),
           "should have received port_status but got %s" % c.last)
