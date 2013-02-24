@@ -283,11 +283,15 @@ class SoftwareSwitchBase (object):
     port_no = port_mod.port_no
     if port_no not in self.ports:
       err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT)
+      err.xid = port_mod.xid
+      err.data = port_mod.pack()
       self.send(err)
       return
     port = self.ports[port_no]
     if port.hw_addr != port_mod.hw_addr:
       err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_HW_ADDR)
+      err.xid = port_mod.xid
+      err.data = port_mod.pack()
       self.send(err)
       return
 
