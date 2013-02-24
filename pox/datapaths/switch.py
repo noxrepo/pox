@@ -29,6 +29,8 @@ TODO
 * Check self.features to see if various features/actions are enabled,
   and act appropriately if they're not (rather than just doing them).
 * Virtual ports currently have no config/state, but probably should.
+* Provide a way to rebuild, e.g., the action handler table when the
+  features object is adjusted.
 """
 
 
@@ -153,6 +155,7 @@ class SoftwareSwitchBase (object):
       name = name.split("OFPAT_",1)[-1].lower()
       h = getattr(self, "_action_" + name, None)
       if not h: continue
+      if getattr(self.features, "act_" + name) is False: continue
       self.action_handlers[value] = h
 
   def rx_message (self, connection, msg):
@@ -581,7 +584,7 @@ class SoftwareSwitchBase (object):
     """
     process the output actions for a packet
     """
-    assert assert_type("packet", packet, [ethernet, str], none_ok=False)
+    assert assert_type("packet", packet, (ethernet, bytes), none_ok=False)
     if not isinstance(packet, ethernet):
       packet = ethernet.unpack(packet)
 
