@@ -307,7 +307,12 @@ class SoftwareSwitchBase (object):
 
     if mask & OFPPC_PORT_DOWN:
       mask ^= OFPPC_PORT_DOWN
-      change = port.set_config(port_mod.config, OFPPC_PORT_DOWN)
+      if port.set_config(port_mod.config, OFPPC_PORT_DOWN):
+        if port.config & OFPPC_PORT_DOWN:
+          self.log.debug("Set port %s down", port)
+        else:
+          self.log.debug("Set port %s up", port)
+
       # Note (Peter Peresini): Although the spec is not clear about it,
       # we will assume that config.OFPPC_PORT_DOWN implies
       # state.OFPPS_LINK_DOWN.  This is consistent with Open vSwitch.
