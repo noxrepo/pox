@@ -1,4 +1,4 @@
-# Copyright 2012 James McCauley
+# Copyright 2012,2013 James McCauley
 #
 # This file is part of POX.
 #
@@ -40,6 +40,7 @@ from collections import defaultdict
 from pox.openflow.discovery import Discovery
 from pox.lib.util import dpidToStr
 from pox.lib.recoco import Timer
+import time
 
 log = core.getLogger()
 
@@ -120,20 +121,62 @@ def _calc_spanning_tree ():
 
 
 # Keep a list of previous port states so that we can skip some port mods
+# If other things mess with port states, these may not be correct.  We
+# could also refer to Connection.ports, but those are not guaranteed to
+# be up to date.
 _prev = defaultdict(lambda : defaultdict(lambda : None))
 
+# If True, we set ports down when a switch connects
+_noflood_by_default = False
 
-def _reset (event):
+# If True, don't allow turning off flood bits until a complete discovery
+# cycle should have completed (mostly makes sense with _noflood_by_default).
+_hold_down = False
+
+
+def _handle_ConnectionUp (event):
   # When a switch connects, forget about previous port states
   _prev[event.dpid].clear()
 
+  if _noflood_by_default:
+    con = event.connection
+    log.debug("Disabling flooding for %i ports", len(con.ports))
+    for p in con.ports.itervalues():
+      if p.port_no >= of.OFPP_MAX: continue
+      _prev[con.dpid][p.port_no] = False
+      pm = of.ofp_port_mod(port_no=p.port_no,
+                          hw_addr=p.hw_addr,
+                          config = of.OFPPC_NO_FLOOD,
+                          mask = of.OFPPC_NO_FLOOD)
+      con.send(pm)
+    _invalidate_ports(con.dpid)
 
-def _handle (event):
+  if _hold_down:
+    t = Timer(core.openflow_discovery.send_cycle_time + 1, _update_tree,
+              kw={'force_dpid':event.dpid})
+
+
+def _handle_LinkEvent (event):
   # When links change, update spanning tree
+  _update_tree()
+
+
+def _update_tree (force_dpid = None):
+  """
+  Update spanning tree
+
+  force_dpid specifies a switch we want to update even if we are supposed
+  to be holding down changes.
+  """
 
   # Get a spanning tree
   tree = _calc_spanning_tree()
   log.debug("Spanning tree updated")
+
+  # Connections born before this time are old enough that a complete
+  # discovery cycle should have completed (and, thus, all of their
+  # links should have been discovered).
+  enable_time = time.time() - core.openflow_discovery.send_cycle_time - 1
 
   # Now modify ports as needed
   try:
@@ -141,6 +184,17 @@ def _handle (event):
     for sw, ports in tree.iteritems():
       con = core.openflow.getConnection(sw)
       if con is None: continue # Must have disconnected
+      if con.connect_time is None: continue # Not fully connected
+
+      if _hold_down:
+        if con.connect_time > enable_time:
+          # Too young -- we should hold down changes.
+          if force_dpid is not None and sw == force_dpid:
+            # .. but we'll allow it anyway
+            pass
+          else:
+            continue
+
       tree_ports = [p[1] for p in ports]
       for p in con.ports.itervalues():
         if p.port_no < of.OFPP_MAX:
@@ -149,6 +203,7 @@ def _handle (event):
             if core.openflow_discovery.is_edge_port(sw, p.port_no):
               flood = True
           if _prev[sw][p.port_no] is flood:
+            #print sw,p.port_no,"skip","(",flood,")"
             continue # Skip
           change_count += 1
           _prev[sw][p.port_no] = flood
@@ -204,10 +259,16 @@ def _check_ports (dpid):
   log.debug("Requested switch features for %s", str(con))
 
 
-def launch ():
+def launch (no_flood = False, hold_down = False):
+  global _noflood_by_default, _hold_down
+  if no_flood is True:
+    _noflood_by_default = True
+  if hold_down is True:
+    _hold_down = True
+
   def start_spanning_tree ():
-    core.openflow.addListenerByName("ConnectionUp", _reset)
-    core.openflow_discovery.addListenerByName("LinkEvent", _handle)
+    core.openflow.addListenerByName("ConnectionUp", _handle_ConnectionUp)
+    core.openflow_discovery.addListenerByName("LinkEvent", _handle_LinkEvent)
     log.debug("Spanning tree component ready")
   core.call_when_ready(start_spanning_tree, "openflow_discovery")
 
