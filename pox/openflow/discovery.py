@@ -1,4 +1,4 @@
-# Copyright 2011-2012 James McCauley
+# Copyright 2011-2013 James McCauley
 #
 # This file is part of POX.
 #
@@ -218,11 +218,15 @@ class Discovery (EventMixin):
     if link_timeout: self._link_timeout = link_timeout
 
     self.adjacency = {} # From Link to time.time() stamp
-    self._sender = LLDPSender(self._link_timeout / 2.0)
+    self._sender = LLDPSender(self.send_cycle_time)
 
     core.listen_to_dependencies(self)
 
     Timer(self._timeout_check_period, self._expire_links, recurring=True)
+
+  @property
+  def send_cycle_time (self):
+    return self._link_timeout / 2.0
 
   def _handle_openflow_ConnectionUp (self, event):
     if self._install_flow:
