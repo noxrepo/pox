@@ -120,9 +120,9 @@ class l3_switch (EventMixin):
     empty = []
     for k,v in self.lost_buffers.iteritems():
       ip,dpid = k
-      expires_at,buffer_id,in_port = v
 
       for item in list(v):
+        expires_at,buffer_id,in_port = item
         if expires_at < time.time():
           # This packet is old.  Tell this switch to drop it.
           v.remove(item)
