@@ -212,7 +212,8 @@ class Discovery (EventMixin):
   Link = namedtuple("Link",("dpid1","port1","dpid2","port2"))
 
   def __init__ (self, install_flow = True, explicit_drop = True,
-                link_timeout = None):
+                link_timeout = None, eat_early_packets = False):
+    self._eat_early_packets = eat_early_packets
     self._explicit_drop = explicit_drop
     self._install_flow = install_flow
     if link_timeout: self._link_timeout = link_timeout
@@ -220,7 +221,9 @@ class Discovery (EventMixin):
     self.adjacency = {} # From Link to time.time() stamp
     self._sender = LLDPSender(self.send_cycle_time)
 
-    core.listen_to_dependencies(self)
+    # Listen with a high priority (mostly so we get PacketIns early)
+    core.listen_to_dependencies(self,
+        listen_args={'openflow':{'priority':0xffffffff}})
 
     Timer(self._timeout_check_period, self._expire_links, recurring=True)
 
@@ -269,8 +272,14 @@ class Discovery (EventMixin):
 
     packet = event.parsed
 
-    if packet.effective_ethertype != pkt.ethernet.LLDP_TYPE: return
-    if packet.dst != pkt.ETHERNET.NDP_MULTICAST: return
+    if (packet.effective_ethertype != pkt.ethernet.LLDP_TYPE
+        or packet.dst != pkt.ETHERNET.NDP_MULTICAST):
+      if not self._eat_early_packets: return
+      if not event.connection.connect_time: return
+      enable_time = time.time() - self.send_cycle_time - 1
+      if event.connection.connect_time > enable_time:
+        return EventHalt
+      return
 
     if self._explicit_drop:
       if event.ofp.buffer_id is not None:
@@ -283,19 +292,19 @@ class Discovery (EventMixin):
     lldph = packet.find(pkt.lldp)
     if lldph is None or not lldph.parsed:
       log.error("LLDP packet could not be parsed")
-      return
+      return EventHalt
     if len(lldph.tlvs) < 3:
       log.error("LLDP packet without required three TLVs")
-      return
+      return EventHalt
     if lldph.tlvs[0].tlv_type != pkt.lldp.CHASSIS_ID_TLV:
       log.error("LLDP packet TLV 1 not CHASSIS_ID")
-      return
+      return EventHalt
     if lldph.tlvs[1].tlv_type != pkt.lldp.PORT_ID_TLV:
       log.error("LLDP packet TLV 2 not PORT_ID")
-      return
+      return EventHalt
     if lldph.tlvs[2].tlv_type != pkt.lldp.TTL_TLV:
       log.error("LLDP packet TLV 3 not TTL")
-      return
+      return EventHalt
 
     def lookInSysDesc ():
       r = None
@@ -341,16 +350,16 @@ class Discovery (EventMixin):
 
     if originatorDPID == None:
       log.warning("Couldn't find a DPID in the LLDP packet")
-      return
+      return EventHalt
 
     if originatorDPID not in core.openflow.connections:
       log.info('Received LLDP packet from unknown switch')
-      return
+      return EventHalt
 
     # Get port number from port TLV
     if lldph.tlvs[1].subtype != pkt.port_id.SUB_PORT:
       log.warning("Thought we found a DPID, but packet didn't have a port")
-      return
+      return EventHalt
     originatorPort = None
     if lldph.tlvs[1].id.isdigit():
       # We expect it to be a decimal value
@@ -364,11 +373,11 @@ class Discovery (EventMixin):
     if originatorPort is None:
       log.warning("Thought we found a DPID, but port number didn't " +
                   "make sense")
-      return
+      return EventHalt
 
     if (event.dpid, event.port) == (originatorDPID, originatorPort):
       log.warning("Port received its own LLDP packet; ignoring")
-      return
+      return EventHalt
 
     link = Discovery.Link(originatorDPID, originatorPort, event.dpid,
                           event.port)
@@ -402,10 +411,13 @@ class Discovery (EventMixin):
     return True
 
 
-def launch (no_flow = False, explicit_drop = True, link_timeout = None):
+def launch (no_flow = False, explicit_drop = True, link_timeout = None,
+            eat_early_packets = False):
   explicit_drop = str_to_bool(explicit_drop)
+  eat_early_packets = str_to_bool(eat_early_packets)
   install_flow = not str_to_bool(no_flow)
   if link_timeout: link_timeout = int(link_timeout)
 
   core.registerNew(Discovery, explicit_drop=explicit_drop,
-                   install_flow=install_flow, link_timeout=link_timeout)
+                   install_flow=install_flow, link_timeout=link_timeout,
+                   eat_early_packets=eat_early_packets)
