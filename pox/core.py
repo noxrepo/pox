@@ -479,6 +479,16 @@ class POXCore (EventMixin):
       c = '_'.join(c.split("_")[2:-1])
       components.add(c)
 
+    if None in listen_args:
+      # This means add it to all...
+      args = listen_args.pop(None)
+      for k,v in args.iteritems():
+        for c in components:
+          if c not in listen_args:
+            listen_args[c] = {}
+          if k not in listen_args[c]:
+            listen_args[c][k] = v
+
     if set(listen_args).difference(components):
       log.error("Specified listen_args for missing component(s): %s" %
                 (" ".join(set(listen_args).difference(components)),))
