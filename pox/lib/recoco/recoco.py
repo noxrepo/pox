@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011-2013 James McCauley
 #
 # This file is part of POX.
 #
@@ -263,9 +263,9 @@ class Scheduler (object):
     try:
       while True:
         t = self._ready.popleft()
-        if t >= 1: break
-        if random.random() >= t.priority: break
-        if len(self._ready) == 1: break
+        if t.priority >= 1: break
+        if len(self._ready) <= 1: break
+        if t.priority >= random.random(): break
         self._ready.append(t)
     except IndexError:
       return False
