@@ -497,6 +497,10 @@ class nx_reg_load (of.ofp_action_vendor_base):
 
   def _eq (self, other):
     if self.subtype != other.subtype: return False
+    if self.offset != other.offset: return False
+    if self.nbits != other.nbits: return False
+    if self.dst != other.dst: return False
+    if sef.value != other.value: return False
     return True
 
   def _pack_body (self):
