@@ -507,7 +507,7 @@ class nx_reg_load (of.ofp_action_vendor_base):
 
     o = self.dst()
     o._force_mask = False
-    dst = o.pack(omittable=False)[:4]
+    dst = o.pack(omittable=False, header_only=True)
 
     p = struct.pack('!HH4sQ', self.subtype, ofs_nbits, dst, self.value)
     return p
@@ -880,7 +880,7 @@ class nxm_entry (object):
     if self.is_reg != other.is_reg: return False
     return True
 
-  def pack (self, omittable = False):
+  def pack (self, omittable = False, header_only = False):
     h = self._nxm_type << 9
     mask = self._mask
 
@@ -903,6 +903,7 @@ class nxm_entry (object):
       h |= self._nxm_length
 
     r = struct.pack("!L", h)
+    if header_only: return r
 
     value = self._value
     assert value is not None
