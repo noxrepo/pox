@@ -3270,8 +3270,8 @@ ofp_port_stats_reply = ofp_port_stats
 @openflow_stats_request("OFPST_QUEUE", 5)
 class ofp_queue_stats_request (ofp_stats_body_base):
   def __init__ (self, **kw):
-    self.port_no = 0
-    self.queue_id = 0
+    self.port_no = OFPP_ALL
+    self.queue_id = OFPQ_ALL
 
     initHelper(self, kw)
 
