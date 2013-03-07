@@ -485,6 +485,63 @@ class nx_packet_in_format (nicira_base):
       s += str(self.format)
     return s + "\n"
 
+class nx_reg_move (of.ofp_action_vendor_base):
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_REG_MOVE
+    self.nbits = None
+    self.dst = None # an nxm_entry class
+    self.dst_ofs = 0
+    self.src = None # an nxm_entry_class
+    self.src_ofs = 0
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.nbits != other.nbits: return False
+    if self.dst != other.dst: return False
+    if self.dst_ofs != other.dst_ofs: return False
+    if self.src != other.src: return False
+    if self.src_ofs != other.src_ofs: return False
+    return True
+
+  def _pack_body (self):
+    o = self.dst()
+    o._force_mask = False
+    dst = o.pack(omittable=False, header_only=True)
+
+    o = self.src()
+    o._force_mask = False
+    src = o.pack(omittable=False, header_only=True)
+
+    p = struct.pack('!HHHH4s4s', self.subtype, self.nbits, self.src_ofs, 
+            self.dst_ofs, src, dst)
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype,self.nbits, self.src_ofs, self.dst_ofs, src, dst) = \
+        of._unpack('!HHHH4s4s', raw, offset)
+
+    _,dst = nxm_entry.unpack_new(dst, 0)
+    self.dst = dst.__class__
+
+    _,src = nxm_entry.unpack_new(src, 0)
+    self.src = src.__class__
+
+    return offset
+
+  def _body_length (self):
+    return 16
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    s += prefix + ('offset: %s\n' % (self.offset,))
+    s += prefix + ('nbits: %s\n' % (self.nbits,))
+    s += prefix + ('src_ofs: %s\n' % (self.src_ofs,))
+    s += prefix + ('dst_ofs: %s\n' % (self.dst_ofs,))
+    s += prefix + ('src: %s\n' % (self.src,))
+    s += prefix + ('dst: %s\n' % (self.dst,))
+    return s
 
 class nx_reg_load (of.ofp_action_vendor_base):
   def _init (self, kw):
@@ -647,7 +704,6 @@ class nx_action_fin_timeout (of.ofp_action_vendor_base):
     s += prefix + ('fin_idle_timeout: %s\n' % (self.fin_idle_timeout,))
     s += prefix + ('fin_hard_timeout: %s\n' % (self.fin_hard_timeout,))
     return s
-
 
 class nx_action_exit (of.ofp_action_vendor_base):
   def _init (self, kw):
