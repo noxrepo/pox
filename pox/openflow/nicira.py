@@ -962,7 +962,7 @@ class nxm_entry (object):
     if has_mask:
       assert not (length & 1), "Odd length with mask"
       mask = data[length/2:]
-      data = data[length/2]
+      data = data[:length/2]
 
     c = _nxm_type_to_class.get(t)
     if c is None:
