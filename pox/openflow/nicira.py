@@ -485,6 +485,118 @@ class nx_packet_in_format (nicira_base):
       s += str(self.format)
     return s + "\n"
 
+class nx_output_reg (of.ofp_action_vendor_base):
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_OUTPUT_REG
+    self.offset = 0
+    self.nbits = None
+    self.reg = None # an nxm_entry class
+    self.max_len = 0
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.offset != other.offset: return False
+    if self.nbits != other.nbits: return False
+    if self.reg != other.reg: return False
+    if sef.max_len != other.max_len: return False
+    return True
+
+  def _pack_body (self):
+    nbits = self.nbits - 1
+    assert nbits >= 0 and nbits <= 63
+    assert self.offset >= 0 and self.offset < (1 << 10)
+    ofs_nbits = self.offset << 6 | nbits
+
+    o = self.reg()
+    o._force_mask = False
+    reg = o.pack(omittable=False, header_only=True)
+
+    p = struct.pack('!HH4sH', self.subtype, ofs_nbits, reg, self.max_len)
+    p += _PAD6
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype, ofs_nbits, reg, self.max_len, _, _) = \
+        of._unpack('!HH4sHHI', raw, offset)
+
+    self.offset = ofs_nbits >> 6
+    self.nbits = (ofs_nbits & 0x3f) + 1
+
+    _,reg = nxm_entry.unpack_new(reg, 0)
+    self.reg = reg.__class__
+
+    return offset
+
+  def _body_length (self):
+    return 16
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    s += prefix + ('offset: %s\n' % (self.offset,))
+    s += prefix + ('nbits: %s\n' % (self.nbits,))
+    s += prefix + ('reg: %s\n' % (self.reg,))
+    s += prefix + ('max_len: %s\n' % (self.max_len,))
+    return s
+
+class nx_reg_move (of.ofp_action_vendor_base):
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_REG_MOVE
+    self.nbits = None
+    self.dst = None # an nxm_entry class
+    self.dst_ofs = 0
+    self.src = None # an nxm_entry_class
+    self.src_ofs = 0
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.nbits != other.nbits: return False
+    if self.dst != other.dst: return False
+    if self.dst_ofs != other.dst_ofs: return False
+    if self.src != other.src: return False
+    if self.src_ofs != other.src_ofs: return False
+    return True
+
+  def _pack_body (self):
+    o = self.dst()
+    o._force_mask = False
+    dst = o.pack(omittable=False, header_only=True)
+
+    o = self.src()
+    o._force_mask = False
+    src = o.pack(omittable=False, header_only=True)
+
+    p = struct.pack('!HHHH4s4s', self.subtype, self.nbits, self.src_ofs, 
+            self.dst_ofs, src, dst)
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype,self.nbits, self.src_ofs, self.dst_ofs, src, dst) = \
+        of._unpack('!HHHH4s4s', raw, offset)
+
+    _,dst = nxm_entry.unpack_new(dst, 0)
+    self.dst = dst.__class__
+
+    _,src = nxm_entry.unpack_new(src, 0)
+    self.src = src.__class__
+
+    return offset
+
+  def _body_length (self):
+    return 16
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    s += prefix + ('offset: %s\n' % (self.offset,))
+    s += prefix + ('nbits: %s\n' % (self.nbits,))
+    s += prefix + ('src_ofs: %s\n' % (self.src_ofs,))
+    s += prefix + ('dst_ofs: %s\n' % (self.dst_ofs,))
+    s += prefix + ('src: %s\n' % (self.src,))
+    s += prefix + ('dst: %s\n' % (self.dst,))
+    return s
 
 class nx_reg_load (of.ofp_action_vendor_base):
   def _init (self, kw):
@@ -647,7 +759,6 @@ class nx_action_fin_timeout (of.ofp_action_vendor_base):
     s += prefix + ('fin_idle_timeout: %s\n' % (self.fin_idle_timeout,))
     s += prefix + ('fin_hard_timeout: %s\n' % (self.fin_hard_timeout,))
     return s
-
 
 class nx_action_exit (of.ofp_action_vendor_base):
   def _init (self, kw):
