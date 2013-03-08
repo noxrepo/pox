@@ -997,7 +997,7 @@ class nxm_entry (object):
     self._value = None
     self._mask = None
     if value is None and mask is None: return # Sloppy
-    self.mask = value
+    self.mask = mask
     self.value = value # In case value overrides mask (IP), do value last
 
   def get_length (self, omittable = False):
