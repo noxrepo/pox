@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# For lots of documentation see Open vSwitch's nicira-ext.h and ofp-msgs.h
+# For lots of documentation, see Open vSwitch's nicira-ext.h and ofp-msgs.h
 
 
 from pox.core import core
@@ -485,6 +485,7 @@ class nx_packet_in_format (nicira_base):
       s += str(self.format)
     return s + "\n"
 
+
 class nx_output_reg (of.ofp_action_vendor_base):
   def _init (self, kw):
     self.vendor = NX_VENDOR_ID
@@ -539,6 +540,7 @@ class nx_output_reg (of.ofp_action_vendor_base):
     s += prefix + ('reg: %s\n' % (self.reg,))
     s += prefix + ('max_len: %s\n' % (self.max_len,))
     return s
+
 
 class nx_reg_move (of.ofp_action_vendor_base):
   def _init (self, kw):
@@ -597,6 +599,7 @@ class nx_reg_move (of.ofp_action_vendor_base):
     s += prefix + ('src: %s\n' % (self.src,))
     s += prefix + ('dst: %s\n' % (self.dst,))
     return s
+
 
 class nx_reg_load (of.ofp_action_vendor_base):
   def _init (self, kw):
@@ -1039,6 +1042,9 @@ class nxm_entry (object):
         r += "/" + str(self.mask)
     #if self.is_reg: r += "[r]"
     return r + ")"
+
+  def __repr__ (self):
+    return str(self)
 
 
 class _nxm_numeric_entry (_nxm_numeric, nxm_entry):
