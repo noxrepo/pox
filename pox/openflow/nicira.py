@@ -524,8 +524,7 @@ class nx_output_reg (of.ofp_action_vendor_base):
     self.offset = ofs_nbits >> 6
     self.nbits = (ofs_nbits & 0x3f) + 1
 
-    _,reg = nxm_entry.unpack_new(reg, 0)
-    self.reg = reg.__class__
+    self.reg = _class_for_nxm_header(reg)
 
     return offset
 
@@ -578,11 +577,9 @@ class nx_reg_move (of.ofp_action_vendor_base):
     offset,(self.subtype,self.nbits, self.src_ofs, self.dst_ofs, src, dst) = \
         of._unpack('!HHHH4s4s', raw, offset)
 
-    _,dst = nxm_entry.unpack_new(dst, 0)
-    self.dst = dst.__class__
+    self.dst = _class_for_nxm_header(dst)
 
-    _,src = nxm_entry.unpack_new(src, 0)
-    self.src = src.__class__
+    self.src = _class_for_nxm_header(src)
 
     return offset
 
@@ -638,8 +635,7 @@ class nx_reg_load (of.ofp_action_vendor_base):
     self.offset = ofs_nbits >> 6
     self.nbits = (ofs_nbits & 0x3f) + 1
 
-    _,dst = nxm_entry.unpack_new(dst, 0)
-    self.dst = dst.__class__
+    self.dst = _class_for_nxm_header(dst)
 
     return offset
 
@@ -685,6 +681,11 @@ class nx_action_dec_ttl (of.ofp_action_vendor_base):
 
 
 class nx_action_resubmit (of.ofp_action_vendor_base):
+  """
+  Used with both resubmit and resubmit_table.
+
+  Generally, you want to use one of the factory methods.
+  """
   @classmethod
   def resubmit (cls, in_port = of.OFPP_IN_PORT):
     return cls(subtype = NXAST_RESUBMIT, in_port = in_port, table = 0)
@@ -951,12 +952,23 @@ class nxm_entry (object):
     return self._nxm_type & 0x7f
 
   @staticmethod
-  def unpack_new (raw, offset):
+  def unpack_header (raw, offset):
+    """
+    Parses the NXM_HEADER
+
+    Returns (type,has_mask,length)
+    """
     h, = struct.unpack_from("!L", raw, offset)
     offset += 4
     t = h >> 9
     has_mask = (h & (1<<8)) != 0
     length = h & 0x7f
+    return t,has_mask,length
+
+  @staticmethod
+  def unpack_new (raw, offset):
+    t,has_mask,length = nxm_entry.unpack_header(raw, offset)
+    offset += 4
     offset,data = of._read(raw, offset, length)
     mask = None
     if has_mask:
@@ -964,6 +976,7 @@ class nxm_entry (object):
       mask = data[length/2:]
       data = data[:length/2]
 
+    #NOTE: Should use _class_for_nxm_header?
     c = _nxm_type_to_class.get(t)
     if c is None:
       e = NXM_GENERIC()
@@ -1200,6 +1213,29 @@ def _make_nxm_w (*args, **kw):
     t.insert(0, _nxm_maskable)
 
   return _make_nxm(*args, type=t, **kw)
+
+
+def _class_for_nxm_header (raw):
+  """
+  Given a raw nxm_entry header, return corresponding class
+
+  If we don't have a class for this header type, we generate one.
+  """
+  t,has_mask,length = nxm_entry.unpack_header(raw, 0)
+  c = _nxm_type_to_class.get(t)
+  if c: return c
+
+  # Need to generate a new nxm_entry type.
+  # This code is totally untested.
+  vendor = (t >> 7) & 0xffff
+  field = t & 0x7f
+  typename = "NXM_UNKNOWN_"
+  typename += "%04x_%02x" % (vendor,field)
+  if has_mask: typename += "_MASKABLE"
+  types = [_nxm_raw]
+  if has_mask:
+    types.append(_nxm_maskable)
+  return _make_nxm(typename, vendor, field, length, types)
 
 
 # -----------------------------------------------------------------------
