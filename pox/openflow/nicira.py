@@ -872,6 +872,60 @@ class _nxm_ip (object):
   #  # Special unpacking for CIDR-style?
 
 
+class _nxm_ipv6 (object):
+  """
+  Placeholder until we have real IPv6 support
+
+  Allows setting of IP address in many formats
+
+  The value can be any format known by IPAddr.  If it's a string, it can
+  also have a trailing /netmask or /cidr-bits.  If it's a tuple, the
+  first is assumed to be any kind of IP address and the second is either
+  a netmask or the number of network bits.
+  """
+  #TODO: Fix this when IPv6 is available
+
+  @property
+  def value (self):
+    return self._unpack_value(self._value)
+  @value.setter
+  def value (self, value):
+    if isinstance(value, tuple) or isinstance(value, list):
+      assert len(value) == 2
+      ip = value[0]
+      self.mask = value[1]
+      if isinstance(mask, long):
+        self.mask = mask
+    #TODO
+    #elif isinstance(value, unicode) and u'/' in value:
+    #  temp = parse_cidr6(value, infer=False)
+    #  ip = temp[0]
+    #  self.mask = 128 if temp[1] is None else temp[1]
+    else:
+      ip = value
+
+    self._value = self._pack_value(value)
+
+  def _pack_value (self, v):
+    return v
+    #return IPAddr6(v).raw
+  def _unpack_value (self, v):
+    return v
+    #return IPAddr6(v, raw=True)
+  def _pack_mask (self, v):
+    return v
+    #if isinstance(v, long):
+    #  # Assume CIDR
+    #  if v > 128: v = 128
+    #  elif v < 0: v = 0
+    #  n = (0xffFFffFF << (32-v)) & 0xffFFffFF
+    #  return IPAddr6(v, networkOrder=False).toRaw()
+    #else:
+    #  #return IPAddr6(v).raw
+  #def _unpack_mask (self, v):
+  #  # Special unpacking for CIDR-style?
+
+
 class _nxm_ether (object):
   def _pack_value (self, v):
     return EthAddr(v).toRaw()
@@ -1224,16 +1278,14 @@ _make_nxm("NXM_NX_ARP_SHA", 1, 17, 6, type=_nxm_ether)
 _make_nxm("NXM_NX_ARP_THA", 1, 18, 6, type=_nxm_ether)
 
 # Fully maskable in OVS 1.8+, only CIDR-compatible masks before that
-#TODO: Need IPv6
-_make_nxm_w("NXM_NX_IPV6_SRC", 1, 19, 16)
-_make_nxm_w("NXM_NX_IPV6_DST", 1, 20, 16)
+_make_nxm_w("NXM_NX_IPV6_SRC", 1, 19, 16, type=_nxm_ipv6)
+_make_nxm_w("NXM_NX_IPV6_DST", 1, 20, 16, type=_nxm_ipv6)
 
 _make_nxm("NXM_NX_ICMPV6_TYPE", 1, 21, 1)
 _make_nxm("NXM_NX_ICMPV6_CODE", 1, 22, 1)
 
 # IPv6 Neighbor Discovery target address
-#TODO: Need IPv6
-_make_nxm_w("NXM_NX_ND_TARGET", 1, 23, 16)
+_make_nxm_w("NXM_NX_ND_TARGET", 1, 23, 16, type=_nxm_ipv6)
 
 # IPv6 Neighbor Discovery source link-layer address
 _make_nxm("NXM_NX_ND_SLL", 1, 24, 6, type=_nxm_ether)
