@@ -853,7 +853,7 @@ class _nxm_ip (object):
     else:
       ip = value
 
-    self._value = self._pack_value(value)
+    self._value = self._pack_value(ip)
 
   def _pack_value (self, v):
     return IPAddr(v, networkOrder=False).toRaw()
