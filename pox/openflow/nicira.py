@@ -974,7 +974,8 @@ class nxm_entry (object):
     else:
       e = c()
     assert data is not None
-    assert len(data) == (e._nxm_length * (2 if has_mask else 1))
+    assert len(data) == e._nxm_length, "%s != %s" % (len(data), e._nxm_length)
+    assert mask is None or len(mask) == e._nxm_length
     e._value = data
     e._mask = mask
     if mask is not None:
