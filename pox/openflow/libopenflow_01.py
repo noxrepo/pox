@@ -666,15 +666,12 @@ class ofp_phy_port (ofp_base):
     return "%s:%i" % (self.name, self.port_no)
 
   def _validate (self):
-    if (not isinstance(self.hw_addr, bytes)
-        and not isinstance(self.hw_addr, EthAddr)):
-      return "hw_addr is not bytes or EthAddr"
-    if len(self.hw_addr) != 6:
-      return "hw_addr is not of size 6"
-    if not isinstance(self.name, str):
-      return "name is not string"
-    if len(self.name) > 16:
-      return "name is not of size 16"
+    if isinstance(self.hw_addr, bytes) and len(self.hw_addr) == 6:
+      pass
+    elif not isinstance(self.hw_addr, EthAddr)):
+      return "hw_addr is not a valid format"
+    if len(self.name) > OFP_MAX_PORT_NAME_LEN:
+      return "name is too long"
     return None
 
   def pack (self):
@@ -684,7 +681,7 @@ class ofp_phy_port (ofp_base):
     packed += struct.pack("!H", self.port_no)
     packed += (self.hw_addr if isinstance(self.hw_addr, bytes) else
                self.hw_addr.toRaw())
-    packed += self.name.ljust(16,'\0')
+    packed += self.name.ljust(OFP_MAX_PORT_NAME_LEN,'\0')
     packed += struct.pack("!LLLLLL", self.config, self.state, self.curr,
                           self.advertised, self.supported, self.peer)
     return packed
