@@ -64,7 +64,7 @@ class Interactive (object):
     self.enabled = False
     self.completion = False
 
-    import pox.license
+    #import pox.license
     import sys
     self.variables = dict(locals())
     self.variables['core'] = core
@@ -101,10 +101,10 @@ class Interactive (object):
 
     _monkeypatch_console()
 
-    print("This program comes with ABSOLUTELY NO WARRANTY.  This program " \
-          "is free software,")
-    print("and you are welcome to redistribute it under certain conditions.")
-    print("Type 'help(pox.license)' for details.")
+    #print("This program comes with ABSOLUTELY NO WARRANTY.  This program " \
+    #      "is free software,")
+    #print("and you are welcome to redistribute it under certain conditions.")
+    #print("Type 'help(pox.license)' for details.")
     time.sleep(1)
 
     import code
