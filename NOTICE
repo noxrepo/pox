@@ -1,0 +1,21 @@
+POX
+===
+POX is written by a number of authors who retain their various copyrights.
+Please check individual source files to find their associated copyright
+holders.  The following should be a list of all copyright holders.  All
+such code is licensed under the Apache license version 2.0.
+
+Copyright 2011-2013 James McCauley
+Copyright 2011-2013 Colin Scott
+Copyright 2011-2012 Andreas Wundsam
+Copyright 2011      Dorgival Guedes
+Copyright 2007-2008 Nicira Networks, Inc.
+
+
+POX may contain files for which some code is copyright Stanford, but this
+isn't clear.  If there is any such code, it is licensed under the OpenFlow
+license, which can be found at: http://www.openflow.org/wp/legal/
+We're trying to clear this up, but if this is potentially problematic
+for you, your lawyers should be consulted.  In particular, known files
+to which this may apply include:
+ pox/openflow/libopenflow_01.py
