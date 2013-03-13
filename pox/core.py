@@ -190,8 +190,8 @@ class POXCore (EventMixin):
     self.running = True
     self.components = {}
 
-    self.version = (0,1,0)
-    self.version_name = "betta"
+    self.version = (0,2,0)
+    self.version_name = "carp"
     print(self.banner)
 
     self.scheduler = recoco.Scheduler(daemon=True)
