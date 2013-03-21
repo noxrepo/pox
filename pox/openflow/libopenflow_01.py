@@ -668,7 +668,7 @@ class ofp_phy_port (ofp_base):
   def _validate (self):
     if isinstance(self.hw_addr, bytes) and len(self.hw_addr) == 6:
       pass
-    elif not isinstance(self.hw_addr, EthAddr)):
+    elif not isinstance(self.hw_addr, EthAddr):
       return "hw_addr is not a valid format"
     if len(self.name) > OFP_MAX_PORT_NAME_LEN:
       return "name is too long"
