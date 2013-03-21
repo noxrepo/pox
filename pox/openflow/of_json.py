@@ -147,7 +147,7 @@ def dict_to_action (d):
   del d['type']
   if not t.startswith("OFPAT_"): t = "OFPAT_" + t
   t = of.ofp_action_type_rev_map[t]
-  cls = of._action_map[t]
+  cls = of._action_type_to_class[t]
   a = cls(**d)
   return a
 
