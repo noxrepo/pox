@@ -2649,23 +2649,23 @@ class ofp_desc_stats (ofp_stats_body_base):
   def _validate (self):
     if not isinstance(self.mfr_desc, str):
       return "mfr_desc is not string"
-    if len(self.mfr_desc) > 256:
+    if len(self.mfr_desc) > DESC_STR_LEN:
       return "mfr_desc is not of size 256"
     if not isinstance(self.hw_desc, str):
       return "hw_desc is not string"
-    if len(self.hw_desc) > 256:
+    if len(self.hw_desc) > DESC_STR_LEN:
       return "hw_desc is not of size 256"
     if not isinstance(self.sw_desc, str):
       return "sw_desc is not string"
-    if len(self.sw_desc) > 256:
+    if len(self.sw_desc) > DESC_STR_LEN:
       return "sw_desc is not of size 256"
     if not isinstance(self.serial_num, str):
       return "serial_num is not string"
-    if len(self.serial_num) > 32:
+    if len(self.serial_num) > SERIAL_NUM_LEN:
       return "serial_num is not of size 32"
     if not isinstance(self.dp_desc, str):
       return "dp_desc is not string"
-    if len(self.dp_desc) > 256:
+    if len(self.dp_desc) > DESC_STR_LEN:
       return "dp_desc is not of size 256"
     return None
 
@@ -2673,11 +2673,11 @@ class ofp_desc_stats (ofp_stats_body_base):
     assert self._assert()
 
     packed = b""
-    packed += self.mfr_desc.ljust(256,'\0')
-    packed += self.hw_desc.ljust(256,'\0')
-    packed += self.sw_desc.ljust(256,'\0')
-    packed += self.serial_num.ljust(32,'\0')
-    packed += self.dp_desc.ljust(256,'\0')
+    packed += self.mfr_desc.ljust(DESC_STR_LEN,'\0')
+    packed += self.hw_desc.ljust(DESC_STR_LEN,'\0')
+    packed += self.sw_desc.ljust(DESC_STR_LEN,'\0')
+    packed += self.serial_num.ljust(SERIAL_NUM_LEN,'\0')
+    packed += self.dp_desc.ljust(DESC_STR_LEN,'\0')
     return packed
 
   def unpack (self, raw, offset, avail):
@@ -3004,8 +3004,8 @@ class ofp_table_stats (ofp_stats_body_base):
   def _validate (self):
     if not isinstance(self.name, str):
       return "name is not string"
-    if len(self.name) > 32:
-      return "name is not of size 32"
+    if len(self.name) > OFP_MAX_TABLE_NAME_LEN:
+      return "name is too long"
     return None
 
   def pack (self):
@@ -3014,7 +3014,7 @@ class ofp_table_stats (ofp_stats_body_base):
     packed = b""
     packed += struct.pack("!B", self.table_id)
     packed += _PAD3
-    packed += self.name.ljust(32,'\0')
+    packed += self.name.ljust(OFP_MAX_TABLE_NAME_LEN,'\0')
     packed += struct.pack("!LLLQQ", self.wildcards, self.max_entries,
                           self.active_count, self.lookup_count,
                           self.matched_count)
