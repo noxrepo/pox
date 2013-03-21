@@ -2992,7 +2992,7 @@ ofp_aggregate_stats_reply = ofp_aggregate_stats
 class ofp_table_stats (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.table_id = 0
-    self.name= ""
+    self.name = ""
     self.wildcards = 0
     self.max_entries = 0
     self.active_count = 0
