@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011-2013 James McCauley
 #
 # This file is part of POX.
 #
@@ -304,6 +304,17 @@ class POXCore (EventMixin):
 
     log.debug("Running on " + self._get_python_version())
     log.debug("Platform is " + self._get_platform_info())
+    try:
+      import platform
+      vers = '.'.join(platform.python_version().split(".")[:2])
+    except:
+      vers = 'an unknown version'
+    if vers != "2.7":
+      l = logging.getLogger("version")
+      if not l.isEnabledFor(logging.WARNING):
+        l.setLevel(logging.WARNING)
+      l.warn("POX requires Python 2.7. You're running %s.", vers)
+      l.warn("If you run into problems, try using Python 2.7 or PyPy.")
 
     self.raiseEvent(GoingUpEvent())
 
