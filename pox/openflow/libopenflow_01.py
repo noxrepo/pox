@@ -3163,8 +3163,11 @@ class ofp_port_stats (ofp_stats_body_base):
 
   def __add__(self, other):
     if type(self) != type(other): raise NotImplemented()
+    port_no = OFPP_NONE
+    if self.port_no == other.port_no:
+      port_no = self.port_no
     return ofp_port_stats(
-        port_no=OFPP_NONE,
+        port_no=port_no,
         rx_packets = self.rx_packets + other.rx_packets,
         tx_packets = self.tx_packets + other.tx_packets,
         rx_bytes = self.rx_bytes + other.rx_bytes,
