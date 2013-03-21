@@ -3098,7 +3098,7 @@ class ofp_port_stats_request (ofp_stats_body_base):
 @openflow_stats_reply("OFPST_PORT", is_list = True)
 class ofp_port_stats (ofp_stats_body_base):
   def __init__ (self, **kw):
-    self.port_no = 0
+    self.port_no = OFPP_NONE
     self.rx_packets = 0
     self.tx_packets = 0
     self.rx_bytes = 0
