@@ -668,7 +668,7 @@ class ofp_phy_port (ofp_base):
   def _validate (self):
     if isinstance(self.hw_addr, bytes) and len(self.hw_addr) == 6:
       pass
-    elif not isinstance(self.hw_addr, EthAddr)):
+    elif not isinstance(self.hw_addr, EthAddr):
       return "hw_addr is not a valid format"
     if len(self.name) > OFP_MAX_PORT_NAME_LEN:
       return "name is too long"
@@ -2649,23 +2649,23 @@ class ofp_desc_stats (ofp_stats_body_base):
   def _validate (self):
     if not isinstance(self.mfr_desc, str):
       return "mfr_desc is not string"
-    if len(self.mfr_desc) > 256:
+    if len(self.mfr_desc) > DESC_STR_LEN:
       return "mfr_desc is not of size 256"
     if not isinstance(self.hw_desc, str):
       return "hw_desc is not string"
-    if len(self.hw_desc) > 256:
+    if len(self.hw_desc) > DESC_STR_LEN:
       return "hw_desc is not of size 256"
     if not isinstance(self.sw_desc, str):
       return "sw_desc is not string"
-    if len(self.sw_desc) > 256:
+    if len(self.sw_desc) > DESC_STR_LEN:
       return "sw_desc is not of size 256"
     if not isinstance(self.serial_num, str):
       return "serial_num is not string"
-    if len(self.serial_num) > 32:
+    if len(self.serial_num) > SERIAL_NUM_LEN:
       return "serial_num is not of size 32"
     if not isinstance(self.dp_desc, str):
       return "dp_desc is not string"
-    if len(self.dp_desc) > 256:
+    if len(self.dp_desc) > DESC_STR_LEN:
       return "dp_desc is not of size 256"
     return None
 
@@ -2673,11 +2673,11 @@ class ofp_desc_stats (ofp_stats_body_base):
     assert self._assert()
 
     packed = b""
-    packed += self.mfr_desc.ljust(256,'\0')
-    packed += self.hw_desc.ljust(256,'\0')
-    packed += self.sw_desc.ljust(256,'\0')
-    packed += self.serial_num.ljust(32,'\0')
-    packed += self.dp_desc.ljust(256,'\0')
+    packed += self.mfr_desc.ljust(DESC_STR_LEN,'\0')
+    packed += self.hw_desc.ljust(DESC_STR_LEN,'\0')
+    packed += self.sw_desc.ljust(DESC_STR_LEN,'\0')
+    packed += self.serial_num.ljust(SERIAL_NUM_LEN,'\0')
+    packed += self.dp_desc.ljust(DESC_STR_LEN,'\0')
     return packed
 
   def unpack (self, raw, offset, avail):
@@ -2992,7 +2992,7 @@ ofp_aggregate_stats_reply = ofp_aggregate_stats
 class ofp_table_stats (ofp_stats_body_base):
   def __init__ (self, **kw):
     self.table_id = 0
-    self.name= ""
+    self.name = ""
     self.wildcards = 0
     self.max_entries = 0
     self.active_count = 0
@@ -3004,8 +3004,8 @@ class ofp_table_stats (ofp_stats_body_base):
   def _validate (self):
     if not isinstance(self.name, str):
       return "name is not string"
-    if len(self.name) > 32:
-      return "name is not of size 32"
+    if len(self.name) > OFP_MAX_TABLE_NAME_LEN:
+      return "name is too long"
     return None
 
   def pack (self):
@@ -3014,7 +3014,7 @@ class ofp_table_stats (ofp_stats_body_base):
     packed = b""
     packed += struct.pack("!B", self.table_id)
     packed += _PAD3
-    packed += self.name.ljust(32,'\0')
+    packed += self.name.ljust(OFP_MAX_TABLE_NAME_LEN,'\0')
     packed += struct.pack("!LLLQQ", self.wildcards, self.max_entries,
                           self.active_count, self.lookup_count,
                           self.matched_count)
@@ -3098,7 +3098,7 @@ class ofp_port_stats_request (ofp_stats_body_base):
 @openflow_stats_reply("OFPST_PORT", is_list = True)
 class ofp_port_stats (ofp_stats_body_base):
   def __init__ (self, **kw):
-    self.port_no = 0
+    self.port_no = OFPP_NONE
     self.rx_packets = 0
     self.tx_packets = 0
     self.rx_bytes = 0
@@ -3163,8 +3163,11 @@ class ofp_port_stats (ofp_stats_body_base):
 
   def __add__(self, other):
     if type(self) != type(other): raise NotImplemented()
+    port_no = OFPP_NONE
+    if self.port_no == other.port_no:
+      port_no = self.port_no
     return ofp_port_stats(
-        port_no=OFPP_NONE,
+        port_no=port_no,
         rx_packets = self.rx_packets + other.rx_packets,
         tx_packets = self.tx_packets + other.tx_packets,
         rx_bytes = self.rx_bytes + other.rx_bytes,
