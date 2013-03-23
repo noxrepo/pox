@@ -21,7 +21,7 @@
 """
 This module sends periodic echo requests to switches.
 
-At the moment, it only works on the primary OF nexus, and it
+At the moment, it only works on the primary OF nexus.
 """
 
 from pox.core import core
