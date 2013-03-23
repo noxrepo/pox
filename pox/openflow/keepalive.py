@@ -22,6 +22,10 @@
 This module sends periodic echo requests to switches.
 
 At the moment, it only works on the primary OF nexus.
+
+It supports the following commandline options:
+ --interval=X  Send an echo request every X seconds (default 20)
+ --timeout=X   Expect response from switch within X seconds (default 3)
 """
 
 from pox.core import core
@@ -48,12 +52,13 @@ def _handle_timer (ofnexus):
 
 
 _running = False
-_switch_timeout = 3 # This amount beyond interval
+_switch_timeout = None # This amount beyond interval
 _interval = None
 
-def launch (interval = 20):
-  global _interval
+def launch (interval = 20, timeout = 3):
+  global _interval, _switch_timeout
   _interval = float(interval)
+  _switch_timeout = float(timeout)
   def start ():
     global _running
     if _running:
