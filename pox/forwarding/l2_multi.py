@@ -348,7 +348,7 @@ class Switch (EventMixin):
         log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
     elif oldloc != loc:
       # ethaddr seen at different place!
-      if loc[1] not in adjacency[loc[0]].values():
+      if core.openflow_discovery.is_edge_port(loc[0].dpid, loc[1]):
         # New place is another "plain" port (probably)
         log.debug("%s moved from %s.%i to %s.%i?", packet.src,
                   dpid_to_str(oldloc[0].dpid), oldloc[1],
