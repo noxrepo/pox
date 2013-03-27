@@ -358,13 +358,18 @@ class Switch (EventMixin):
           log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
       elif packet.dst.is_multicast == False:
         # New place is a switch-to-switch port!
-        #TODO: This should be a flood.  It'd be nice if we knew.  We could
-        #      check if the port is in the spanning tree if it's available.
-        #      Or maybe we should flood more carefully?
-        log.warning("Packet from %s arrived at %s.%i without flow",
-                    packet.src, dpid_to_str(self.dpid), event.port)
-        #drop()
-        #return
+        # Hopefully, this is a packet we're flooding because we didn't
+        # know the destination, and not because it's somehow not on a
+        # path that we expect it to be on.
+        # If spanning_tree is running, we might check that this port is
+        # on the spanning tree (it should be).
+        if packet.dst in mac_map:
+          # Unfortunately, we know the destination.  It's possible that
+          # we learned it while it was in flight, but it's also possible
+          # that something has gone wrong.
+          log.warning("Packet from %s to known destination %s arrived "
+                      "at %s.%i without flow", packet.src, packet.dst,
+                      dpid_to_str(self.dpid), event.port)
 
 
     if packet.dst.is_multicast:
