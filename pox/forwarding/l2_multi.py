@@ -351,8 +351,8 @@ class Switch (EventMixin):
       if loc[1] not in adjacency[loc[0]].values():
         # New place is another "plain" port (probably)
         log.debug("%s moved from %s.%i to %s.%i?", packet.src,
-                  dpid_to_str(oldloc[0].connection.dpid), oldloc[1],
-                  dpid_to_str(   loc[0].connection.dpid),    loc[1])
+                  dpid_to_str(oldloc[0].dpid), oldloc[1],
+                  dpid_to_str(   loc[0].dpid),    loc[1])
         if packet.src.is_multicast == False:
           mac_map[packet.src] = loc # Learn position for ethaddr
           log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
@@ -472,16 +472,10 @@ class l2_multi (EventMixin):
       # be connected to a switch, unlearn it.
       bad_macs = set()
       for mac,(sw,port) in mac_map.iteritems():
-        #print sw,sw1,port,l.port1
-        if sw is sw1 and port == l.port1:
-          if mac not in bad_macs:
-            log.debug("Unlearned %s", mac)
-            bad_macs.add(mac)
-        if sw is sw2 and port == l.port2:
-          if mac not in bad_macs:
-            log.debug("Unlearned %s", mac)
-            bad_macs.add(mac)
+        if sw is sw1 and port == l.port1: bad_macs.add(mac)
+        if sw is sw2 and port == l.port2: bad_macs.add(mac)
       for mac in bad_macs:
+        log.debug("Unlearned %s", mac)
         del mac_map[mac]
 
   def _handle_ConnectionUp (self, event):
