@@ -100,16 +100,17 @@ def _do_import (name):
       # print a stack trace so that it can be fixed.
       # Sorting out the two cases is an ugly hack.
 
-      s = sys.exc_info()[1].message.rsplit(" ", 1)
+      message = str(sys.exc_info()[1].args[0])
+      s = message.rsplit(" ", 1)
 
       # Sadly, PyPy isn't consistent with CPython here.
+      #TODO: Check on this behavior in pypy 2.0.
       if s[0] == "No module named" and (name.endswith(s[1]) or __pypy__):
         # It was the one we tried to import itself. (Case 1)
         # If we have other names to try, try them!
         return do_import2(base_name, names_to_try)
-      elif (sys.exc_info()[1].message
-          == "Import by filename is not supported."):
-        print(sys.exc_info()[1].message)
+      elif message == "Import by filename is not supported.":
+        print(message)
         import os.path
         n = name.replace("/", ".").replace("\\", ".")
         n = n.replace( os.path.sep, ".")
