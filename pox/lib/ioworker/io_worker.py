@@ -16,7 +16,7 @@ from pox.lib.recoco import Select, Task
 log = logging.getLogger()
 
 class IOWorker(object):
-  """ Generic IOWorker class. Defines the IO contract for our simulator. Fire and forget semantics for send. 
+  """ Generic IOWorker class. Defines the IO contract for our simulator. Fire and forget semantics for send.
       Received data is being queued until explicitely consumed by the client
   """
   def __init__(self):
@@ -44,7 +44,7 @@ class IOWorker(object):
 
   def consume_receive_buf(self, l):
     """ Consume receive buffer """
-    # called from the client 
+    # called from the client
     assert(len(self.receive_buf) >= l)
     self.receive_buf = self.receive_buf[l:]
 
@@ -54,7 +54,7 @@ class IOWorker(object):
     return len(self.send_buf) > 0
 
   def _consume_send_buf(self, l):
-    # Throw out the first l bytes of the send buffer 
+    # Throw out the first l bytes of the send buffer
     # Called by Select loop
     assert(len(self.send_buf)>=l)
     self.send_buf = self.send_buf[l:]
@@ -69,7 +69,7 @@ class RecocoIOWorker(IOWorker):
     IOWorker.__init__(self)
     self.socket = socket
     self.pinger = pinger
-    # (on_close factory method hides details of the Select loop) 
+    # (on_close factory method hides details of the Select loop)
     self.on_close = on_close
 
   def fileno(self):
@@ -83,11 +83,11 @@ class RecocoIOWorker(IOWorker):
 
   def close(self):
     """ Register this socket to be closed. fire and forget """
-    # (don't close until Select loop is ready) 
+    # (don't close until Select loop is ready)
     IOWorker.close(self)
     # on_close is a function not a method
     self.on_close(self)
-    
+
 class RecocoIOLoop(Task):
   """
   recoco task that handles the actual IO for our IO workers
@@ -111,7 +111,7 @@ class RecocoIOLoop(Task):
     # Called from external threads.
     # Does not register the IOWorker immediately with the select loop --
     # rather, adds a command to the pending queue
-    
+
     # Our callback for io_worker.close():
     def on_close(worker):
       def close_worker(worker):
@@ -121,13 +121,13 @@ class RecocoIOLoop(Task):
       # schedule close_worker to be called by Select loop
       self._pending_commands.put(lambda: close_worker(worker))
       self.pinger.ping()
-      
+
     worker = RecocoIOWorker(socket, pinger=self.pinger, on_close=on_close)
     # Don't add immediately, since we're in the wrong thread
     self._pending_commands.put(lambda: self._workers.add(worker))
     self.pinger.ping()
     return worker
-     
+
   def stop(self):
     self.running = False
     self.pinger.ping()
@@ -139,7 +139,7 @@ class RecocoIOLoop(Task):
         # First, execute pending commands
         while not self._pending_commands.empty():
           self._pending_commands.get()()
-        
+
         # Now grab workers
         read_sockets = list(self._workers) + [ self.pinger ]
         write_sockets = [ worker for worker in self._workers if worker._ready_to_send ]
