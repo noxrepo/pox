@@ -31,11 +31,11 @@ class IOWorker(object):
   def send(self, data):
     """ send data from the client side. fire and forget. """
     assert_type("data", data, [bytes], none_ok=False)
-    self.send_buf += data
+    self.send_buf = ''.join([self.send_buf, data])
 
   def _push_receive_data(self, new_data):
     # notify client of new received data. called by a Select loop
-    self.receive_buf += new_data
+    self.receive_buf = ''.join([self.receive_buf, new_data])
     self._on_data_receive(self)
 
   def peek_receive_buf(self):
