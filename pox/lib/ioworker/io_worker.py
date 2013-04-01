@@ -30,7 +30,7 @@ class JSONIOWorker(object):
     self.on_json_received = on_json_received
 
   def _receive_line(self, worker, line):
-    log.debug("JSONIOWorker _receive_line: %s", line)
+    # log.debug("JSONIOWorker _receive_line: %s", line)
     json_hash = json.loads(line)
     self.on_json_received(self, json_hash)
 
@@ -76,7 +76,7 @@ class LineIOWorker(object):
     io_worker.consume_receive_buf(length)
 
   def send_line(self, line):
-    self.io_worker.send(line + "\n")
+    self.io_worker.send(''.join([line, "\n"]))
 
   def close(self):
     self.io_worker.close()
@@ -97,11 +97,11 @@ class IOWorker(object):
   def send(self, data):
     """ send data from the client side. fire and forget. """
     assert_type("data", data, [bytes], none_ok=False)
-    log.debug("IOWorker.send: sending %s (send_buf is %s)", repr(data), repr(self.send_buf))
+    #log.debug("IOWorker.send: sending %s (send_buf is %s)", repr(data), repr(self.send_buf))
     self.send_buf = ''.join([self.send_buf, data])
 
   def _push_receive_data(self, new_data):
-    log.debug("IOWorker._push_receive_data: new_data=%s", repr(new_data))
+    #log.debug("IOWorker._push_receive_data: new_data=%s", repr(new_data))
     # notify client of new received data. called by a Select loop
     self.receive_buf = ''.join([self.receive_buf, new_data])
     self._on_data_receive(self)
@@ -125,9 +125,9 @@ class IOWorker(object):
     # Throw out the first l bytes of the send buffer
     # Called by Select loop
     assert(len(self.send_buf)>=l)
-    log.debug("IOWorker._consume_send_buf: _consuming %d bytes of send_buf is %s", l, repr(self.send_buf))
+    #log.debug("IOWorker._consume_send_buf: _consuming %d bytes of send_buf is %s", l, repr(self.send_buf))
     self.send_buf = self.send_buf[l:]
-    log.debug("IOWorker._consume_send_buf: send_buf is now %s", repr(self.send_buf))
+    #log.debug("IOWorker._consume_send_buf: send_buf is now %s", repr(self.send_buf))
 
   def close(self):
     """ Close this socket """
@@ -243,7 +243,7 @@ class RecocoIOLoop(Task):
         for worker in wlist:
           try:
             l = worker.socket.send(worker.send_buf)
-            log.debug("RecocoIOLoop: sent %d bytes from send buf %s", l,  worker.send_buf)
+            #log.debug("RecocoIOLoop: sent %d bytes from send buf %s", l,  worker.send_buf)
             if l > 0:
               worker._consume_send_buf(l)
           except socket.error as (s_errno, strerror):
