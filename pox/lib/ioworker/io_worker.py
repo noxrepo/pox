@@ -98,12 +98,12 @@ class IOWorker(object):
     """ send data from the client side. fire and forget. """
     assert_type("data", data, [bytes], none_ok=False)
     #log.debug("IOWorker.send: sending %s (send_buf is %s)", repr(data), repr(self.send_buf))
-    self.send_buf = ''.join([self.send_buf, data])
+    self.send_buf += data
 
   def _push_receive_data(self, new_data):
     #log.debug("IOWorker._push_receive_data: new_data=%s", repr(new_data))
     # notify client of new received data. called by a Select loop
-    self.receive_buf = ''.join([self.receive_buf, new_data])
+    self.receive_buf += new_data
     self._on_data_receive(self)
 
   def peek_receive_buf(self):
