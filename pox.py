@@ -23,7 +23,7 @@
 # is a good idea if you're using Python from MacPorts, for example.
 # We fall back to just "python" and hope that works.
 
-''''echo -n
+''''true
 export OPT="-u -O"
 export FLG=""
 if [ "$(basename $0)" = "debug-pox.py" ]; then

@@ -25,7 +25,7 @@
 
 #TODO: Make runnable by itself (paths need adjusting, etc.).
 
-''''echo -n
+''''true
 export OPT="-u -O"
 export FLG=""
 if [ "$(basename $0)" = "debug-pox.py" ]; then
