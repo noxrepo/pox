@@ -24,21 +24,20 @@ this is intended to be comparable with ryu cbench app.
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
-from pox.lib.revent import EventMixin
 
 
-class CBench (EventMixin):
+class CBench (object):
   def __init__ (self, connection):
     self.connection = connection
-    self.listenTo(connection)
+    connection.addListeners(self)
 
   def _handle_PacketIn (self, event):
     msg = of.ofp_flow_mod()
     self.connection.send(msg)
 
-class cbench (EventMixin):
+class cbench (object):
   def __init__ (self):
-    self.listenTo(core.openflow)
+    core.openflow.addListeners(self)
 
   def _handle_ConnectionUp (self, event):
     CBench(event.connection)
