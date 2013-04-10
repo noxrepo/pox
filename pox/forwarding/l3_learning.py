@@ -98,11 +98,11 @@ class l3_switch (EventMixin):
     # host, we'll ARP for it.
     self.arp_for_unknowns = arp_for_unknowns
 
-    # (IP,dpid) -> expire_time
+    # (dpid,IP) -> expire_time
     # We use this to keep from spamming ARPs
     self.outstanding_arps = {}
 
-    # (IP,dpid) -> [(expire_time,buffer_id,in_port), ...]
+    # (dpid,IP) -> [(expire_time,buffer_id,in_port), ...]
     # These are buffers we've gotten at this datapath for this IP which
     # we can't deliver because we don't know where they go.
     self.lost_buffers = {}
@@ -119,7 +119,7 @@ class l3_switch (EventMixin):
     # Called by a timer so that we can remove old items.
     empty = []
     for k,v in self.lost_buffers.iteritems():
-      ip,dpid = k
+      dpid,ip = k
 
       for item in list(v):
         expires_at,buffer_id,in_port = item
