@@ -78,6 +78,12 @@ class PCapParser (object):
   def _sec (self):
     return datetime.fromtimestamp(self._sec_raw)
 
+  @property
+  def _time (self):
+    s = self._sec_raw
+    s += self._usec / 1000000.0
+    return s
+
   def _proc_packet (self):
     if len(self._buf) < self._cap_size: return
     data = self._buf[:self._cap_size]
