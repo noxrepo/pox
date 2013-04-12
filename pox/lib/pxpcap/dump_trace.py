@@ -89,7 +89,10 @@ def launch (infile, verbose = False, max_length = 110,
             hide = False, show = False):
   global _verbose, _max_length, _types, _show_by_default
   _verbose = verbose
-  _max_length = max_length
+  if max_length is True or max_length == '0':
+    _max_length = None
+  else:
+    _max_length = int(max_length)
   force_show = (show is True) or (hide is False and show is False)
   if isinstance(hide, basestring):
     hide = hide.replace(',', ' ').replace('|', ' ')
