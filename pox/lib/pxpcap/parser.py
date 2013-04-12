@@ -21,6 +21,10 @@ A parser for pcap data files.
 It's not great, but does the job for now.
 """
 
+#TODO:
+# Swap names for _sec and _time?
+# Add usec to the datetime one?
+
 from datetime import datetime
 from struct import unpack_from
 
@@ -69,7 +73,7 @@ class PCapParser (object):
 
   def _proc_header (self):
     if len(self._buf) < 16: return
-    self._sec_raw,self._usec,self._wire_size,self._cap_size \
+    self._sec_raw,self._usec,self._cap_size, self._wire_size \
         = self._unpack("LLLL", self._buf[:16])
     self._buf = self._buf[16:]
     self._proc = self._proc_packet
