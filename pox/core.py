@@ -334,7 +334,8 @@ class POXCore (EventMixin):
       #         % (names, waiting_for))
       log.warn("Still waiting on %i component(s)" % (len(waiting_for),))
 
-    log.info(self.version_string + " is up.")
+    if self.running:
+      log.info(self.version_string + " is up.")
 
   def hasComponent (self, name):
     """
