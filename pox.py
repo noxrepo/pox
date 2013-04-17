@@ -35,7 +35,7 @@ if [ -x pypy/bin/pypy ]; then
   exec pypy/bin/pypy $OPT "$0" $FLG "$@"
 fi
 
-if type python2.7 > /dev/null; then
+if type python2.7 > /dev/null 2> /dev/null; then
   exec python2.7 $OPT "$0" $FLG "$@"
 fi
 exec python $OPT "$0" $FLG "$@"
