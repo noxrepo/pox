@@ -85,11 +85,11 @@
 #   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 #
 #
+#======================================================================
+
 # TODO:
 #   SOA data
-#   CNAME data
-#   MX data
-#======================================================================
+#   General cleaup/rewrite (code is/has gotten pretty bad)
 
 import struct
 from packet_utils import *
@@ -202,46 +202,57 @@ class dns(packet_base):
           if term: o += '\x00'
           return o
 
+        name_map = {}
+
         def putName (s, name):
           pre = ''
           post = name
           while True:
             at = s.find(makeName(post, True))
             if at == -1:
+              if post in name_map:
+                at = name_map[post]
+            if at == -1:
               post = post.split('.', 1)
-              pre = pre + "." + post[0]
+              if pre: pre += '.'
+              pre += post[0]
               if len(post) == 1:
                 if len(pre) == 0:
                   s += '\x00'
                 else:
+                  name_map[name] = len(s)
                   s += makeName(pre, True)
                 break
               post = post[1]
             else:
               if len(pre) > 0:
+                name_map[name] = len(s)
                 s += makeName(pre, False)
-              s += struct.pack("!H", at | 0xc0)
+              s += struct.pack("!H", at | 0xc000)
               break
           return s
+
+        def putData (s, r):
+          if r.qtype in (2,12,5,15):
+            return putName(s, r.rddata)
+          elif r.qtype == 1:
+            assert isinstance(r.rddata, IPAddr)
+            return s + r.rddata.toRaw()
+          else:
+            return s + r.rddata
 
         for r in self.questions:
           s = putName(s, r.name)
           s += struct.pack("!HH", r.qtype, r.qclass)
 
-        for r in self.answers:
+        rest = self.answers + self.authorities + self.additional
+        for r in rest:
           s = putName(s, r.name)
-          s += struct.pack("!HHIH", r.qtype, r.qclass, r.ttl, len(r.rddata))
-          s += r.rddata
-
-        for r in self.authorities:
-          s = putName(s, r.name)
-          s += struct.pack("!HHIH", r.qtype, r.qclass, r.ttl, len(r.rddata))
-          s += r.rddata
-
-        for r in self.additional:
-          s = putName(s, r.name)
-          s += struct.pack("!HHIH", r.qtype, r.qclass, r.ttl, len(r.rddata))
-          s += r.rddata
+          s += struct.pack("!HHIH", r.qtype, r.qclass, r.ttl, 0)
+          fixup = len(s) - 2
+          s = putData(s, r)
+          fixlen = len(s) - fixup - 2
+          s = s[:fixup] + struct.pack('!H', fixlen) + s[fixup+2:]
 
         return s
 
@@ -461,8 +472,7 @@ class dns(packet_base):
 
             return s
 
-    class rr:
-
+    class rr (object):
         A_TYPE     = 1
         NS_TYPE    = 2
         MD_TYPE    = 3
@@ -481,7 +491,7 @@ class dns(packet_base):
         TXT_TYPE   = 16
         AAAA_TYPE  = 28
 
-        def __init__(self, _name, _qtype, _qclass, _ttl, _rdlen, _rddata):
+        def __init__ (self, _name, _qtype, _qclass, _ttl, _rdlen, _rddata):
             self.name   = _name
             self.qtype  = _qtype
             self.qclass = _qclass
@@ -489,7 +499,7 @@ class dns(packet_base):
             self.rdlen  = _rdlen
             self.rddata = _rddata
 
-        def __str__(self):
+        def __str__ (self):
             s = self.name
             if self.qtype in rrtype_to_str:
                 s += " " + rrtype_to_str[self.qtype]
