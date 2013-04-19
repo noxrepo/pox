@@ -264,7 +264,7 @@ class Scheduler (object):
       while True:
         t = self._ready.popleft()
         if t.priority >= 1: break
-        if len(self._ready) <= 1: break
+        if len(self._ready) == 0: break
         if t.priority >= random.random(): break
         self._ready.append(t)
     except IndexError:
