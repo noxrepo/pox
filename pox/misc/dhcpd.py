@@ -277,6 +277,14 @@ class DHCPD (EventMixin):
       #msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
       event.connection.send(msg)
 
+  def _get_pool (self, event):
+    """
+    Get an IP pool for this event.
+
+    Return None to not issue an IP.  You should probably log this.
+    """
+    return self.pool
+
   def _handle_PacketIn (self, event):
     # Is it to us?  (Or at least not specifically NOT to us...)
     ipp = event.parsed.find('ipv4')
@@ -309,12 +317,16 @@ class DHCPD (EventMixin):
     if t is None:
       return
 
+    pool = self._get_pool(event)
+    if pool is None:
+      return
+
     if t.type == p.DISCOVER_MSG:
-      self.exec_discover(event, p)
+      self.exec_discover(event, p, pool)
     elif t.type == p.REQUEST_MSG:
-      self.exec_request(event, p)
+      self.exec_request(event, p, pool)
     elif t.type == p.RELEASE_MSG:
-      self.exec_release(event, p)
+      self.exec_release(event, p, pool)
 
   def reply (self, event, msg):
     orig = event.parsed.find('dhcp')
@@ -351,7 +363,7 @@ class DHCPD (EventMixin):
     msg.siaddr = self.ip_addr
     self.reply(event, msg)
 
-  def exec_release (self, event, p):
+  def exec_release (self, event, p, pool):
     src = event.parsed.src
     if src != p.chaddr:
       log.warn("%s tried to release %s with bad chaddr" % (src,p.ciaddr))
@@ -360,10 +372,10 @@ class DHCPD (EventMixin):
       log.warn("%s tried to release unleased %s" % (src,p.ciaddr))
       return
     del self.leases[p.chaddr]
-    self.pool.append(p.ciaddr)
+    pool.append(p.ciaddr)
     log.info("%s released %s" % (src,p.ciaddr))
 
-  def exec_request (self, event, p):
+  def exec_request (self, event, p, pool):
     if not p.REQUEST_IP_OPT in p.options:
       # Uhhh...
       return
@@ -372,20 +384,20 @@ class DHCPD (EventMixin):
     got_ip = None
     if src in self.leases:
       if wanted_ip != self.leases[src]:
-        self.pool.append(self.leases[src])
+        pool.append(self.leases[src])
         del self.leases[src]
       else:
         got_ip = self.leases[src]
     if got_ip is None:
       if src in self.offers:
         if wanted_ip != self.offers[src]:
-          self.pool.append(self.offers[src])
+          pool.append(self.offers[src])
           del self.offers[src]
         else:
           got_ip = self.offers[src]
     if got_ip is None:
-      if wanted_ip in self.pool:
-        self.pool.remove(wanted_ip)
+      if wanted_ip in pool:
+        pool.remove(wanted_ip)
         got_ip = wanted_ip
     if got_ip is None:
       log.warn("%s asked for un-offered %s", src, wanted_ip)
@@ -413,7 +425,7 @@ class DHCPD (EventMixin):
 
     self.reply(event, reply)
 
-  def exec_discover (self, event, p):
+  def exec_discover (self, event, p, pool):
     reply = pkt.dhcp()
     reply.add_option(pkt.DHCP.DHCPMsgTypeOption(p.OFFER_MSG))
     src = event.parsed.src
@@ -424,17 +436,17 @@ class DHCPD (EventMixin):
     else:
       offer = self.offers.get(src)
       if offer is None:
-        if len(self.pool) == 0:
+        if len(pool) == 0:
           log.error("Out of IP addresses")
           self.nak(event)
           return
 
-        offer = self.pool[0]
+        offer = pool[0]
         if p.REQUEST_IP_OPT in p.options:
           wanted_ip = p.options[p.REQUEST_IP_OPT].addr
-          if wanted_ip in self.pool:
+          if wanted_ip in pool:
             offer = wanted_ip
-        self.pool.remove(offer)
+        pool.remove(offer)
         self.offers[src] = offer
     reply.yiaddr = offer
     reply.siaddr = self.ip_addr
