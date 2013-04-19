@@ -231,17 +231,31 @@ class Discovery (EventMixin):
   def send_cycle_time (self):
     return self._link_timeout / 2.0
 
+  def install_flow (self, con_or_dpid, priority = None):
+    if priority is None:
+      priority = self._flow_priority
+    if isinstance(con_or_dpid, (int,long)):
+      con = core.openflow.connections.get(con_or_dpid)
+      if con is None:
+        log.warn("Can't install flow for %s", dpid_to_str(con_or_dpid))
+        return False
+    else:
+      con = con_or_dpid
+
+    match = of.ofp_match(dl_type = pkt.ethernet.LLDP_TYPE,
+                          dl_dst = pkt.ETHERNET.NDP_MULTICAST)
+    msg = of.ofp_flow_mod()
+    msg.priority = priority
+    msg.match = match
+    msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
+    con.send(msg)
+    return True
+
   def _handle_openflow_ConnectionUp (self, event):
     if self._install_flow:
       # Make sure we get appropriate traffic
       log.debug("Installing flow for %s", dpid_to_str(event.dpid))
-      match = of.ofp_match(dl_type = pkt.ethernet.LLDP_TYPE,
-                           dl_dst = pkt.ETHERNET.NDP_MULTICAST)
-      msg = of.ofp_flow_mod()
-      msg.priority = self._flow_priority
-      msg.match = match
-      msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
-      event.connection.send(msg)
+      self.install_flow(event.connection)
 
   def _handle_openflow_ConnectionDown (self, event):
     # Delete all links on this switch
