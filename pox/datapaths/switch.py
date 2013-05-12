@@ -168,7 +168,7 @@ class SoftwareSwitchBase (object):
       raise RuntimeError("No handler for ofp_type %s(%d)"
                          % (ofp_type_map.get(ofp_type), ofp_type))
 
-    self.log.debug("Got %s with XID %s",ofp_type_rev_map.get(ofp_type),msg.xid)
+    self.log.debug("Got %s with XID %s",ofp_type_map.get(ofp_type),msg.xid)
     h(msg, connection=connection)
 
   def set_connection (self, connection):
