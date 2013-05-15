@@ -21,6 +21,11 @@ from a list of static entries.
 
 This adds the "arp" object to the console, which you can use to look at
 or modify the ARP table.
+
+Add ARP entries on commandline like:
+  arp_responder --<IP>=<MAC> --<IP>=<MAC>
+
+Leave MAC unspecified if you want to use the switch MAC.
 """
 
 from pox.core import core
@@ -49,15 +54,22 @@ class Entry (object):
   We use the timeout so that if an entry is older than ARP_TIMEOUT, we
    flood the ARP request rather than try to answer it ourselves.
   """
-  def __init__ (self, mac, static = False):
+  def __init__ (self, mac, static = None, flood = None):
     self.timeout = time.time() + ARP_TIMEOUT
-    self.static = static
+    self.static = False
+    self.flood = True
     if mac is True:
-      # Means use switch's MAC, implies True
+      # Means use switch's MAC, implies static/noflood
       self.mac = True
       self.static = True
+      self.flood = False
     else:
       self.mac = EthAddr(mac)
+
+    if static is not None:
+      self.static = static
+    if flood is not None:
+      self.flood = flood
 
   def __eq__ (self, other):
     if isinstance(other, Entry):
@@ -220,21 +232,31 @@ class ARPResponder (object):
               squelch = a.protodst in _failed_queries
               _failed_queries[a.protodst] = time.time()
 
-    # Didn't know how to handle this ARP, so just flood it
-    msg = "%s flooding ARP %s %s => %s" % (dpid_to_str(dpid),
-        {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
-        'op:%i' % (a.opcode,)), a.protosrc, a.protodst)
+    if self._check_for_flood(dpid, a):
+      # Didn't know how to handle this ARP, so just flood it
+      msg = "%s flooding ARP %s %s => %s" % (dpid_to_str(dpid),
+          {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
+          'op:%i' % (a.opcode,)), a.protosrc, a.protodst)
 
-    if squelch:
-      log.debug(msg)
-    else:
-      log.info(msg)
+      if squelch:
+        log.debug(msg)
+      else:
+        log.info(msg)
 
-    msg = of.ofp_packet_out()
-    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-    msg.data = event.ofp
-    event.connection.send(msg.pack())
+      msg = of.ofp_packet_out()
+      msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+      msg.data = event.ofp
+      event.connection.send(msg.pack())
+
     return EventHalt if _eat_packets else None
+
+  def _check_for_flood (self, dpid, a):
+    """
+    Return True if you want to flood this
+    """
+    if a.protodst in _arp_table:
+      return _arp_table[a.protodst].flood
+    return True
 
 
 _arp_table = ARPTable() # IPAddr -> Entry
