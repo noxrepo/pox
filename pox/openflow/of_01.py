@@ -616,6 +616,7 @@ class Connection (EventMixin):
     self.dpid = None
     self.features = None
     self.disconnected = False
+    self.disconnection_raised = False
     self.connect_time = None
     self.idle_time = time.time()
 
@@ -638,23 +639,23 @@ class Connection (EventMixin):
     except:
       pass
 
-  def disconnect (self, msg = 'disconnected'):
+  def disconnect (self, msg = 'disconnected', defer_event = False):
     """
     disconnect this Connection (usually not invoked manually).
     """
-    already = False
     if self.disconnected:
       self.msg("already disconnected")
-      already = True
     self.info(msg)
     self.disconnected = True
     try:
       self.ofnexus._disconnect(self.dpid)
     except:
       pass
-    if self.dpid is not None and not already:
-      self.ofnexus.raiseEventNoErrors(ConnectionDown, self)
-      self.raiseEventNoErrors(ConnectionDown, self)
+    if self.dpid is not None:
+      if not self.disconnection_raised and not defer_event:
+        self.disconnection_raised = True
+        self.ofnexus.raiseEventNoErrors(ConnectionDown, self)
+        self.raiseEventNoErrors(ConnectionDown, self)
 
     try:
       #deferredSender.kill(self)
@@ -703,7 +704,7 @@ class Connection (EventMixin):
         deferredSender.send(self, data)
       else:
         self.msg("Socket error: " + strerror)
-        self.disconnect()
+        self.disconnect(defer_event=True)
 
   def read (self):
     """
