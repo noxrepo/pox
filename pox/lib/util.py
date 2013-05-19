@@ -220,7 +220,7 @@ def assert_type(name, obj, types, none_ok=True):
   raise AssertionError(stack_msg + ": " + type_msg)
 
 
-def initHelper (obj, kw):
+def init_helper (obj, kw):
   """
   Inside a class's __init__, this will copy keyword arguments to fields
   of the same name.  See libopenflow for an example.
@@ -230,9 +230,10 @@ def initHelper (obj, kw):
       raise TypeError(obj.__class__.__name__ + " constructor got "
       + "unexpected keyword argument '" + k + "'")
     setattr(obj, k, v)
+initHelper = init_helper # Deprecated
 
 
-def makePinger ():
+def make_pinger ():
   """
   A pinger is basically a thing to let you wake a select().
   On Unix systems, this makes a pipe pair.  But on Windows, select() only
@@ -360,6 +361,17 @@ def makePinger ():
       return SocketPinger(result)
 
   raise RuntimeError("Could not allocate a local socket pair")
+makePinger = make_pinger # Deprecated
+
+
+def is_subclass (cls, classinfo):
+  """
+  A more sensible version of the issubclass builtin
+  """
+  try:
+    return issubclass(cls, classinfo)
+  except TypeError:
+    return False
 
 
 def str_to_bool (s):

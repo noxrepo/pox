@@ -21,8 +21,6 @@ import pox.lib.packet as pkt
 from struct import pack
 import time
 
-from struct import pack
-import time
 
 class SocketWedge (object):
   def __init__ (self, socket):

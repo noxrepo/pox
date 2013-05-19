@@ -283,6 +283,9 @@ class IPAddr (object):
     """ Return dotted quad representation """
     return socket.inet_ntoa(self.toRaw())
 
+  def in_network (self, *args, **kw):
+    return self.inNetwork(*args, **kw)
+
   def inNetwork (self, network, netmask = None):
     """
     Returns True if this network is in the specified network.
@@ -293,6 +296,7 @@ class IPAddr (object):
     """
     if type(network) is not tuple:
       if netmask is not None:
+        network = str(network)
         network += "/" + str(netmask)
       n,b = parse_cidr(network)
     else:
