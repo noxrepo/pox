@@ -364,6 +364,16 @@ def make_pinger ():
 makePinger = make_pinger # Deprecated
 
 
+def is_subclass (cls, classinfo):
+  """
+  A more sensible version of the issubclass builtin
+  """
+  try:
+    return issubclass(cls, classinfo)
+  except TypeError:
+    return False
+
+
 def str_to_bool (s):
   """
   Given a string, parses out whether it is meant to be True or not
