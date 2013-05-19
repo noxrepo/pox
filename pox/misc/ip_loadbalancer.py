@@ -231,8 +231,7 @@ class iplb (object):
                             hard_timeout=of.OFP_FLOW_PERMANENT,
                             data=event.ofp,
                             actions=actions,
-                            match=of.ofp_match.from_packet(packet,
-                                                            inport))
+                            match=match)
       self.con.send(msg)
 
     elif ipp.dstip == self.service_ip:
@@ -265,8 +264,7 @@ class iplb (object):
                             hard_timeout=of.OFP_FLOW_PERMANENT,
                             data=event.ofp,
                             actions=actions,
-                            match=of.ofp_match.from_packet(packet,
-                                                            inport))
+                            match=match)
       self.con.send(msg)
 
 
