@@ -410,8 +410,9 @@ class Discovery (EventMixin):
 
   def _delete_links (self, links):
     for link in links:
-      del self.adjacency[link]
       self.raiseEventNoErrors(LinkEvent, False, link)
+    for link in links:
+      self.adjacency.pop(link, None)
 
   def is_edge_port (self, dpid, port):
     """
