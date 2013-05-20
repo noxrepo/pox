@@ -122,7 +122,7 @@ class iplb (object):
       if t > expire_at:
         self.outstanding_probes.pop(ip, None)
         if ip in self.live_servers:
-          self.log.debug("Server %s is dead", ip)
+          self.log.warn("Server %s down", ip)
           del self.live_servers[ip]
 
     # Expire old flows
@@ -192,7 +192,7 @@ class iplb (object):
             else:
               # Ooh, new server.
               self.live_servers[arpp.protosrc] = arpp.hwsrc,inport
-              self.log.info("Server is up: %s", arpp.protosrc)
+              self.log.info("Server %s up", arpp.protosrc)
         return
 
       # Not TCP and not ARP.  Don't know what to do with this.  Drop it.
