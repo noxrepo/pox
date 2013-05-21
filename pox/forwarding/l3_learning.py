@@ -33,7 +33,7 @@ from pox.lib.packet.ethernet import ethernet, ETHER_BROADCAST
 from pox.lib.packet.ipv4 import ipv4
 from pox.lib.packet.arp import arp
 from pox.lib.addresses import IPAddr, EthAddr
-from pox.lib.util import str_to_bool, dpidToStr
+from pox.lib.util import str_to_bool, dpid_to_str
 from pox.lib.recoco import Timer
 
 import pox.openflow.libopenflow_01 as of
@@ -141,7 +141,7 @@ class l3_switch (EventMixin):
       bucket = self.lost_buffers[(dpid,ipaddr)]
       del self.lost_buffers[(dpid,ipaddr)]
       log.debug("Sending %i buffered packets to %s from %s"
-                % (len(bucket),ipaddr,dpidToStr(dpid)))
+                % (len(bucket),ipaddr,dpid_to_str(dpid)))
       for _,buffer_id,in_port in bucket:
         po = of.ofp_packet_out(buffer_id=buffer_id,in_port=in_port)
         po.actions.append(of.ofp_action_dl_addr.set_dst(macaddr))
@@ -302,7 +302,8 @@ class l3_switch (EventMixin):
                   r.protodst = a.protosrc
                   r.protosrc = a.protodst
                   r.hwsrc = self.arpTable[dpid][a.protodst].mac
-                  e = ethernet(type=packet.type, src=dpid_to_mac(dpid), dst=a.hwsrc)
+                  e = ethernet(type=packet.type, src=dpid_to_mac(dpid),
+                               dst=a.hwsrc)
                   e.set_payload(r)
                   log.debug("%i %i answering ARP for %s" % (dpid, inport,
                    str(r.protosrc)))
@@ -319,13 +320,9 @@ class l3_switch (EventMixin):
        {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
        'op:%i' % (a.opcode,)), str(a.protosrc), str(a.protodst)))
 
-      msg = of.ofp_packet_out(in_port = inport, action = of.ofp_action_output(port = of.OFPP_FLOOD))
-      if event.ofp.buffer_id is of.NO_BUFFER:
-        # Try sending the (probably incomplete) raw data
-        msg.data = event.data
-      else:
-        msg.buffer_id = event.ofp.buffer_id
-      event.connection.send(msg.pack())
+      msg = of.ofp_packet_out(in_port = inport, data = event.ofp,
+          action = of.ofp_action_output(port = of.OFPP_FLOOD))
+      event.connection.send(msg)
 
 
 def launch (fakeways="", arp_for_unknowns=None):
