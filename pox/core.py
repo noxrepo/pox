@@ -386,6 +386,9 @@ class POXCore (EventMixin):
     """
     Calls a callback when components are ready.
     """
+    if callback is None:
+      callback = lambda:None
+      callback.func_name = "<None>"
     if isinstance(components, basestring):
       components = [components]
     elif isinstance(components, set):
