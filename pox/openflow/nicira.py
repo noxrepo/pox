@@ -1804,7 +1804,8 @@ def launch (convert_packet_in = False):
   _init_handler()
   _init_unpacker()
 
-  core.registerNew(NX)
-
+  nx = NX()
   if convert_packet_in:
-    core.NX.convert_packet_in = True
+    nx.convert_packet_in = True
+
+  core.register("NX", nx)
