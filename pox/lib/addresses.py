@@ -306,6 +306,22 @@ class IPAddr (object):
 
     return (self.toUnsigned() & ~((1 << (32-b))-1)) == n.toUnsigned()
 
+  @property
+  def is_multicast (self):
+    return ((self.toSigned(networkOrder = False) >> 24) & 0xe0) == 0xe0
+
+  @property
+  def multicast_ethernet_address (self):
+    """
+    Returns corresponding multicast EthAddr
+
+    Assumes this is, in fact, a multicast IP address!
+    """
+    if not self.is_multicast:
+      raise RuntimeError("No multicast EthAddr for non-multicast IPAddr!")
+    n = self.toUnsigned(networkOrder = False) & 0x7fffff
+    return EthAddr("01005e" + ("%06x" % (n)))
+
   def __str__ (self):
     return self.toStr()
 
