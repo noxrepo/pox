@@ -820,6 +820,78 @@ class nx_action_resubmit (of.ofp_action_vendor_base):
     return s
 
 
+class nx_action_set_tunnel (of.ofp_action_vendor_base):
+  """
+  Set a 32-bit tunnel ID
+
+  See also: nx_action_set_tunnel64
+  """
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_SET_TUNNEL
+    self.tun_id = None # Must set
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.tun_id != other.tun_id: return False
+    return True
+
+  def _pack_body (self):
+    p = struct.pack('!HHI', self.subtype, 0, self.tun_id)
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype,) = of._unpack('!H', raw, offset)
+    offset = of._skip(raw, offset, 2)
+    offset,(self.tun_id,) = of._unpack('!I', raw, offset)
+    return offset
+
+  def _body_length (self):
+    return 8
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    s += prefix + ('tub_id: %s\n' % (self.tun_id,))
+    return s
+
+
+class nx_action_set_tunnel64 (of.ofp_action_vendor_base):
+  """
+  Set a 64-bit tunnel ID
+
+  See also: nx_action_set_tunnel
+  """
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_SET_TUNNEL64
+    self.tun_id = None # Must set
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.tun_id != other.tun_id: return False
+    return True
+
+  def _pack_body (self):
+    p = struct.pack('!HHIQ', self.subtype, 0, 0, self.tun_id)
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype,) = of._unpack('!H', raw, offset)
+    offset = of._skip(raw, offset, 6)
+    offset,(self.tun_id,) = of._unpack('!Q', raw, offset)
+    return offset
+
+  def _body_length (self):
+    return 16
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    s += prefix + ('tub_id: %s\n' % (self.tun_id,))
+    return s
+
+
 class nx_action_fin_timeout (of.ofp_action_vendor_base):
   def _init (self, kw):
     self.vendor = NX_VENDOR_ID
