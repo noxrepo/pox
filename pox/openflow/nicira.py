@@ -771,6 +771,51 @@ class nx_action_dec_ttl (of.ofp_action_vendor_base):
     return s
 
 
+class nx_action_controller (of.ofp_action_vendor_base):
+  """
+  Sends packet to controller
+
+  This is similar to an output to OFPP_CONTROLLER, but allows setting
+  the reason field and controller id to send to.
+  """
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_CONTROLLER
+    self.max_len = 0xffFF
+    self.controller_id = 0
+    self.reason = of.OFPR_ACTION
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.max_len != other.max_len: return False
+    if self.controller_id != other.controller_id: return False
+    if self.reason != other.reason: return False
+    return True
+
+  def _pack_body (self):
+    p = struct.pack('!HHHB', self.subtype, self.max_len, self.controller_id,
+        self.reason)
+    p += of._PAD
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype,self.max_len, self.controller_id, self.reason) = \
+        of._unpack('!HHHB', raw, offset)
+    offset = of._skip(raw, offset, 1)
+    return offset
+
+  def _body_length (self):
+    return 12
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    s += prefix + ('max_len: %s\n' % (self.max_len,))
+    s += prefix + ('controller_id: %s\n' % (self.controller_id,))
+    s += prefix + ('reason: %s\n' % (self.reason,))
+    return s
+
+
 class nx_action_resubmit (of.ofp_action_vendor_base):
   """
   Used with both resubmit and resubmit_table.
