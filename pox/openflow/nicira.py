@@ -29,6 +29,15 @@ import struct
 
 
 # -----------------------------------------------------------------------
+# OpenFlow Stuff
+# -----------------------------------------------------------------------
+# Technically, this stuff is part of OpenFlow 1.1+ and shouldn't be in
+# this file.  Since we don't have 1.1+ support yet, it's here at least
+# temporarily.
+OFPR_INVALID_TTL = 2 # Packet has invalid TTL
+
+
+# -----------------------------------------------------------------------
 # Nicira extensions
 # -----------------------------------------------------------------------
 
