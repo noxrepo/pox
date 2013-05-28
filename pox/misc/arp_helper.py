@@ -19,6 +19,13 @@
 A utility module for handling some mundane parts of ARP
 """
 
+"""
+TODO
+----
+arp_responder should be refactored to use this.  Also, it should be possible
+to have a simple ARP learner which keeps an ARP table without responding...
+"""
+
 from pox.core import core
 import pox
 log = core.getLogger()
@@ -90,12 +97,13 @@ class ARPRequest (Event):
   def __str__ (self):
     return "ARPRequest for %s on %s"  % (self.ip, dpid_to_str(self.dpid))
 
-  def __init__ (self, con, arpp, reply_from, eat_packet):
+  def __init__ (self, con, arpp, reply_from, eat_packet, port):
     super(ARPRequest,self).__init__()
     self.connection = con
     self.request = arpp # ARP packet
     self.reply_from = reply_from # MAC
     self.eat_packet = eat_packet
+    self.port = port
 
     self.ip = arpp.protosrc
     self.reply = None # Set to desired EthAddr
@@ -110,11 +118,12 @@ class ARPReply (Event):
     return "ARPReply for %s on %s"  % (self.reply.protodst,
                                        dpid_to_str(self.dpid))
 
-  def __init__ (self, con, arpp, eat_packet):
+  def __init__ (self, con, arpp, eat_packet, port):
     super(ARPReply,self).__init__()
     self.connection = con
     self.reply = arpp
     self.eat_packet = eat_packet
+    self.port = port
 
 
 class ARPHelper (EventMixin):
@@ -162,7 +171,8 @@ class ARPHelper (EventMixin):
       log.debug("%s ARP request %s => %s", dpid_to_str(dpid),
                 a.protosrc, a.protodst)
 
-      ev = ARPRequest(event.connection,a,_dpid_to_mac(dpid),self.eat_packets)
+      ev = ARPRequest(event.connection,a,_dpid_to_mac(dpid),self.eat_packets,
+          inport)
       self.raiseEvent(ev)
       if ev.reply is not None:
         r = arp()
@@ -191,7 +201,7 @@ class ARPHelper (EventMixin):
       log.debug("%s ARP reply %s => %s", dpid_to_str(dpid),
                 a.protosrc, a.hwsrc)
 
-      ev = ARPReply(event.connection,a,self.eat_packets)
+      ev = ARPReply(event.connection,a,self.eat_packets,inport)
       self.raiseEvent(ev)
       return EventHalt if ev.eat_packet else None
 
