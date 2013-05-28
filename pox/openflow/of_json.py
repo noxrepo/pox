@@ -97,6 +97,7 @@ def _unfix_port (v):
 def _unfix_ip (v):
   v = v()
   if v[1] == 0:
+    if v[0] is None: return None
     return str(v[0])
   return "%s/%i" % v
 def _unfix_str (v):
@@ -124,6 +125,7 @@ def match_to_dict (m):
     if v is None: continue
     if k.startswith('get_'): k = k[4:]
     v = func(v)
+    if v is None: continue
     d[k] = v
   return d
 
