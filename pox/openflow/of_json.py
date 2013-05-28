@@ -122,6 +122,7 @@ def match_to_dict (m):
   for k,func in _unfix_map.iteritems():
     v = getattr(m, k)
     if v is None: continue
+    if k.startswith('get_'): k = k[4:]
     v = func(v)
     d[k] = v
   return d
