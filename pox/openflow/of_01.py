@@ -24,6 +24,7 @@ NOTE: This module is loaded automatically on startup unless POX is run
 from pox.core import core
 import pox
 import pox.lib.util
+from pox.lib.addresses import EthAddr
 from pox.lib.revent.revent import EventMixin
 import datetime
 import time
@@ -628,6 +629,13 @@ class Connection (EventMixin):
 
     #TODO: set a time that makes sure we actually establish a connection by
     #      some timeout
+
+  @property
+  def eth_addr (self):
+    dpid = self.dpid
+    if self.dpid is None:
+      raise RuntimeError("eth_addr not available")
+    return EthAddr("%012x" % (dpid & 0xffFFffFFffFF,))
 
   def fileno (self):
     return self.sock.fileno()
