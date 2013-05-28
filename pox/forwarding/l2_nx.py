@@ -16,7 +16,7 @@
 A quick-and-dirty learning switch for Open vSwitch
 
 This learning switch requires Nicira extensions as found in Open vSwitch.
-Run with something like:
+Furthermore, you must enable packet-in conversion.  Run with something like:
   ./pox.py openflow.nicira --convert-packet-in forwarding.l2_nx
 
 This forwards based on ethernet source and destination addresses.  Where
