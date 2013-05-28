@@ -39,10 +39,6 @@ FLOW_IDLE_TIMEOUT = 10
 FLOW_MEMORY_TIMEOUT = 60 * 5
 
 
-def dpid_to_mac (dpid):
-  # This really should be a library function somewhere.
-  return EthAddr("%012x" % (dpid & 0xffFFffFFffFF,))
-
 
 class MemoryEntry (object):
   """
@@ -101,7 +97,7 @@ class iplb (object):
     self.service_ip = IPAddr(service_ip)
     self.servers = [IPAddr(a) for a in servers]
     self.con = connection
-    self.mac = dpid_to_mac(self.con.dpid)
+    self.mac = self.con.eth_addr
     self.live_servers = {} # IP -> MAC,port
 
     try:
