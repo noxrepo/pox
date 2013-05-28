@@ -45,6 +45,19 @@ def dpid_to_mac (dpid):
 
 
 class MemoryEntry (object):
+  """
+  Record for flows we are balancing
+
+  Table entries in the switch "remember" flows for a period of time, but
+  rather than set their expirations to some long value (potentially leading
+  to lots of rules for dead connections), we let them expire from the
+  switch relatively quickly and remember them here in the controller for
+  longer.
+
+  Another tactic would be to increase the timeouts on the switch and use
+  the Nicira extension witch can match packets with FIN set to remove them
+  when the connection closes.
+  """
   def __init__ (self, server, first_packet, client_port):
     self.server = server
     self.first_packet = first_packet
@@ -115,6 +128,11 @@ class iplb (object):
     self.con.addListeners(self)
 
   def _do_expire (self):
+    """
+    Expire probes and "memorized" flows
+
+    Each of these should only have a limited lifetime.
+    """
     t = time.time()
 
     # Expire probes
@@ -133,6 +151,9 @@ class iplb (object):
       self.log.debug("Expired %i flows", c-len(self.memory))
 
   def _do_probe (self):
+    """
+    Send an ARP to a server to see if it's still up
+    """
     self._do_expire()
 
     server = self.servers.pop(0)
@@ -162,6 +183,9 @@ class iplb (object):
 
   @property
   def _probe_wait_time (self):
+    """
+    Time to wait between probes
+    """
     r = self.probe_cycle_time / float(len(self.servers))
     r = max(.25, r) # Cap it at four per second
     return r
@@ -181,6 +205,7 @@ class iplb (object):
     if not tcpp:
       arpp = packet.find('arp')
       if arpp:
+        # Handle replies to our server-liveness probes
         if arpp.opcode == arpp.REPLY:
           if arpp.protosrc in self.outstanding_probes:
             # A server is (still?) up; cool.
@@ -203,7 +228,8 @@ class iplb (object):
     ipp = packet.find('ipv4')
 
     if ipp.srcip in self.servers:
-      # It's FROM one of our servers.
+      # It's FROM one of our balanced servers.
+      # Rewrite it BACK to the client
 
       key = ipp.srcip,ipp.dstip,tcpp.srcport,tcpp.dstport
       entry = self.memory.get(key)
@@ -218,6 +244,7 @@ class iplb (object):
 
       #self.log.debug("Install reverse flow for %s", key)
 
+      # Install reverse table entry
       mac,port = self.live_servers[entry.server]
 
       actions = []
@@ -235,22 +262,28 @@ class iplb (object):
       self.con.send(msg)
 
     elif ipp.dstip == self.service_ip:
-      # Ah, it's for load balancing
+      # Ah, it's for our service IP and needs to be load balanced
+
+      # Do we already know this flow?
       key = ipp.srcip,ipp.dstip,tcpp.srcport,tcpp.dstport
       entry = self.memory.get(key)
       if entry is None or entry.server not in self.live_servers:
-        # Hopefully it's new!
+        # Don't know it (hopefully it's new!)
         if len(self.live_servers) == 0:
           self.log.warn("No servers!")
           return drop()
+
+        # Pick a random server for this flow
         server = random.choice(self.live_servers.keys())
         self.log.debug("Directing traffic to %s", server)
         entry = MemoryEntry(server, packet, inport)
         self.memory[entry.key1] = entry
         self.memory[entry.key2] = entry
    
+      # Update timestamp
       entry.refresh()
 
+      # Set up table entry towards selected server
       mac,port = self.live_servers[entry.server]
 
       actions = []
