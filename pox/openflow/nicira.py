@@ -229,7 +229,7 @@ class nx_flow_mod_table_id (nicira_base):
 
     Return new offset
     """
-    offset,enable = of._unpack("!B", raw, offset)
+    offset,(enable,) = of._unpack("!B", raw, offset)
     offset = of._skip(raw, offset, 7)
     self.enable = True if enable else False
     return offset
@@ -478,7 +478,7 @@ class nx_packet_in_format (nicira_base):
     """
     Pack body.
     """
-    return struct.pack("!L", self.format)
+    return struct.pack("!I", self.format)
 
   def _unpack_body (self, raw, offset, avail):
     """
@@ -486,7 +486,7 @@ class nx_packet_in_format (nicira_base):
 
     Return new offset
     """
-    offset,self.format = of._unpack("!L", raw, offset)
+    offset,(self.format,) = of._unpack("!I", raw, offset)
     return offset
 
   def _show (self, prefix):
