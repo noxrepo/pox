@@ -1471,7 +1471,10 @@ def NXM_IS_NX_REG (o):
 # Nicira nxm_entries
 # -----------------------------------------------------------------------
 
+# Tunnel properties
 _make_nxm_w("NXM_NX_TUN_ID", 1, 16, 8)
+_make_nxm_w("NXM_NX_TUN_IPV4_SRC", 1, 31, 4, type=_nxm_ip)
+_make_nxm_w("NXM_NX_TUN_IPV4_DST", 1, 32, 4, type=_nxm_ip)
 
 # The ethernet address in an ethernet+IP ARP packet
 _make_nxm("NXM_NX_ARP_SHA", 1, 17, 6, type=_nxm_ether)
