@@ -1,4 +1,4 @@
-# Copyright 2012 James McCauley
+# Copyright 2012,2013 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,10 @@ from pox.openflow.libopenflow_01 import _unpack, _read, _skip
 
 import struct
 
+
+# -----------------------------------------------------------------------
+# Nicira extensions
+# -----------------------------------------------------------------------
 
 NX_VENDOR_ID = 0x00002320
 
@@ -66,15 +70,19 @@ NXT_SET_FLOW_FORMAT = 12
 NXT_FLOW_MOD = 13
 NXT_FLOW_MOD_TABLE_ID = 15
 NXT_SET_PACKET_IN_FORMAT = 16
+NXT_PACKET_IN = 17
 NXT_FLOW_AGE = 18
+NXT_SET_ASYNC_CONFIG = 19
 NXT_SET_CONTROLLER_ID = 20
 NXT_FLOW_MONITOR_CANCEL = 21
 NXT_FLOW_MONITOR_PAUSED = 22
 NXT_FLOW_MONITOR_RESUMED = 23
+
 NXST_FLOW_MONITOR_REQUEST = 2
 NXST_FLOW_MONITOR_REPLY = 2
 
 
+#TODO: Replace with version in pox.lib?
 def _issubclass (a, b):
   try:
     return issubclass(a, b)
@@ -485,6 +493,10 @@ class nx_packet_in_format (nicira_base):
       s += str(self.format)
     return s + "\n"
 
+
+# -----------------------------------------------------------------------
+# Actions
+# -----------------------------------------------------------------------
 
 class nx_output_reg (of.ofp_action_vendor_base):
   def _init (self, kw):
@@ -1352,7 +1364,6 @@ _make_nxm_w("NXM_NX_COOKIE", 1, 30, 8)
 
 
 #@vendor_s_message('NXT_PACKET_IN', 17)
-NXT_PACKET_IN = 17
 class nxt_packet_in (nicira_base, of.ofp_packet_in):
   subtype = NXT_PACKET_IN
   _MIN_LENGTH = 34
