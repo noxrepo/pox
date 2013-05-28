@@ -1,5 +1,5 @@
 # Copyright 2012 Colin Scott
-# Copyright 2012 James McCauley
+# Copyright 2012,2013 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,9 +19,17 @@ import os.path
 from pox.lib.addresses import *
 from copy import copy
 
+try:
+  import nose
+  _fail_decorator = nose.tools.raises(RuntimeError)
+except:
+  _fail_decorator = unittest.expectedFailure
+
+
 class MockEthAddrTest(unittest.TestCase):
   def test_basic(self):
-    self.assertEqual("00:11:22:33:44:55", str(EthAddr("00:11:22:33:44:55")), "str(eth) doesn't match original string")
+    self.assertEqual("00:11:22:33:44:55", str(EthAddr("00:11:22:33:44:55")),
+        "str(eth) doesn't match original string")
 
 #  def test_int_ctor(self):
 #    int_val = EthAddr("00:00:00:00:01:00").toInt()
@@ -34,3 +42,15 @@ class MockIPAddrTest (unittest.TestCase):
   def test_in_network (self):
     self.assertTrue(IPAddr("192.168.1.1").inNetwork("192.168.1.0/24"))
 
+  def test_multicast (self):
+    self.assertTrue(str(IPAddr("224.0.0.9").multicast_ethernet_address)
+        == "01:00:5e:00:00:09")
+
+  @_fail_decorator
+  def test_bad_cidr_fail (self):
+    parse_cidr("192.168.1.0/16", infer=False, allow_host=False)
+
+  def test_bad_cidr_succeed (self):
+    a,b=parse_cidr("192.168.1.0/255.255.255.0", infer=False, allow_host=False)
+    self.assertEqual(a,IPAddr("192.168.1.0"))
+    self.assertEqual(b,24)
