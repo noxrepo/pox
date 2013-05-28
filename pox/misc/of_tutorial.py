@@ -21,7 +21,7 @@ This component is for use with the OpenFlow tutorial.
 It acts as a simple hub, but can be modified to act like an L2
 learning switch.
 
-It's quite similar to the one for NOX.  Credit where credit due. :)
+It's roughly similar to the one Brandon Heller did for NOX.
 """
 
 from pox.core import core
