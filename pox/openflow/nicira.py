@@ -503,6 +503,76 @@ class nx_packet_in_format (nicira_base):
     return s + "\n"
 
 
+NX_ROLE_OTHER = 0
+NX_ROLE_MASTER = 1
+NX_ROLE_SLAVE = 2
+
+class nx_role_request (nicira_base):
+  """
+  Requests master/slave/other role type
+
+  Can initialize with role=NX_ROLE_xxx or with, e.g., master=True.
+  """
+  subtype = NXT_ROLE_REQUEST
+  _MIN_LENGTH = 16 + 4
+
+  def _init (self, kw):
+    self.role = NX_ROLE_OTHER
+
+    if kw.pop("other", False):
+      self.role = NX_ROLE_OTHER
+    if kw.pop("master", False):
+      self.role = NX_ROLE_MASTER
+    if kw.pop("slave", False):
+      self.role = NX_ROLE_SLAVE
+
+  @property
+  def master (self):
+    return self.role == NX_ROLE_MASTER
+  @property
+  def slave (self):
+    return self.role == NX_ROLE_SLAVE
+  @property
+  def other (self):
+    return self.role == NX_ROLE_OTHER
+
+  def _eq (self, other):
+    """
+    Return True if equal
+
+    Overide this.
+    """
+    return self.role == other.role
+
+  def _pack_body (self):
+    """
+    Pack body.
+    """
+    return struct.pack("!I", self.role)
+
+  def _unpack_body (self, raw, offset, avail):
+    """
+    Unpack body in raw starting at offset.
+
+    Return new offset
+    """
+    offset,(self.role,) = of._unpack("!I", raw, offset)
+    return offset
+
+  def _show (self, prefix):
+    """
+    Format additional fields as text
+    """
+    s = prefix + "role: "
+    s += {NX_ROLE_OTHER:"other",NX_ROLE_MASTER:"master",
+        NX_ROLE_SLAVE:"slave"}.get(self.role, str(self.role))
+    return s + "\n"
+
+class nx_role_reply (nx_role_request):
+  subtype = NXT_ROLE_REPLY
+  pass
+
+
 # -----------------------------------------------------------------------
 # Actions
 # -----------------------------------------------------------------------
@@ -1779,6 +1849,9 @@ def _unpack_nx_vendor (raw, offset):
   if subtype == NXT_PACKET_IN:
     npi = nxt_packet_in()
     return npi.unpack(raw, offset)[0], npi
+  elif subtype == NXT_ROLE_REPLY:
+    nrr = nxt_role_reply()
+    return nrr.unpack(raw, offset)[0], nrr
   else:
     print "NO UNPACKER FOR",subtype
     return _old_unpacker(raw, offset)
@@ -1800,6 +1873,9 @@ def _handle_VENDOR (con, msg):
     e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
     if e is None or e.halt != True:
       con.raiseEventNoErrors(PacketIn, con, msg)
+#  elif isinstance(msg, nxt_role_reply):
+#    pass
+#    #TODO
   else:
     _old_handler(con, msg)
 
