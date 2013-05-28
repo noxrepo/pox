@@ -1517,6 +1517,69 @@ _make_nxm("NXM_NX_IP_TTL", 1, 29, 1)
 _make_nxm_w("NXM_NX_COOKIE", 1, 30, 8)
 
 
+#@vendor_s_message('NXT_SET_ASYNC_CONFIG', 19)
+class nx_async_config (nicira_base):
+  subtype = NXT_SET_ASYNC_CONFIG
+  _MIN_LENGTH = 40
+  def _init (self, kw):
+    # For master or other role
+    self.packet_in_mask = 0
+    self.port_status_mask = 0
+    self.flow_removed_mask = 0
+
+    # For slave role
+    self.packet_in_mask_slave = 0
+    self.port_status_mask_slave = 0
+    self.flow_removed_mask_slave = 0
+
+  def set_packet_in (self, bit, master=True, slave=True):
+    if master: self.packet_in_mask |= bit
+    if slave: self.packet_in_mask_slave |= bit
+
+  def set_port_status (self, bit, master=True, slave=True):
+    if master: self.port_status_mask |= bit
+    if slave: self.port_status_mask_slave |= bit
+
+  def set_flow_removed (self, bit, master=True, slave=True):
+    if master: selfflow_removed_mask |= bit
+    if slave: self.flow_removed_mask_slave |= bit
+
+  def _eq (self, other):
+    """
+    Return True if equal
+
+    Overide this.
+    """
+    for a in "packet_in port_status flow_removed".split():
+      a += "_mask"
+      if getattr(self, a) != getattr(other, a): return False
+      a += "_slave"
+      if getattr(self, a) != getattr(other, a): return False
+    return True
+
+  def _pack_body (self):
+    return struct.pack("!IIIIII",
+        self.packet_in_mask, self.packet_in_mask_slave,
+        self.port_status_mask, self.port_status_mask_slave,
+        self.flow_removed_mask, self.flow_removed_mask_slave)
+
+  def _unpack_body (self, raw, offset, avail):
+    """
+    Unpack body in raw starting at offset.
+
+    Return new offset
+    """
+    offset,tmp = of._unpack("!IIIIII", raw, offset)
+    self.packet_in_mask          = tmp[0]
+    self.packet_in_mask_slave    = tmp[1]
+    self.port_status_mask        = tmp[2]
+    self.port_status_mask_slave  = tmp[3]
+    self.flow_removed_mask       = tmp[4]
+    self.flow_removed_mask_slave = tmp[5]
+
+    return offset
+
+
 #@vendor_s_message('NXT_PACKET_IN', 17)
 class nxt_packet_in (nicira_base, of.ofp_packet_in):
   subtype = NXT_PACKET_IN
