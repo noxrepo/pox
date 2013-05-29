@@ -32,6 +32,13 @@ log = core.getLogger()
 table = {}
 
 
+# To send out all ports, we can use either of the special ports
+# OFPP_FLOOD or OFPP_ALL.  We'd like to just use OFPP_FLOOD,
+# but it's not clear if all switches support this, so we make
+# it selectable.
+all_ports = of.OFPP_FLOOD
+
+
 # Handle messages the switch has sent us because it has no
 # matching rule.
 def _handle_PacketIn (event):
@@ -46,11 +53,8 @@ def _handle_PacketIn (event):
     # We don't know where the destination is yet.  So, we'll just
     # send the packet out all ports (except the one it came in on!)
     # and hope the destination is out there somewhere. :)
-    # To send out all ports, we can use either of the special ports
-    # OFPP_FLOOD or OFPP_ALL.  We'd like to just use OFPP_FLOOD,
-    # but it's not clear if all switches support this. :(
     msg = of.ofp_packet_out(data = event.ofp)
-    msg.actions.append(of.ofp_action_output(port = of.OFPP_ALL))
+    msg.actions.append(of.ofp_action_output(port = all_ports))
     event.connection.send(msg)
   else:
     # Since we know the switch ports for both the source and dest
@@ -73,7 +77,11 @@ def _handle_PacketIn (event):
     log.debug("Installing %s <-> %s" % (packet.src, packet.dst))
 
 
-def launch ():
+def launch (disable_flood = False):
+  global all_ports
+  if disable_flood:
+    all_ports = of.OFPP_ALL
+
   core.openflow.addListenerByName("PacketIn", _handle_PacketIn)
 
   log.info("Pair-Learning switch running.")
