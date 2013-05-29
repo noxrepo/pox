@@ -606,6 +606,7 @@ class ofp_stats_body_base (ofp_base):
   def unpack (self, data, offset=0, avail=None):
   """
 
+
 class ofp_action_base (ofp_base):
   """
   Base class for actions
@@ -615,6 +616,18 @@ class ofp_action_base (ofp_base):
   useful for us, as it has the padding in it.
   """
   type = None
+
+  @classmethod
+  def unpack_new (cls, raw, offset=0):
+    """
+    Unpacks wire format into the appropriate action object.
+
+    Returns newoffset,object
+    """
+    o = cls()
+    r = o.unpack(raw, offset)
+    assert (r-offset) == len(o), o
+    return (r, o)
 
 
 class ofp_queue_prop_base (ofp_base):
@@ -1902,6 +1915,7 @@ class ofp_action_vendor_base (ofp_action_base):
     """
     Return length of body.
 
+    This should include everything after the length field.
     Optionally override this.
     """
     return len(self._pack_body())
