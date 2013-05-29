@@ -412,7 +412,7 @@ def hexdump (data):
     l = "%-48s" % (l,)
     l = l[:3*8-1] + "  " + l[3*8:]
     t = ''.join([filt(x) for x in chunk])
-    l += '  %-16s' % (t,)
+    l += '  |%-16s|' % (t,)
     o += l
   return o
 
