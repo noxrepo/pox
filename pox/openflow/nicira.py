@@ -652,6 +652,11 @@ class nx_reg_move (of.ofp_action_vendor_base):
     return True
 
   def _pack_body (self):
+    if self.nbits is None:
+      a = self.dst._nxm_length * 8 - self.dst_ofs
+      b = self.src._nxm_length * 8 - self.src_ofs
+      self.nbits = min(a,b)
+
     o = self.dst()
     o._force_mask = False
     dst = o.pack(omittable=False, header_only=True)
@@ -660,7 +665,7 @@ class nx_reg_move (of.ofp_action_vendor_base):
     o._force_mask = False
     src = o.pack(omittable=False, header_only=True)
 
-    p = struct.pack('!HHHH4s4s', self.subtype, self.nbits, self.src_ofs, 
+    p = struct.pack('!HHHH4s4s', self.subtype, self.nbits, self.src_ofs,
             self.dst_ofs, src, dst)
     return p
 
@@ -707,6 +712,8 @@ class nx_reg_load (of.ofp_action_vendor_base):
     return True
 
   def _pack_body (self):
+    if self.nbits is None:
+      self.nbits = self.dst._nxm_length * 8 - self.offset
     nbits = self.nbits - 1
     assert nbits >= 0 and nbits <= 63
     assert self.offset >= 0 and self.offset < (1 << 10)
