@@ -303,10 +303,14 @@ def openflow_stats_request  (stats_type, type_val=None, is_list=None,
       ti.request = c
 
     if type_val is not None:
-      if ti.reply and issubclass(ti.reply, ofp_stats_body_base):
+      yes = False
+      if ti.reply is not None and issubclass(ti.reply,ofp_stats_body_base):
         ti.reply._type = type_val
-      if ti.request and issubclass(ti.request, ofp_stats_body_base):
+        yes = True
+      if ti.request is not None and issubclass(ti.request,ofp_stats_body_base):
         ti.request._type = type_val
+        yes = True
+      assert yes, "Type not set for " + str(stats_type)
 
     return c
   return f
@@ -2638,11 +2642,11 @@ class ofp_stats_reply (ofp_header):
 @openflow_stats_reply("OFPST_DESC", 0)
 class ofp_desc_stats (ofp_stats_body_base):
   def __init__ (self, **kw):
-    self.mfr_desc= ""
-    self.hw_desc= ""
-    self.sw_desc= ""
-    self.serial_num= ""
-    self.dp_desc= ""
+    self.mfr_desc   = ""
+    self.hw_desc    = ""
+    self.sw_desc    = ""
+    self.serial_num = ""
+    self.dp_desc    = ""
 
     initHelper(self, kw)
 
