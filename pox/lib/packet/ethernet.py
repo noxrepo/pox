@@ -53,8 +53,10 @@ class ethernet(packet_base):
   VLAN_TYPE  = 0x8100
   LLDP_TYPE  = 0x88cc
   PAE_TYPE   = 0x888e           # 802.1x Port Access Entity
-  MPLS_UNICAST_TYPE = 0x8847
-  MPLS_MULTICAST_TYPE = 0x8848
+  #MPLS_UNICAST_TYPE = 0x8847
+  #MPLS_MULTICAST_TYPE = 0x8848
+  MPLS_TYPE  = 0x8847
+  MPLS_MC_TYPE = 0x8848         # Multicast
   IPV6_TYPE  = 0x86dd
   PPP_TYPE   = 0x880b
   LWAPP_TYPE = 0x88bb
@@ -88,8 +90,8 @@ class ethernet(packet_base):
       from eapol import eapol
       ethernet.type_parsers[ethernet.PAE_TYPE]  = eapol
       from mpls import mpls
-      ethernet.type_parsers[ethernet.MPLS_UNICAST_TYPE] = mpls
-      ethernet.type_parsers[ethernet.MPLS_MULTICAST_TYPE] = mpls
+      ethernet.type_parsers[ethernet.MPLS_TYPE] = mpls
+      ethernet.type_parsers[ethernet.MPLS_MC_TYPE] = mpls
       from llc import llc
       ethernet._llc = llc
 
