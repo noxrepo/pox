@@ -1016,6 +1016,463 @@ class nx_action_dec_ttl (of.ofp_action_vendor_base):
     s += prefix + ('subtype: %s\n' % (self.subtype,))
     return s
 
+
+# -----------------------------------------------------------------------
+# Learn action
+# -----------------------------------------------------------------------
+
+class nx_action_learn (of.ofp_action_vendor_base):
+  """
+  Allows table entries to add table entries
+
+  There are different ways of adding flow_mod_specs.  For example, the
+  following are all equivalent:
+
+  learn = nx.nx_action_learn(table_id=1,hard_timeout=10)
+  fms = nx.flow_mod_spec.new # Just abbreviating this
+  learn.spec.append(fms( field=nx.NXM_OF_VLAN_TCI, n_bits=12 ))
+  learn.spec.append(fms( field=nx.NXM_OF_ETH_SRC, match=nx.NXM_OF_ETH_DST ))
+  learn.spec.append(fms( field=nx.NXM_OF_IN_PORT, output=True ))
+
+  learn = nx.nx_action_learn(table_id=1,hard_timeout=10)
+  learn.spec.chain(
+      field=nx.NXM_OF_VLAN_TCI, n_bits=12).chain(
+      field=nx.NXM_OF_ETH_SRC, match=nx.NXM_OF_ETH_DST).chain(
+      field=nx.NXM_OF_IN_PORT, output=True)
+
+  learn = nx.nx_action_learn(table_id=1,hard_timeout=10)
+  learn.spec = [
+      nx.flow_mod_spec(src=nx.nx_learn_src_field(nx.NXM_OF_VLAN_TCI),
+                        n_bits=12),
+      nx.flow_mod_spec(src=nx.nx_learn_src_field(nx.NXM_OF_ETH_SRC),
+                        dst=nx.nx_learn_dst_match(nx.NXM_OF_ETH_DST)),
+      nx.flow_mod_spec(src=nx.nx_learn_src_field(nx.NXM_OF_IN_PORT),
+                        dst=nx.nx_learn_dst_output())
+  ]
+
+  """
+
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_LEARN
+
+    self.idle_timeout = 0
+    self.hard_timeout = 0
+    self.priority = of.OFP_DEFAULT_PRIORITY
+    self.cookie = 0
+    self.flags = 0
+    self.table_id = 0
+    self.fin_idle_timeout = 0
+    self.fin_hard_timeout = 0
+
+    self.spec = flow_mod_spec_chain()
+
+  @property
+  def table (self):
+    """
+    Synonym for table_id
+    """
+    return self.table_id
+  @table.setter
+  def table (self, value):
+    self.table_id = value
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.idle_timeout != other.idle_timeout: return False
+    if self.hard_timeout != other.hard_timeout: return False
+    if self.priority != other.priority: return False
+    if self.cookie != other.cookie: return False
+    if self.flags != other.flags: return False
+    if self.table_id != other.table_id: return False
+    if self.fin_idle_timeout != other.fin_idle_timeout: return False
+    if self.fin_hard_timeout != other.fin_hard_timeout: return False
+    return True
+
+  def _pack_body (self):
+    p = struct.pack('!HHHHQHBBHH',
+                    self.subtype,
+                    self.idle_timeout,
+                    self.hard_timeout,
+                    self.priority,
+                    self.cookie,
+                    self.flags,
+                    self.table_id,
+                    0,
+                    self.fin_idle_timeout,
+                    self.fin_hard_timeout)
+    for fs in self.spec:
+      p += fs.pack()
+    if len(p) % 8:
+      p += '\x00' * (8-(len(p)%8))
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    orig_offset = offset
+    offset,(self.subtype, self.idle_timeout, self.hard_timeout,
+            self.priority, self.cookie, self.flags, self.table_id, _,
+            self.fin_idle_timeout,
+            self.fin_hard_timeout) = of._unpack('!HHHHQHBBHH', raw, offset)
+    avail -= (2+2+2+2+8+2+1+1+2+2)
+    assert (avail & 1) == 0
+    while avail > 0:
+      newoff, fms = flow_mod_spec.unpack_new(raw, offset)
+      if fms is None: break
+      self.spec.append(fms)
+      avail -= (newoff - offset)
+      offset = newoff
+    length = offset - orig_offset
+    if length % 8:
+      offset = of._skip(raw, offset, 8 - (length%8))
+    return offset
+
+  def _show (self, prefix):
+    s = ''
+    ff = ('idle_timeout hard_timeout priority cookie flags table_id '
+         'fin_idle_timeout fin_hard_timeout').split()
+    for f in ff:
+      s += prefix
+      s += f + ": "
+      s += str(getattr(self, f))
+      s += "\n"
+    return s
+
+
+NX_LEARN_SRC_FIELD     = 0
+NX_LEARN_SRC_IMMEDIATE = 1
+
+NX_LEARN_DST_MATCH     = 0
+NX_LEARN_DST_LOAD      = 1
+NX_LEARN_DST_OUTPUT    = 2
+
+class nx_learn_spec (object):
+  _is_src = False
+  _is_dst = False
+  data = None
+  n_bits = None
+  value = None
+
+  def pack (self):
+    return self.data if self.data else b''
+
+  @classmethod
+  def unpack_subclass (cls, spec, n_bits, raw, offset):
+    """
+    Returns (new_offset, object)
+    """
+    assert cls is not nx_learn_spec, "Must call on subclass"
+    c = _flow_mod_spec_to_class(cls._is_src, spec)
+    offset,o = c.unpack_new(n_bits, raw, offset)
+    return offset, o
+
+  @classmethod
+  def unpack_new (cls, n_bits, raw, offset):
+    """
+    Returns (new_offset, object)
+    """
+    o = cls.__new__(cls)
+    o.n_bits = n_bits
+    datalen = len(o)
+    if datalen != 0:
+      offset,o.data = of._read(raw, offset, datalen)
+    return offset,o
+
+  def __len__ (self):
+    # Implement.  Can't use .data field.
+    assert False, "__len__ unimplemented in " + type(self).__name__
+
+  def __repr__ (self):
+    return "<%s n_bits:%s>" % (type(self).__name__, self.n_bits)
+
+
+class nx_learn_spec_src (nx_learn_spec):
+  _is_src = True
+
+class nx_learn_spec_dst (nx_learn_spec):
+  _is_dst = True
+
+
+class _field_and_match (object):
+  """
+  Common functionality for src_field and dst_match
+  """
+  def __init__ (self, field, ofs = 0, n_bits = None):
+    #if type(field) is type: field = field()
+    data = field().pack(omittable = False, header_only = True)
+    data += struct.pack("!H", ofs)
+    if n_bits is None:
+      n_bits = field._nxm_length * 8 - ofs
+    elif n_bits < 0:
+      n_bits = field._nxm_length * 8 - ofs - n_bits
+    self.n_bits = n_bits
+    self.data = data
+
+  @property
+  def ofs (self):
+    return struct.unpack_from("!H", self.data, 4)[0]
+
+  @property
+  def field (self):
+    t,_,_ = nxm_entry.unpack_header(self.data, 0)
+    c = _nxm_type_to_class.get(t)
+    if c is None:
+      attrs = {'_nxm_type':t}
+      attrs['_nxm_length'] = length/2 if has_mask else length
+      c = type('nxm_type_'+str(t), (NXM_GENERIC,), attrs)
+    return c
+
+  def __len__ (self):
+    return 6
+
+
+class nx_learn_src_field (_field_and_match, nx_learn_spec_src):
+  value = NX_LEARN_SRC_FIELD
+
+  @property
+  def matching (self):
+    """
+    Returns a corresponding nx_learn_dst_match
+    """
+    return nx_learn_dst_match(self.field, self.ofs, self.n_bits)
+
+
+class nx_learn_src_immediate (nx_learn_spec_src):
+  """
+  An immediate value for a flow spec
+
+  Probably generally a good idea to use one of the factory methods, e.g., u8().
+  """
+  value = NX_LEARN_SRC_IMMEDIATE
+
+  def __init__ (self, data, n_bits = None):
+    if n_bits is None:
+      assert (len(data)&1) == 0, "data needs pad; n_bits cannot be inferred"
+      n_bits = len(data)*8
+    else:
+      assert len(data)*8 >= n_bits, "n_bits larger than data"
+    self.n_bits = n_bits
+    self.data = data
+
+  @classmethod
+  def u8 (cls, dst, value):
+    return cls(struct.pack("!H", value))
+
+  @classmethod
+  def u16 (cls, dst, value):
+    return cls(struct.pack("!H", value))
+
+  @classmethod
+  def u32 (cls, dst, value):
+    return cls(struct.pack("!L", value))
+
+  def __len__ (self):
+    return ((self.n_bits+15) // 16) * 2
+
+
+class nx_learn_dst_match (_field_and_match, nx_learn_spec_dst):
+  value = NX_LEARN_DST_MATCH
+
+
+class nx_learn_dst_load (nx_learn_spec_dst):
+  value = NX_LEARN_DST_LOAD
+
+  def __init__ (self, field, ofs = 0, n_bits = None):
+    data = field().pack(omittable = False, header_only = True)
+    data += struct.pack("!H", ofs)
+    if n_bits is None:
+      n_bits = field._nxm_length * 8 - ofs
+    elif n_bits < 0:
+      n_bits = field._nxm_length * 8 - ofs - n_bits
+    self.n_bits = n_bits
+    self.data = data
+
+  def __len__ (self):
+    return ((self.n_bits+15) // 16) * 2
+
+
+class nx_learn_dst_output (nx_learn_spec_dst):
+  value = NX_LEARN_DST_OUTPUT
+
+  def __init__ (self, dummy = True):
+    assert dummy is True
+    super(nx_learn_dst_output,self).__init__()
+
+  def __len__ (self):
+    return 0
+
+
+def _flow_mod_spec_to_class (is_src, val):
+  #TODO: Use a class registry and decorator for these instead of this hack
+  if is_src:
+    d = {
+          NX_LEARN_SRC_FIELD: nx_learn_src_field,
+          NX_LEARN_SRC_IMMEDIATE: nx_learn_src_immediate,
+        }
+  else:
+    d = {
+          NX_LEARN_DST_MATCH: nx_learn_dst_match,
+          NX_LEARN_DST_LOAD: nx_learn_dst_load,
+          NX_LEARN_DST_OUTPUT: nx_learn_dst_output,
+        }
+
+  return d.get(val)
+
+
+class flow_mod_spec_chain (list):
+  def chain (self, *args, **kw):
+    self.append(flow_mod_spec.new(*args,**kw))
+    return self
+
+#class _meta_fms (type):
+#  @property
+#  def chain (self):
+#    return _flow_mod_spec_chain()
+
+class flow_mod_spec (object):
+#  __metaclass__ = _meta_fms
+  @classmethod
+  def create (cls, src, dst = None, n_bits = None):
+    #TODO: Remove me
+    return cls(src, dst, n_bits)
+
+  def __init__ (self, src, dst = None, n_bits = None):
+    assert src._is_src
+    if dst is None:
+      # Assume same as src
+      assert type(src) == nx_learn_src_field
+      dst = src.matching
+    assert dst._is_dst
+
+    #TODO: Check whether there's enough space in dst
+    # (This will require figuring out what the right length for output is...
+    #  16 bits?)
+    if n_bits is None:
+      n_bits = src.n_bits
+      if n_bits is None:
+        n_bits = dst.n_bits
+      else:
+        if dst.n_bits is not None and dst.n_bits > n_bits:
+          raise RuntimeError("dst n_bits greater than source n_bits "
+                             "(%s and %s); cannot infer" % (n_bits,dst.n_bits))
+      if n_bits is None:
+        raise RuntimeError("cannot infer n_bits")
+
+    #o = cls.__new__(cls)
+    #o.src = src
+    #o.dst = dst
+    #o.n_bits = n_bits
+    #return o
+    #return cls(src, dst, n_bits)
+    self.src = src
+    self.dst = dst
+    self.n_bits = n_bits
+
+  def __repr__ (self):
+    return "%s(src=%s, dst=%s, n_bits=%s)" % (
+      type(self).__name__, self.src, self.dst, self.n_bits)
+
+#  @staticmethod
+#  def chain ():
+#    return _flow_mod_spec_chain()
+
+  @classmethod
+  def new (cls, src=None, dst=None, **kw):
+    if src is not None: kw['src'] = src
+    if dst is not None: kw['dst'] = dst
+    src = None
+    dst = None
+    srcarg = ()
+    dstarg = ()
+    srckw = {}
+    dstkw = {}
+    src_inst = None
+    dst_inst = None
+    n_bits = None
+
+    for k,v in kw.iteritems():
+      # This is handy, though there's potentially future ambiguity
+      s = globals().get('nx_learn_' + k)
+      if not s:
+        s = globals().get('nx_learn_src_' + k)
+        if not s:
+          s = globals().get('nx_learn_dst_' + k)
+      if not s:
+        if k.startswith("src_"):
+          srckw[k[4:]] = v
+        elif k.startswith("dst_"):
+          dstkw[k[4:]] = v
+        elif k == "src":
+          assert isinstance(v, nx_learn_spec_src)
+          src_inst = v
+        elif k == "dst":
+          assert isinstance(v, nx_learn_spec_dst)
+          dst_inst = v
+        elif k == "n_bits":
+          n_bits = v
+        else:
+          raise RuntimeError("Don't know what to do with '%s'", (k,))
+        continue
+
+      if s._is_src:
+        assert src is None, "src already set"
+        src = s
+        srcarg = (v,)
+      if s._is_dst:
+        assert dst is None, "dst already set"
+        dst = s
+        dstarg = (v,)
+
+    if src_inst:
+      assert src is None, "can't set src and a spec type"
+      assert len(srckw) == 0, "can't set src params with src instance"
+    else:
+      assert src is not None, "no src set"
+      src_inst = src(*srcarg,**srckw)
+
+    if dst_inst:
+      assert dst is None, "can't set dst and a spec type"
+      assert len(dstkw) == 0, "can't set dst params with dst instance"
+    else:
+      if dst is not None: dst_inst = dst(*dstarg,**dstkw)
+
+    return cls.create(src_inst, dst_inst, n_bits)
+
+  chain = new
+
+  #def __init__ (self, src=None, dst=None, n_bits=0):
+  #  self.src = src
+  #  self.dst = dst
+  #  self.n_bits = n_bits
+
+  def pack (self):
+    assert isinstance(self.src, nx_learn_spec_src),str(self.src)
+    assert isinstance(self.dst, nx_learn_spec_dst),str(self.dst)
+    assert self.n_bits < 1024
+    v = self.src.value << 13 | self.dst.value << 11 | self.n_bits
+    p = struct.pack("!H", v)
+    p += self.src.pack() + self.dst.pack()
+    return p
+
+  @classmethod
+  def unpack_new (cls, raw, offset = 0):
+    """
+    May return a None object if it's padding
+    """
+    offset,(v,) = of._unpack("!H", raw, offset)
+    if v == 0:
+      # Special case for padding
+      return offset, None
+
+    n_bits = v & 1023
+
+    offset,src = nx_learn_spec_src.unpack_subclass((v >> 13) & 1,
+        n_bits, raw, offset)
+    offset,dst = nx_learn_spec_dst.unpack_subclass((v >> 11) & 3,
+        n_bits, raw, offset)
+
+    return offset, cls(src, dst, n_bits)
+
+
 # -----------------------------------------------------------------------
 # NXM support
 # -----------------------------------------------------------------------
