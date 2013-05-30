@@ -121,7 +121,8 @@ class iplb (object):
 
     self._do_probe() # Kick off the probing
 
-    self.con.addListeners(self)
+    # As part of a gross hack, we now do this from elsewhere
+    #self.con.addListeners(self)
 
   def _do_expire (self):
     """
@@ -303,6 +304,9 @@ class iplb (object):
       self.con.send(msg)
 
 
+# Remember which DPID we're operating on (first one to connect)
+_dpid = None
+
 def launch (ip, servers):
   servers = servers.replace(","," ").split()
   servers = [IPAddr(x) for x in servers]
@@ -315,9 +319,20 @@ def launch (ip, servers):
   logging.getLogger("misc.arp_responder").setLevel(logging.WARN)
 
   def _handle_ConnectionUp (event):
-    log.debug("IP Load Balancer on %s" % (event.connection,))
+    global _dpid
+    if _dpid is None:
+      log.info("IP Load Balancer Ready.")
+      core.registerNew(iplb, event.connection, IPAddr(ip), servers)
+      _dpid = event.dpid
 
-    core.registerNew(iplb, event.connection, IPAddr(ip), servers)
+    if _dpid != event.dpid:
+      log.warn("Ignoring switch %s", event.connection)
+    else:
+      log.info("Load Balancing on %s", event.connection)
 
-  core.openflow.addListenerByName("ConnectionUp", _handle_ConnectionUp,
-                                  once=True)
+      # Gross hack
+      core.iplb.con = event.connection
+      event.connection.addListeners(core.iplb)
+
+
+  core.openflow.addListenerByName("ConnectionUp", _handle_ConnectionUp)
