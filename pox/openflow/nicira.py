@@ -759,34 +759,6 @@ class nx_reg_load (of.ofp_action_vendor_base):
     return s
 
 
-class nx_action_dec_ttl (of.ofp_action_vendor_base):
-  def _init (self, kw):
-    self.vendor = NX_VENDOR_ID
-    self.subtype = NXAST_DEC_TTL
-
-  def _eq (self, other):
-    if self.subtype != other.subtype: return False
-    return True
-
-  def _pack_body (self):
-    p = struct.pack('!H', self.subtype)
-    p += of._PAD6
-    return p
-
-  def _unpack_body (self, raw, offset, avail):
-    offset,(self.subtype,) = of._unpack('!H', raw, offset)
-    offset = of._skip(raw, offset, 6)
-    return offset
-
-  def _body_length (self):
-    return 8
-
-  def _show (self, prefix):
-    s = ''
-    s += prefix + ('subtype: %s\n' % (self.subtype,))
-    return s
-
-
 class nx_action_controller (of.ofp_action_vendor_base):
   """
   Sends packet to controller
@@ -1017,6 +989,32 @@ class nx_action_exit (of.ofp_action_vendor_base):
     return s
 
 
+class nx_action_dec_ttl (of.ofp_action_vendor_base):
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_DEC_TTL
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    return True
+
+  def _pack_body (self):
+    p = struct.pack('!H', self.subtype)
+    p += of._PAD6
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype,) = of._unpack('!H', raw, offset)
+    offset = of._skip(raw, offset, 6)
+    return offset
+
+  def _body_length (self):
+    return 8
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    return s
 
 # -----------------------------------------------------------------------
 # NXM support
