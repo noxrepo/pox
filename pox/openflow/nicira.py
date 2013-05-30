@@ -68,6 +68,14 @@ def _init_constants ():
     "NXAST_FIN_TIMEOUT",
     "NXAST_CONTROLLER",
     "NXAST_DEC_TTL_CNT_IDS",
+    "NXAST_WRITE_METADATA",
+    "NXAST_PUSH_MPLS",
+    "NXAST_POP_MPLS",
+    "NXAST_SET_MPLS_TTL",
+    "NXAST_DEC_MPLS_TTL",
+    "NXAST_STACK_PUSH",
+    "NXAST_STACK_POP",
+    "NXAST_SAMPLE",
   ]
   for i,name in enumerate(actions):
     globals()[name] = i
