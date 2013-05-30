@@ -520,7 +520,7 @@ class nx_role_request (nicira_base):
   """
   Requests master/slave/other role type
 
-  Can initialize with role=NX_ROLE_xxx or with, e.g., master=True.
+  Can initialize with role=NX_ROLE_x or with, e.g., master=True.
   """
   subtype = NXT_ROLE_REQUEST
   _MIN_LENGTH = 16 + 4
@@ -821,7 +821,7 @@ class nx_action_controller (of.ofp_action_vendor_base):
     return offset
 
   def _body_length (self):
-    return 12
+    return 8
 
   def _show (self, prefix):
     s = ''
