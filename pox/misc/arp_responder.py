@@ -189,8 +189,8 @@ class ARPResponder (object):
             # Learn or update port/MAC info
             if a.protosrc in _arp_table:
               if _arp_table[a.protosrc] != a.hwsrc:
-                log.warn("%s RE-learned %s: %s->%s", (dpid_to_str(dpid),
-                    a.protosrc, _arp_table[a.protosrc], a.hwsrc))
+                log.warn("%s RE-learned %s: %s->%s", dpid_to_str(dpid),
+                    a.protosrc, _arp_table[a.protosrc].mac, a.hwsrc)
             else:
               log.info("%s learned %s", dpid_to_str(dpid), a.protosrc)
             _arp_table[a.protosrc] = Entry(a.hwsrc)
