@@ -1658,11 +1658,19 @@ class nxm_entry (object):
     #NOTE: Should use _class_for_nxm_header?
     c = _nxm_type_to_class.get(t)
     if c is None:
+      #TODO: Refactor with learn spec field property?
+
       e = NXM_GENERIC()
       e._nxm_length = length
       if has_mask:
         e._nxm_length /= 2
       e._nxm_type = t
+
+      # Alternate approach: Generate new subclass. To do: cache gen'd types?
+      #attrs = {'_nxm_type':t}
+      #attrs['_nxm_length'] = length/2 if has_mask else length
+      #c = type('nxm_type_'+str(t), (NXM_GENERIC,), attrs)
+      #e = c()
     else:
       e = c()
     assert data is not None
