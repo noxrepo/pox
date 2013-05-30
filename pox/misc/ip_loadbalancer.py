@@ -186,6 +186,12 @@ class iplb (object):
     r = max(.25, r) # Cap it at four per second
     return r
 
+  def _pick_server (self, key, inport):
+    """
+    Pick a server for a (hopefully) new connection
+    """
+    return random.choice(self.live_servers.keys())
+
   def _handle_PacketIn (self, event):
     inport = event.port
     packet = event.parsed
@@ -269,8 +275,8 @@ class iplb (object):
           self.log.warn("No servers!")
           return drop()
 
-        # Pick a random server for this flow
-        server = random.choice(self.live_servers.keys())
+        # Pick a server for this flow
+        server = self._pick_server(key, inport)
         self.log.debug("Directing traffic to %s", server)
         entry = MemoryEntry(server, packet, inport)
         self.memory[entry.key1] = entry
