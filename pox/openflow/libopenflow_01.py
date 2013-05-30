@@ -1946,6 +1946,7 @@ class ofp_action_vendor_base (ofp_action_base):
     packed = b""
     packed += struct.pack("!HHL", self.type, 8 + len(body), self.vendor)
     packed += body
+    assert (len(packed) % 8) == 0, "Vendor action length not multiple of 8"
     return packed
 
   def unpack (self, raw, offset=0):
