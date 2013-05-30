@@ -1,4 +1,4 @@
-# Copyright 2011-2012 James McCauley
+# Copyright 2011-2013 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,6 +46,18 @@ class basics_test (unittest.TestCase):
     # Use a factory method
     return cls.resubmit_table()
 
+  def _init_action_nx_action_set_tunnel (self, cls):
+    return cls(tun_id=101)
+
+  def _init_action_nx_action_set_tunnel64 (self, cls):
+    return cls(tun_id=101)
+
+  def _init_action_nx_action_learn (self, cls):
+    learn = self._make_learn_action()
+    assert type(learn)==cls
+    return learn
+
+
   def test_unpack_weird_header (self):
     """
     Test the unpacking of a header we don't have a class for
@@ -73,12 +85,12 @@ class basics_test (unittest.TestCase):
 
   def test_action_pack_unpack (self):
     """
-    Pack and unpack a bunch of actions.
+    Pack and unpack a bunch of actions
     """
     for name in dir(nx):
       a = getattr(nx, name)
       if not nx._issubclass(a, of.ofp_action_vendor_base): continue
-      #print name
+      print "Trying",name,"...",
       init = getattr(self, "_init_action_" + name, lambda c: c())
       original = init(a)
       original_packed = original.pack()
@@ -93,6 +105,7 @@ class basics_test (unittest.TestCase):
 
       self.assertEqual(original, unoriginal,
                        "Pack/Unpack failed for " + name)
+      print "Success!"
 
 
   def test_nxm_ip (self):
@@ -106,9 +119,47 @@ class basics_test (unittest.TestCase):
         try_bad)
 
 
+  def _make_learn_action (self):
+    fms = nx.flow_mod_spec.new
+    learn = nx.nx_action_learn(table_id=1,hard_timeout=10)
+    learn.spec.append(fms( field=nx.NXM_OF_VLAN_TCI, n_bits=12 ))
+    learn.spec.append(fms( field=nx.NXM_OF_ETH_SRC, match=nx.NXM_OF_ETH_DST ))
+    learn.spec.append(fms( field=nx.NXM_OF_IN_PORT, output=True ))
+
+    #learn.spec = [
+    #    nx.flow_mod_spec(src=nx.nx_learn_src_field(nx.NXM_OF_VLAN_TCI),
+    #                     n_bits=12),
+    #    nx.flow_mod_spec(src=nx.nx_learn_src_field(nx.NXM_OF_ETH_SRC),
+    #                     dst=nx.nx_learn_dst_match(nx.NXM_OF_ETH_DST)),
+    #    nx.flow_mod_spec(src=nx.nx_learn_src_field(nx.NXM_OF_IN_PORT),
+    #                     dst=nx.nx_learn_dst_output())
+    #]
+
+    #learn.spec.chain(
+    #  field=nx.NXM_OF_VLAN_TCI, n_bits=12).chain(
+    #  field=nx.NXM_OF_ETH_SRC, match=nx.NXM_OF_ETH_DST).chain(
+    #  field=nx.NXM_OF_IN_PORT, output=True)
+
+    return learn
+
+
+  def test_flow_mod_spec (self):
+    """
+    Check flow_mod_specs are correct
+
+    Not comprehensive.
+    """
+    learn = self._make_learn_action()
+    good = """00 0c 00 00 08 02 00 00  00 00 08 02 00 00
+              00 30 00 00 04 06 00 00  00 00 02 06 00 00
+              10 10 00 00 00 02 00 00""".split()
+    good = ''.join([chr(int(x,16)) for x in good])
+    self.assertEqual(good, ''.join(x.pack() for x in learn.spec))
+
+
   def test_match_pack_unpack (self):
     """
-    Pack and unpack a bunch of match entries.
+    Pack and unpack a bunch of match entries
     """
 
     # Note that this does not currently really take into account constraints
