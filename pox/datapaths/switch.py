@@ -62,7 +62,7 @@ def _generate_port (port_no, dpid=0):
   p = ofp_phy_port()
   p.port_no = port_no
   p.hw_addr = EthAddr("00:00:00:00:%2x:%2x" % (dpid % 255, port_no))
-  p.name = dpid_to_str(dpid) + "." + str(port_no)
+  p.name = dpid_to_str(dpid, True).replace('-','')[:12] + "." + str(port_no)
   # Fill in features sort of arbitrarily
   p.curr = OFPPF_10MB_HD
   p.advertised = OFPPF_10MB_HD
