@@ -2,7 +2,7 @@
 #
 # Copyright 2011-2012 Andreas Wundsam
 # Copyright 2011-2012 Colin Scott
-# Copyright 2011-2012 James McCauley
+# Copyright 2011-2013 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,17 +16,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-### auto generate sha1: 26c6550c27d0274b9338b2b85891aeaf01146ed8
-
 import itertools
 import os.path
 import sys
 import unittest
 
-sys.path.append(os.path.join(os.path.dirname(__file__), *itertools.repeat("..", 3)))
+sys.path.append(os.path.join(os.path.dirname(__file__),
+    *itertools.repeat("..", 3)))
 
 from pox.lib.mock_socket import MockSocket
-from pox.lib.ioworker.io_worker import IOWorker, RecocoIOLoop
+from pox.lib.ioworker import IOWorker, RecocoIOLoop
 from nose.tools import eq_
 
 class IOWorkerTest(unittest.TestCase):
@@ -85,7 +84,8 @@ class RecocoIOLoopTest(unittest.TestCase):
       self.received = worker.peek()
     worker.rx_handler = r
 
-    # 'start' the run (dark generator magic here). Does not actually execute run, but 'yield' a generator
+    # 'start' the run (dark generator magic here).
+    # Does not actually execute run, but 'yield' a generator
     g = loop.run()
     # g.next() will call it, and get as far as the 'yield select'
     select = g.next()
@@ -105,14 +105,17 @@ class RecocoIOLoopTest(unittest.TestCase):
     (left, right) = MockSocket.pair()
     worker = loop.new_worker(left)
 
-    self.assertFalse(worker in loop._workers,  "Should not add to _workers yet, until we start up the loop")
-    self.assertTrue(len(loop._pending_commands) == 1, "Should have added pending create() command")
+    self.assertFalse(worker in loop._workers,
+        "Should not add to _workers yet, until we start up the loop")
+    self.assertTrue(len(loop._pending_commands) == 1,
+        "Should have added pending create() command")
     worker.close()
     # This causes the worker to be scheduled to be closed -- it also 
     # calls pinger.ping(). However, the Select task won't receive the ping
     # Until after this method has completed! Thus, we only test whether
     # worker has been added to the pending close queue
-    self.assertTrue(len(loop._pending_commands) == 2, "Should have added pending close() command")
+    self.assertTrue(len(loop._pending_commands) == 2,
+        "Should have added pending close() command")
 
   def test_run_write(self):
     loop = RecocoIOLoop()
@@ -120,7 +123,8 @@ class RecocoIOLoopTest(unittest.TestCase):
     worker = loop.new_worker(left)
 
     worker.send("heppo")
-    # 'start' the run (dark generator magic here). Does not actually execute run, but 'yield' a generator
+    # 'start' the run (dark generator magic here).
+    # Does not actually execute run, but 'yield' a generator
     g = loop.run()
     # g.next() will call it, and get as far as the 'yield select'
     select = g.next()
@@ -130,4 +134,3 @@ class RecocoIOLoopTest(unittest.TestCase):
 
     # that should result in the stuff being sent on the socket
     self.assertEqual(right.recv(), "heppo")
-
