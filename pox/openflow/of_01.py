@@ -763,7 +763,7 @@ class Connection (EventMixin):
         continue
 
     if offset != 0:
-      self.buf = self.buf[offset:]
+      self.buf = self.buf[offset+1:]
 
     return True
 
