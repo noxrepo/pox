@@ -249,15 +249,17 @@ class RecocoIOWorker (IOWorker):
   An IOWorker that works with our RecocoIOLoop.
   """
 
-  def __init__ (self, socket, pinger, on_close):
+  # Set by register
+  on_close = None
+  pinger = None
+
+  def __init__ (self, socket):
     """
     pinger is a pinger that will wake the RecocoIOLoop
     on_close is a factory that hides details of Select loop
     """
     IOWorker.__init__(self)
     self.socket = socket
-    self.pinger = pinger
-    self.on_close = on_close
 
   def fileno (self):
     """ Return the wrapped sockets' fileno """
@@ -357,7 +359,21 @@ class RecocoIOLoop (Task):
     # rather, adds a command to the pending queue
 
     _worker_type = kw.pop("_worker_type", None)
-    
+
+    if _worker_type is None:
+      _worker_type = self._worker_type
+    assert issubclass(_worker_type, RecocoIOWorker)
+    worker = _worker_type(*args, **kw)
+
+    self.register_worker(worker)
+
+    return worker
+
+  def register_worker (self, worker):
+    """
+    Register a worker with this ioloop
+    """
+
     # Our callback for io_worker.close():
     def on_close (worker):
       def close_worker (worker):
@@ -367,15 +383,13 @@ class RecocoIOLoop (Task):
       # schedule close_worker to be called by Select loop
       self._pending_commands.append(lambda: close_worker(worker))
       self.pinger.ping()
+
+    worker.on_close = on_close
+    worker.pinger = self.pinger
     
-    if _worker_type is None:
-      _worker_type = self._worker_type
-    assert issubclass(_worker_type, RecocoIOWorker)
-    worker = _worker_type(pinger=self.pinger, on_close=on_close, *args, **kw)
-    # Don't add immediately, since we're in the wrong thread
+    # Don't add immediately, since we may be in the wrong thread
     self._pending_commands.append(lambda: self._workers.add(worker))
     self.pinger.ping()
-    return worker
      
   def stop (self):
     self.running = False
