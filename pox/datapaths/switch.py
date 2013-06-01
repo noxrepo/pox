@@ -801,7 +801,7 @@ class OFConnection (object):
         if self.error_handler:
           return self.error_handler(e)
         else:
-          raise e
+          raise
 
       # OpenFlow parsing occurs here:
       ofp_type = ord(message[1])
