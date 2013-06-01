@@ -15,8 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+enabled = False
 try:
   import pxpcap as pcapc
+  enabled = True
 except:
   # We can at least import the rest
   pass
