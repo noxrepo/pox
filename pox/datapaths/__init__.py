@@ -50,7 +50,8 @@ class OpenFlowWorker (BackoffWorker):
   def _debug (self, *args, **kw):
     self.log.debug(*args,**kw)
 
-def _do_launch (cls, addr, port = 6633, max_retry_delay = 16, dpid = None):
+
+def do_launch (cls, addr, port = 6633, max_retry_delay = 16, dpid = None, **kw):
   """
   Used for implementing custom switch launching functions
 
@@ -71,7 +72,7 @@ def _do_launch (cls, addr, port = 6633, max_retry_delay = 16, dpid = None):
   else:
     dpid = str_to_dpid(dpid)
 
-  switch = cls(dpid=dpid, name="sw"+str(dpid))
+  switch = cls(dpid=dpid, name="sw"+str(dpid), **kw)
   _switches[dpid] = switch
 
   port = int(port)
@@ -102,4 +103,4 @@ def softwareswitch (addr, port = 6633, max_retry_delay = 16, dpid = None,
   """
   from pox.core import core
   core.register("datapaths", {})
-  _do_launch(SoftwareSwitch, addr, port, max_retry_delay, dpid)
+  do_launch(SoftwareSwitch, addr, port, max_retry_delay, dpid)
