@@ -148,8 +148,10 @@ class PersistentIOWorker (RecocoIOWorker, LoggerBase):
       # We either connected or connection is in progress
       pass
     else:
-      log.error("Couldn't connect to %s:%s", self.addr, self.port)
-      raise RuntimeError("Couldn't connect")
+      #self._error("Couldn't connect to %s:%s", self.addr, self.port)
+      #raise RuntimeError("Couldn't connect")
+      core.callLater(self._handle_close)
+      return
     
     self.loop.register_worker(self)
 
