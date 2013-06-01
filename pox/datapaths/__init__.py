@@ -21,7 +21,7 @@ Example:
 
 from pox.lib.ioworker.workers import BackoffWorker
 from pox.datapaths.switch import SoftwareSwitch, OFConnection
-from pox.lib.util import dpid_to_str
+from pox.lib.util import dpid_to_str, str_to_dpid
 
 class OpenFlowWorker (BackoffWorker):
   def __init__ (self, switch=None, **kw):
