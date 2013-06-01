@@ -251,11 +251,20 @@ class SoftwareSwitchBase (object):
 
   def _rx_stats_request (self, ofp, connection):
     def desc_stats (ofp):
-      return ofp_desc_stats(mfr_desc="POX",
-                            hw_desc=core._get_platform_info(),
-                            sw_desc=core.version_string,
-                            serial_num=str(self.dpid),
-                            dp_desc=type(self).__name__)
+      try:
+        from pox.core import core
+        return ofp_desc_stats(mfr_desc="POX",
+                              hw_desc=core._get_platform_info(),
+                              sw_desc=core.version_string,
+                              serial_num=str(self.dpid),
+                              dp_desc=type(self).__name__)
+      except:
+        return ofp_desc_stats(mfr_desc="POX",
+                              hw_desc="Unknown",
+                              sw_desc="Unknown",
+                              serial_num=str(self.dpid),
+                              dp_desc=type(self).__name__)
+
 
     def flow_stats (ofp):
       req = ofp_flow_stats_request().unpack(ofp.body)
