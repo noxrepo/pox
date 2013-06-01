@@ -52,7 +52,9 @@ import sys
 import traceback
 import time
 
-from pox.core import core
+import pox.core
+core = pox.core.initialize()
+
 import pox.openflow
 import pox.openflow.of_01
 from pox.lib.util import str_to_bool

@@ -533,4 +533,10 @@ class POXCore (EventMixin):
       raise AttributeError("'%s' not registered" % (name,))
     return self.components[name]
 
-core = POXCore()
+
+core = None
+
+def initialize ():
+  global core
+  core = POXCore()
+  return core
