@@ -82,10 +82,20 @@ class IOWorker (object):
     self.close()
     loop._workers.discard(self)
 
+  def _try_connect (self, loop):
+    if not self._connecting: return False
+    self._connecting = False
+    try:
+      self.socket.recv(0)
+    except socket.error as (s_errno, strerror):
+      self.close()
+      loop._workers.discard(self)
+      return True
+    _call_safe(self._handle_connect)
+    return False
+
   def _do_recv (self, loop):
-    if self._connecting:
-      self._connecting = False
-      _call_safe(self._handle_connect)
+    if self._connecting and self._try_connect(loop): return
     try:
       data = self.socket.recv(loop._BUF_SIZE)
       if len(data) == 0:
@@ -104,10 +114,8 @@ class IOWorker (object):
       loop._workers.discard(self)
 
   def _do_send (self, loop):
+    if self._connecting and self._try_connect(loop): return
     try:
-      if self._connecting:
-        self._connecting = False
-        _call_safe(self._handle_connect)
       if len(self.send_buf):
         l = self.socket.send(self.send_buf)
         if l > 0:
@@ -135,7 +143,7 @@ class IOWorker (object):
   @connect_handler.setter
   def connect_handler (self, callback):
     """
-    Handler to call when data is available to read
+    Handler to call when connected
     """
     # Not sure if this is a good idea, but it might be...
     if self.connect_handler is not None or callback is not None:
@@ -152,7 +160,7 @@ class IOWorker (object):
   @close_handler.setter
   def close_handler (self, callback):
     """
-    Handler to call when data is available to read
+    Handler to call when closing
     """
     # Not sure if this is a good idea, but it might be...
     if self.close_handler is not None or callback is not None:
@@ -234,6 +242,7 @@ class IOWorker (object):
 
   def __repr__ (self):
     return "<" + self.__class__.__name__ + ">"
+
 
 class RecocoIOWorker (IOWorker):
   """
