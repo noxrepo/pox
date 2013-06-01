@@ -175,6 +175,7 @@ class SoftwareSwitchBase (object):
     """
     Set this switch's connection.
     """
+    self._has_sent_hello = False
     connection.set_message_handler(self.rx_message)
     self._connection = connection
 
@@ -385,6 +386,7 @@ class SoftwareSwitchBase (object):
     """
     Send hello (once)
     """
+    #FIXME: This is wrong -- we should just send when connecting.
     if self._has_sent_hello and not force: return
     self._has_sent_hello = True
     self.log.debug("Sent hello")
