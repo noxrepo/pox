@@ -51,6 +51,7 @@ class TCPServerWorkerBase (IOWorker, LoggerBase):
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.socket = s
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     #s.setblocking(0)
     if port is None: port = 0
     s.bind((str(IPAddr(ip)), port))
