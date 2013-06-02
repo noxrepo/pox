@@ -721,7 +721,10 @@ class Connection (EventMixin):
 
     Note: This function will block if data is not available.
     """
-    d = self.sock.recv(2048)
+    try:
+      d = self.sock.recv(2048)
+    except:
+      return False
     if len(d) == 0:
       return False
     self.buf += d
