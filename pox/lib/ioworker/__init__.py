@@ -61,6 +61,7 @@ class IOWorker (object):
     self._custom_connect_handler = None
 
     self._connecting = False
+    self._shutdown_send = False
 
     self.rx_handler = None
     self.close_handler = None
@@ -120,6 +121,8 @@ class IOWorker (object):
         l = self.socket.send(self.send_buf)
         if l > 0:
           self._consume_send_buf(l)
+          if self._shutdown_send and len(self.send_buf) == 0:
+            self.socket.shutdown(socket.SHUT_WR)
     except socket.error as (s_errno, strerror):
       if s_errno != errno.EAGAIN:
         log.error("Socket %s error %i during send: %s", str(self),
@@ -234,11 +237,18 @@ class IOWorker (object):
     assert(len(self.send_buf)>=l)
     self.send_buf = self.send_buf[l:]
 
-  def close(self):
+  def close (self):
     """ Close this socket """
     if self.closed: return
     self.closed = True
     _call_safe(self._handle_close)
+
+  def shutdown (self, send = True, recv = True):
+    """
+    Shut down socket
+    """
+    self._shutdown_send |= send
+    #TODO: recv
 
   def __repr__ (self):
     return "<" + self.__class__.__name__ + ">"
