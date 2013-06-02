@@ -39,7 +39,8 @@ from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.ipv4 import ipv4
 from pox.lib.packet.arp import arp
 
-from pox.lib.recoco.recoco import Timer
+from pox.lib.recoco import Timer
+from pox.lib.revent import Event
 
 import pox.openflow.libopenflow_01 as of
 
@@ -63,6 +64,35 @@ timeoutSec = dict(
 #  --arpAware=15 --arpSilent=45 --arpReply=1 --entryMove=4
 # Another parameter that may be used:
 # --pingLim=2
+
+
+class HostEvent (Event):
+  def __init__ (self, entry, new_dpid = None, new_port = None, join = False,
+      leave = False, move = False):
+    super(HostEvent,self).__init__()
+    self.entry = entry
+    self.join = join
+    self.leave = leave
+    self.move = move
+
+    assert sum(1 for x in [join,leave,move] if x) == 1
+
+    # You can alter these and they'll change where we think it goes...
+    self._new_dpid = new_dpid
+    self._new_port = new_port
+
+    #TODO: Allow us to cancel add/removes
+
+  @property
+  def new_dpid (self):
+    assert self.move
+    return self._new_dpid
+
+  @property
+  def new_port (self):
+    assert self.move
+    return self._new_port
+
 
 class Alive (object):
   """ Holds liveliness information for MAC and IP entries
@@ -151,6 +181,8 @@ class MacEntry (Alive):
 
 
 class host_tracker (EventMixin):
+  _eventMixin_events = set([HostEvent])
+
   def __init__ (self):
     
     # The following tables should go to Topology later
@@ -270,6 +302,7 @@ class host_tracker (EventMixin):
       macEntry = MacEntry(dpid,inport,packet.src)
       self.entryByMAC[packet.src] = macEntry
       log.info("Learned %s", str(macEntry))
+      self.raiseEventNoErrors(HostEvent, macEntry, join=True)
     elif macEntry != (dpid, inport, packet.src):    
       # there is already an entry of host with that MAC, but host has moved
       # should we raise a HostMoved event (at the end)?
@@ -281,8 +314,10 @@ class host_tracker (EventMixin):
                     dpid, inport, time.time())
       # should we create a whole new entry, or keep the previous host info?
       # for now, we keep it: IP info, answers pings, etc.
-      macEntry.dpid = dpid
-      macEntry.inport = inport
+      e = HostEvent(macEntry, move=True, new_dpid = dpid, new_port = inport)
+      self.raiseEventNoErrors(e)
+      macEntry.dpid = e._new_dpid
+      macEntry.inport = e._new_port
 
     macEntry.refresh()
 
@@ -313,4 +348,5 @@ class host_tracker (EventMixin):
             log.warning("Entry %s expired but still had IP address %s",
                         str(macEntry), str(ip_addr) )
             del macEntry.ipAddrs[ip_addr]
+        self.raiseEventNoErrors(HostEvent, macEntry, leave=True)
         del self.entryByMAC[macEntry.macaddr]
