@@ -92,6 +92,7 @@ class TCPServerWorker (TCPServerWorkerBase):
     self.child_args = child_args
 
   def _do_accept (self, loop, socket):
+    addr = socket.getpeername()
     self._debug("accepting %s:%i" % addr)
     out = loop.new_worker(socket = socket,
         _worker_type = self.child_worker_type,
