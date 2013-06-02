@@ -147,7 +147,7 @@ class PersistentIOWorker (RecocoIOWorker, LoggerBase):
     s.setblocking(0)
     self._debug("Attempting to connect to %s:%s", self.addr, self.port)
     r = s.connect_ex((str(self.addr), self.port))
-    if r == 0 or r == errno.EINPROGRESS:
+    if r in (0, errno.EINPROGRESS, 10035): # The last is WSAEWOULDBLOCK
       # We either connected or connection is in progress
       pass
     else:

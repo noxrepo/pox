@@ -89,6 +89,10 @@ class IOWorker (object):
     try:
       self.socket.recv(0)
     except socket.error as (s_errno, strerror):
+      if s_errno == 10035: # WSAEWOULDBLOCK
+        # Maybe we're still connecting after all...
+        self._connecting = True
+        return True
       self.close()
       loop._workers.discard(self)
       return True
