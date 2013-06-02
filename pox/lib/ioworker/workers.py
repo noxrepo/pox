@@ -63,7 +63,7 @@ class TCPServerWorkerBase (IOWorker, LoggerBase):
   def local_port (self):
     return s.getsockname()[1]
 
-  def _do_accept (self, socket, loop):
+  def _do_accept (self, loop, socket):
     """
     Override me
     """
@@ -91,7 +91,7 @@ class TCPServerWorker (TCPServerWorkerBase):
     self.child_worker_type = child_worker_type
     self.child_args = child_args
 
-  def _do_accept (self, socket, loop):
+  def _do_accept (self, loop, socket):
     self._debug("accepting %s:%i" % addr)
     out = loop.new_worker(socket = socket,
         _worker_type = self.child_worker_type,
@@ -176,7 +176,7 @@ class PersistentIOWorker (RecocoIOWorker, LoggerBase):
     core.callDelayed(self.reconnect_delay, self.begin, **self.kw)
 
   def _handle_close (self):
-    self._debug("disconnected")
+    self._debug("Disconnected")
     super(PersistentIOWorker, self)._handle_close()
     if self.disconnect_callback:
       if self.disconnect_callback(self) is False:
