@@ -46,7 +46,8 @@ class TCPServerWorkerBase (IOWorker, LoggerBase):
     """
     Listens on ip/port and fires _do_accept when there's a connection
     """
-    super(TCPServerWorkerBase,self).__init__(*args, **kw)
+    #super(TCPServerWorkerBase,self).__init__(*args, **kw)
+    IOWorker.__init__(self)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.socket = s
