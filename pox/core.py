@@ -188,7 +188,7 @@ class POXCore (EventMixin):
   def __init__ (self):
     self.debug = False
     self.running = True
-    self.components = {}
+    self.components = {'core':self}
 
     self.version = (0,2,0)
     self.version_name = "carp"
