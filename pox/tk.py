@@ -136,6 +136,6 @@ def launch ():
   """
   def pr (msg):
     print "From Tk:", msg
-  core.callDelayed(5,lambda: core.tk.msgbox.showinfo_cb(pr,
+  core.callDelayed(5,lambda: core.tk.dialog.showinfo_cb(pr,
       "Hello", "Hello, World!"))
   """
