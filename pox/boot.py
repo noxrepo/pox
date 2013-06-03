@@ -177,6 +177,16 @@ def _do_launch (argv):
         print(launch, "in", name, "isn't a function!")
         return False
 
+      if getattr(f, '_pox_eval_args', False):
+        import ast
+        for k,v in params.items():
+          if isinstance(v, str):
+            try:
+              params[k] = ast.literal_eval(v)
+            except:
+              # Leave it as a string
+              pass
+
       multi = False
       if f.func_code.co_argcount > 0:
         #FIXME: This code doesn't look quite right to me and may be broken

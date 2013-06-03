@@ -477,6 +477,18 @@ def fields_of (obj, primitives_only=False,
   return r
 
 
+def eval_args (f):
+  """
+  A decorator which causes arguments to be interpreted as Python literals
+
+  This isn't a generic decorator, but is specifically meant for component
+  launch functions -- the actual magic is in POX's boot code.
+  The intention is for launch function/commandline arguments (normally all
+  strings) to easily receive other types.
+  """
+  f._pox_eval_args = True
+  return f
+
 if __name__ == "__main__":
   #TODO: move to tests?
   def cb (t,k,v): print(v)
