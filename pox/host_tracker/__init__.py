@@ -1,19 +1,17 @@
 # Copyright 2011 Dorgival Guedes
+# Copyright 2013 James McCauley
 #
-# This file is part of POX.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
 #
-# POX is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# POX is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """
 Tracks host location and configuration
@@ -22,23 +20,21 @@ See host_tracker.host_tracker for more info.
 """
 
 from pox.core import core
-import pox
 import host_tracker
 log = core.getLogger()
 import logging
 log.setLevel(logging.INFO)
+from pox.lib.addresses import EthAddr
 
-def launch (**kw):
-  core.registerNew(host_tracker.host_tracker)
+def launch (src_mac = None, no_flow = False, **kw):
   for k, v in kw.iteritems():
     if k in host_tracker.timeoutSec:
       host_tracker.timeoutSec[k] = int(v)
-      log.warn("Changing timer parameter: %s = %s",k,v)
+      log.debug("Changing timer parameter: %s = %s",k,v)
     elif k == 'pingLim':
       host_tracker.PingCtrl.pingLim = int(v)
-      log.warn("Changing ping limit to %s",v)
+      log.debug("Changing ping limit to %s",v)
     else:
-      log.warn("Unknown option: %s(=%s)",k,v)
-      
-     
-
+      log.error("Unknown option: %s(=%s)",k,v)
+  core.registerNew(host_tracker.host_tracker, ping_src_mac = src_mac,
+      install_flow = not no_flow)

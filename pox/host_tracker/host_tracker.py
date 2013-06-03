@@ -27,11 +27,11 @@ Timer configuration can be changed when needed (e.g., for debugging) using
 the launch facility (check timeoutSec dict and PingCtrl.pingLim).
 
 You can set various timeouts from the commandline.  Names and defaults:
-  arpAware=60*2,   # Quiet ARP-responding entries are pinged after this
-  arpSilent=60*20, # This is for uiet entries not known to answer ARP
-  arpReply=4,      # Time to wait for an ARP reply before retrial
-  timerInterval=5, # Seconds between timer routine activations
-  entryMove=60     # Minimum expected time to move a physical entry
+  arpAware=60*2    Quiet ARP-responding entries are pinged after this
+  arpSilent=60*20  This is for uiet entries not known to answer ARP
+  arpReply=4       Time to wait for an ARP reply before retrial
+  timerInterval=5  Seconds between timer routine activations
+  entryMove=60     Minimum expected time to move a physical entry
 
 Good values for testing:
   --arpAware=15 --arpSilent=45 --arpReply=1 --entryMove=4
@@ -42,12 +42,13 @@ You can also specify how many ARP pings we try before deciding it failed:
 
 from pox.core import core
 
+from pox.lib.addresses import EthAddr
 from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.ipv4 import ipv4
 from pox.lib.packet.arp import arp
 
 from pox.lib.recoco import Timer
-from pox.lib.revent import Event
+from pox.lib.revent import Event, EventHalt
 
 import pox.openflow.libopenflow_01 as of
 
@@ -68,6 +69,10 @@ timeoutSec = dict(
   timerInterval=5, # Seconds between timer routine activations
   entryMove=60     # Minimum expected time to move a physical entry
   )
+
+# Address to send ARP pings from.
+# The particular one here is just an arbitrary locally administered address.
+DEFAULT_ARP_PING_SRC_MAC = '02:00:00:00:be:ef'
 
 
 class HostEvent (Event):
@@ -205,12 +210,28 @@ class host_tracker (EventMixin):
   """
   _eventMixin_events = set([HostEvent])
 
-  def __init__ (self):
+  def __init__ (self, ping_src_mac = None, install_flow = True,
+      eat_packets = True):
+
+    if ping_src_mac is None:
+      ping_src_mac = DEFAULT_ARP_PING_SRC_MAC
+
+    self.ping_src_mac = EthAddr(ping_src_mac)
+    self.install_flow = install_flow
+    self.eat_packets = eat_packets
+
     # The following tables should go to Topology later
     self.entryByMAC = {}
     self._t = Timer(timeoutSec['timerInterval'],
                     self._check_timeouts, recurring=True)
-    self.listenTo(core)
+
+    # Listen to openflow with high priority if we want to eat our ARP replies
+    listen_args = {}
+    if eat_packets:
+      listen_args={'openflow':{'priority':0}}
+    core.listen_to_dependencies(self, listen_args=listen_args)
+
+  def _all_dependencies_met (self):
     log.info("host_tracker ready")
 
   # The following two functions should go to Topology also
@@ -228,8 +249,9 @@ class host_tracker (EventMixin):
     r = arp()
     r.opcode = arp.REQUEST
     r.hwdst = macEntry.macaddr
+    r.hwsrc = self.ping_src_mac
     r.protodst = ipAddr
-    # src is ETHER_ANY, IP_ANY
+    # src is IP_ANY
     e = ethernet(type=ethernet.ARP_TYPE, src=r.hwsrc, dst=r.hwdst)
     e.payload = r
     log.debug("%i %i sending ARP REQ to %s %s",
@@ -290,11 +312,20 @@ class host_tracker (EventMixin):
     if hasARP:
       ipEntry.pings.received()
 
-  def _handle_GoingUpEvent (self, event):
-    self.listenTo(core.openflow)
-    log.debug("Up...")
+  def _handle_openflow_ConnectionUp (self, event):
+    if not self.install_flow: return
 
-  def _handle_PacketIn (self, event):
+    log.debug("Installing flow for ARP ping responses")
+
+    m = of.ofp_flow_mod()
+    m.priority += 1 # Higher than normal
+    m.match.dl_type = ethernet.ARP_TYPE
+    m.match.dl_dst = self.ping_src_mac
+
+    m.actions.append(of.ofp_action_output(port=of.OFPP_CONTROLLER))
+    event.connection.send(m)
+
+  def _handle_openflow_PacketIn (self, event):
     """
     Populate MAC and IP tables based on incoming packets.
 
@@ -353,6 +384,9 @@ class host_tracker (EventMixin):
     (pckt_srcip, hasARP) = self.getSrcIPandARP(packet.next)
     if pckt_srcip is not None:
       self.updateIPInfo(pckt_srcip,macEntry,hasARP)
+
+    if self.eat_packets and packet.dst == self.ping_src_mac:
+      return EventHalt
 
   def _check_timeouts (self):
     """
