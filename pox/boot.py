@@ -179,6 +179,9 @@ def _do_launch (argv):
 
       multi = False
       if f.func_code.co_argcount > 0:
+        #FIXME: This code doesn't look quite right to me and may be broken
+        #       in some cases.  We should refactor to use inspect anyway,
+        #       which should hopefully just fix it.
         if (f.func_code.co_varnames[f.func_code.co_argcount-1]
             == '__INSTANCE__'):
           # It's a multi-instance-aware component.
@@ -325,6 +328,9 @@ support are up to the module.  As an example, you can load a learning
 switch app that listens on a non-standard port number by specifying an
 option to the of_01 component, and loading the l2_learning component like:
   ./pox.py --verbose openflow.of_01 --port=6634 forwarding.l2_learning
+
+The 'help' component can give help for other components.  Start with:
+  ./pox.py help --help
 """.strip()
 
 
