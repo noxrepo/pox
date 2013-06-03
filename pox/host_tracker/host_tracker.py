@@ -25,6 +25,19 @@ discovery/update of host information.
 
 Timer configuration can be changed when needed (e.g., for debugging) using
 the launch facility (check timeoutSec dict and PingCtrl.pingLim).
+
+You can set various timeouts from the commandline.  Names and defaults:
+  arpAware=60*2,   # Quiet ARP-responding entries are pinged after this
+  arpSilent=60*20, # This is for uiet entries not known to answer ARP
+  arpReply=4,      # Time to wait for an ARP reply before retrial
+  timerInterval=5, # Seconds between timer routine activations
+  entryMove=60     # Minimum expected time to move a physical entry
+
+Good values for testing:
+  --arpAware=15 --arpSilent=45 --arpReply=1 --entryMove=4
+
+You can also specify how many ARP pings we try before deciding it failed:
+  --pingLim=2
 """
 
 from pox.core import core
@@ -55,10 +68,6 @@ timeoutSec = dict(
   timerInterval=5, # Seconds between timer routine activations
   entryMove=60     # Minimum expected time to move a physical entry
   )
-# Good values for testing:
-#  --arpAware=15 --arpSilent=45 --arpReply=1 --entryMove=4
-# Another parameter that may be used:
-# --pingLim=2
 
 
 class HostEvent (Event):
@@ -121,7 +130,7 @@ class PingCtrl (Alive):
   pingLim=3
 
   def __init__ (self):
-    Alive.__init__(self, timeoutSec['arpReply'])
+    super(PingCtrl,self).__init__(timeoutSec['arpReply'])
     self.pending = 0
 
   def sent (self):
@@ -144,9 +153,9 @@ class IpEntry (Alive):
   """
   def __init__ (self, hasARP):
     if hasARP:
-      Alive.__init__(self,timeoutSec['arpAware'])
+      super(IpEntry,self).__init__(timeoutSec['arpAware'])
     else:
-      Alive.__init__(self,timeoutSec['arpSilent'])
+      super(IpEntry,self).__init__(timeoutSec['arpSilent'])
     self.hasARP = hasARP
     self.pings = PingCtrl()
 
@@ -164,7 +173,7 @@ class MacEntry (Alive):
   We use the port to determine which port to forward traffic out of.
   """
   def __init__ (self, dpid, port, macaddr):
-    Alive.__init__(self)
+    super(MacEntry,self).__init__()
     self.dpid = dpid
     self.port = port
     self.macaddr = macaddr
@@ -178,9 +187,13 @@ class MacEntry (Alive):
       return False
     elif type(other) == tuple:
       return (self.dpid,self.port,self.macaddr)==other
-    else:
-      return (self.dpid,self.port,self.macaddr)     \
-             ==(other.dpid,other.port,other.macaddr)
+
+    if self.dpid != other.dpid: return False
+    if self.port != other.port: return False
+    if self.macaddr != other.macaddr: return False
+    if self.dpid != other.dpid: return False
+    # What about ipAddrs??
+    return True
 
   def __ne__ (self, other):
     return not self.__eq__(other)
@@ -196,7 +209,7 @@ class host_tracker (EventMixin):
     # The following tables should go to Topology later
     self.entryByMAC = {}
     self._t = Timer(timeoutSec['timerInterval'],
-                   self._check_timeouts, recurring=True)
+                    self._check_timeouts, recurring=True)
     self.listenTo(core)
     log.info("host_tracker ready")
 
@@ -268,7 +281,7 @@ class host_tracker (EventMixin):
       ipEntry = macEntry.ipAddrs[pckt_srcip]
       ipEntry.refresh()
       log.debug("%s already has IP %s, refreshing",
-              str(macEntry), str(pckt_srcip) )
+                str(macEntry), str(pckt_srcip) )
     else:
       # new mapping
       ipEntry = IpEntry(hasARP)
@@ -308,7 +321,7 @@ class host_tracker (EventMixin):
       return
 
     log.debug("PacketIn: %i %i ETH %s => %s",
-            dpid, inport, str(packet.src), str(packet.dst))
+              dpid, inport, str(packet.src), str(packet.dst))
 
     # Learn or update dpid/port/MAC info
     macEntry = self.getMacEntry(packet.src)
@@ -340,8 +353,6 @@ class host_tracker (EventMixin):
     (pckt_srcip, hasARP) = self.getSrcIPandARP(packet.next)
     if pckt_srcip is not None:
       self.updateIPInfo(pckt_srcip,macEntry,hasARP)
-
-    return
 
   def _check_timeouts (self):
     """

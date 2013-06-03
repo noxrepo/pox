@@ -15,6 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Tracks host location and configuration
+
+See host_tracker.host_tracker for more info.
+"""
+
 from pox.core import core
 import pox
 import host_tracker
