@@ -1,22 +1,19 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012,2013 James McCauley
 #
-# This file is part of POX.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
 #
-# POX is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# POX is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """
-Classes for addresses of various types.
+Classes and utilities for addresses of various types.
 """
 
 from __future__ import print_function
@@ -105,22 +102,27 @@ class EthAddr (object):
         # Convert to 6 raw bytes.
         addr = b''.join((chr(int(addr[x*2:x*2+2], 16)) for x in range(0,6)))
       else:
-        raise RuntimeError("Expected ethernet address string to be 6 raw bytes or some hex")
+        raise RuntimeError("Expected ethernet address string to be 6 raw "
+                           "bytes or some hex")
       self._value = addr
     elif isinstance(addr, EthAddr):
       self._value = addr.toRaw()
-    elif type(addr) == list or (hasattr(addr, '__len__') and len(addr) == 6 and hasattr(addr, '__iter__')):
+    elif type(addr) == list or (hasattr(addr, '__len__') and len(addr) == 6
+          and hasattr(addr, '__iter__')):
       self._value = b''.join( (chr(x) for x in addr) )
     elif addr is None:
       self._value = b'\x00' * 6
     else:
-      raise RuntimeError("Expected ethernet address to be a string of 6 raw bytes or some hex")
+      raise RuntimeError("Expected ethernet address to be a string of 6 raw "
+                         "bytes or some hex")
 
   def isBridgeFiltered (self):
     """
-    Returns True if this is IEEE 802.1D MAC Bridge Filtered MAC Group Address,
-    01-80-C2-00-00-00 to 01-80-C2-00-00-0F. MAC frames that have a destination MAC address
-    within this range are not relayed by MAC bridges conforming to IEEE 802.1D
+    Checks if address is an IEEE 802.1D MAC Bridge Filtered MAC Group Address
+
+    This range is 01-80-C2-00-00-00 to 01-80-C2-00-00-0F. MAC frames that
+    have a destination MAC address within this range are not relayed by
+    bridges conforming to IEEE 802.1D
     """
     return  ((ord(self._value[0]) == 0x01)
     	and (ord(self._value[1]) == 0x80)
@@ -227,10 +229,12 @@ class IPAddr (object):
   Represents an IPv4 address.
   """
   def __init__ (self, addr, networkOrder = False):
-    """ Can be initialized with several formats.
-        If addr is an int/long, then it is assumed to be in host byte order
-        unless networkOrder = True
-        Stored in network byte order as a signed int
+    """
+    Initialize using several possible formats
+
+    If addr is an int/long, then it is assumed to be in host byte order
+    unless networkOrder = True
+    Stored in network byte order as a signed int
     """
 
     # Always stores as a signed network-order int
@@ -406,7 +410,7 @@ def parse_cidr (addr, infer=True, allow_host=False):
       # All bits in wildcarded part are 0, so we'll use the wildcard
       return check(addr, b)
     else:
-      # Some bits in the wildcarded part were set, so we'll assume it was a host
+      # Some bits in the wildcarded part are set, so we'll assume it's a host
       return check(addr, 0)
   try:
     wild = 32-int(addr[1])
@@ -473,4 +477,3 @@ if __name__ == '__main__':
     print([parse_cidr(x)[1]==24 for x in
            ["192.168.101.0","192.168.102.0/24","1.1.168.103/255.255.255.0"]])
   code.interact(local=locals())
-
