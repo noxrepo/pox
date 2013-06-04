@@ -97,7 +97,7 @@ def launch (__INSTANCE__ = None, **kw):
     use_kw = k.startswith("*")
     if use_kw: k = k[1:]
     k = k.lower()
-    if k == "no-default" and v:
+    if k == "no_default" and v:
       import pox.core
       logging.getLogger().removeHandler(pox.core._default_log_handler)
       logging.getLogger().addHandler(logging.NullHandler())
