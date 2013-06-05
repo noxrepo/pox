@@ -1040,7 +1040,7 @@ class ofp_match (ofp_base):
 
   def set_nw_dst (self, *args, **kw):
     a = self._make_addr(*args, **kw)
-    if a == None:
+    if a is None:
       self._nw_dst = ofp_match_data['nw_dst'][0]
       self.wildcards &= ~OFPFW_NW_DST_MASK
       self.wildcards |= ofp_match_data['nw_dst'][1]
@@ -1051,7 +1051,7 @@ class ofp_match (ofp_base):
 
   def set_nw_src (self, *args, **kw):
     a = self._make_addr(*args, **kw)
-    if a == None:
+    if a is None:
       self._nw_src = ofp_match_data['nw_src'][0]
       self.wildcards &= ~OFPFW_NW_SRC_MASK
       self.wildcards |= ofp_match_data['nw_src'][1]
@@ -1061,7 +1061,7 @@ class ofp_match (ofp_base):
     self.wildcards |= ((32-a[1]) << OFPFW_NW_SRC_SHIFT)
 
   def _make_addr (self, ipOrIPAndBits, bits=None):
-    if ipOrIPAndBits == None: return None
+    if ipOrIPAndBits is None: return None
     b = None
     if type(ipOrIPAndBits) is tuple:
       ip = ipOrIPAndBits[0]
@@ -1133,13 +1133,13 @@ class ofp_match (ofp_base):
     else:
       wc = self.wildcards
     packed += struct.pack("!LH", wc, self.in_port or 0)
-    if self.dl_src == None:
+    if self.dl_src is None:
       packed += EMPTY_ETH.toRaw()
     elif type(self.dl_src) is bytes:
       packed += self.dl_src
     else:
       packed += self.dl_src.toRaw()
-    if self.dl_dst == None:
+    if self.dl_dst is None:
       packed += EMPTY_ETH.toRaw()
     elif type(self.dl_dst) is bytes:
       packed += self.dl_dst
@@ -1370,7 +1370,7 @@ class ofp_match (ofp_base):
         if n == 0: break
       return s
     def safehex(n):
-      if n == None:
+      if n is None:
         return "(None)"
       else:
         return hex(n)
