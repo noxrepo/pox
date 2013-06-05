@@ -662,8 +662,8 @@ class nx_reg_move (of.ofp_action_vendor_base):
 
   def _pack_body (self):
     if self.nbits is None:
-      a = self.dst._nxm_length * 8 - self.dst_ofs
-      b = self.src._nxm_length * 8 - self.src_ofs
+      a = self.dst._get_size_hint() - self.dst_ofs
+      b = self.src._get_size_hint() - self.src_ofs
       self.nbits = min(a,b)
 
     o = self.dst()
@@ -722,7 +722,7 @@ class nx_reg_load (of.ofp_action_vendor_base):
 
   def _pack_body (self):
     if self.nbits is None:
-      self.nbits = self.dst._nxm_length * 8 - self.offset
+      self.nbits = self.dst._get_size_hint() - self.offset
     nbits = self.nbits - 1
     assert nbits >= 0 and nbits <= 63
     assert self.offset >= 0 and self.offset < (1 << 10)
@@ -1201,9 +1201,9 @@ class _field_and_match (object):
     data = field().pack(omittable = False, header_only = True)
     data += struct.pack("!H", ofs)
     if n_bits is None:
-      n_bits = field._nxm_length * 8 - ofs
+      n_bits = field._get_size_hint() - ofs
     elif n_bits < 0:
-      n_bits = field._nxm_length * 8 - ofs - n_bits
+      n_bits = field._get_size_hint() - ofs - n_bits
     self.n_bits = n_bits
     self.data = data
 
@@ -1280,9 +1280,9 @@ class nx_learn_dst_load (nx_learn_spec_dst):
     data = field().pack(omittable = False, header_only = True)
     data += struct.pack("!H", ofs)
     if n_bits is None:
-      n_bits = field._nxm_length * 8 - ofs
+      n_bits = field._get_size_hint() - ofs
     elif n_bits < 0:
-      n_bits = field._nxm_length * 8 - ofs - n_bits
+      n_bits = field._get_size_hint() - ofs - n_bits
     self.n_bits = n_bits
     self.data = data
 
@@ -1619,9 +1619,19 @@ _nxm_name_to_type = {}
 class nxm_entry (object):
   #_nxm_type = _make_type(0x, )
   #_nxm_length = # bytes of data not including mask (double for mask)
+  _size_hint = None
   _force_mask = False
 
   #TODO: make mask-omittable a class-level attribute?
+
+  @classmethod
+  def _get_size_hint (self):
+    """
+    Number of significant bits
+    """
+    if self._size_hint is None:
+      return self._nxm_length * 8
+    return self._size_hint
 
   @property
   def nxm_vendor (self):
