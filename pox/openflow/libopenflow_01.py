@@ -1024,7 +1024,7 @@ class ofp_match (ofp_base):
   def set_nw_dst (self, *args, **kw):
     a = self._make_addr(*args, **kw)
     if a == None:
-      self._nw_src = ofp_match_data['nw_dst'][0]
+      self._nw_dst = ofp_match_data['nw_dst'][0]
       self.wildcards &= ~OFPFW_NW_DST_MASK
       self.wildcards |= ofp_match_data['nw_dst'][1]
       return
