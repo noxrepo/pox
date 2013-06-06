@@ -2120,6 +2120,15 @@ _make_nxm("NXM_NX_IP_TTL", 1, 29, 1)
 _make_nxm_w("NXM_NX_COOKIE", 1, 30, 8)
 
 
+# MPLS label, traffic class, and bottom-of-stack flag
+# Note that these are from OpenFlow 1.2 and I think BOS is from 1.3,
+# so technically these don't belong here.  They do work with OVS through
+# NXM match and flow mod, though.
+_make_nxm("OXM_OF_MPLS_LABEL", 0x8000, 34, 4, _size_hint=20)
+_make_nxm("OXM_OF_MPLS_TC", 0x8000, 35, 1, _size_hint=3)
+_make_nxm("OXM_OF_MPLS_BOS", 0x8000, 36, 1, _size_hint=1)
+
+
 #@vendor_s_message('NXT_SET_ASYNC_CONFIG', 19)
 class nx_async_config (nicira_base):
   subtype = NXT_SET_ASYNC_CONFIG
