@@ -2273,6 +2273,7 @@ class nx_match (object):
   """
   #TODO: Test!
   #TODO: Handle prerequisites (as described above)
+  _locked = False # When True, can't add new attributes
 
   def __init__ (self, *parts, **kw):
     """
@@ -2286,6 +2287,7 @@ class nx_match (object):
     self._dirty()
     for k,v in kw:
       setattr(self, k, v)
+    self._locked = True
 
   def unpack (self, raw, offset, avail):
     del self._parts[:]
@@ -2447,8 +2449,9 @@ class nx_match (object):
     name,nxt,is_mask,with_mask,is_entry = self._fixname(name)
 
     if nxt is None:
+      if self._locked:
+        raise AttributeError("No attribute " + name)
       return object.__setattr__(self, name, value)
-      #raise AttributeError("No attribute " + name)
 
     entry = self.find(nxt)
 
