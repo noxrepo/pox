@@ -2446,7 +2446,7 @@ class nx_match (object):
     if name.startswith('_'):
       return object.__setattr__(self, name, value)
 
-    name,nxt,is_mask,with_mask,is_entry = self._fixname(name)
+    n,nxt,is_mask,with_mask,is_entry = self._fixname(name)
 
     if nxt is None:
       if self._locked:
