@@ -19,6 +19,7 @@ from pox.core import core
 from pox.lib.util import initHelper
 from pox.lib.util import hexdump
 from pox.lib.addresses import parse_cidr, IPAddr, EthAddr
+import pox.lib.packet as pkt
 
 import pox.openflow.libopenflow_01 as of
 from pox.openflow.libopenflow_01 import ofp_header, ofp_vendor_base
@@ -801,6 +802,74 @@ class nx_action_controller (of.ofp_action_vendor_base):
     s += prefix + ('max_len: %s\n' % (self.max_len,))
     s += prefix + ('controller_id: %s\n' % (self.controller_id,))
     s += prefix + ('reason: %s\n' % (self.reason,))
+    return s
+
+
+class nx_action_push_mpls (of.ofp_action_vendor_base):
+  """
+  Push an MPLS label
+
+  """
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_PUSH_MPLS
+    self.ethertype = pkt.ethernet.MPLS_TYPE
+    # The only alternative for ethertype is MPLS_MC_TYPE (multicast)
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.ethertype != other.ethertype: return False
+    return True
+
+  def _pack_body (self):
+    p = struct.pack('!HHI', self.subtype, self.ethertype, 0) # 4 bytes pad
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype,self.ethertype) = of._unpack('!HH', raw, offset)
+    offset = of._skip(raw, offset, 4)
+    return offset
+
+  def _body_length (self):
+    return 8
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    s += prefix + ('ethertype: %s\n' % (self.ethertype,))
+    return s
+
+
+class nx_action_pop_mpls (of.ofp_action_vendor_base):
+  """
+  Pop an MPLS label
+  """
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_POP_MPLS
+    self.ethertype = None # Purposely bad
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.ethertype != other.ethertype: return False
+    return True
+
+  def _pack_body (self):
+    p = struct.pack('!HHI', self.subtype, self.ethertype, 0) # 4 bytes pad
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype,self.ethertype) = of._unpack('!HH', raw, offset)
+    offset = of._skip(raw, offset, 4)
+    return offset
+
+  def _body_length (self):
+    return 8
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    s += prefix + ('ethertype: %s\n' % (self.ethertype,))
     return s
 
 
