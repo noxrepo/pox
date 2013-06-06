@@ -2404,8 +2404,6 @@ class nx_match (object):
   @staticmethod
   def _fixname (name):
     name = name.upper()
-    if not name.startswith("NXM_"):
-      name = "NXM_" + name
 
     is_mask = with_mask = is_entry = False
     if name.endswith("_MASK"):
@@ -2419,10 +2417,17 @@ class nx_match (object):
       name = name.rsplit("_ENTRY", 1)[0]
       is_entry = True
 
-    nxt = _nxm_name_to_type.get(name)
+    n = name
+    nxt = _nxm_name_to_type.get(n)
+    if nxt is None:
+      n = "NXM_" + name
+      nxt = _nxm_name_to_type.get(n)
+      if nxt is None:
+        n = "OXM_" + name
+        nxt = _nxm_name_to_type.get(n)
 
-    #print name, nxt, is_mask, with_mask, is_entry
-    return name, nxt, is_mask, with_mask, is_entry
+    #print n, nxt, is_mask, with_mask, is_entry
+    return n, nxt, is_mask, with_mask, is_entry
 
   def __getattr__ (self, name):
     name,nxt,is_mask,with_mask,is_entry = self._fixname(name)
