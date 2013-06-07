@@ -15,7 +15,11 @@
 from pox.core import core
 import pox.boot
 
-log = core.getLogger("tests")
+if core is None:
+  import logging
+  log = logging.getLogger("tests")
+else:
+  log = core.getLogger("tests")
 
 _first = True
 _tests = []
