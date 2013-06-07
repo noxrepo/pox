@@ -60,7 +60,7 @@ import threading
 import os
 import sys
 import exceptions
-from errno import EAGAIN, ECONNRESET, EADDRINUSE
+from errno import EAGAIN, ECONNRESET, EADDRINUSE, EADDRNOTAVAIL
 
 
 import traceback
@@ -854,14 +854,15 @@ class OpenFlow_01_Task (Task):
     try:
       listener.bind((self.address, self.port))
     except socket.error as (errno, strerror):
-      if errno == EADDRINUSE+1:
-        pass
-      else:
-        log.error("Error %i while binding socket: %s", errno, strerror)
-        if errno == EADDRINUSE:
-          log.error(" You may have another controller running.")
-          log.error(" Use openflow.of_01 --port=<port> to run POX on another port.")
-        return
+      log.error("Error %i while binding socket: %s", errno, strerror)
+      if errno == EADDRNOTAVAIL:
+        log.error(" You may be specifying a local address which is "
+                  "not assigned to any interface.")
+      elif errno == EADDRINUSE:
+        log.error(" You may have another controller running.")
+        log.error(" Use openflow.of_01 --port=<port> to run POX on "
+                  "another port.")
+      return
 
     listener.listen(16)
     sockets.append(listener)
