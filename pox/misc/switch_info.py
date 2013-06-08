@@ -36,14 +36,24 @@ def _format_entry (desc):
   dpid = dpid_to_str(desc.connection.dpid)
   ofp = desc.ofp.body
   s = []
-  s.append("=" * (len(dpid)+12))
+  ports = [(p.port_no,p.name) for p in desc.connection.ports.values()]
+  ports.sort()
+  ports = " ".join(p[1] for p in ports)
+  #if len(ports) > len(dpid)+12:
+  #  ports = "%s ports" % (len(desc.connection.ports),)
+
   s.append("New Switch: " + dpid)
-  s.append("-" * (len(dpid)+12))
   s.append("Hardware:  " + fmt(ofp.hw_desc))
   s.append("Software:  " + fmt(ofp.sw_desc))
   s.append("SerialNum: " + fmt(ofp.serial_num))
   s.append("Desc:      " + fmt(ofp.dp_desc))
-  s.append("=" * (len(dpid)+12))
+  s.append("Ports:     " + fmt(ports))
+
+  # Let's get fancy
+  width = max(len(line) for line in s)
+  s.insert(0, "=" * width)
+  s.insert(2, "-" * width)
+  s.append(   "=" * width)
 
   return "\n".join(s)
 
