@@ -30,7 +30,7 @@ class OpenFlowWorker (BackoffWorker):
     from pox.core import core
     self.log = core.getLogger("dp." + dpid_to_str(self.switch.dpid))
     super(OpenFlowWorker, self).__init__(switch=switch,**kw)
-    self._info("Disconnected")
+    self._info("Connecting to %s:%s", kw.get('addr'), kw.get('port'))
 
   def _handle_close (self):
     super(OpenFlowWorker, self)._handle_close()
