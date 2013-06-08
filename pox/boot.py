@@ -1,6 +1,6 @@
 #!/bin/sh -
 
-# Copyright 2011-2012 James McCauley
+# Copyright 2011,2012,2013 James McCauley
 #
 # This file is part of POX.
 #
@@ -492,8 +492,11 @@ def boot ():
   else:
     #core.acquire()
     try:
-      while core.running:
-        time.sleep(10)
+      while True:
+        if core.quit_condition.acquire(False):
+          core.quit_condition.wait(10)
+          core.quit_condition.release()
+        if not core.running: break
     except:
       pass
     #core.scheduler._thread.join() # Sleazy

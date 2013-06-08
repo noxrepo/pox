@@ -188,7 +188,11 @@ class POXCore (EventMixin):
   def __init__ (self):
     self.debug = False
     self.running = True
+    self.starting_up = True
     self.components = {'core':self}
+
+    import threading
+    self.quit_condition = threading.Condition()
 
     self.version = (0,2,0)
     self.version_name = "carp"
@@ -259,28 +263,41 @@ class POXCore (EventMixin):
     Shut down POX.
     """
     import threading
-    if threading.current_thread() is self.scheduler._thread:
+    if (self.starting_up or
+        threading.current_thread() is self.scheduler._thread):
       t = threading.Thread(target=self._quit)
+      t.daemon = True
       t.start()
     else:
       self._quit()
 
   def _quit (self):
-    if self.running:
-      self.running = False
-      log.info("Going down...")
-      import gc
+    # Should probably do locking here
+    if not self.running:
+      return
+    if self.starting_up:
+      # Try again later
+      self.quit()
+      return
+
+    self.running = False
+    log.info("Going down...")
+    import gc
+    gc.collect()
+    self.raiseEvent(GoingDownEvent())
+    self.callLater(self.scheduler.quit)
+    for i in range(50):
+      if self.scheduler._hasQuit: break
       gc.collect()
-      self.raiseEvent(GoingDownEvent())
-      self.callLater(self.scheduler.quit)
-      for i in range(50):
-        if self.scheduler._hasQuit: break
-        gc.collect()
-        time.sleep(.1)
-      if not self.scheduler._allDone:
-        log.warning("Scheduler didn't quit in time")
-      self.raiseEvent(DownEvent())
-      log.info("Down.")
+      time.sleep(.1)
+    if not self.scheduler._allDone:
+      log.warning("Scheduler didn't quit in time")
+    self.raiseEvent(DownEvent())
+    log.info("Down.")
+    #logging.shutdown()
+    self.quit_condition.acquire()
+    self.quit_condition.notifyAll()
+    core.quit_condition.release()
 
   def _get_python_version (self):
     try:
@@ -316,6 +333,7 @@ class POXCore (EventMixin):
       l.warn("POX requires Python 2.7. You're running %s.", vers)
       l.warn("If you run into problems, try using Python 2.7 or PyPy.")
 
+    self.starting_up = False
     self.raiseEvent(GoingUpEvent())
 
     self.raiseEvent(UpEvent())
