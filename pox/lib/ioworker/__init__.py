@@ -89,13 +89,19 @@ class IOWorker (object):
     try:
       self.socket.recv(0)
     except socket.error as (s_errno, strerror):
-      if s_errno == 10035: # WSAEWOULDBLOCK
-        # Maybe we're still connecting after all...
-        self._connecting = True
+      if s_errno == errno.EAGAIN or s_errno == 10035: # 10035=WSAEWOULDBLOCK
+        # On Linux, this seems to mean we're connected.
+        # I think this is right for the Windows case too.
+        # If we want to stay in the connecting state until
+        # we actually get data, re-set _connecting to True,
+        # and return.
+        pass
+        #self._connecting = True
+        #return True
+      else:
+        self.close()
+        loop._workers.discard(self)
         return True
-      self.close()
-      loop._workers.discard(self)
-      return True
     _call_safe(self._handle_connect)
     return False
 
