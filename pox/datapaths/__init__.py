@@ -16,7 +16,7 @@
 Lets you start a default instance of the datapath, for what it's worth.
 
 Example:
-./pox.py --no-openflow datapaths:softwareswitch --addr=localhost
+./pox.py --no-openflow datapaths:softwareswitch --address=localhost
 """
 
 from pox.lib.ioworker.workers import BackoffWorker
@@ -51,7 +51,8 @@ class OpenFlowWorker (BackoffWorker):
     self.log.debug(*args,**kw)
 
 
-def do_launch (cls, addr, port = 6633, max_retry_delay = 16, dpid = None, **kw):
+def do_launch (cls, address = '127.0.0.1', port = 6633, max_retry_delay = 16,
+    dpid = None, **kw):
   """
   Used for implementing custom switch launching functions
 
@@ -84,7 +85,7 @@ def do_launch (cls, addr, port = 6633, max_retry_delay = 16, dpid = None, **kw):
     loop = pox.lib.ioworker.RecocoIOLoop()
     #loop.more_debugging = True
     loop.start()
-    OpenFlowWorker.begin(loop=loop, addr=addr, port=port,
+    OpenFlowWorker.begin(loop=loop, addr=address, port=port,
         max_retry_delay=max_retry_delay, switch=switch)
 
   from pox.core import core
@@ -94,8 +95,8 @@ def do_launch (cls, addr, port = 6633, max_retry_delay = 16, dpid = None, **kw):
   return switch
 
 
-def softwareswitch (addr, port = 6633, max_retry_delay = 16, dpid = None,
-    __INSTANCE__ = None):
+def softwareswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
+    dpid = None, __INSTANCE__ = None):
   """
   Launches a SoftwareSwitch
 
@@ -103,4 +104,4 @@ def softwareswitch (addr, port = 6633, max_retry_delay = 16, dpid = None,
   """
   from pox.core import core
   core.register("datapaths", {})
-  do_launch(SoftwareSwitch, addr, port, max_retry_delay, dpid)
+  do_launch(SoftwareSwitch, address, port, max_retry_delay, dpid)

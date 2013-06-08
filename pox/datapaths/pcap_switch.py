@@ -16,7 +16,7 @@
 Software switch with PCap ports
 
 Example:
-./pox.py --no-openflow datapaths:softwareswitch --addr=localhost
+./pox.py --no-openflow datapaths.pcap_switch --address=localhost
 """
 
 from pox.core import core
@@ -32,10 +32,11 @@ log = core.getLogger()
 
 
 if not pxpcap.enabled:
-  raise RuntimeError("You need PXPCap")
+  raise RuntimeError("You need PXPCap to use this component")
 
-def launch (addr, port = 6633, max_retry_delay = 16, dpid = None, ports = '',
-    __INSTANCE__ = None):
+
+def launch (address = '127.0.0.1', port = 6633, max_retry_delay = 16,
+    dpid = None, ports = '', __INSTANCE__ = None):
   """
   Launches a switch
   """
@@ -70,7 +71,7 @@ def launch (addr, port = 6633, max_retry_delay = 16, dpid = None, ports = '',
       phy.peer = of.OFPPF_10MB_HD
       phys.append(phy)
 
-    do_launch(PCapSwitch, addr, port, max_retry_delay, dpid, ports=phys)
+    do_launch(PCapSwitch, address, port, max_retry_delay, dpid, ports=phys)
 
   core.addListenerByName("UpEvent", up)
 
