@@ -1,21 +1,18 @@
 # Copyright 2011,2012 James McCauley
 #
-# This file is part of POX.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
 #
-# POX is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# POX is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-"""  
+"""
 The POX Messenger system.
 
 
@@ -25,7 +22,7 @@ consumed by external clients.
 Sometimes a controller might need to interact with the outside world.
 Sometimes you need to integrate with an existing piece of software and
 maybe you don't get to choose how you communicate with it.  Other times,
-you have the opportunity and burden of rolling your own.  The Messenger 
+you have the opportunity and burden of rolling your own.  The Messenger
 system is meant to help you with the latter case.
 
 In short, channels are a system for communicating between POX and
@@ -169,7 +166,7 @@ class Transport (object):
     """ Forget about a connection """
     raise RuntimeError("Not implemented")
 
- 
+
 class Connection (EventMixin):
   """
   Superclass for Connections.
@@ -627,7 +624,7 @@ class MessengerNexus (EventMixin):
     key += str(id(key)) + self._session_salt
 
     key = b32encode(hashlib.md5(key).digest()).upper().replace('=','')
-   
+
     def alphahex (r):
       """ base 16 on digits 'a' through 'p' """
       r=hex(r)[2:].lower()
@@ -677,4 +674,3 @@ class MessengerNexus (EventMixin):
 
 def launch ():
   core.registerNew(MessengerNexus)
-

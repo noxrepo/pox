@@ -1,19 +1,16 @@
 # Copyright 2011-2013 James McCauley
 #
-# This file is part of POX.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
 #
-# POX is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# POX is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """
 Some of POX's core API and functionality is here, largely in the POXCore
@@ -398,7 +395,7 @@ class POXCore (EventMixin):
     self.components[name] = component
     self.raiseEventNoErrors(ComponentRegistered, name, component)
     self._try_waiters()
-    
+
   def call_when_ready (self, callback, components=[], name=None, args=(),
                        kw={}):
     """
@@ -469,7 +466,7 @@ class POXCore (EventMixin):
     Tries to satisfy all component-waiting callbacks
     """
     changed = True
-    
+
     while changed:
       changed = False
       for entry in list(self._waiters):
@@ -491,7 +488,7 @@ class POXCore (EventMixin):
     2) Call "_all_dependencies_met" on *sink* if it exists
     3) If attrs=True, set attributes on *sink* for each component
        (e.g, sink._openflow_ would be set to core.openflow)
-    
+
     For example, if topology is a dependency, a handler for topology's
     SwitchJoin event must be defined as so:
        def _handle_topology_SwitchJoin (self, ...):

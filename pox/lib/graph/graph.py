@@ -1,20 +1,17 @@
 # Copyright 2011 James McCauley
 # Copyright 2012 James McCauley
 #
-# This file is part of POX.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
 #
-# POX is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# POX is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 #import networkx as nx
 import pox.lib.graph.minigraph as nx
@@ -228,7 +225,7 @@ class UnaryOp (Operator):
 class BinaryOp (Operator):
   def __init__ (self, left, right):
     if isinstance(left, Operator):
-      self._left = left 
+      self._left = left
     else:
       self._left = Literal(left)
     if isinstance(right, Operator):
@@ -313,7 +310,7 @@ class NodeOp (Operator):
       left = Self()
 
     if isinstance(left, Operator):
-      self._left = left 
+      self._left = left
     else:
       self._left = Literal(left)
     if isinstance(right, Operator):
@@ -429,7 +426,7 @@ class Graph (object):
     for n1, n2, k, d in self._g.edges([node1, node2], data=True, keys=True):
       return (d[LINK][node1][1], d[LINK][node2][1])
     return None
-  
+
   def connected(self, node1, node2):
     return (self.find_port(node1, node2) != None)
 
@@ -454,7 +451,7 @@ class Graph (object):
   def unlink (self, np1, np2):
     count = 0
     if isinstance(np1, tuple):
-      count = disconnect_port(np1) 
+      count = disconnect_port(np1)
     elif isinstance(np2, tuple):
       count = disconnect_port(np2)
     else:
@@ -529,7 +526,7 @@ class Graph (object):
       assert ports.get(p[node]) is None
       ports[p[node][1]] = p.other(node)
     return ports
- 
+
   def port_for_node(self, node, port):
     assert node in self.node_port
     return self.node_port[node].get(port)
@@ -540,7 +537,7 @@ class Graph (object):
       Returns number of nodes disconnected
     """
     self.unlink(node1, node2)
-  
+
   def disconnect_node(self, node1):
     """ Disconnecte node from all neighbours """
     for neighbor in self.neighbors(node1):
@@ -650,7 +647,7 @@ def test():
     def __init__ (self):
       self._num = self.__class__._next_num
       self.__class__._next_num += 1
-  
+
     def __repr__ (self):
       return "Node1 #" + str(self._num)
 
@@ -659,7 +656,7 @@ def test():
     def __init__ (self):
       self._num = self.__class__._next_num
       self.__class__._next_num += 1
-  
+
     def __repr__ (self):
       return "Node2 #" + str(self._num)
 
@@ -668,7 +665,7 @@ def test():
     def __init__ (self):
       self._num = self.__class__._next_num
       self.__class__._next_num += 1
-  
+
     def __repr__ (self):
       return "Node3 #" + str(self._num)
   g = Graph()
@@ -694,9 +691,9 @@ def test():
   print g.ports_for_node(n3)
 
   print [(n, x[0], x[1][0], x[1][1]) for n in g.find(is_a=Node1) for x in g.ports_for_node(n).iteritems() ]
-  
+
   g.disconnect_nodes(n1, n3)
-  
+
   print g.find_links()
   g.link((n2, 1), (n3, 1))
   g.link((n1,1), (n3, 0))
@@ -706,7 +703,7 @@ def test():
   print g.find_links()
   import code
   code.interact(local=locals())
- 
+
 
 if __name__ == "__main__":
   test()

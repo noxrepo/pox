@@ -2,20 +2,17 @@
 # Copyright 2012 Andreas Wundsam
 # Copyright 2012 James McCauley
 #
-# This file is part of POX.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
 #
-# POX is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# POX is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """
 IOWorkers provide a convenient IO abstraction.  Sends are fire-and-forget,
@@ -48,7 +45,7 @@ def _call_safe (f, socket=None):
 class IOWorker (object):
   """
   Generic IOWorker class.
-  Fire and forget semantics for send. 
+  Fire and forget semantics for send.
   Received data is queued until read.
   """
   def __init__(self):
@@ -220,7 +217,7 @@ class IOWorker (object):
 
   def consume_receive_buf (self, l):
     """ Consume receive buffer """
-    # called from the client 
+    # called from the client
     if len(self.receive_buf) < l:
       raise RuntimeError("Receive buffer underrun")
     self.receive_buf = self.receive_buf[l:]
@@ -242,7 +239,7 @@ class IOWorker (object):
     return len(self.send_buf) > 0 or self._connecting
 
   def _consume_send_buf (self, l):
-    # Throw out the first l bytes of the send buffer 
+    # Throw out the first l bytes of the send buffer
     # Called by Select loop
     assert(len(self.send_buf)>=l)
     self.send_buf = self.send_buf[l:]
@@ -312,7 +309,7 @@ class RecocoIOWorker (IOWorker):
 
   def close (self):
     """ Register this socket to be closed. fire and forget """
-    # (don't close until Select loop is ready) 
+    # (don't close until Select loop is ready)
     if self.closed: return
     IOWorker.close(self)
     # on_close is a function not a method
@@ -406,11 +403,11 @@ class RecocoIOLoop (Task):
 
     worker.on_close = on_close
     worker.pinger = self.pinger
-    
+
     # Don't add immediately, since we may be in the wrong thread
     self._pending_commands.append(lambda: self._workers.add(worker))
     self.pinger.ping()
-     
+
   def stop (self):
     self.running = False
     self.pinger.ping()

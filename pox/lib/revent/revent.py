@@ -1,19 +1,16 @@
 # Copyright 2011 James McCauley
 #
-# This file is part of POX.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
 #
-# POX is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# POX is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 #TODO:
 #-----
@@ -55,8 +52,8 @@ class Sink (EventMixin):
     # If a method name starts with _handle_ and ends with the name of
     # an event that the source publishes, the method is automatically
     # registered as an event handler.
-    #  
-    # This method will now be called whenever pox.core triggers a 
+    #
+    # This method will now be called whenever pox.core triggers a
     # ComponentRegistered event.
 
     # Most event handlers are passed an event object as a parameter (though
@@ -84,7 +81,7 @@ class Source (EventMixin):
 
     # In the above invocation, the argument is an instance of
     # ComponentRegistered (which is a subclass of Event).  The following is
-    # functionally equivalent, but has the nice property that 
+    # functionally equivalent, but has the nice property that
     # ComponentRegistered is never instantiated if there are no listeners.
     #self.raiseEvent(ComponentRegistered, component)
     # In both cases, "component" is passed to the __init__ method for the
@@ -383,8 +380,8 @@ class EventMixin (object):
     Add an event handler for an event triggered by this object (subscribe).
 
     eventType : event class object (e.g. ConnectionUp). If byName is True,
-                should be a string (e.g. "ConnectionUp") 
-    handler : function/method to be invoked when event is raised 
+                should be a string (e.g. "ConnectionUp")
+    handler : function/method to be invoked when event is raised
     once : if True, this handler is removed after being fired once
     weak : If handler is a method on object A, then listening to an event
            on object B will normally make B have a reference to A, so A
@@ -462,7 +459,7 @@ class EventMixin (object):
     See also: listenTo(), autoBindEvents()
     """
     return autoBindEvents(sink, self, prefix, weak, priority)
-  
+
   def clearHandlers(self):
     """
     Remove all handlers from this object
@@ -512,7 +509,7 @@ def autoBindEvents (sink, source, prefix='', weak=False, priority=None):
     # get the method object
     a = getattr(sink, m)
     if callable(a):
-      # if it has the revent prefix signature, 
+      # if it has the revent prefix signature,
       if m.startswith("_handle" + prefix + "_"):
         event = m[8+len(prefix):]
         # and it is one of the events our source triggers
@@ -566,4 +563,3 @@ class CallProxy (object):
     raise RuntimeError("callProxy object is gone!")
   def __str__ (self):
     return "<CallProxy for " + self.name + ">"
-

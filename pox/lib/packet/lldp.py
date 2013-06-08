@@ -1,20 +1,17 @@
 # Copyright 2012 James McCauley
 # Copyright 2008 (C) Nicira, Inc.
 #
-# This file is part of POX.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
 #
-# POX is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# POX is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # This file is derived from the packet library in NOX, which was
 # developed by Nicira, Inc.
@@ -340,7 +337,7 @@ class chassis_id (simple_tlv):
   def _init (self, kw):
     self.subtype  = 0
     self.id       = None
-   
+
   def _parse_data (self, data):
     if len(data) < 2:
       raise MalformedException("TLV has invalid strlen")
@@ -486,7 +483,7 @@ class organizationally_specific (simple_tlv):
     self.oui = '\x00\x00\x00'
     self.subtype = 0
     self.payload = b''
-    
+
   def _parse_data (self, data):
     (self.oui,self.subtype) = struct.unpack("3sB", data[0:4])
     self.payload = data[4:]
@@ -509,7 +506,7 @@ class system_capabilities (simple_tlv):
   def _init (self, kw):
     self.caps = [False] * 16
     self.enabled_caps = [False] * 16
-    
+
   def _parse_data (self, data):
     (cap,en) = struct.unpack("!HH", data)
     del self.caps[:]
