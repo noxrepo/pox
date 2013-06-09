@@ -54,3 +54,47 @@ class MockIPAddrTest (unittest.TestCase):
     a,b=parse_cidr("192.168.1.0/255.255.255.0", infer=False, allow_host=False)
     self.assertEqual(a,IPAddr("192.168.1.0"))
     self.assertEqual(b,24)
+
+
+#TODO: Clean up these IPv6 tests
+class IPv6Tests (unittest.TestCase):
+  def test_basics_part1 (self):
+    """
+    Basic IPv6 address tests (part 1)
+    """
+    a = IPAddr6('2001:0db8:85a3:0000:0000:8a2e:0370:7334')
+    assert str(a) == '2001:db8:85a3::8a2e:370:7334','minimal repr'
+    assert a.to_str(zero_drop=False) == \
+        '2001:0db8:85a3::8a2e:0370:7334', 'no zero drop'
+    assert a.to_str(section_drop=False) == \
+        '2001:db8:85a3:0:0:8a2e:370:7334', 'no section drop'
+    assert a.to_str(section_drop=False, zero_drop=False) == \
+        '2001:0db8:85a3:0000:0000:8a2e:0370:7334', 'full length'
+    assert str(IPAddr6('0:0:0:0:0:0:0:1')) == '::1', 'loopback'
+    assert str(IPAddr6('0:0:0:0:0:0:0:0')) == '::', 'unspecified'
+    assert str(IPAddr6('2001:db8:0:0:0:0:2:1')) == '2001:db8::2:1'
+    assert str(IPAddr6('2001:db8:0000:1:1:1:1:1')) == '2001:db8:0:1:1:1:1:1'
+    assert str(IPAddr6('2001:db8:0:0:1:0:0:1')) == '2001:db8::1:0:0:1'
+    assert str(IPAddr6('1:0:0:2:0:0:0:3')) == '1:0:0:2::3'
+
+  def test_part2 (self):
+    """
+    Basic IPv6 address tests (part 2)
+    """
+    h = '\xfe\x80\x00\x00\x00\x00\x00\x00\xba\x8d\x12\xff\xfe\x2a\xdd\x6e'
+    a = IPAddr6.from_raw(h)
+    assert str(a) == 'fe80::ba8d:12ff:fe2a:dd6e'
+    assert a.raw == h
+
+    assert a.num == 0xfe80000000000000ba8d12fffe2add6e
+    assert IPAddr6.from_num(a.num) == a
+
+    assert a.is_multicast is False
+    assert IPAddr6("FF02:0:0:0:0:0:0:1").is_multicast
+
+    assert IPAddr6('2001:db8:1:2::').set_mac('00:1D:BA:06:37:64') \
+        == '2001:db8:1:2:021d:baff:fe06:3764'
+
+    assert IPAddr6('0:0:0:0:0:FFFF:222.1.41.90') == '::ffff:222.1.41.90'
+    assert IPAddr6('::ffff:C0A8:5') == '::ffff:192.168.0.5'
+    assert IPAddr6('::ffff:192.168.0.5') == '::ffff:c0a8:5'
