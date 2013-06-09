@@ -82,6 +82,8 @@ class ethernet(packet_base):
       ethernet.type_parsers[ethernet.RARP_TYPE] = arp
       from ipv4 import ipv4
       ethernet.type_parsers[ethernet.IP_TYPE]   = ipv4
+      from ipv6 import ipv6
+      ethernet.type_parsers[ethernet.IPV6_TYPE] = ipv6
       from lldp import lldp
       ethernet.type_parsers[ethernet.LLDP_TYPE] = lldp
       from eapol import eapol

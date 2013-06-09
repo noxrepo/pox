@@ -30,8 +30,10 @@ import dns as DNS
 import eap as EAP
 import eapol as EAPOL
 import ethernet as ETHERNET
-import icmp as ICMP
 import ipv4 as IPV4
+import ipv6 as IPV6
+import icmp as ICMP
+import icmpv6 as ICMPV6
 import lldp as LLDP
 import tcp as TCP
 import udp as UDP
@@ -44,8 +46,10 @@ from dns import *
 from eap import *
 from eapol import *
 from ethernet import *
-from icmp import *
 from ipv4 import *
+from ipv6 import *
+from icmp import *
+from icmpv6 import *
 from lldp import *
 from tcp import *
 from udp import *
@@ -59,8 +63,10 @@ __all__ = [
   'eap',
   'eapol',
   'ethernet',
-  'icmp',
   'ipv4',
+  'ipv6',
+  'icmp',
+  'icmpv6',
   'lldp',
   'tcp',
   'tcp_opt',
@@ -74,8 +80,10 @@ __all__ = [
   'EAP',
   'EAPOL',
   'ETHERNET',
-  'ICMP',
   'IPV4',
+  'IPV6',
+  'ICMP',
+  'ICMPV6',
   'LLDP',
   'TCP',
   'UDP',

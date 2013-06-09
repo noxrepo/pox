@@ -51,14 +51,21 @@ _ethtype_to_str[0xffff] = 'BAD'
 
 
 # IP protocol to string
-_ipproto_to_str[0]  = 'IP'
+#TODO: This should probably be integrated with the decorator used in
+#      the ipv6 module.
+_ipproto_to_str[0]  = 'HOP_OPTS'
 _ipproto_to_str[1]  = 'ICMP'
 _ipproto_to_str[2]  = 'IGMP'
 _ipproto_to_str[4]  = 'IPIP'
 _ipproto_to_str[6]  = 'TCP'
 _ipproto_to_str[9]  = 'IGRP'
 _ipproto_to_str[17] = 'UDP'
+_ipproto_to_str[43] = 'IPV6_ROUTING'
+_ipproto_to_str[44] = 'IPV6_FRAG'
 _ipproto_to_str[47] = 'GRE'
+_ipproto_to_str[58] = 'ICMP6'
+_ipproto_to_str[59] = 'IPV6_NO_NEXT'
+_ipproto_to_str[60] = 'DEST_OPTS'
 _ipproto_to_str[89] = 'OSPF'
 
 
@@ -71,6 +78,15 @@ class TruncatedException (RuntimeError):
 
 
 def checksum (data, start = 0, skip_word = None):
+  """
+  Calculate standard internet checksum over data starting at start'th byte
+
+  skip_word: If specified, it's the word offset of a word in data to "skip"
+             (as if it were zero).  The purpose is when data is received
+             data which contains a computed checksum that you are trying to
+             verify -- you want to skip that word since it was zero when
+             the checksum was initially calculated.
+  """
   if len(data) % 2 != 0:
     arr = array.array('H', data[:-1])
   else:
@@ -86,21 +102,29 @@ def checksum (data, start = 0, skip_word = None):
       start +=  arr[i]
 
   if len(data) % 2 != 0:
-    start += struct.unpack('H', data[-1]+'\0')[0]
+    start += struct.unpack('H', data[-1]+'\0')[0] # Specify order?
 
   start  = (start >> 16) + (start & 0xffff)
   start += (start >> 16)
+  #while start >> 16:
+  #  start = (start >> 16) + (start & 0xffff)
 
   return ntohs(~start & 0xffff)
 
 
-def ethtype_to_str(t):
+def ethtype_to_str (t):
+  """
+  Given numeric ethernet type or length, return human-readable representation
+  """
   if t <= 0x05dc:
     return "802.3/%04x" % (t,)
   return _ethtype_to_str.get(t, "%04x" % (t,))
 
 
-def ipproto_to_str(t):
+def ipproto_to_str (t):
+  """
+  Given a numeric IP protocol number (or IPv6 next_header), give human name
+  """
   if t in _ipproto_to_str:
     return _ipproto_to_str[t]
   else:

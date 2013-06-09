@@ -419,6 +419,11 @@ class dns(packet_base):
             if dlen != 4:
                 raise Exception('(dns) invalid a data size',system='packet')
             return IPAddr(l[beg_index : beg_index + 4])
+        # AAAA
+        elif type == 28:
+            if dlen != 16:
+                raise Exception('(dns) invalid a data size',system='packet')
+            return IPAddr6(l[beg_index : beg_index + dlen])
         # NS
         elif type == 2:
             return self.read_dns_name_from_index(l, beg_index)[1]

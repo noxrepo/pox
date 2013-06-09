@@ -294,10 +294,15 @@ class tcp(packet_base):
         If unparsed, calculates it on the raw, unparsed data.  This is
         useful for validating that it is correct on an incoming packet.
         """
-        if self.prev.__class__.__name__ != 'ipv4':
-            self.msg('packet not in ipv4, cannot calculate checksum ' +
-                     'over psuedo-header' )
-            return 0
+        ip_ver = None
+        if self.prev.__class__.__name__  == 'ipv4':
+          ip_ver = 4
+        elif self.prev.__class__.__name__  == 'ipv6':
+          ip_ver = 6
+        else:
+          self.msg('packet not in IP; cannot calculate checksum ' +
+                    'over psuedo-header' )
+          return 0
 
         if unparsed:
             payload_len = len(self.raw)
@@ -314,10 +319,17 @@ class tcp(packet_base):
             payload = self.hdr(None, calc_checksum = False) + payload
             payload_len = len(payload)
 
-        ippacket = struct.pack('!IIBBH', self.prev.srcip.toUnsigned(),
-                                         self.prev.dstip.toUnsigned(),
-                                         0,
-                                         self.prev.protocol,
-                                         payload_len)
+        if ip_ver == 4:
+            ph = struct.pack('!IIBBH', self.prev.srcip.toUnsigned(),
+                                       self.prev.dstip.toUnsigned(),
+                                       0,
+                                       self.prev.protocol,
+                                       payload_len)
 
-        return checksum(ippacket + payload, 0, 14)
+            return checksum(ph + payload, 0, 14)
+        elif ip_ver == 6:
+            ph = self.prev.srcip.raw + self.prev.dstip.raw
+            ph += struct.pack('!IHBB', payload_len, 0, 0,
+                              self.prev.next_header_type)
+
+            return checksum(ph + payload, 0, 28)

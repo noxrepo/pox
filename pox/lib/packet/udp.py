@@ -92,11 +92,16 @@ class udp(packet_base):
             self.msg('(udp parse) warning invalid UDP len %u' % self.len)
             return
 
+        #TODO: DHCPv6, etc.
+
         if (self.dstport == dhcp.SERVER_PORT
                     or self.dstport == dhcp.CLIENT_PORT):
             self.next = dhcp(raw=raw[udp.MIN_LEN:],prev=self)
         elif (self.dstport == dns.SERVER_PORT
                     or self.srcport == dns.SERVER_PORT):
+            self.next = dns(raw=raw[udp.MIN_LEN:],prev=self)
+        elif (self.dstport == dns.MDNS_PORT
+                    or self.srcport == dns.MDNS_PORT):
             self.next = dns(raw=raw[udp.MIN_LEN:],prev=self)
         elif ( (self.dstport == rip.RIP_PORT
                 or self.srcport == rip.RIP_PORT) ):
@@ -108,6 +113,7 @@ class udp(packet_base):
             return
         else:
             self.payload = raw[udp.MIN_LEN:]
+
 
     def hdr(self, payload):
         self.len = len(payload) + udp.MIN_LEN
@@ -121,10 +127,15 @@ class udp(packet_base):
         useful for validating that it is correct on an incoming packet.
         """
 
-        if self.prev.__class__.__name__ != 'ipv4':
-            self.msg('packet not in ipv4, cannot calculate checksum ' +
-                     'over psuedo-header' )
-            return 0
+        ip_ver = None
+        if self.prev.__class__.__name__  == 'ipv4':
+          ip_ver = 4
+        elif self.prev.__class__.__name__  == 'ipv6':
+          ip_ver = 6
+        else:
+          self.msg('packet not in IP; cannot calculate checksum ' +
+                    'over psuedo-header' )
+          return 0
 
         if unparsed:
             payload_len = len(self.raw)
@@ -138,17 +149,21 @@ class udp(packet_base):
                 payload = self.next
             payload_len = udp.MIN_LEN + len(payload)
 
-        ippacket = struct.pack('!IIBBH', self.prev.srcip.toUnsigned(),
-                                         self.prev.dstip.toUnsigned(),
-                                         0,
-                                         self.prev.protocol,
-                                         payload_len)
+            myhdr = struct.pack('!HHHH', self.srcport, self.dstport,
+                                payload_len, 0)
+            payload = myhdr + payload
 
-        if not unparsed:
-          myhdr = struct.pack('!HHHH', self.srcport, self.dstport,
-                              payload_len, 0)
-          payload = myhdr + payload
-
-        r = checksum(ippacket + payload, 0, 9)
-        return 0xffff if r == 0 else r
-
+        if ip_ver == 4:
+            ph = struct.pack('!IIBBH', self.prev.srcip.toUnsigned(),
+                                       self.prev.dstip.toUnsigned(),
+                                       0,
+                                       self.prev.protocol,
+                                       payload_len)
+            r = checksum(ph + payload, 0, 9)
+            return 0xffff if r == 0 else r
+        elif ip_ver == 6:
+            ph = self.prev.srcip.raw + self.prev.dstip.raw
+            ph += struct.pack('!IHBB', payload_len, 0, 0,
+                              self.prev.next_header_type)
+            r = checksum(ph + payload, 0, 23)
+            return 0xffff if r == 0 else r
