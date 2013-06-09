@@ -94,7 +94,7 @@ from packet_utils import TruncatedException as Trunc
 
 from packet_base import packet_base
 
-from pox.lib.addresses import IPAddr
+from pox.lib.addresses import IPAddr,IPAddr6,EthAddr
 
 rrtype_to_str = {
    1: "A",  # host address
@@ -128,7 +128,13 @@ rrclass_to_str = {
 class dns(packet_base):
     "DNS Packet struct"
 
+    MDNS_ADDRESS  = IPAddr('224.0.0.251')
+    MDNS6_ADDRESS = IPAddr6('ff02::fb')
+    MDNS_ETH      = EthAddr('01:00:5E:00:00:fb')
+    MDNS6_ETH     = EthAddr('33:33:00:00:00:fb')
+
     SERVER_PORT = 53
+    MDNS_PORT   = 5353
     MIN_LEN     = 12
 
     def __init__(self, raw=None, prev=None, **kw):
