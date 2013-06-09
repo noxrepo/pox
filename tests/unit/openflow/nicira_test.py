@@ -184,9 +184,9 @@ class basics_test (unittest.TestCase):
         # Currently never check mask for raw
       elif issubclass(nxm_class, nx._nxm_ipv6):
         import pox.lib.addresses as addresses
-        self.assertFalse('IPAddr6' in dir(addresses), 'IPv6 is available, '
-                         'so this test needs to be fixed.')
-        value = "0000000000000000"
+        #self.assertFalse('IPAddr6' in dir(addresses), 'IPv6 is available, '
+        #                 'so this test needs to be fixed.')
+        value = 'ff02::/126'
       elif issubclass(nxm_class, nx._nxm_ip):
         value = IPAddr('192.168.56.0')
         mask  = IPAddr('255.255.255.0')

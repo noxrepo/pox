@@ -18,7 +18,7 @@
 from pox.core import core
 from pox.lib.util import initHelper
 from pox.lib.util import hexdump
-from pox.lib.addresses import parse_cidr, IPAddr, EthAddr
+from pox.lib.addresses import parse_cidr, IPAddr, EthAddr, IPAddr6
 import pox.lib.packet as pkt
 
 import pox.openflow.libopenflow_01 as of
@@ -1593,8 +1593,8 @@ class _nxm_ip (object):
       assert len(value) == 2
       ip = value[0]
       self.mask = value[1]
-      if isinstance(mask, (int,long)):
-        self.mask = mask
+      #if isinstance(mask, (int,long)):
+      #  self.mask = mask
     elif isinstance(value, basestring) and len(value)>4 and '/' in value:
       temp = parse_cidr(value, infer=False)
       ip = temp[0]
@@ -1614,7 +1614,7 @@ class _nxm_ip (object):
       if v > 32: v = 32
       elif v < 0: v = 0
       n = (0xffFFffFF << (32-v)) & 0xffFFffFF
-      return IPAddr(v, networkOrder=False).toRaw()
+      return IPAddr(n, networkOrder=False).toRaw()
     else:
       return IPAddr(v).toRaw()
   #def _unpack_mask (self, v):
@@ -1632,7 +1632,6 @@ class _nxm_ipv6 (object):
   first is assumed to be any kind of IP address and the second is either
   a netmask or the number of network bits.
   """
-  #TODO: Fix this when IPv6 is available
 
   @property
   def value (self):
@@ -1643,36 +1642,30 @@ class _nxm_ipv6 (object):
       assert len(value) == 2
       ip = value[0]
       self.mask = value[1]
-      if isinstance(mask, long):
-        self.mask = mask
-    #TODO
-    #elif isinstance(value, unicode) and u'/' in value:
-    #  temp = parse_cidr6(value, infer=False)
-    #  ip = temp[0]
-    #  self.mask = 128 if temp[1] is None else temp[1]
+    elif isinstance(value, (unicode,str)):
+      ip,mask = IPAddr6.parse_cidr(value, allow_host = True)
+      #self.mask = 128 if mask is None else mask
+      self.mask = mask
     else:
       ip = value
 
-    self._value = self._pack_value(value)
+    self._value = self._pack_value(ip)
 
   def _pack_value (self, v):
-    return v
-    #return IPAddr6(v).raw
+    return IPAddr6(v).raw
   def _unpack_value (self, v):
-    return v
-    #return IPAddr6(v, raw=True)
+    return IPAddr6(v, raw=True)
   def _pack_mask (self, v):
-    return v
-    #if isinstance(v, long):
-    #  # Assume CIDR
-    #  if v > 128: v = 128
-    #  elif v < 0: v = 0
-    #  n = (0xffFFffFF << (32-v)) & 0xffFFffFF
-    #  return IPAddr6(v, networkOrder=False).toRaw()
-    #else:
-    #  #return IPAddr6(v).raw
-  #def _unpack_mask (self, v):
-  #  # Special unpacking for CIDR-style?
+    if isinstance(v, (int,long)):
+      # Assume CIDR
+      if v > 128: v = 128
+      elif v < 0: v = 0
+      n = (((1<<128)-1) << (128-v)) & ((1<<128)-1)
+      return IPAddr6.from_num(n).raw
+    else:
+      return IPAddr6(v).raw
+#  def _unpack_mask (self, v):
+#    # Special unpacking for CIDR-style?
 
 
 class _nxm_ether (object):
@@ -1872,7 +1865,7 @@ class nxm_entry (object):
   def __str__ (self):
     r = self.__class__.__name__ + "(" + str(self.value)
     if self.mask is not None:
-      if self.mask != ("\xff" * self._nxm_length):
+      if self.mask.raw != ("\xff" * self._nxm_length):
         r += "/" + str(self.mask)
     #if self.is_reg: r += "[r]"
     return r + ")"
