@@ -57,6 +57,9 @@ class basics_test (unittest.TestCase):
     assert type(learn)==cls
     return learn
 
+  def _init_action_nx_action_pop_mpls (self, cls):
+    return cls(ethertype=101)
+
 
   def test_unpack_weird_header (self):
     """
