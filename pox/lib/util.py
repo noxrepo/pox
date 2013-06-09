@@ -399,14 +399,35 @@ def hexdump (data):
 class TimeoutError(StandardError):
   pass
 
+def connect_with_backoff(code_block, max_backoff_seconds=32):
+  '''
+  Invoke code_block. If code_block throws a socket error,
+  exponentially back off, up to the max backoff.
+
+  raises an exception if the connection was unsuccessful
+  '''
+  backoff_seconds = 1
+  while True:
+    try:
+      return code_block()
+    except socket.error as e:
+      print >>sys.stderr, ('''Error connecting.  '''
+                           '''-- %s. Backing off %d seconds ...''' %
+                           (str(e), backoff_seconds))
+      if backoff_seconds >= max_backoff_seconds:
+        raise TimeoutError("Could not connect.")
+      else:
+        time.sleep(backoff_seconds)
+      backoff_seconds <<= 1
+
 def connect_socket_with_backoff(address="localhost", port=None, max_backoff_seconds=32):
   '''
-  Connect to the given address and port. If the connection attempt fails, 
+  Connect to the given address and port. If the connection attempt fails,
   exponentially back off, up to the max backoff.
 
   To connect to a Unix domain socket, specify address as a filename, and leave
   port=None
-  
+
   return the connected socket, or raise an exception if the connection was unsuccessful
   '''
   if port is None:
@@ -417,25 +438,18 @@ def connect_socket_with_backoff(address="localhost", port=None, max_backoff_seco
     # Normal TCP socket
     server_info = (address, port)
     sock_type = socket.AF_INET
-  backoff_seconds = 1
-  sock = None
+
   print >>sys.stderr, "connect_socket_with_backoff %s" % str(server_info)
-  while True:
-    try:
-      sock = socket.socket(sock_type, socket.SOCK_STREAM)
-      sock.connect( server_info )
-      break
-    except socket.error as e:
-      print >>sys.stderr, ('''Error connecting to %s '''
-                           '''-- %s. Backing off %d seconds ...''' %
-                           (str(server_info), str(e), backoff_seconds))
-      if backoff_seconds >= max_backoff_seconds:
-        raise TimeoutError("Could not connect to controller %s" %
-                           str(server_info))
-      else:
-        time.sleep(backoff_seconds)
-      backoff_seconds <<= 1
-  return sock
+  def connect():
+    sock = socket.socket(sock_type, socket.SOCK_STREAM)
+    sock.connect( server_info )
+    return sock
+
+  try:
+    return connect_with_backoff(connect, max_backoff_seconds=max_backoff_seconds)
+  except TimeoutError:
+    raise TimeoutError("Could not connect to controller %s" %
+                       str(server_info))
 
 def parse_openflow_uri(uri):
   """ 
