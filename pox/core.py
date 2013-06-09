@@ -555,3 +555,9 @@ def initialize ():
   global core
   core = POXCore()
   return core
+
+# The below is a big hack to make tests work.
+# We should do something better.
+import sys
+if 'unittest' in sys.modules or 'nose' in sys.modules:
+  initialize()
