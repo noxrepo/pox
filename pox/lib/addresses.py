@@ -166,6 +166,10 @@ class EthAddr (object):
     return self.isMulticast()
 
   def toRaw (self):
+    return self.raw
+
+  @property
+  def raw (self):
     """
     Returns the address as a 6-long bytes object.
     """
@@ -269,6 +273,10 @@ class IPAddr (object):
     return struct.unpack("i", struct.pack("I", v))[0]
 
   def toRaw (self):
+    return self.raw
+
+  @property
+  def raw (self):
     """
     Returns the address as a four-character byte string.
     """
