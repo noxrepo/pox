@@ -277,15 +277,17 @@ class DeferredSender (threading.Thread):
   Class that handles sending when a socket write didn't complete
   """
   def __init__ (self):
-    # Threads, not recoco?
     threading.Thread.__init__(self)
+    core.addListeners(self)
     self._dataForConnection = {}
     self._lock = threading.RLock()
     self._waker = pox.lib.util.makePinger()
-    self.daemon = True
     self.sending = False
 
     self.start()
+
+  def _handle_GoingDownEvent (self, event):
+    self._waker.ping()
 
   def _sliceup (self, data):
     """
@@ -328,7 +330,7 @@ class DeferredSender (threading.Thread):
       with self._lock:
         cons = self._dataForConnection.keys()
 
-      rlist, wlist, elist = select.select([self._waker], cons, cons, 1)
+      rlist, wlist, elist = select.select([self._waker], cons, cons, 5)
       if not core.running: break
 
       with self._lock:
@@ -374,9 +376,6 @@ class DeferredSender (threading.Thread):
               del self._dataForConnection[con]
             except:
               pass
-
-# Used by the Connection class below
-deferredSender = DeferredSender()
 
 class DummyOFNexus (object):
   def raiseEventNoErrors (self, event, *args, **kw):
@@ -943,9 +942,16 @@ def _set_handlers ():
 _set_handlers()
 
 
+# Used by the Connection class
+deferredSender = None
+
 def launch (port = 6633, address = "0.0.0.0"):
   if core.hasComponent('of_01'):
     return None
+
+  global deferredSender
+  deferredSender = DeferredSender()
+
   l = OpenFlow_01_Task(port = int(port), address = address)
   core.register("of_01", l)
   return l
