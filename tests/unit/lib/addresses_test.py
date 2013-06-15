@@ -55,6 +55,9 @@ class MockIPAddrTest (unittest.TestCase):
     self.assertEqual(a,IPAddr("192.168.1.0"))
     self.assertEqual(b,24)
 
+  def test_byte_order (self):
+    self.assertEqual(IPAddr(IPAddr('1.2.3.4').toSigned()).raw,
+        '\x01\x02\x03\x04')
 
 #TODO: Clean up these IPv6 tests
 class IPv6Tests (unittest.TestCase):
