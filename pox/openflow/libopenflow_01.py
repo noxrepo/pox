@@ -2731,10 +2731,14 @@ class ofp_desc_stats (ofp_stats_body_base):
 ofp_desc_stats_reply = ofp_desc_stats
 
 
-# This next one is weird.  It only exists so that the type-guessing
-# will work for requests.  I don't think it's really needed, though.
-@openflow_stats_request('OFPST_DESC', 0)
-class ofp_desc_stats_request (ofp_stats_body_base):
+class _empty_stats_request_body (ofp_stats_body_base):
+  """
+  Superclass for table stats requests with empty bodies
+
+  OFPST_DESC and OFPST_TABLE have empty request bodies.  In order
+  to make type guessing and unpacking consistent, we define
+  classes for them anyway.
+  """
   def __init__ (self, **kw):
     pass
 
@@ -2756,6 +2760,20 @@ class ofp_desc_stats_request (ofp_stats_body_base):
 
   def show (self, prefix=''):
     return "<empty>"
+
+@openflow_stats_request('OFPST_DESC', 0)
+class ofp_desc_stats_request (_empty_stats_request_body):
+  """
+  See _empty_stats_request_body superclass documentation
+  """
+  pass
+
+@openflow_stats_request('OFPST_TABLE', 3)
+class ofp_table_stats_request (_empty_stats_request_body):
+  """
+  See _empty_stats_request_body superclass documentation
+  """
+  pass
 
 
 @openflow_stats_request('OFPST_FLOW', 1)
