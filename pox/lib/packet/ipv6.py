@@ -407,7 +407,13 @@ class ipv6 (packet_base):
       nht = self.next_header_type
 
     self.next_header_type = nht #FIXME: this is a hack
-    self.payload_length = len(payload.pack()) # Hack
+
+    # Ugh, this is also an ugly hack
+    if hasattr(payload, 'pack'):
+      self.payload_length = len(payload.pack())
+    else:
+      self.payload_length = len(payload)
+
 
     r = struct.pack("!IHBB", vtcfl, self.payload_length, nht, self.hop_limit)
     r += self.srcip.raw
