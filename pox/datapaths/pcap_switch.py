@@ -80,7 +80,7 @@ class PCapSwitch (SoftwareSwitchBase):
   def __init__ (self, *args, **kw):
     self.q = Queue()
     self.t = Thread(target=self._consumer_threadproc)
-    self.t.daemon = True
+    core.addListeners(self)
 
     super(PCapSwitch,self).__init__(*args,**kw)
     self.px = {}
@@ -94,6 +94,9 @@ class PCapSwitch (SoftwareSwitchBase):
 
     self.t.start()
 
+  def _handle_GoingDownEvent (self, event):
+    self.q.put(None)
+
   def _consumer_threadproc (self):
     timeout = 3
     while core.running:
@@ -101,6 +104,9 @@ class PCapSwitch (SoftwareSwitchBase):
         data = self.q.get(timeout=timeout)
       except:
         continue
+      if data is None:
+        # Signal to quit
+        break
       batch = []
       while True:
         self.q.task_done()
