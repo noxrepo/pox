@@ -120,7 +120,7 @@ def nd_option_def (cls):
   return cls
 
 
-def _parse_ndp_options (raw, offset = 0, buf_len = None):
+def _parse_ndp_options (raw, prev, offset = 0, buf_len = None):
   """
   Parse ICMPv6 options and return (new_offset,[option_list])
   """
@@ -133,7 +133,7 @@ def _parse_ndp_options (raw, offset = 0, buf_len = None):
   while offset < buf_len - 2:
     if (buf_len - offset) % 8 != 0:
       raise RuntimeError("Bad option data length")
-    offset,o = NDOptionBase.unpack_new(raw, offset, buf_len)
+    offset,o = NDOptionBase.unpack_new(raw, offset, buf_len, prev=prev)
     r.append(o)
 
   return offset,r
@@ -500,7 +500,7 @@ class NDRouterSolicitation (icmp_base):
 
     try:
       offset += 4 # Skip reserved
-      offset,o.options = _parse_ndp_options(raw, offset, buf_len)
+      offset,o.options = _parse_ndp_options(raw, prev, offset, buf_len)
 
       o.parsed = True
     except TruncatedException:
@@ -559,7 +559,7 @@ class NDRouterAdvertisement (icmp_base):
       o.hop_limit,flags,o.lifetime,o.reachable,o.retrans_time = \
           struct.unpack_from("!BBHII", raw, offset)
       offset += 1 + 1 + 2 + 4 + 4
-      offset,o.options = _parse_ndp_options(raw, offset, buf_len)
+      offset,o.options = _parse_ndp_options(raw, prev, offset, buf_len)
       o.is_managed = flags & cls.MANAGED_FLAG
       o.is_other = flags & cls.OTHER_FLAG
 
@@ -620,7 +620,7 @@ class NDNeighborSolicitation (icmp_base):
       offset += 4 # Skip reserved
       o.target = IPAddr6(raw=raw[offset:offset+16])
       offset += 16
-      offset,o.options = _parse_ndp_options(raw, offset, buf_len)
+      offset,o.options = _parse_ndp_options(raw, prev, offset, buf_len)
 
       o.parsed = True
     except TruncatedException:
@@ -686,7 +686,7 @@ class NDNeighborAdvertisement (icmp_base):
       offset += 4 # Skip reserved
       o.target = IPAddr6(raw=raw[offset:offset+16])
       offset += 16
-      offset,o.options = _parse_ndp_options(raw, offset, buf_len)
+      offset,o.options = _parse_ndp_options(raw, prev, offset, buf_len)
 
       o.parsed = True
     except TruncatedException:
