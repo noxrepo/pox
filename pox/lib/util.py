@@ -24,6 +24,8 @@ import sys
 import os
 import time
 import socket
+import collections
+
 
 #FIXME: ugh, why can't I make importing pox.core work here?
 import logging
@@ -449,6 +451,14 @@ def is_scalar (v):
  return isinstance(v, _scalar_types)
 
 
+def is_listlike (o):
+  """
+  Is this a sequence that isn't like a string or bytes?
+  """
+  if isinstance(o, (bytes,str,bytearray)): return False
+  return isinstance(o, collections.Iterable)
+
+
 def fields_of (obj, primitives_only=False,
                primitives_and_composites_only=False, allow_caps=False):
   """
@@ -485,6 +495,7 @@ def eval_args (f):
   """
   f._pox_eval_args = True
   return f
+
 
 if __name__ == "__main__":
   #TODO: move to tests?

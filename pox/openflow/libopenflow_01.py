@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import struct
 import operator
-import collections
 from itertools import chain, repeat
 import sys
 from pox.lib.packet.packet_base import packet_base
@@ -36,6 +35,7 @@ from pox.lib.addresses import *
 from pox.lib.util import assert_type
 from pox.lib.util import initHelper
 from pox.lib.util import hexdump
+from pox.lib.util import is_listlike
 
 
 EMPTY_ETH = EthAddr(None)
@@ -2573,7 +2573,7 @@ class ofp_stats_reply (ofp_header):
         return b.pack() if hasattr(b, 'pack') else b
 
       data = b''
-      if isinstance(self.body, collections.Iterable):
+      if is_listlike(self.body):
         for b in self.body:
           data += _pack(b)
       else:
@@ -2583,8 +2583,12 @@ class ofp_stats_reply (ofp_header):
 
   def pack (self):
     if self.type is None:
-      if isinstance(self.body, ofp_stats_body_base):
-        self.type = self.body._type
+      if is_listlike(self.body):
+        b = self.body[0]
+      else:
+        b = self.body
+      if isinstance(b, ofp_stats_body_base):
+        self.type = b._type
       else:
         raise RuntimeError("Can't determine body type; specify it "
                            + "explicitly")
@@ -2647,7 +2651,11 @@ class ofp_stats_reply (ofp_header):
     outstr += prefix + 'type: ' + str(self.type) + '\n'
     outstr += prefix + 'flags: ' + str(self.flags) + '\n'
     outstr += prefix + 'body:\n'
-    outstr += _format_body(self.body, prefix + '  ') + '\n'
+    body = self.body
+    if not is_listlike(body):
+      body = [body]
+    for b in body:
+      outstr += _format_body(b, prefix + '  ') + '\n'
     return outstr
 
 
