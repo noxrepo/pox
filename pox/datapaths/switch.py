@@ -265,12 +265,12 @@ class SoftwareSwitchBase (object):
 
 
     def flow_stats (ofp):
-      req = ofp_flow_stats_request().unpack(ofp.body)
+      req = ofp.body
       assert self.table_id in (TABLE_ALL, 0)
       return self.table.flow_stats(req.match, req.out_port)
 
     def aggregate_stats (ofp):
-      req = ofp_aggregate_stats_request().unpack(ofp.body)
+      req = ofp.body
       assert self.table_id in (TABLE_ALL, 0)
       return self.table.aggregate_stats(req.match, out_port)
 
@@ -287,7 +287,7 @@ class SoftwareSwitchBase (object):
       return r
 
     def port_stats (ofp):
-      req = ofp_port_stats_request().unpack(ofp.body)
+      req = ofp.body
       if req.port_no == OFPP_NONE:
         res = ofp_port_stats(port_no=OFPP_NONE)
         for stats in self.port_stats.values():
@@ -800,20 +800,17 @@ class OFConnection (object):
         else:
           raise
 
-      # OpenFlow parsing occurs here:
+      # Parse head of OpenFlow message by hand
       ofp_type = ord(message[1])
       packet_length = ord(message[2]) << 8 | ord(message[3])
       if packet_length > len(message):
         break
 
-      # msg.unpack implicitly only examines its own bytes, and not trailing
-      # bytes
       new_offset, msg_obj = self.unpackers[ofp_type](message, 0)
       assert new_offset == packet_length
 
       io_worker.consume_receive_buf(packet_length)
 
-      # note: on_message_received is just a function, not a method
       if self.on_message_received is None:
         raise RuntimeError("on_message_receieved hasn't been set yet!")
 
@@ -823,7 +820,7 @@ class OFConnection (object):
         if self.error_handler:
           return self.error_handler(e)
         else:
-          raise e
+          raise
 
     return True
 
