@@ -27,6 +27,7 @@ from Queue import Queue
 from threading import Thread
 import pox.openflow.libopenflow_01 as of
 from pox.lib.packet import ethernet
+import logging
 
 log = core.getLogger()
 
@@ -77,7 +78,18 @@ def launch (address = '127.0.0.1', port = 6633, max_retry_delay = 16,
 
 
 class PCapSwitch (SoftwareSwitchBase):
+  # Default level for loggers of this class
+  default_log_level = logging.INFO
+
   def __init__ (self, *args, **kw):
+    """
+    Create a switch instance
+
+    Additional options over superclass:
+    log_level (default to default_log_level) is level for this instance
+    """
+    log_level = kw.pop('log_level', self.default_log_level)
+
     self.q = Queue()
     self.t = Thread(target=self._consumer_threadproc)
     core.addListeners(self)
@@ -89,8 +101,7 @@ class PCapSwitch (SoftwareSwitchBase):
       px.port_no = p.port_no
       self.px[p.port_no] = px
 
-    import logging
-    self.log.setLevel(logging.INFO)
+    self.log.setLevel(log_level)
 
     self.t.start()
 
