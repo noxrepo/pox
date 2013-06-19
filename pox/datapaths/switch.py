@@ -289,10 +289,7 @@ class SoftwareSwitchBase (object):
     def port_stats (ofp):
       req = ofp.body
       if req.port_no == OFPP_NONE:
-        res = ofp_port_stats(port_no=OFPP_NONE)
-        for stats in self.port_stats.values():
-          res += stats
-        return res
+        return self.port_stats.values()
       else:
         return self.port_stats[req.port_no]
 
