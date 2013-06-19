@@ -73,10 +73,13 @@ def _generate_ports (num_ports=4, dpid=0):
 
 class SoftwareSwitchBase (object):
   def __init__ (self, dpid, name=None, ports=4, miss_send_len=128,
-                max_buffers=100, features=None):
+                max_buffers=100, max_entries=0x7fFFffFF, features=None):
     """
     Initialize switch
-     - ports is a list of ofp_phy_ports
+     - ports is a list of ofp_phy_ports or a number of ports
+     - miss_send_len is number of bytes to send to controller on table miss
+     - max_buffers is number of buffered packets to store
+     - max_entries is max flows entries per table
     """
     if name is None: name = dpid_to_str(dpid)
     self.name = name
@@ -86,6 +89,7 @@ class SoftwareSwitchBase (object):
 
     self.dpid = dpid
     self.max_buffers = max_buffers
+    self.max_entries = max_entries
     self.miss_send_len = miss_send_len
     self._has_sent_hello = False
 
@@ -280,7 +284,7 @@ class SoftwareSwitchBase (object):
       r.table_id = 0
       r.name = "Default"
       r.wildcards = OFPFW_ALL
-      r.max_entries = 0x7fFFffFF
+      r.max_entries = max_entries
       r.active_count = len(self.table)
       r.lookup_count = self._lookup_count
       r.matched_count = self._matched_count
