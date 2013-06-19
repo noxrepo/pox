@@ -284,7 +284,7 @@ class SoftwareSwitchBase (object):
       r.table_id = 0
       r.name = "Default"
       r.wildcards = OFPFW_ALL
-      r.max_entries = max_entries
+      r.max_entries = self.max_entries
       r.active_count = len(self.table)
       r.lookup_count = self._lookup_count
       r.matched_count = self._matched_count
