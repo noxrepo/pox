@@ -111,7 +111,7 @@ class TableEntry (object):
         hard_timeout = self.hard_timeout,
         cookie = self.cookie,
         packet_count = self.counters["packets"],
-        byte_count = self.counters["last_touched"],
+        byte_count = self.counters["bytes"],
         actions = self.actions
         )
 
