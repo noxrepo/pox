@@ -556,8 +556,16 @@ def initialize ():
   core = POXCore()
   return core
 
-# The below is a big hack to make tests work.
+# The below is a big hack to make tests and doc tools work.
 # We should do something better.
-import sys
-if 'unittest' in sys.modules or 'nose' in sys.modules:
-  initialize()
+def _maybe_initialize ():
+  import sys
+  if 'unittest' in sys.modules or 'nose' in sys.modules:
+    initialize()
+    return
+  import __main__
+  mod = getattr(__main__, '__file__', '')
+  if 'pydoc' in mod:
+    initialize()
+    return
+_maybe_initialize()
