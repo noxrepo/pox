@@ -460,7 +460,8 @@ def is_listlike (o):
 
 
 def fields_of (obj, primitives_only=False,
-               primitives_and_composites_only=False, allow_caps=False):
+               primitives_and_composites_only=False, allow_caps=False,
+               ignore=set()):
   """
   Returns key/value pairs of things that seem like public fields of an object.
   """
@@ -469,6 +470,7 @@ def fields_of (obj, primitives_only=False,
   r = {}
   for k in dir(obj):
     if k.startswith('_'): continue
+    if k in ignore: continue
     v = getattr(obj, k)
     if hasattr(v, '__call__'): continue
     if not allow_caps and k.upper() == k: continue
