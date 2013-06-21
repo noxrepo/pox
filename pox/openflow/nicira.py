@@ -2489,13 +2489,9 @@ class nx_match (object):
       is_entry = True
 
     n = name
-    nxt = _nxm_name_to_type.get(n)
-    if nxt is None:
-      n = "NXM_" + name
-      nxt = _nxm_name_to_type.get(n)
-      if nxt is None:
-        n = "OXM_" + name
-        nxt = _nxm_name_to_type.get(n)
+    for prefix in ('', 'NXM_', 'NXM_OF_', 'OXM_', 'OXM_OF_', 'NXM_NX_'):
+      nxt = _nxm_name_to_type.get(prefix + n)
+      if nxt is not None: break
 
     #print n, nxt, is_mask, with_mask, is_entry
     return n, nxt, is_mask, with_mask, is_entry
