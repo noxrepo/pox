@@ -116,13 +116,13 @@ class SoftwareSwitchBase (object):
       # Set up default features
 
       self.features = SwitchFeatures()
-      self.features.flow_stats = True
-      self.features.table_stats = True
-      self.features.port_stats = True
-      #self.features.stp = True
-      #self.features.ip_reasm = True
-      #self.features.queue_stats = True
-      #self.features.arp_match_ip = True
+      self.features.cap_flow_stats = True
+      self.features.cap_table_stats = True
+      self.features.cap_port_stats = True
+      #self.features.cap_stp = True
+      #self.features.cap_ip_reasm = True
+      #self.features.cap_queue_stats = True
+      #self.features.cap_arp_match_ip = True
 
       self.features.act_output = True
       self.features.act_enqueue = True
@@ -861,7 +861,15 @@ class SwitchFeatures (object):
       setattr(self, name, False)
       self._act_info[name] = val
 
+    self._locked = True
+
     initHelper(self, kw)
+
+  def __setattr__ (self, attr, value):
+    if getattr(self, '_locked', False):
+      if not hasattr(self, attr):
+        raise AttributeError("No such attribute as '%s'" % (attr,))
+    return super(SwitchFeatures,self).__setattr__(attr, value)
 
   @property
   def capability_bits (self):
