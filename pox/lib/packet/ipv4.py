@@ -118,6 +118,9 @@ class ipv4(packet_base):
         self.flags = self.frag >> 13
         self.frag  = self.frag & 0x1fff
 
+        self.dstip = IPAddr(self.dstip)
+        self.srcip = IPAddr(self.srcip)
+
         if self.v != ipv4.IPv4:
             self.msg('(ip parse) warning IP version %u not IPv4' % self.v)
             return
@@ -132,9 +135,6 @@ class ipv4(packet_base):
             self.msg('(ip parse) warning IP header %u longer than len %u' \
                         % (self.hl, self.iplen))
             return
-
-        self.dstip = IPAddr(self.dstip)
-        self.srcip = IPAddr(self.srcip)
 
         # At this point, we are reasonably certain that we have an IP
         # packet
