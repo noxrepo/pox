@@ -423,12 +423,13 @@ class SoftwareSwitchBase (object):
     msg = ofp_port_status(desc=port, reason=reason)
     self.send(msg)
 
-  def rx_packet (self, packet, in_port):
+  def rx_packet (self, packet, in_port, packet_data = None):
     """
     process a dataplane packet
 
     packet: an instance of ethernet
     in_port: the integer port number
+    packet_data: packed version of packet if available
     """
     assert assert_type("packet", packet, ethernet, none_ok=False)
     assert assert_type("in_port", in_port, int, none_ok=False)
@@ -438,6 +439,12 @@ class SoftwareSwitchBase (object):
       return
     if port.config & OFPPC_NO_RECV:
       return
+
+    self.port_stats[in_port].rx_packets += 1
+    if packet_data is not None:
+      self.port_stats[in_port].rx_bytes += len(packet_data)
+    else:
+      self.port_stats[in_port].rx_bytes += len(packet.pack()) # Expensive
 
     self._lookup_count += 1
     entry = self.table.entry_for_packet(packet, in_port)
@@ -450,7 +457,9 @@ class SoftwareSwitchBase (object):
       if port.config & OFPPC_NO_PACKET_IN:
         return
       buffer_id = self._buffer_packet(packet, in_port)
-      self.send_packet_in(in_port, buffer_id, packet,
+      if packet_data is None:
+        packet_data = packet.pack()
+      self.send_packet_in(in_port, buffer_id, packet_data,
                           reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
 
   def delete_port (self, port):
@@ -494,6 +503,8 @@ class SoftwareSwitchBase (object):
     send a packet out a single physical port
 
     This is called by the more general _output_packet().
+
+    Override this.
     """
     self.log.info("Sending packet %s out port %s", str(packet), port_no)
 
@@ -528,6 +539,8 @@ class SoftwareSwitchBase (object):
       if self.ports[port_no].state & OFPPS_LINK_DOWN:
         self.log.debug("Dropping packet sent on port %i: Link down", port_no)
         return
+      self.port_stats[port_no].tx_packets += 1
+      self.port_stats[port_no].tx_bytes += len(packet.pack()) #FIXME: Expensive
       self._output_packet_physical(packet, port_no)
 
     if out_port < OFPP_MAX:
