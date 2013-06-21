@@ -897,7 +897,7 @@ class SwitchFeatures (object):
     """
     Value used in features reply
     """
-    return sum( (v if getattr(self, k) else 0)
+    return sum( (1<<v if getattr(self, k) else 0)
                 for k,v in self._act_info.iteritems() )
 
   def __str__ (self):
