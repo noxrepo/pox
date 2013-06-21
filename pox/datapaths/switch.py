@@ -598,7 +598,7 @@ class SoftwareSwitchBase (object):
     generation)
     """
     buffer_id = buffer_id - 1
-    if buffer_id >= len(self._packet_buffer):
+    if (buffer_id >= len(self._packet_buffer)) or (buffer_id < 0):
       self.log.warn("Invalid output buffer id: %d", buffer_id)
       return
     if self._packet_buffer[buffer_id] is None:
