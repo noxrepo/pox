@@ -2317,23 +2317,23 @@ class nx_match (object):
   nxm_entry type for the source IP address, so you can do:
 
     m = nx_match()
-    m.of_tcp_src = IPAddr("192.168.1.1")
+    m.of_ip_src = IPAddr("192.168.1.1")
 
   Since nxm_entries can have masks, you actually get a number of pseudo-
   properties, by appending "_mask", "_with_mask", or "_entry":
 
-    m.of_tcp_src_with_mask = ("192.168.1.0", "255.255.255.0")
+    m.of_ip_src_with_mask = ("192.168.1.0", "255.255.255.0")
     # or...
-    m.of_tcp_src = "192.168.1.0"
-    m.of_tcp_src_mask = "255.255.255.0"
+    m.of_ip_src = "192.168.1.0"
+    m.of_ip_src_mask = "255.255.255.0"
     # or...
-    m.of_tcp_src_entry = NXM_OF_IP_SRC("192.168.1.1", "255.255.255.0")
+    m.of_ip_src_entry = NXM_OF_IP_SRC("192.168.1.1", "255.255.255.0")
 
   nxm_entries themselves may have magic.  For example, IP address
   nxm_entries understand CIDR bits as part of the value, so you can do:
 
-    m.of_tcp_src = "192.168.1.0/24"
-    print m.of_tcp_src
+    m.of_ip_src = "192.168.1.0/24"
+    print m.of_ip_src
     > NXM_OF_IP_SRC(192.168.1.0/255.255.255.0)
 
   *The order you add entries is significant*.  If you have an entry
