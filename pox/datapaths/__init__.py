@@ -52,7 +52,7 @@ class OpenFlowWorker (BackoffWorker):
 
 
 def do_launch (cls, address = '127.0.0.1', port = 6633, max_retry_delay = 16,
-    dpid = None, **kw):
+    dpid = None, extra_args = None, **kw):
   """
   Used for implementing custom switch launching functions
 
@@ -60,6 +60,12 @@ def do_launch (cls, address = '127.0.0.1', port = 6633, max_retry_delay = 16,
 
   Returns switch instance.
   """
+
+  if extra_args is not None:
+    import ast
+    extra_args = ast.literal_eval('{%s}' % (extra_args,))
+    kw.update(extra_args)
+
   from pox.core import core
   if not core.hasComponent('datapaths'):
     core.register("datapaths", {})
@@ -96,7 +102,7 @@ def do_launch (cls, address = '127.0.0.1', port = 6633, max_retry_delay = 16,
 
 
 def softwareswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
-    dpid = None, __INSTANCE__ = None):
+    dpid = None, extra = None, __INSTANCE__ = None):
   """
   Launches a SoftwareSwitch
 
@@ -104,4 +110,5 @@ def softwareswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
   """
   from pox.core import core
   core.register("datapaths", {})
-  do_launch(SoftwareSwitch, address, port, max_retry_delay, dpid)
+  do_launch(SoftwareSwitch, address, port, max_retry_delay, dpid,
+            extra_args = extra)

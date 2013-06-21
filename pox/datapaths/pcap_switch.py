@@ -37,7 +37,7 @@ if not pxpcap.enabled:
 
 
 def launch (address = '127.0.0.1', port = 6633, max_retry_delay = 16,
-    dpid = None, ports = '', __INSTANCE__ = None):
+    dpid = None, ports = '', extra = None, __INSTANCE__ = None):
   """
   Launches a switch
   """
@@ -72,7 +72,8 @@ def launch (address = '127.0.0.1', port = 6633, max_retry_delay = 16,
       phy.peer = of.OFPPF_10MB_HD
       phys.append(phy)
 
-    do_launch(PCapSwitch, address, port, max_retry_delay, dpid, ports=phys)
+    do_launch(PCapSwitch, address, port, max_retry_delay, dpid, ports=phys,
+              extra_args=extra)
 
   core.addListenerByName("UpEvent", up)
 
