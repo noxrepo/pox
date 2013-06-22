@@ -85,7 +85,7 @@ def _do_import (name):
       return name
 
     try:
-      __import__(name, globals(), locals())
+      __import__(name, level=0)
       return name
     except ImportError:
       # There are two cases why this might happen:
@@ -370,7 +370,7 @@ class POXOptions (Options):
     if value is True:
       # I think I use a better method for finding the path elsewhere...
       p = os.path.dirname(os.path.realpath(__file__))
-      value = os.path.join(p, "logging.cfg")
+      value = os.path.join(p, "..", "logging.cfg")
     self.log_config = value
 
   def _set_debug (self, given_name, name, value):
