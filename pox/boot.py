@@ -48,6 +48,8 @@ import os
 import sys
 import traceback
 import time
+import inspect
+import types
 
 import pox.core
 core = pox.core.initialize()
@@ -131,6 +133,25 @@ def _do_import (name):
   return do_import2(name, ["pox." + name, name])
 
 
+def _do_imports (components):
+  """
+  Import each of the listed components
+
+  Returns map of component_name->name,module,members on success,
+  or False on failure
+  """
+  done = {}
+  for name in components:
+    if name in done: continue
+    r = _do_import(name)
+    if r is False:
+      return False
+    members = dict(inspect.getmembers(sys.modules[r]))
+    done[name] = (r,sys.modules[r],members)
+
+  return done
+
+
 def _do_launch (argv):
   component_order = []
   components = {}
@@ -153,6 +174,9 @@ def _do_launch (argv):
 
   _options.process_options(pox_options)
   _pre_startup()
+  modules = _do_imports(component_order)
+  if modules is False:
+    return False
 
   inst = {}
   for name in component_order:
@@ -163,14 +187,12 @@ def _do_launch (argv):
     launch = name[1] if len(name) == 2 else "launch"
     name = name[0]
 
-    r = _do_import(name)
-    if r is False: return False
-    name = r
-    #print(">>",name)
+    name,module,members = modules[name]
 
-    if launch in sys.modules[name].__dict__:
-      f = sys.modules[name].__dict__[launch]
-      if f.__class__ is not _do_launch.__class__:
+    if launch in members:
+      f = members[launch]
+      # We explicitly test for a function and not an arbitrary callable
+      if type(f) is not types.FunctionType:
         print(launch, "in", name, "isn't a function!")
         return False
 
@@ -215,7 +237,6 @@ def _do_launch (argv):
         if inst[cname] > 0:
           instText = "instance {0} of ".format(inst[cname] + 1)
         print("Error executing {2}{0}.{1}:".format(name,launch,instText))
-        import inspect
         if inspect.currentframe() is sys.exc_info()[2].tb_frame:
           # Error is with calling the function
           # Try to give some useful feedback
@@ -456,8 +477,9 @@ def boot ():
   """
 
   # Add pox directory to path
-  sys.path.append(os.path.abspath(os.path.join(sys.path[0], 'pox')))
-  sys.path.append(os.path.abspath(os.path.join(sys.path[0], 'ext')))
+  base = sys.path[0]
+  sys.path.insert(0, os.path.abspath(os.path.join(base, 'pox')))
+  sys.path.insert(0, os.path.abspath(os.path.join(base, 'ext')))
 
   try:
     argv = sys.argv[1:]
