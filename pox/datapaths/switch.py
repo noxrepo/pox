@@ -711,7 +711,7 @@ class SoftwareSwitchBase (object):
       tp = nw.payload
       if isinstance(tp, udp) or isinstance(tp, tcp):
         tp.dstport = action.tp_port
-  return packet
+    return packet
   def _action_enqueue (self, action, packet, in_port):
     self.log.warn("Enqueue not supported.  Performing regular output.")
     self._output_packet(packet, action.tp_port, in_port)
