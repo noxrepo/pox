@@ -665,24 +665,43 @@ class SoftwareSwitchBase (object):
     packet.dst = action.dl_addr
     return packet
   def _action_set_nw_src (self, action, packet, in_port):
-    if isinstance(packet.next, ipv4):
-      packet.next.nw_src = action.nw_addr
+    nw = packet.payload
+    if isinstance(nw, vlan):
+      nw = nw.payload
+    if isinstance(nw, ipv4):
+      nw.srcip = action.nw_addr
     return packet
   def _action_set_nw_dst (self, action, packet, in_port):
-    if isinstance(packet.next, ipv4):
-      packet.next.nw_dst = action.nw_addr
+    nw = packet.payload
+    if isinstance(nw, vlan):
+      nw = nw.payload
+    if isinstance(nw, ipv4):
+      nw.dstip = action.nw_addr
     return packet
   def _action_set_nw_tos (self, action, packet, in_port):
-    if isinstance(packet.next, ipv4):
-      packet.next.tos = action.nw_tos
+    nw = packet.payload
+    if isinstance(nw, vlan):
+      nw = nw.payload
+    if isinstance(nw, ipv4):
+      nw.tos = action.nw_tos
     return packet
   def _action_set_tp_src (self, action, packet, in_port):
-    if isinstance(packet.next, udp) or isinstance(packet.next, tcp):
-      packet.next.srcport = action.tp_port
+    nw = packet.payload
+    if isinstance(nw, vlan):
+      nw = nw.payload
+    if isinstance(nw, ipv4):
+      tp = nw.payload
+      if isinstance(tp, udp) or isinstance(tp, tcp):
+        tp.srcport = action.tp_port
     return packet
   def _action_set_tp_dst (self, action, packet, in_port):
-    if isinstance(packet.next, udp) or isinstance(packet.next, tcp):
-      packet.next.dstport = action.tp_port
+    nw = packet.payload
+    if isinstance(nw, vlan):
+      nw = nw.payload
+    if isinstance(nw, ipv4):
+      tp = nw.payload
+      if isinstance(tp, udp) or isinstance(tp, tcp):
+        tp.dstport = action.tp_port
     return packet
   def _action_enqueue (self, action, packet, in_port):
     self.log.warn("Enqueue not supported.  Performing regular output.")
