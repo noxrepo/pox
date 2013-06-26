@@ -1,6 +1,6 @@
 # Copyright 2012,2013 Colin Scott
 # Copyright 2012,2013 James McCauley
-#
+# Copyright 2013 Shengwei Jiang
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 A software OpenFlow switch
 """
@@ -641,17 +640,27 @@ class SoftwareSwitchBase (object):
     return packet
   def _action_set_vlan_id (self, action, packet, in_port):
     if not isinstance(packet.next, vlan):
-      packet.next = vlan(prev = packet.next)
-      packet.next.eth_type = packet.type
-      packet.type = ethernet.VLAN_TYPE
-    packet.id = action.vlan_id
+      v = vlan(prev = packet)
+      v.next = packet.next
+      v.next.prev = v
+      packet.next = v
+      v.type = ethernet.VLAN_TYPE
+      v.eth_type = packet.type
+      v.id = action.vlan_id
+    else:
+      packet.next.id = action.vlan_id
     return packet
   def _action_set_vlan_pcp (self, action, packet, in_port):
     if not isinstance(packet.next, vlan):
-      packet.next = vlan(prev = packet)
-      packet.next.eth_type = packet.type
-      packet.type = ethernet.VLAN_TYPE
-    packet.pcp = action.vlan_pcp
+      v = vlan(prev = packet)
+      v.next = packet.next
+      v.next.prev = v
+      packet.next = v
+      v.type = ethernet.VLAN_TYPE
+      v.eth_type = packet.type
+      v.pcp = action.vlan_pcp
+    else:
+      packet.next.pcp = action.vlan_pcp
     return packet
   def _action_strip_vlan (self, action, packet, in_port):
     if isinstance(packet.next, vlan):
@@ -665,24 +674,43 @@ class SoftwareSwitchBase (object):
     packet.dst = action.dl_addr
     return packet
   def _action_set_nw_src (self, action, packet, in_port):
-    if isinstance(packet.next, ipv4):
-      packet.next.nw_src = action.nw_addr
+    nw = packet.payload
+    if isinstance(nw, vlan):
+      nw = nw.payload
+    if isinstance(nw, ipv4):
+      nw.srcip = action.nw_addr
     return packet
   def _action_set_nw_dst (self, action, packet, in_port):
-    if isinstance(packet.next, ipv4):
-      packet.next.nw_dst = action.nw_addr
+    nw = packet.payload
+    if isinstance(nw, vlan):
+      nw = nw.payload
+    if isinstance(nw, ipv4):
+      nw.dstip = action.nw_addr
     return packet
   def _action_set_nw_tos (self, action, packet, in_port):
-    if isinstance(packet.next, ipv4):
-      packet.next.tos = action.nw_tos
+    nw = packet.payload
+    if isinstance(nw, vlan):
+      nw = nw.payload
+    if isinstance(nw, ipv4):
+      nw.tos = action.nw_tos
     return packet
   def _action_set_tp_src (self, action, packet, in_port):
-    if isinstance(packet.next, udp) or isinstance(packet.next, tcp):
-      packet.next.srcport = action.tp_port
+    nw = packet.payload
+    if isinstance(nw, vlan):
+      nw = nw.payload
+    if isinstance(nw, ipv4):
+      tp = nw.payload
+      if isinstance(tp, udp) or isinstance(tp, tcp):
+        tp.srcport = action.tp_port
     return packet
   def _action_set_tp_dst (self, action, packet, in_port):
-    if isinstance(packet.next, udp) or isinstance(packet.next, tcp):
-      packet.next.dstport = action.tp_port
+    nw = packet.payload
+    if isinstance(nw, vlan):
+      nw = nw.payload
+    if isinstance(nw, ipv4):
+      tp = nw.payload
+      if isinstance(tp, udp) or isinstance(tp, tcp):
+        tp.dstport = action.tp_port
     return packet
   def _action_enqueue (self, action, packet, in_port):
     self.log.warn("Enqueue not supported.  Performing regular output.")
