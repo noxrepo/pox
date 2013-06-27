@@ -640,23 +640,27 @@ class SoftwareSwitchBase (object):
     self._output_packet(packet, action.port, in_port, action.max_len)
     return packet
   def _action_set_vlan_id (self, action, packet, in_port):
-    if not isinstance(packet.next, vlan):
-      packet.next = vlan(prev = packet.next)
-      packet.next.eth_type = packet.type
+    if not isinstance(packet.payload, vlan):
+      vl = vlan()
+      vl.eth_type = packet.type
+      vl.payload = packet.payload
       packet.type = ethernet.VLAN_TYPE
-    packet.id = action.vlan_id
+      packet.payload = vl
+    packet.payload.id = action.vlan_id
     return packet
   def _action_set_vlan_pcp (self, action, packet, in_port):
-    if not isinstance(packet.next, vlan):
-      packet.next = vlan(prev = packet)
-      packet.next.eth_type = packet.type
+    if not isinstance(packet.payload, vlan):
+      vl = vlan()
+      vl.payload = packet.payload
+      vl.eth_type = packet.type
+      packet.payload = vl
       packet.type = ethernet.VLAN_TYPE
-    packet.pcp = action.vlan_pcp
+    packet.payload.pcp = action.vlan_pcp
     return packet
   def _action_strip_vlan (self, action, packet, in_port):
-    if isinstance(packet.next, vlan):
-      packet.type = packet.next.eth_type
-      packet.next = packet.next.next
+    if isinstance(packet.payload, vlan):
+      packet.type = packet.payload.eth_type
+      packet.payload = packet.payload.payload
     return packet
   def _action_set_dl_src (self, action, packet, in_port):
     packet.src = action.dl_addr
