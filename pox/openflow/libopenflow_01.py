@@ -1615,6 +1615,7 @@ class ofp_action_vlan_vid (ofp_action_base):
     outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'vlan_vid: ' + str(self.vlan_vid) + '\n'
     return outstr
+ofp_action_set_vlan_vid = ofp_action_vlan_vid
 
 
 @openflow_action('OFPAT_SET_VLAN_PCP', 2)
@@ -1657,6 +1658,7 @@ class ofp_action_vlan_pcp (ofp_action_base):
     outstr += prefix + 'len: ' + str(len(self)) + '\n'
     outstr += prefix + 'vlan_pcp: ' + str(self.vlan_pcp) + '\n'
     return outstr
+ofp_action_set_vlan_pcp = ofp_action_vlan_pcp
 
 
 @openflow_action('OFPAT_SET_DL_DST', 5)
