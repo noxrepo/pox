@@ -639,14 +639,14 @@ class SoftwareSwitchBase (object):
   def _action_output (self, action, packet, in_port):
     self._output_packet(packet, action.port, in_port, action.max_len)
     return packet
-  def _action_set_vlan_id (self, action, packet, in_port):
+  def _action_set_vlan_vid (self, action, packet, in_port):
     if not isinstance(packet.payload, vlan):
       vl = vlan()
       vl.eth_type = packet.type
       vl.payload = packet.payload
       packet.type = ethernet.VLAN_TYPE
       packet.payload = vl
-    packet.payload.id = action.vlan_id
+    packet.payload.id = action.vlan_vid
     return packet
   def _action_set_vlan_pcp (self, action, packet, in_port):
     if not isinstance(packet.payload, vlan):
