@@ -174,7 +174,7 @@ def _do_launch (argv):
 
   _options.process_options(pox_options)
   _pre_startup()
-  modules = _do_imports(component_order)
+  modules = _do_imports(n.split(':')[0] for n in component_order)
   if modules is False:
     return False
 
