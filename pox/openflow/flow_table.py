@@ -248,6 +248,6 @@ class SwitchFlowTable(FlowTable):
 
     elif flow_mod.command == OFPFC_DELETE or flow_mod.command == OFPFC_DELETE_STRICT:
       is_strict = (flow_mod.command == OFPFC_DELETE_STRICT)
-      return ("removed", self.remove_matching_entries(flow_mod.match, flow_mod.priority, strict=True))
+      return ("removed", self.remove_matching_entries(flow_mod.match, flow_mod.priority, strict=is_strict))
     else:
       raise AttributeError("Command not yet implemented: %s" % flow_mod.command)
