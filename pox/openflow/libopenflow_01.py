@@ -1276,10 +1276,12 @@ class ofp_match (ofp_base):
     return 40
 
   def hash_code (self):
-    '''
+    """
+    generate a hash value for this match
+
     ofp_match is not properly hashable since it is mutable, but it can
     still be useful to easily generate a hash code.
-    '''
+    """
 
     h = self.wildcards
     for f in ofp_match_data:
@@ -1294,22 +1296,27 @@ class ofp_match (ofp_base):
   def matches_with_wildcards (self, other, consider_other_wildcards=True):
     """
     Test whether /this/ match completely encompasses the other match.
+
+    if consider_other_wildcards, then the *other* match must also have
+    no more wildcards than we do (it must be no wider than we are)
+
     Important for non-strict modify flow_mods etc.
     """
     assert assert_type("other", other, ofp_match, none_ok=False)
-    # short cut for equal matches
-    if(self == other): return True
-    # only candidate if all wildcard bits in the *other* match are also
-    # set in this match (i.e., a submatch)
 
-    # first compare the bitmask part
-    if(consider_other_wildcards):
+    # shortcut for equal matches
+    if self == other: return True
+
+    if consider_other_wildcards:
+      # Check that other doesn't have more wildcards than we do -- it
+      # must be narrower (or equal) to us.
       self_bits  = self.wildcards&~(OFPFW_NW_SRC_MASK|OFPFW_NW_DST_MASK)
       other_bits = other.wildcards&~(OFPFW_NW_SRC_MASK|OFPFW_NW_DST_MASK)
-      if( self_bits | other_bits != self_bits): return False
+      if (self_bits | other_bits) != self_bits: return False
 
-    def match_fail(mine, others):
-      return mine != None and mine != others
+    def match_fail (mine, others):
+      if mine is None: return False # Wildcarded
+      return mine != others
 
     if match_fail(self.in_port, other.in_port): return False
     if match_fail(self.dl_vlan, other.dl_vlan): return False
@@ -1322,17 +1329,23 @@ class ofp_match (ofp_base):
     if match_fail(self.dl_vlan_pcp, other.dl_vlan_pcp): return False
     if match_fail(self.nw_tos, other.nw_tos): return False
 
+    #FIXME: The two ??? checks below look like they compare other
+    #       wildcards always -- even when consider_other_wildcards=False.
+    #       Is this intentional?  (I think it might be subtly wrong and
+    #       we actually may need to mask off some bits and do the
+    #       inNetwork check or something...)
+
     self_nw_src = self.get_nw_src()
-    if(self_nw_src[0] != None):
+    if self_nw_src[0] is not None:
       other_nw_src = other.get_nw_src()
-      if self_nw_src[1] > other_nw_src[1]: return False
+      if self_nw_src[1] > other_nw_src[1]: return False #???
       if not IPAddr(other_nw_src[0]).inNetwork(
             (self_nw_src[0], self_nw_src[1])): return False
 
     self_nw_dst = self.get_nw_dst()
-    if(self_nw_dst[0] != None):
+    if self_nw_dst[0] is not None:
       other_nw_dst = other.get_nw_dst()
-      if self_nw_dst[1] > other_nw_dst[1]: return False
+      if self_nw_dst[1] > other_nw_dst[1]: return False #???
       if not IPAddr(other_nw_dst[0]).inNetwork(
             (self_nw_dst[0], self_nw_dst[1])): return False
 
