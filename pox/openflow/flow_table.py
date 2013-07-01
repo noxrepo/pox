@@ -38,8 +38,9 @@ class TableEntry (object):
     """
     Initialize table entry
     """
-    # overriding __new__ instead of init to make fields optional. There's probably a better way to do this.
-    if now==None: now = time.time()
+    # Overriding __new__ instead of init to make fields optional. There's
+    #  probably a better way to do this.
+    if now == None: now = time.time()
     self.counters = {
         'created': now,
         'last_touched': now,
@@ -57,21 +58,25 @@ class TableEntry (object):
 
   @staticmethod
   def from_flow_mod (flow_mod):
-    priority = flow_mod.priority
-    cookie = flow_mod.cookie
-    match = flow_mod.match
-    actions = flow_mod.actions
-    buffer_id = flow_mod.buffer_id
-    flags = flow_mod.flags
-
-    return TableEntry(priority, cookie, flow_mod.idle_timeout, flow_mod.hard_timeout, flags, match, actions, buffer_id)
+    return TableEntry(priority=flow_mod.priority,
+                      cookie=flow_mod.cookie,
+                      idle_timeout=flow_mod.idle_timeout,
+                      hard_timeout=flow_mod.hard_timeout,
+                      flags=flow_mod.flags,
+                      match=flow_mod.match,
+                      actions=flow_mod.actions,
+                      buffer_id=flow_mod.buffer_id)
 
   def to_flow_mod (self, flags=None, **kw):
-    if flags is None:
-      flags = self.flags
-    return ofp_flow_mod(priority = self.priority, cookie = self.cookie, match = self.match,
-                        idle_timeout = self.idle_timeout, hard_timeout = self.hard_timeout,
-                          actions = self.actions, buffer_id = self.buffer_id, flags = flags, **kw)
+    if flags is None: flags = self.flags
+    return ofp_flow_mod(priority=self.priority,
+                        cookie=self.cookie,
+                        match=self.match,
+                        idle_timeout=self.idle_timeout,
+                        hard_timeout=self.hard_timeout,
+                        actions=self.actions,
+                        buffer_id=self.buffer_id,
+                        flags=flags, **kw)
 
   def is_matched_by (self, match, priority=None, strict=False, out_port=None):
     """
