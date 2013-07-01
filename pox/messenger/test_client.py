@@ -26,18 +26,18 @@ class JSONDestreamer (object):
   import json
   decoder = json.JSONDecoder()
   def __init__ (self, callback = None):
-    self.data = ''
+    self._buf = ''
     self.callback = callback if callback else self.rx
 
   def push (self, data):
-    if len(self.data) == 0:
+    if len(self._buf) == 0:
       data = data.lstrip()
-    self.data += data
+    self._buf += data
     try:
-      while len(self.data) > 0:
-        r,off = self.decoder.raw_decode(self.data)
+      while len(self._buf) > 0:
+        r,off = self.decoder.raw_decode(self._buf)
 
-        self.data = self.data[off:].lstrip()
+        self._buf = self._buf[off:].lstrip()
         self.callback(r)
     except ValueError:
       pass
