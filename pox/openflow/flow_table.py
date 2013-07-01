@@ -182,7 +182,7 @@ class FlowTable (EventMixin):
 
   def add_entry (self, entry):
     if not isinstance(entry, TableEntry):
-      raise "Not an Entry type"
+      raise TypeError("Not an Entry type")
     self._table.append(entry)
 
     # keep table sorted by descending priority, with exact matches always going first
@@ -193,7 +193,7 @@ class FlowTable (EventMixin):
 
   def remove_entry (self, entry):
     if not isinstance(entry, TableEntry):
-      raise "Not an Entry type"
+      raise TypeError("Not an Entry type")
     self._table.remove(entry)
     self.raiseEvent(FlowTableModification(removed=[entry]))
 
