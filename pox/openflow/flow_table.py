@@ -84,12 +84,13 @@ class TableEntry (object):
 
     Used for, e.g., flow_mod updates
     """
-    check_port = lambda: out_port == None or any(isinstance(a, ofp_action_output) and a.port == out_port for a in self.actions)
+    match_a = lambda a: isinstance(a, ofp_action_output) and a.port == out_port
+    check_port = out_port == None or any(match_a(a) for a in self.actions)
 
-    if(strict):
-      return (self.match == match and self.priority == priority) and check_port()
+    if strict:
+      return self.match == match and self.priority == priority and check_port
     else:
-      return match.matches_with_wildcards(self.match) and check_port()
+      return match.matches_with_wildcards(self.match) and check_port
 
   def touch_packet (self, byte_count, now=None):
     """
@@ -98,7 +99,7 @@ class TableEntry (object):
     Updates both the cumulative given byte counts of packets encountered and
     the expiration timer.
     """
-    if now==None: now = time.time()
+    if now == None: now = time.time()
     self.counters["bytes"] += byte_count
     self.counters["packets"] += 1
     self.counters["last_touched"] = now
@@ -107,8 +108,11 @@ class TableEntry (object):
     """
     Tests whether this flow entry is expired due to its idle or hard timeout
     """
-    if now==None: now = time.time()
-    return (self.hard_timeout > 0 and now - self.counters["created"] > self.hard_timeout) or (self.idle_timeout > 0 and now - self.counters["last_touched"] > self.idle_timeout)
+    if now == None: now = time.time()
+    expired_hard = now - self.counters["created"] > self.hard_timeout
+    expired_idle = now - self.counters["last_touched"] > self.idle_timeout
+    return (self.hard_timeout > 0 and expired_hard
+         or self.idle_timeout > 0 and expired_idle)
 
   def __str__ (self):
     return self.__class__.__name__ + "\n  " + self.show()
