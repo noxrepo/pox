@@ -22,7 +22,13 @@ Do the tough stuff in Python.
 Don't think it can be done in ctypes because of how it
 releases and reacquires the GIL for callbacks.
 
+---
+
+Currently assumes longs can hold a pointer.  We should
+check this.
+
 */
+
 
 #include <Python.h>
 #ifdef WIN32
@@ -479,15 +485,20 @@ static PyObject * p_fileno (PyObject *self, PyObject *args)
 static PyObject * p_inject (PyObject *self, PyObject *args)
 {
   pcap_t * ppcap;
-  u_char * data;
-  int len;
-  if (!PyArg_ParseTuple(args, "ls#", (long*)&ppcap, &data, &len)) return NULL;
+  Py_buffer pbuf;
+  if (!PyArg_ParseTuple(args, "ls*", (long int*)&ppcap, &pbuf)) return NULL;
+  if (!PyBuffer_IsContiguous(&pbuf, 'C'))
+  {
+    PyBuffer_Release(&pbuf);
+    return PyErr_Format(PyExc_RuntimeError, "Buffer not contiguous");
+  }
 #ifdef WIN32
-  int rv = pcap_sendpacket(ppcap, data, len);
+  int rv = pcap_sendpacket(ppcap, pbuf.buf, pbuf.len);
   rv = rv ? 0 : len;
 #else
-  int rv = pcap_inject(ppcap, data, len);
+  int rv = pcap_inject(ppcap, pbuf.buf, pbuf.len);
 #endif
+  PyBuffer_Release(&pbuf);
   return Py_BuildValue("i", rv);
 }
 

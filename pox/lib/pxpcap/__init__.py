@@ -173,7 +173,7 @@ class PCap (object):
   def inject (self, data):
     if isinstance(data, pkt.ethernet):
       data = data.pack()
-    if not isinstance(data, bytes):
+    if not isinstance(data, (bytes,bytearray)):
       data = bytes(data) # Give it a try...
     return pcapc.inject(self.pcap, data)
 
