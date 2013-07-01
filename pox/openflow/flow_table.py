@@ -247,10 +247,11 @@ class FlowTable (EventMixin):
     packet_match = ofp_match.from_packet(packet, in_port)
 
     for entry in self._table:
-      if entry.match.matches_with_wildcards(packet_match, consider_other_wildcards=False):
+      if entry.match.matches_with_wildcards(packet_match,
+                                            consider_other_wildcards=False):
         return entry
-    else:
-      return None
+
+    return None
 
 
 class SwitchFlowTable (FlowTable):
