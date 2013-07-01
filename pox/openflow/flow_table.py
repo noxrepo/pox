@@ -118,27 +118,32 @@ class TableEntry (object):
     return self.__class__.__name__ + "\n  " + self.show()
 
   def __repr__ (self):
-    return "TableEntry("+self.show() + ")"
+    return "TableEntry(" + self.show() + ")"
 
   def show (self):
-       return "priority=%s, cookie=%x, idle_timeoout=%d, hard_timeout=%d, match=%s, actions=%s buffer_id=%s" % (
-          self.priority, self.cookie, self.idle_timeout, self.hard_timeout, self.match, repr(self.actions), str(self.buffer_id))
+    outstr = ''
+    outstr += "priority=%s, " % self.priority
+    outstr += "cookie=%x, " % self.cookie
+    outstr += "idle_timeout=%d, " % self.idle_timeout
+    outstr += "hard_timeout=%d, " % self.hard_timeout
+    outstr += "match=%s, " % self.match
+    outstr += "actions=%s, " % repr(self.actions)
+    outstr += "buffer_id=%s" % str(self.buffer_id)
+    return outstr
 
   def flow_stats (self, now=None):
     if now == None: now = time.time()
     duration = now - self.counters["created"]
-    return ofp_flow_stats (
-        match = self.match,
-        duration_sec = int(duration),
-        duration_nsec = int(duration * 1e9),
-        priority = self.priority,
-        idle_timeout = self.idle_timeout,
-        hard_timeout = self.hard_timeout,
-        cookie = self.cookie,
-        packet_count = self.counters["packets"],
-        byte_count = self.counters["bytes"],
-        actions = self.actions
-        )
+    return ofp_flow_stats(match=self.match,
+                          duration_sec=int(duration),
+                          duration_nsec=int(duration * 1e9),
+                          priority=self.priority,
+                          idle_timeout=self.idle_timeout,
+                          hard_timeout=self.hard_timeout,
+                          cookie=self.cookie,
+                          packet_count=self.counters["packets"],
+                          byte_count=self.counters["bytes"],
+                          actions=self.actions)
 
 
 class FlowTableModification (Event):
