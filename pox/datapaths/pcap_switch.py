@@ -98,11 +98,14 @@ class PCapSwitch (SoftwareSwitchBase):
     super(PCapSwitch,self).__init__(*args,**kw)
     self.px = {}
     for p in self.ports.values():
-      px = pxpcap.PCap(p.name, callback = self._pcap_rx)
+      px = pxpcap.PCap(p.name, callback = self._pcap_rx, start = False)
       px.port_no = p.port_no
       self.px[p.port_no] = px
 
     self.log.setLevel(log_level)
+
+    for px in self.px.itervalues():
+      px.start()
 
     self.t.start()
 
