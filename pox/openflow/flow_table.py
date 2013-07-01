@@ -155,9 +155,9 @@ class FlowTableModification (Event):
 
 class FlowTable (EventMixin):
   """
-  General model of a flow table. 
+  General model of a flow table.
 
-  Maintains an ordered list of flow entries, and finds matching entries for 
+  Maintains an ordered list of flow entries, and finds matching entries for
   packets and other entries. Supports expiration of flows.
   """
   _eventMixin_events = set([FlowTableModification])
@@ -230,12 +230,10 @@ class FlowTable (EventMixin):
   def remove_expired_entries (self, now=None):
     remove_flows = self.expired_entries(now)
     self._remove_specific_entries(remove_flows)
-    return remove_flows
 
   def remove_matching_entries (self, match, priority=0, strict=False):
     remove_flows = self.matching_entries(match, priority, strict)
     self._remove_specific_entries(remove_flows)
-    return remove_flows
 
   def entry_for_packet (self, packet, in_port):
     """
@@ -256,7 +254,7 @@ class FlowTable (EventMixin):
 
 class SwitchFlowTable (FlowTable):
   """
-  Models a flow table for our switch implementation. 
+  Models a flow table for our switch implementation.
 
   Handles the behavior in response to the OF messages send to the switch
   """
@@ -278,7 +276,7 @@ class SwitchFlowTable (FlowTable):
       # exactly matching entries have to be removed
       self.remove_matching_entries(match, priority=priority, strict=True)
       self.add_entry(TableEntry.from_flow_mod(flow_mod))
-    elif command == OFPFC_MODIFY or flow_mod.command == OFPFC_MODIFY_STRICT:
+    elif command == OFPFC_MODIFY or command == OFPFC_MODIFY_STRICT:
       is_strict = (command == OFPFC_MODIFY_STRICT)
       modified = False
       for entry in self._table:
