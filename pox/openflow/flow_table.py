@@ -221,18 +221,20 @@ class FlowTable (EventMixin):
   def expired_entries (self, now=None):
     return [ entry for entry in self._table if entry.is_expired(now) ]
 
+  def _remove_specific_entries (self, remove_flows):
+    #for entry in remove_flows:
+    #  self._table.remove(entry)
+    self._table = [entry for entry in self._table if entry not in remove_flows]
+    self.raiseEvent(FlowTableModification(removed=remove_flows))
+
   def remove_expired_entries (self, now=None):
     remove_flows = self.expired_entries(now)
-    for entry in remove_flows:
-        self._table.remove(entry)
-    self.raiseEvent(FlowTableModification(removed=remove_flows))
+    self._remove_specific_entries(remove_flows)
     return remove_flows
 
   def remove_matching_entries (self, match, priority=0, strict=False):
     remove_flows = self.matching_entries(match, priority, strict)
-    for entry in remove_flows:
-        self._table.remove(entry)
-    self.raiseEvent(FlowTableModification(removed=remove_flows))
+    self._remove_specific_entries(remove_flows)
     return remove_flows
 
   def entry_for_packet (self, packet, in_port):
