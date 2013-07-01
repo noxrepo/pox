@@ -272,16 +272,20 @@ class SwitchFlowTable (FlowTable):
     if flow_mod.out_port != OFPP_NONE and flow_mod.command == OFPFC_DELETE:
       raise NotImplementedError("flow_mod outport checking not implemented")
 
-    if flow_mod.command == OFPFC_ADD:
+    command = flow_mod.command
+    match = flow_mod.match
+    priority = flow_mod.priority
+
+    if command == OFPFC_ADD:
       # exactly matching entries have to be removed
-      self.remove_matching_entries(flow_mod.match,flow_mod.priority, strict=True)
+      self.remove_matching_entries(match, priority=priority, strict=True)
       return ("added", self.add_entry(TableEntry.from_flow_mod(flow_mod)))
-    elif flow_mod.command == OFPFC_MODIFY or flow_mod.command == OFPFC_MODIFY_STRICT:
-      is_strict = (flow_mod.command == OFPFC_MODIFY_STRICT)
+    elif command == OFPFC_MODIFY or flow_mod.command == OFPFC_MODIFY_STRICT:
+      is_strict = (command == OFPFC_MODIFY_STRICT)
       modified = []
       for entry in self._table:
         # update the actions field in the matching flows
-        if entry.is_matched_by(flow_mod.match, priority=flow_mod.priority, strict=is_strict):
+        if entry.is_matched_by(match, priority=priority, strict=is_strict):
           entry.actions = flow_mod.actions
           modified.append(entry)
       if len(modified) == 0:
@@ -289,8 +293,8 @@ class SwitchFlowTable (FlowTable):
         return ("added", self.add_entry(TableEntry.from_flow_mod(flow_mod)))
       else:
         return ("modified", modified)
-    elif flow_mod.command == OFPFC_DELETE or flow_mod.command == OFPFC_DELETE_STRICT:
-      is_strict = (flow_mod.command == OFPFC_DELETE_STRICT)
-      return ("removed", self.remove_matching_entries(flow_mod.match, flow_mod.priority, strict=is_strict))
+    elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
+      is_strict = (command == OFPFC_DELETE_STRICT)
+      return ("removed", self.remove_matching_entries(match, priority=priority, strict=is_strict))
     else:
-      raise AttributeError("Command not yet implemented: %s" % flow_mod.command)
+      raise AttributeError("Command not yet implemented: %s" % command)
