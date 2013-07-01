@@ -28,9 +28,10 @@ import time
 class TableEntry (object):
   """
   Models a flow table entry, with a match, actions, and options/flags/counters.
-  Note: the current time can either be specified explicitely with the optional 'now' parameter or is taken from time.time()
-  """
 
+  Note: The current time can either be specified explicitely with the optional
+        'now' parameter or is taken from time.time()
+  """
   def __init__(self,priority=OFP_DEFAULT_PRIORITY, cookie = 0, idle_timeout=0, hard_timeout=0, flags=0, match=ofp_match(), actions=[], buffer_id=None, now=None):
 
     # overriding __new__ instead of init to make fields optional. There's probably a better way to do this.
@@ -69,7 +70,11 @@ class TableEntry (object):
                           actions = self.actions, buffer_id = self.buffer_id, flags = flags, **kw)
 
   def is_matched_by(self, match, priority = None, strict = False, out_port=None):
-    """ return whether /this/ entry is matched by some other entry (e.g., for FLOW_MOD updates) """
+    """
+    Tests whether a given match object matches this entry
+
+    Used for, e.g., flow_mod updates
+    """
     check_port = lambda: out_port == None or any(isinstance(a, ofp_action_output) and a.port == out_port for a in self.actions)
 
     if(strict):
@@ -78,14 +83,21 @@ class TableEntry (object):
       return match.matches_with_wildcards(self.match) and check_port()
 
   def touch_packet(self, byte_count, now=None):
-    """ update the counters and expiry timer of this entry for a packet with a given byte count"""
+    """
+    Updates information of this entry based on encountering a packet.
+
+    Updates both the cumulative given byte counts of packets encountered and
+    the expiration timer.
+    """
     if now==None: now = time.time()
     self.counters["bytes"] += byte_count
     self.counters["packets"] += 1
     self.counters["last_touched"] = now
 
   def is_expired(self, now=None):
-    """" return whether this flow entry is expired due to its idle timeout or hard timeout"""
+    """
+    Tests whether this flow entry is expired due to its idle or hard timeout
+    """
     if now==None: now = time.time()
     return (self.hard_timeout > 0 and now - self.counters["created"] > self.hard_timeout) or (self.idle_timeout > 0 and now - self.counters["last_touched"] > self.idle_timeout)
 
@@ -127,8 +139,10 @@ class FlowTable (EventMixin):
   _eventMixin_events = set([FlowTableModification])
 
   """
-  General model of a flow table. Maintains an ordered list of flow entries, and finds
-  matching entries for packets and other entries. Supports expiration of flows.
+  General model of a flow table. 
+
+  Maintains an ordered list of flow entries, and finds matching entries for 
+  packets and other entries. Supports expiration of flows.
   """
   def __init__(self):
     EventMixin.__init__(self)
@@ -201,8 +215,12 @@ class FlowTable (EventMixin):
     return remove_flows
 
   def entry_for_packet(self, packet, in_port):
-    """ return the highest priority flow table entry that matches the given packet
-    on the given in_port, or None if no matching entry is found. """
+    """
+    Finds the flow table entry that matches the given packet.
+
+    Returns the highest priority flow table entry that matches the given packet
+    on the given in_port, or None if no matching entry is found.
+    """
     packet_match = ofp_match.from_packet(packet, in_port)
 
     for entry in self._table:
@@ -214,13 +232,16 @@ class FlowTable (EventMixin):
 
 class SwitchFlowTable(FlowTable):
   """
-  Model a flow table for our switch implementation. Handles the behavior in response
-  to the OF messages send to the switch
+  Models a flow table for our switch implementation. 
+
+  Handles the behavior in response to the OF messages send to the switch
   """
 
   def process_flow_mod(self, flow_mod):
-    """ Process a flow mod sent to the switch
-    @return a tuple (added|modified|removed, [list of affected entries])
+    """
+    Process a flow mod sent to the switch.
+
+    Returns a tuple (added|modified|removed, [list of affected entries])
     """
     if(flow_mod.flags & OFPFF_CHECK_OVERLAP):
       raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
