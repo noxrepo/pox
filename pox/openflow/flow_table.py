@@ -264,8 +264,6 @@ class SwitchFlowTable (FlowTable):
   def process_flow_mod (self, flow_mod):
     """
     Process a flow mod sent to the switch.
-
-    Returns a tuple (added|modified|removed, [list of affected entries])
     """
     if flow_mod.flags & OFPFF_CHECK_OVERLAP:
       raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
@@ -279,7 +277,7 @@ class SwitchFlowTable (FlowTable):
     if command == OFPFC_ADD:
       # exactly matching entries have to be removed
       self.remove_matching_entries(match, priority=priority, strict=True)
-      return ("added", self.add_entry(TableEntry.from_flow_mod(flow_mod)))
+      self.add_entry(TableEntry.from_flow_mod(flow_mod))
     elif command == OFPFC_MODIFY or flow_mod.command == OFPFC_MODIFY_STRICT:
       is_strict = (command == OFPFC_MODIFY_STRICT)
       modified = []
@@ -290,11 +288,9 @@ class SwitchFlowTable (FlowTable):
           modified.append(entry)
       if len(modified) == 0:
         # if no matching entry is found, modify acts as add
-        return ("added", self.add_entry(TableEntry.from_flow_mod(flow_mod)))
-      else:
-        return ("modified", modified)
+        self.add_entry(TableEntry.from_flow_mod(flow_mod))
     elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
       is_strict = (command == OFPFC_DELETE_STRICT)
-      return ("removed", self.remove_matching_entries(match, priority=priority, strict=is_strict))
+      self.remove_matching_entries(match, priority=priority, strict=is_strict)
     else:
       raise AttributeError("Command not yet implemented: %s" % command)
