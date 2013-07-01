@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2013 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -68,7 +68,14 @@ class PCap (object):
     return [d[0] for d in pcapc.findalldevs()]
 
   def __init__ (self, device = None, promiscuous = True, period = 10,
-                start = True, callback = None, filter = None):
+                start = True, callback = None, filter = None,
+                use_bytearray = False):
+    """
+    Initialize this instance
+
+    use_bytearray: specifies capturing to bytearray buffers instead of bytes
+    """
+
     if filter is not None:
       self.deferred_filter = (filter,)
     else:
@@ -79,6 +86,7 @@ class PCap (object):
     self.pcap = None
     self.promiscuous = promiscuous
     self.device = None
+    self.use_bytearray = use_bytearray
     self.period = period
     self.netmask = IPAddr("0.0.0.0")
     self._quitting = False
@@ -124,7 +132,7 @@ class PCap (object):
 
   def _thread_func (self):
     while not self._quitting:
-      pcapc.dispatch(self.pcap,100,self.callback,self)
+      pcapc.dispatch(self.pcap,100,self.callback,self,bool(self.use_bytearray))
       self.packets_received,self.packets_dropped = pcapc.stats(self.pcap)
 
     self._quitting = False
@@ -255,12 +263,15 @@ def launch (interface = "en1"):
   print "Interface:",interface
 
   p = PCap(interface, callback = cb,
-           filter = "icmp")#[icmptype] != icmp-echoreply")
+           filter = "icmp")
+           #[icmptype] != icmp-echoreply")
            #filter = "ip host 74.125.224.148")
+
+  p.set_direction(True, True)
 
   def ping (eth='00:18:02:6e:ce:55', ip='192.168.0.1'):
     e = pkt.ethernet()
-    e.src = p.addresses['ethernet']['addr']
+    e.src = p.addresses['ethernet']['addr'] or '02:00:00:11:22:33'
     e.dst = EthAddr(eth)
     e.type = e.IP_TYPE
     ipp = pkt.ipv4()
@@ -274,6 +285,9 @@ def launch (interface = "en1"):
     e.payload = ipp
 
     p.inject(e)
+
+  def broadcast ():
+    ping('ff:ff:ff:ff:ff:ff','255.255.255.255')
 
   import code
   code.interact(local=locals())

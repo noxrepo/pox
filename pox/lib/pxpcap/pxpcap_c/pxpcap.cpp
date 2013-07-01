@@ -1,5 +1,5 @@
 /*************************************************************************
-Copyright 2011 James McCauley
+Copyright 2011,2013 James McCauley
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -265,6 +265,7 @@ struct thread_state
   PyObject * pycallback;
   PyObject * user;
   int exception;
+  int use_bytearray; // 0 means bytes, 1 means bytearray
 };
 
 static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h, const u_char * data)
@@ -273,8 +274,24 @@ static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h,
   PyEval_RestoreThread(ts->ts);
   PyObject * args;
   PyObject * rv;
-  args = Py_BuildValue("Os#lli",
-      ts->user, data, h->caplen, (long)h->ts.tv_sec, (long)h->ts.tv_usec, h->len);
+  if (ts->use_bytearray)
+  {
+    args = Py_BuildValue("ONlli",
+                         ts->user,
+                         PyByteArray_FromStringAndSize((const char *)data, h->caplen),
+                         (long)h->ts.tv_sec,
+                         (long)h->ts.tv_usec,
+                         h->len);
+  }
+  else
+  {
+    args = Py_BuildValue("Os#lli",
+                         ts->user,
+                         data, h->caplen,
+                         (long)h->ts.tv_sec,
+                         (long)h->ts.tv_usec,
+                         h->len);
+  }
   rv = PyEval_CallObject(ts->pycallback, args);
   Py_DECREF(args);
   if (rv)
@@ -296,7 +313,7 @@ static PyObject * p_loop_or_dispatch (int dispatch, PyObject *self, PyObject *ar
   thread_state ts;
   int cnt;
   int rv;
-  if (!PyArg_ParseTuple(args, "liOO", &ppcap, &cnt, &ts.pycallback, &ts.user)) return NULL;
+  if (!PyArg_ParseTuple(args, "liOOi", &ppcap, &cnt, &ts.pycallback, &ts.user, &ts.use_bytearray)) return NULL;
   Py_INCREF(ts.user);
 
   ts.ppcap = ppcap;
@@ -495,7 +512,7 @@ static PyMethodDef pxpcapmethods[] =
   {"datalink", p_datalink, METH_VARARGS, "Get data link layer type.\nPass it a ppcap."},
   {"fileno", p_fileno, METH_VARARGS, "Get file descriptor for live capture\nPass it a ppcap."},
   {"close", p_close, METH_VARARGS, "Close capture device or file\nPass it a ppcap"},
-  {"loop", p_loop, METH_VARARGS, "Capture packets\nPass it a ppcap, a count, a callback, and an opaque 'user data'.\nCallback params are same as first four of next_ex()'s return value"},
+  {"loop", p_loop, METH_VARARGS, "Capture packets\nPass it a ppcap, a count, a callback, opaque 'user data', and a boolean\n(True if you want to capture to bytearray instead of bytes).\nCallback params are same as first four of next_ex()'s return value"},
   {"dispatch", p_dispatch, METH_VARARGS, "Capture packets\nVery similar to loop()."},
   {"open_live", p_open_live, METH_VARARGS, "Open a capture device\nPass it dev name, snaplen (max capture length), promiscuous flag (1 for on, 0 for off), timeout milliseconds.\nReturns ppcap."},
   {"open_dead", p_open_dead, METH_VARARGS, "Open a dummy capture device\nPass it a linktype and snaplen (max cap length).\nReturns ppcap."},
