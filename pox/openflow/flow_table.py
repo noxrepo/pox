@@ -280,13 +280,13 @@ class SwitchFlowTable (FlowTable):
       self.add_entry(TableEntry.from_flow_mod(flow_mod))
     elif command == OFPFC_MODIFY or flow_mod.command == OFPFC_MODIFY_STRICT:
       is_strict = (command == OFPFC_MODIFY_STRICT)
-      modified = []
+      modified = False
       for entry in self._table:
         # update the actions field in the matching flows
         if entry.is_matched_by(match, priority=priority, strict=is_strict):
           entry.actions = flow_mod.actions
-          modified.append(entry)
-      if len(modified) == 0:
+          modified = True
+      if not modified:
         # if no matching entry is found, modify acts as add
         self.add_entry(TableEntry.from_flow_mod(flow_mod))
     elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
