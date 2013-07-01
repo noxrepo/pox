@@ -185,9 +185,10 @@ class FlowTable (EventMixin):
       raise TypeError("Not an Entry type")
     self._table.append(entry)
 
-    # keep table sorted by descending priority, with exact matches always going first
+    # keep table sorted by descending priority, with exact matches always first
     # note: python sort is stable
-    self._table.sort(key=lambda(e): (e.priority if e.match.is_wildcarded else (1<<16) + 1), reverse=True)
+    key = lambda e: e.priority if e.match.is_wildcarded else (1<<16) + 1
+    self._table.sort(key=key, reverse=True)
 
     self.raiseEvent(FlowTableModification(added=[entry]))
 
@@ -210,10 +211,12 @@ class FlowTable (EventMixin):
     return entries
 
   def matching_entries (self, match, priority=0, strict=False, out_port=None):
-    return [ entry for entry in self._table if entry.is_matched_by(match, priority, strict, out_port) ]
+    entry_match = lambda e: e.is_matched_by(match, priority, strict, out_port)
+    return [ entry for entry in self._table if entry_match(entry) ]
 
   def flow_stats (self, match, out_port=None, now=None):
-    return ( e.flow_stats() for e in self.matching_entries(match=match, strict=False, out_port=out_port))
+    mc_es = self.matching_entries(match=match, strict=False, out_port=out_port)
+    return ( e.flow_stats() for e in mc_es )
 
   def expired_entries (self, now=None):
     return [ entry for entry in self._table if entry.is_expired(now) ]
