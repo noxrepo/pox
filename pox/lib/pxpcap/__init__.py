@@ -69,7 +69,7 @@ class PCap (object):
 
   def __init__ (self, device = None, promiscuous = True, period = 10,
                 start = True, callback = None, filter = None,
-                use_bytearray = False):
+                use_bytearray = False, **kw):
     """
     Initialize this instance
 
@@ -95,6 +95,11 @@ class PCap (object):
       self.callback = self.__class__._handle_rx
     else:
       self.callback = callback
+
+    for k,v in kw.items():
+      assert not hasattr(self, k)
+      setattr(self, k, v)
+
     if device is not None:
       self.open(device)
     if self.pcap is not None:
