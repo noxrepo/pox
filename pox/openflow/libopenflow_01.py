@@ -2599,7 +2599,10 @@ class ofp_stats_reply (ofp_header):
   def pack (self):
     if self.type is None:
       if is_listlike(self.body):
-        b = self.body[0]
+        if len(self.body):
+          b = self.body[0]
+        else:
+          b = None # Will fail below
       else:
         b = self.body
       if isinstance(b, ofp_stats_body_base):
