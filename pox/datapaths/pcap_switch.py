@@ -32,15 +32,15 @@ import logging
 log = core.getLogger()
 
 
-if not pxpcap.enabled:
-  raise RuntimeError("You need PXPCap to use this component")
-
 
 def launch (address = '127.0.0.1', port = 6633, max_retry_delay = 16,
     dpid = None, ports = '', extra = None, __INSTANCE__ = None):
   """
   Launches a switch
   """
+
+  if not pxpcap.enabled:
+    raise RuntimeError("You need PXPCap to use this component")
 
   _ports = ports
   def up (event):
