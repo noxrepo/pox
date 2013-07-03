@@ -270,28 +270,26 @@ class ofp_flow_mod_table_id (of.ofp_flow_mod):
     of.ofp_flow_mod.__init__(self, **kw)
 
   def splice_table_id (func):
-    """ Write table_id as MSB of command field. """
+    """ 
+    Execute wrapped function with table_id temporarily stored as 
+    MSB of command field.
+    """
     def splice(self, *args):
       assert self.command <= 0xff
       self.command |= self.table_id << 8
-      return func(self, *args)
+      try:
+        retval = func(self, *args)
+      finally:
+        self.table_id = self.command >> 8
+        self.command &= 0xff
+      return retval 
     return splice
 
-  def siphon_table_id (func):
-    """ Separate table_id from command field. """
-    def siphon(self, *args):
-      retval = func(self, *args)
-      self.table_id = self.command >> 8
-      self.command &= 0xff
-      return retval
-    return siphon
-
   @splice_table_id
-  @siphon_table_id
   def pack (self):
     return super(ofp_flow_mod_table_id, self).pack()
 
-  @siphon_table_id
+  @splice_table_id
   def unpack (self, raw, offset=0):
     return super(ofp_flow_mod_table_id, self).unpack()
 
