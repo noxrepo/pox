@@ -294,9 +294,8 @@ class ofp_flow_mod_table_id (of.ofp_flow_mod):
     return super(ofp_flow_mod_table_id, self).unpack()
 
   def __eq__ (self, other):
-    r = of.ofp_flow_mod(self, other)
-    if r:
-      if self.table_id != other.table_id: return False
+    if not super(ofp_flow_mod_table_id, self).__eq__(other): return False
+    if table_id != other.table_id: return False
     return True
 
   def show (self, prefix=''):
