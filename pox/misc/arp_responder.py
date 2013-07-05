@@ -31,6 +31,7 @@ log = core.getLogger()
 
 from pox.lib.packet.ethernet import ethernet, ETHER_BROADCAST
 from pox.lib.packet.arp import arp
+from pox.lib.packet.vlan import vlan
 from pox.lib.addresses import IPAddr, EthAddr
 from pox.lib.util import dpid_to_str, str_to_bool
 from pox.lib.recoco import Timer
@@ -215,6 +216,13 @@ class ARPResponder (object):
               e = ethernet(type=packet.type, src=_dpid_to_mac(dpid),
                             dst=a.hwsrc)
               e.payload = r
+              if packet.type == ethernet.VLAN_TYPE:
+                v_rcv = packet.find('vlan')
+                e.payload = vlan(eth_type = e.type,
+                                 payload = e.payload,
+                                 id = v_rcv.id,
+                                 pcp = v_rcv.pcp)
+                e.type = ethernet.VLAN_TYPE
               log.info("%s answering ARP for %s" % (dpid_to_str(dpid),
                 str(r.protosrc)))
               msg = of.ofp_packet_out()
