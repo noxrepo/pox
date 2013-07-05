@@ -225,7 +225,10 @@ class PipePinger (Pinger):
 
   def ping (self):
     if os is None: return #TODO: Is there a better fix for this?
-    os.write(self._w, ' ')
+    try:
+      os.write(self._w, ' ')
+    except OSError:
+      log.warn("FD already closed")
 
   def fileno (self):
     return self._r
