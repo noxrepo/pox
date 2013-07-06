@@ -36,7 +36,7 @@ class llc (packet_base):
     self.dsap = None
     self.ssap = None
     self.control = None
-    self.oui = None
+    self.oui = None #FIXME: Stored as bytes; lib.addresses uses ints.
     self.eth_type = ethernet.INVALID_TYPE
 
     if raw is not None:
@@ -90,8 +90,11 @@ class llc (packet_base):
 
     self.parsed = True
 
-    self.next = ethernet.parse_next(self, self.eth_type, raw, self.length,
-                                    allow_llc = False)
+    if self.oui == '\0\0\0':
+      self.next = ethernet.parse_next(self, self.eth_type, raw, self.length,
+                                      allow_llc = False)
+    else:
+      self.next = raw[self.length:]
 
   @property
   def effective_ethertype (self):
