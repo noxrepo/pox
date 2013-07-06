@@ -929,6 +929,10 @@ class ofp_match (ofp_base):
     match.dl_dst = packet.dst
     match.dl_type = packet.type
     p = packet.next
+
+    # Is this in the spec?
+    if packet.type < 1536:
+      match.dl_type = OFP_DL_TYPE_NOT_ETH_TYPE
     if isinstance(p, vlan):
       match.dl_type = p.eth_type
       match.dl_vlan = p.id
