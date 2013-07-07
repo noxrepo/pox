@@ -216,7 +216,7 @@ class FlowTable (EventMixin):
 
   def flow_stats (self, match, out_port=None, now=None):
     mc_es = self.matching_entries(match=match, strict=False, out_port=out_port)
-    return ( e.flow_stats() for e in mc_es )
+    return ( e.flow_stats(now) for e in mc_es )
 
   def expired_entries (self, now=None):
     return [ entry for entry in self._table if entry.is_expired(now) ]
