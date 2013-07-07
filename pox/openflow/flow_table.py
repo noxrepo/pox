@@ -38,8 +38,6 @@ class TableEntry (object):
     """
     Initialize table entry
     """
-    # Overriding __new__ instead of init to make fields optional. There's
-    #  probably a better way to do this.
     if now is None: now = time.time()
     self.counters = {
         'created': now,
