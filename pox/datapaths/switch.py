@@ -180,13 +180,14 @@ class SoftwareSwitchBase (object):
     connection.set_message_handler(self.rx_message)
     self._connection = connection
 
-  def send (self, message):
+  def send (self, message, connection = None):
     """
     Send a message to this switch's communication partner
     """
-
-    if self._connection:
-      self._connection.send(message)
+    if connection is None:
+      connection = self._connection
+    if connection:
+      connection.send(message)
     else:
       self.log.debug("Asked to send message %s, but not connected", message)
 
