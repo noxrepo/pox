@@ -58,8 +58,8 @@ class TableEntryTest(unittest.TestCase):
     self.assertFalse(e.is_expired(now=5))
     self.assertTrue(e.is_expired(now=7))
     e.touch_packet(12, now=5)
-    self.assertEqual(e.counters["bytes"], 12)
-    self.assertEqual(e.counters["packets"], 1)
+    self.assertEqual(e.byte_count, 12)
+    self.assertEqual(e.packet_count, 1)
     self.assertFalse(e.is_expired(now=1))
     self.assertFalse(e.is_expired(now=7))
     self.assertFalse(e.is_expired(now=10))
@@ -109,7 +109,7 @@ class FlowTableTest(unittest.TestCase):
             ):
       [e.touch_packet(1, now=time) for e in t.entries if e.cookie in touch]
       t.remove_expired_entries(now=time)
-      self.assertEqual([e.cookie for e in t.entries ], remaining)
+      self.assertEqual(sorted([e.cookie for e in t.entries]), remaining)
 
 class SwitchFlowTableTest(unittest.TestCase):
   def test_process_flow_mod_add(self):
