@@ -215,8 +215,18 @@ class FlowTable (EventMixin):
   def _remove_specific_entries (self, remove_flows):
     #for entry in remove_flows:
     #  self._table.remove(entry)
-    self._table = [entry for entry in self._table if entry not in remove_flows]
-    self.raiseEvent(FlowTableModification(removed=remove_flows))
+    #self._table = [entry for entry in self._table if entry not in remove_flows]
+    #self.raiseEvent(FlowTableModification(removed=remove_flows))
+    remove_flows = set(remove_flows)
+    i = 0
+    while i < len(self._table):
+      entry = self._table[i]
+      if entry in remove_flows:
+        del self._table[i]
+        remove_flows.remove(entry)
+      else:
+        i += 1
+    assert len(remove_flows) == 0
 
   def remove_expired_entries (self, now=None):
     remove_flows = self.expired_entries(now)
