@@ -192,7 +192,7 @@ class packet_base (object):
     def pack(self):
         '''Convert header and payload to bytes'''
 
-        if self.parsed is False and self.raw is not None and not self.next:
+        if self.parsed is False and self.raw is not None and self.next is None:
           return self.raw
 
         self.pre_hdr()
