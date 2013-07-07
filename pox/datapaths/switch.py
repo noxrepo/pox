@@ -159,6 +159,16 @@ class SoftwareSwitchBase (object):
       if getattr(self.features, "act_" + name) is False: continue
       self.action_handlers[value] = h
 
+    # Set up handlers for stats handlers
+    # That is, self.stats_handlers[OFPST_FOO] = self._stats_foo
+    #TODO: Refactor this with above
+    self.stats_handlers = {}
+    for value,name in ofp_stats_type_map.iteritems():
+      name = name.split("OFPST_",1)[-1].lower()
+      h = getattr(self, "_stats_" + name, None)
+      if not h: continue
+      self.stats_handlers[value] = h
+
   def rx_message (self, connection, msg):
     """
     Handle an incoming OpenFlow message
@@ -253,71 +263,19 @@ class SoftwareSwitchBase (object):
     self.send(msg)
 
   def _rx_stats_request (self, ofp, connection):
-    def desc_stats (ofp):
-      try:
-        from pox.core import core
-        return ofp_desc_stats(mfr_desc="POX",
-                              hw_desc=core._get_platform_info(),
-                              sw_desc=core.version_string,
-                              serial_num=str(self.dpid),
-                              dp_desc=type(self).__name__)
-      except:
-        return ofp_desc_stats(mfr_desc="POX",
-                              hw_desc="Unknown",
-                              sw_desc="Unknown",
-                              serial_num=str(self.dpid),
-                              dp_desc=type(self).__name__)
+    handler = self.stats_handlers.get(ofp.type)
+    if handler is None:
+      self.log.warning("Stats type %s not implemented", ofp.type)
 
+      self.send_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_STAT,
+                      ofp=ofp, connection=connection)
+      return
 
-    def flow_stats (ofp):
-      req = ofp.body
-      assert self.table_id in (TABLE_ALL, 0)
-      return self.table.flow_stats(req.match, req.out_port)
-
-    def aggregate_stats (ofp):
-      req = ofp.body
-      assert self.table_id in (TABLE_ALL, 0)
-      return self.table.aggregate_stats(req.match, out_port)
-
-    def table_stats (ofp):
-      # Some of these may come from the actual table(s) in the future...
-      r = ofp_table_stats()
-      r.table_id = 0
-      r.name = "Default"
-      r.wildcards = OFPFW_ALL
-      r.max_entries = self.max_entries
-      r.active_count = len(self.table)
-      r.lookup_count = self._lookup_count
-      r.matched_count = self._matched_count
-      return r
-
-    def port_stats (ofp):
-      req = ofp.body
-      if req.port_no == OFPP_NONE:
-        return self.port_stats.values()
-      else:
-        return self.port_stats[req.port_no]
-
-    def queue_stats (ofp):
-      raise AttributeError("not implemented")
-
-    stats_handlers = {
-        OFPST_DESC: desc_stats,
-        OFPST_FLOW: flow_stats,
-        OFPST_AGGREGATE: aggregate_stats,
-        OFPST_TABLE: table_stats,
-        OFPST_PORT: port_stats,
-        OFPST_QUEUE: queue_stats
-    }
-
-    if ofp.type in stats_handlers:
-      handler = stats_handlers[ofp.type]
-    else:
-      raise AttributeError("Unsupported stats request type %d" % (ofp.type,))
-
-    reply = ofp_stats_reply(xid=ofp.xid, body=handler(ofp))
-    self.log.debug("Sending stats reply %s", str(reply))
-    self.send(reply)
+    reply = ofp_stats_reply(xid=ofp.xid, type=ofp.type,
+                            body=handler(ofp, connection=connection))
+    if reply:
+      self.log.debug("Sending stats reply %s", reply)
+      self.send(reply)
 
   def _rx_set_config (self, config, connection):
     pass
@@ -771,6 +729,55 @@ class SoftwareSwitchBase (object):
 #      return packet
 #    packet.next.ttl = packet.next.ttl - 1
 #    return packet
+
+  def _stats_desc (self, ofp, connection):
+    try:
+      from pox.core import core
+      return ofp_desc_stats(mfr_desc="POX",
+                            hw_desc=core._get_platform_info(),
+                            sw_desc=core.version_string,
+                            serial_num=str(self.dpid),
+                            dp_desc=type(self).__name__)
+    except:
+      return ofp_desc_stats(mfr_desc="POX",
+                            hw_desc="Unknown",
+                            sw_desc="Unknown",
+                            serial_num=str(self.dpid),
+                            dp_desc=type(self).__name__)
+
+
+  def _stats_flow (self, ofp, connection):
+    req = ofp.body
+    assert self.table_id in (TABLE_ALL, 0)
+    return self.table.flow_stats(req.match, req.out_port)
+
+  def _stats_aggregate (self, ofp, connection):
+    req = ofp.body
+    assert self.table_id in (TABLE_ALL, 0)
+    return self.table.aggregate_stats(req.match, out_port)
+
+  def _stats_table (self, ofp, connection):
+    # Some of these may come from the actual table(s) in the future...
+    r = ofp_table_stats()
+    r.table_id = 0
+    r.name = "Default"
+    r.wildcards = OFPFW_ALL
+    r.max_entries = self.max_entries
+    r.active_count = len(self.table)
+    r.lookup_count = self._lookup_count
+    r.matched_count = self._matched_count
+    return r
+
+  def _stats_port (self, ofp, connection):
+    req = ofp.body
+    if req.port_no == OFPP_NONE:
+      return self.port_stats.values()
+    else:
+      return self.port_stats[req.port_no]
+
+#  def _stats_queue (self, ofp, connection):
+#    # Not implemented
+#    pass
 
   def __repr__ (self):
     return "%s(dpid=%s, num_ports=%d)" % (type(self).__name__,
