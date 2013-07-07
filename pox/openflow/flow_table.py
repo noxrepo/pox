@@ -20,6 +20,7 @@ from libopenflow_01 import *
 from pox.lib.revent import *
 
 import time
+import math
 
 # FlowTable Entries:
 #   match - ofp_match (13-tuple)
@@ -132,10 +133,10 @@ class TableEntry (object):
 
   def flow_stats (self, now=None):
     if now is None: now = time.time()
-    duration = now - self.created
+    dur_nsec,duration_sec = math.modf(now - self.created)
     return ofp_flow_stats(match=self.match,
-                          duration_sec=int(duration),
-                          duration_nsec=int(duration * 1e9),
+                          duration_sec=int(dur_sec),
+                          duration_nsec=int(dur_nsec * 1e9),
                           priority=self.priority,
                           idle_timeout=self.idle_timeout,
                           hard_timeout=self.hard_timeout,
