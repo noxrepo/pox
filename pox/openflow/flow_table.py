@@ -39,12 +39,10 @@ class TableEntry (object):
     Initialize table entry
     """
     if now is None: now = time.time()
-    self.counters = {
-        'created': now,
-        'last_touched': now,
-        'bytes': 0,
-        'packets': 0
-    }
+    self.created = now
+    self.last_touched = self.created
+    self.byte_count = 0
+    self.packet_count = 0
     self.priority = priority
     self.cookie = cookie
     self.idle_timeout = idle_timeout
@@ -98,19 +96,22 @@ class TableEntry (object):
     the expiration timer.
     """
     if now is None: now = time.time()
-    self.counters["bytes"] += byte_count
-    self.counters["packets"] += 1
-    self.counters["last_touched"] = now
+    self.byte_count += byte_count
+    self.packet_count += 1
+    self.last_touched = now
 
   def is_expired (self, now=None):
     """
     Tests whether this flow entry is expired due to its idle or hard timeout
     """
     if now is None: now = time.time()
-    expired_hard = now - self.counters["created"] > self.hard_timeout
-    expired_idle = now - self.counters["last_touched"] > self.idle_timeout
-    return (self.hard_timeout > 0 and expired_hard
-         or self.idle_timeout > 0 and expired_idle)
+    if self.hard_timeout > 0:
+      if (now - self.created) > self.hard_timeout:
+        return True
+    if self.idle_timeout > 0:
+      if (now - self.last_touched) > self.idle_timeout:
+        return True
+    return False
 
   def __str__ (self):
     return self.__class__.__name__ + "\n  " + self.show()
@@ -131,7 +132,7 @@ class TableEntry (object):
 
   def flow_stats (self, now=None):
     if now is None: now = time.time()
-    duration = now - self.counters["created"]
+    duration = now - self.created
     return ofp_flow_stats(match=self.match,
                           duration_sec=int(duration),
                           duration_nsec=int(duration * 1e9),
@@ -139,8 +140,8 @@ class TableEntry (object):
                           idle_timeout=self.idle_timeout,
                           hard_timeout=self.hard_timeout,
                           cookie=self.cookie,
-                          packet_count=self.counters["packets"],
-                          byte_count=self.counters["bytes"],
+                          packet_count=self.packet_count,
+                          byte_count=self.byte_count,
                           actions=self.actions)
 
 
