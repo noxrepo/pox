@@ -40,7 +40,7 @@ class TableEntry (object):
     """
     # Overriding __new__ instead of init to make fields optional. There's
     #  probably a better way to do this.
-    if now == None: now = time.time()
+    if now is None: now = time.time()
     self.counters = {
         'created': now,
         'last_touched': now,
@@ -85,7 +85,7 @@ class TableEntry (object):
     Used for, e.g., flow_mod updates
     """
     match_a = lambda a: isinstance(a, ofp_action_output) and a.port == out_port
-    check_port = out_port == None or any(match_a(a) for a in self.actions)
+    check_port = out_port is None or any(match_a(a) for a in self.actions)
 
     if strict:
       return self.match == match and self.priority == priority and check_port
@@ -99,7 +99,7 @@ class TableEntry (object):
     Updates both the cumulative given byte counts of packets encountered and
     the expiration timer.
     """
-    if now == None: now = time.time()
+    if now is None: now = time.time()
     self.counters["bytes"] += byte_count
     self.counters["packets"] += 1
     self.counters["last_touched"] = now
@@ -108,7 +108,7 @@ class TableEntry (object):
     """
     Tests whether this flow entry is expired due to its idle or hard timeout
     """
-    if now == None: now = time.time()
+    if now is None: now = time.time()
     expired_hard = now - self.counters["created"] > self.hard_timeout
     expired_idle = now - self.counters["last_touched"] > self.idle_timeout
     return (self.hard_timeout > 0 and expired_hard
@@ -132,7 +132,7 @@ class TableEntry (object):
     return outstr
 
   def flow_stats (self, now=None):
-    if now == None: now = time.time()
+    if now is None: now = time.time()
     duration = now - self.counters["created"]
     return ofp_flow_stats(match=self.match,
                           duration_sec=int(duration),
