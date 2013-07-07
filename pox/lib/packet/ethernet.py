@@ -109,6 +109,7 @@ class ethernet(packet_base):
 
   def parse (self, raw):
     assert isinstance(raw, bytes)
+    self.next = None # In case of unfinished parsing
     self.raw = raw
     alen = len(raw)
     if alen < ethernet.MIN_LEN:

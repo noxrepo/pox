@@ -88,6 +88,7 @@ class arp (packet_base):
 
     def parse (self, raw):
         assert isinstance(raw, bytes)
+        self.next = None # In case of unfinished parsing
         self.raw = raw
         dlen = len(raw)
         if dlen < arp.MIN_LEN:

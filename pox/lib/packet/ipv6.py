@@ -322,6 +322,7 @@ class ipv6 (packet_base):
 
   def parse (self, raw, offset=0):
     assert isinstance(raw, bytes)
+    self.next = None # In case of unfinished parsing
     self.raw = raw
     if len(raw) < self.MIN_LEN:
       self.msg('warning IP packet data too short to parse header:'
