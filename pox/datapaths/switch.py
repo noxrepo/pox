@@ -424,6 +424,24 @@ class SoftwareSwitchBase (object):
     msg = ofp_port_status(desc=port, reason=reason)
     self.send(msg)
 
+  def send_error (self, type, code, ofp=None, data=None, connection=None):
+    """
+    Send an error
+
+    If you pass ofp, it will be used as the source of the error's XID and
+    data.
+    You can override the data by also specifying data.
+    """
+    err = ofp_error(type=type, code=code)
+    if ofp:
+      err.xid = ofp.xid
+      err.data = ofp.pack()
+    else:
+      err.xid = 0
+    if data is not None:
+      err.data = data
+    self.send(err, connection = connection)
+
   def rx_packet (self, packet, in_port, packet_data = None):
     """
     process a dataplane packet
