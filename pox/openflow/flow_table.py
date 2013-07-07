@@ -75,19 +75,29 @@ class TableEntry (object):
                         buffer_id=self.buffer_id,
                         flags=flags, **kw)
 
+  @property
+  def effective_priority (self):
+    """
+    Exact matches effectively have an "infinite" priority
+    """
+    return self.priority if self.match.is_wildcarded else (1<<16) + 1
+
   def is_matched_by (self, match, priority=None, strict=False, out_port=None):
     """
     Tests whether a given match object matches this entry
 
     Used for, e.g., flow_mod updates
+
+    If out_port is any value besides None, the the flow entry must contain an
+    output action to the specified port.
     """
     match_a = lambda a: isinstance(a, ofp_action_output) and a.port == out_port
-    check_port = out_port is None or any(match_a(a) for a in self.actions)
+    port_matches = (out_port is None) or any(match_a(a) for a in self.actions)
 
     if strict:
-      return self.match == match and self.priority == priority and check_port
+      return port_matches and self.match == match and self.priority == priority
     else:
-      return match.matches_with_wildcards(self.match) and check_port
+      return port_matches and match.matches_with_wildcards(self.match)
 
   def touch_packet (self, byte_count, now=None):
     """
@@ -115,7 +125,7 @@ class TableEntry (object):
     return False
 
   def __str__ (self):
-    return self.__class__.__name__ + "\n  " + self.show()
+    return type(self).__name__ + "\n  " + self.show()
 
   def __repr__ (self):
     return "TableEntry(" + self.show() + ")"
@@ -164,13 +174,8 @@ class FlowTable (EventMixin):
 
   def __init__ (self):
     EventMixin.__init__(self)
-    # For now we represent the table as a multidimensional array.
-    #
-    # [ (cookie, match, counters, actions),
-    #   (cookie, match, counters, actions),
-    #    ...                        ]
-    #
-    # Implies O(N) lookup for now. TODO: fix
+
+    # Table is a list of TableEntry sorted by descending effective_priority.
     self._table = []
 
   @property
@@ -185,10 +190,8 @@ class FlowTable (EventMixin):
       raise TypeError("Not an Entry type")
     self._table.append(entry)
 
-    # keep table sorted by descending priority, with exact matches always first
-    # note: python sort is stable
-    key = lambda e: e.priority if e.match.is_wildcarded else (1<<16) + 1
-    self._table.sort(key=key, reverse=True)
+    # keep table sorted by descending priority
+    self._table.sort(key=lambda e: e.effective_priority, reverse=True)
 
     self.raiseEvent(FlowTableModification(added=[entry]))
 
@@ -197,18 +200,6 @@ class FlowTable (EventMixin):
       raise TypeError("Not an Entry type")
     self._table.remove(entry)
     self.raiseEvent(FlowTableModification(removed=[entry]))
-
-  def entries_for_port (self, port_no):
-    entries = []
-    for entry in self._table:
-      actions = entry.actions
-      if len(actions) > 0:
-        last_action = actions[-1]
-        if type(last_action) == ofp_action_output:
-          outgoing_port = last_action.port#.port_no
-          if outgoing_port == port_no:
-            entries.append(entry)
-    return entries
 
   def matching_entries (self, match, priority=0, strict=False, out_port=None):
     entry_match = lambda e: e.is_matched_by(match, priority, strict, out_port)
