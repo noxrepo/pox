@@ -40,6 +40,7 @@ from pox.openflow.flow_table import SwitchFlowTable
 from pox.lib.packet import *
 
 import logging
+import struct
 
 
 class DpPacketOut (Event):
@@ -812,6 +813,12 @@ class OFConnection (object):
   # Globally unique identifier for the Connection instance
   ID = 0
 
+  # See _error_handler for information the meanings of these
+  ERR_BAD_VERSION = 1
+  ERR_NO_UNPACKER = 2
+  ERR_BAD_LENGTH  = 3
+  ERR_EXCEPTION   = 4
+
   # These methods are called externally by IOWorker
   def msg (self, m):
     self.log.debug("%s %s", str(self), str(m))
@@ -821,10 +828,10 @@ class OFConnection (object):
     self.log.info("%s %s", str(self), str(m))
 
   def __init__ (self, io_worker):
+    self.starting = True # No data yet
     self.io_worker = io_worker
     self.io_worker.rx_handler = self.read
     self.controller_id = io_worker.socket.getpeername()
-    self.error_handler = None
     OFConnection.ID += 1
     self.ID = OFConnection.ID
     self.log = logging.getLogger("ControllerConnection(id=%d)" % (self.ID,))
@@ -850,29 +857,46 @@ class OFConnection (object):
     self.io_worker.send(data)
 
   def read (self, io_worker):
+    #FIXME: Do we need to pass io_worker here?
     while True:
       message = io_worker.peek()
       if len(message) < 4:
         break
 
-      if ord(message[0]) != OFP_VERSION:
-        e = ValueError("Bad OpenFlow version (%s) on connection %s",
-                       ord(message[0]), str(self))
-        if self.error_handler:
-          return self.error_handler(e)
-        else:
-          raise
-
       # Parse head of OpenFlow message by hand
+      ofp_version = ord(message[0])
       ofp_type = ord(message[1])
+
+      if ofp_version != OFP_VERSION:
+        r = self._error_handler(self.ERR_BAD_VERSION, ofp_version)
+        if r is False: break
+        continue
+
       packet_length = ord(message[2]) << 8 | ord(message[3])
       if packet_length > len(message):
         break
 
+      if ofp_type >= 0 and ofp_type < len(self.unpackers):
+        unpacker = self.unpackers[ofp_type]
+      else:
+        unpacker = None
+      if unpacker is None:
+        r = self._error_handler(self.ERR_NO_UNPACKER, ofp_type)
+        if r is False: break
+        io_worker.consume_receive_buf(packet_length)
+        continue
+
       new_offset, msg_obj = self.unpackers[ofp_type](message, 0)
-      assert new_offset == packet_length
+      if new_offset != packet_length:
+        r = self._error_handler(self.ERR_BAD_LENGTH,
+                                (msg_obj, packet_length, new_offset))
+        if r is False: break
+        # Assume sender was right and we should skip what it told us to.
+        io_worker.consume_receive_buf(packet_length)
+        continue
 
       io_worker.consume_receive_buf(packet_length)
+      self.starting = False
 
       if self.on_message_received is None:
         raise RuntimeError("on_message_receieved hasn't been set yet!")
@@ -880,12 +904,54 @@ class OFConnection (object):
       try:
         self.on_message_received(self, msg_obj)
       except Exception as e:
-        if self.error_handler:
-          return self.error_handler(e)
-        else:
-          raise
+        r = self._error_handler(self.ERR_EXCEPTION,
+                                (e,message[:packet_length],msg_obj))
+        if r is False: break
+        continue
 
     return True
+
+  def _error_handler (self, reason, info):
+      """
+      Called when read() has an error
+
+      reason is one of OFConnection.ERR_X
+
+      info depends on reason:
+      ERR_BAD_VERSION: claimed version number
+      ERR_NO_UNPACKER: claimed message type
+      ERR_BAD_LENGTH: (unpacked message, claimed length, unpacked length)
+      ERR_EXCEPTION: (exception, raw message, unpacked message)
+
+      Return False to halt processing of subsequent data (makes sense to
+      do this if you called connection.close() here, for example).
+      """
+      if reason == OFConnection.ERR_BAD_VERSION:
+        self.log.warn('Unsupported OpenFlow version 0x%02x', info)
+        if self.starting:
+          xid = 0
+          message = io_worker.peek()
+          if len(message) >= 8:
+            xid = struct.unpack_from('!L', message, 4)[0]
+          err = ofp_error(type=OFPET_HELLO_FAILED, code=OFPHFC_INCOMPATIBLE)
+          err.xid = port_mod.xid
+          err.data = 'Version unsupported'
+          self.send(err)
+        self.close()
+        return False
+      elif reason == OFConnection.ERR_NO_UNPACKER:
+        self.log.warn('Unsupported OpenFlow message type 0x%02x', info)
+      elif reason == OFConnection.ERR_BAD_LENGTH:
+        t = type(info[0]).__name__
+        self.log.error('Different idea of message length for %s '
+                       '(us:%s them:%s)' % (t, info[2], info[1]))
+      elif reason == OFConnection.ERR_EXCEPTION:
+        t = type(info[0]).__name__
+        self.log.exception('Exception handling %s' % (t,))
+      else:
+        self.log.error("Unhandled error")
+        self.close()
+        return False
 
   def close (self):
     self.io_worker.close()
