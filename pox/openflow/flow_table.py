@@ -186,18 +186,30 @@ class FlowTable (EventMixin):
     return len(self._table)
 
   def add_entry (self, entry):
-    if not isinstance(entry, TableEntry):
-      raise TypeError("Not an Entry type")
-    self._table.append(entry)
+    assert isinstance(entry, TableEntry)
 
-    # keep table sorted by descending priority
-    self._table.sort(key=lambda e: e.effective_priority, reverse=True)
+    #self._table.append(entry)
+    #self._table.sort(key=lambda e: e.effective_priority, reverse=True)
+
+    # Use binary search to insert at correct place
+    # This is faster even for modest table sizes, and way, way faster
+    # as the tables grow larger.
+    priority = entry.effective_priority
+    table = self._table
+    low = 0
+    high = len(table)
+    while low < high:
+        middle = (low + high) // 2
+        if priority >= table[middle].effective_priority:
+          high = middle
+          continue
+        low = middle + 1
+    table.insert(low, entry)
 
     self.raiseEvent(FlowTableModification(added=[entry]))
 
   def remove_entry (self, entry):
-    if not isinstance(entry, TableEntry):
-      raise TypeError("Not an Entry type")
+    assert isinstance(entry, TableEntry)
     self._table.remove(entry)
     self.raiseEvent(FlowTableModification(removed=[entry]))
 
