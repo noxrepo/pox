@@ -22,6 +22,7 @@ Example:
 from pox.core import core
 from pox.datapaths import do_launch
 from pox.datapaths.switch import SoftwareSwitchBase, OFConnection
+from pox.datapaths.switch import ExpireMixin
 import pox.lib.pxpcap as pxpcap
 from Queue import Queue
 from threading import Thread
@@ -78,7 +79,7 @@ def launch (address = '127.0.0.1', port = 6633, max_retry_delay = 16,
   core.addListenerByName("UpEvent", up)
 
 
-class PCapSwitch (SoftwareSwitchBase):
+class PCapSwitch (ExpireMixin, SoftwareSwitchBase):
   # Default level for loggers of this class
   default_log_level = logging.INFO
 

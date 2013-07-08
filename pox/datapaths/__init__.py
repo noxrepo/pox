@@ -21,7 +21,9 @@ Example:
 
 from pox.lib.ioworker.workers import BackoffWorker
 from pox.datapaths.switch import SoftwareSwitch, OFConnection
+from pox.datapaths.switch import ExpireMixin
 from pox.lib.util import dpid_to_str, str_to_dpid
+
 
 class OpenFlowWorker (BackoffWorker):
   def __init__ (self, switch=None, **kw):
@@ -110,5 +112,9 @@ def softwareswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
   """
   from pox.core import core
   core.register("datapaths", {})
-  do_launch(SoftwareSwitch, address, port, max_retry_delay, dpid,
+
+  class ExpiringSwitch(ExpireMixin, SoftwareSwitch):
+    pass
+
+  do_launch(ExpiringSwitch, address, port, max_retry_delay, dpid,
             extra_args = extra)

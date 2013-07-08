@@ -33,6 +33,7 @@ TODO
 
 from pox.lib.util import assert_type, initHelper, dpid_to_str
 from pox.lib.revent import Event, EventMixin
+from pox.lib.recoco import Timer
 from pox.openflow.libopenflow_01 import *
 import pox.openflow.libopenflow_01 as of
 from pox.openflow.util import make_type_to_unpacker_table
@@ -819,6 +820,25 @@ class SoftwareSwitch (SoftwareSwitchBase, EventMixin):
     This is called by the more general _output_packet().
     """
     self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
+
+
+class ExpireMixin (object):
+  """
+  Adds expiration to a switch
+
+  Inherit *before* switch base.
+  """
+  _expire_period = 2
+
+  def __init__ (self, *args, **kw):
+    expire_period = kw.pop('expire_period', self._expire_period)
+    super(ExpireMixin,self).__init__(*args, **kw)
+    if not expire_period:
+      # Disable
+      return
+    self._expire_timer = Timer(expire_period,
+                               self.table.remove_expired_entries,
+                               recurring=True)
 
 
 class OFConnection (object):
