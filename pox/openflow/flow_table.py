@@ -208,6 +208,12 @@ class FlowTable (EventMixin):
     # Table is a list of TableEntry sorted by descending effective_priority.
     self._table = []
 
+  def _dirty (self):
+    """
+    Call when table changes
+    """
+    pass
+
   @property
   def entries (self):
     return self._table
@@ -236,11 +242,14 @@ class FlowTable (EventMixin):
         low = middle + 1
     table.insert(low, entry)
 
+    self._dirty()
+
     self.raiseEvent(FlowTableModification(added=[entry]))
 
   def remove_entry (self, entry, reason=None):
     assert isinstance(entry, TableEntry)
     self._table.remove(entry)
+    self._dirty()
     self.raiseEvent(FlowTableModification(removed=[entry], reason=reason))
 
   def matching_entries (self, match, priority=0, strict=False, out_port=None):
@@ -256,6 +265,7 @@ class FlowTable (EventMixin):
     #  self._table.remove(entry)
     #self._table = [entry for entry in self._table if entry not in flows]
     if not flows: return
+    self._dirty()
     remove_flows = set(flows)
     i = 0
     while i < len(self._table):
