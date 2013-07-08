@@ -771,14 +771,18 @@ class SoftwareSwitchBase (object):
 
 
   def _stats_flow (self, ofp, connection):
-    req = ofp.body
-    assert self.table_id in (TABLE_ALL, 0)
-    return self.table.flow_stats(req.match, req.out_port)
+    if ofp.body.table_id not in (TABLE_ALL, 0):
+      return [] # No flows for other tables
+    out_port = ofp.body.out_port
+    if out_port == OFPP_NONE: out_port = None # Don't filter
+    return self.table.flow_stats(ofp.body.match, out_port)
 
   def _stats_aggregate (self, ofp, connection):
-    req = ofp.body
-    assert self.table_id in (TABLE_ALL, 0)
-    return self.table.aggregate_stats(req.match, out_port)
+    if ofp.body.table_id not in (TABLE_ALL, 0):
+      return [] # No flows for other tables
+    out_port = ofp.body.out_port
+    if out_port == OFPP_NONE: out_port = None # Don't filter
+    return self.table.aggregate_stats(ofp.body.match, out_port)
 
   def _stats_table (self, ofp, connection):
     # Some of these may come from the actual table(s) in the future...
