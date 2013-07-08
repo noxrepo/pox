@@ -600,10 +600,10 @@ class SoftwareSwitchBase (object):
     """
     buffer_id = buffer_id - 1
     if (buffer_id >= len(self._packet_buffer)) or (buffer_id < 0):
-      self.log.warn("Invalid output buffer id: %d", buffer_id)
+      self.log.warn("Invalid output buffer id: %d", buffer_id + 1)
       return
     if self._packet_buffer[buffer_id] is None:
-      self.log.warn("Buffer %d has already been flushed", buffer_id)
+      self.log.warn("Buffer %d has already been flushed", buffer_id + 1)
       return
     (packet, in_port) = self._packet_buffer[buffer_id]
     self._process_actions_for_packet(actions, packet, in_port, ofp)
