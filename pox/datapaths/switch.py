@@ -569,7 +569,7 @@ class SoftwareSwitchBase (object):
       # will result in a send-to-controller which may send back to table...)
       self.rx_packet(packet, in_port)
     else:
-      raise("Unsupported virtual output port: %d" % (out_port,))
+      self.log.warn("Unsupported virtual output port: %d", out_port)
 
   def _buffer_packet (self, packet, in_port=None):
     """
