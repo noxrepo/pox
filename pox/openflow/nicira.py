@@ -293,10 +293,9 @@ class ofp_flow_mod_table_id (of.ofp_flow_mod):
   def unpack (self, raw, offset=0):
     return super(ofp_flow_mod_table_id, self).unpack()
 
+  @splice_table_id
   def __eq__ (self, other):
-    if not super(ofp_flow_mod_table_id, self).__eq__(other): return False
-    if table_id != other.table_id: return False
-    return True
+    return super(ofp_flow_mod_table_id, self).__eq__(other)
 
   def show (self, prefix=''):
     outstr = ''
