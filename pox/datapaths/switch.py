@@ -296,9 +296,9 @@ class SoftwareSwitchBase (object):
                       ofp=ofp, connection=connection)
       return
 
-    reply = ofp_stats_reply(xid=ofp.xid, type=ofp.type,
-                            body=handler(ofp, connection=connection))
-    if reply:
+    body = handler(ofp, connection=connection)
+    if body is not None:
+      reply = ofp_stats_reply(xid=ofp.xid, type=ofp.type, body=body)
       self.log.debug("Sending stats reply %s", reply)
       self.send(reply)
 
@@ -564,10 +564,9 @@ class SoftwareSwitchBase (object):
       self.send_packet_in(in_port, buffer_id, packet, reason=OFPR_ACTION,
                           data_length=max_len)
     elif out_port == OFPP_TABLE:
-      # There better be a table entry there, else we get infinite recurision
-      # between switch<->controller
-      # Note that this isn't infinite recursion, since the table entry's
-      # out_port will not be OFPP_TABLE
+      # Do we disable send-to-controller when performing this?
+      # (Currently, there's the possibility that a table miss from this
+      # will result in a send-to-controller which may send back to table...)
       self.rx_packet(packet, in_port)
     else:
       raise("Unsupported virtual output port: %d" % (out_port,))
