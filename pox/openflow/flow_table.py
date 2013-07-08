@@ -229,6 +229,7 @@ class FlowTable (EventMixin):
     #  self._table.remove(entry)
     #self._table = [entry for entry in self._table if entry not in remove_flows]
     #self.raiseEvent(FlowTableModification(removed=remove_flows))
+    if not remove_flows: return
     remove_flows = set(remove_flows)
     i = 0
     while i < len(self._table):
@@ -236,6 +237,7 @@ class FlowTable (EventMixin):
       if entry in remove_flows:
         del self._table[i]
         remove_flows.remove(entry)
+        if not remove_flows: break
       else:
         i += 1
     assert len(remove_flows) == 0
