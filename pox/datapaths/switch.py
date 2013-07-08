@@ -41,6 +41,7 @@ from pox.lib.packet import *
 
 import logging
 import struct
+import time
 
 
 class DpPacketOut (Event):
@@ -95,6 +96,8 @@ class SoftwareSwitchBase (object):
     self._has_sent_hello = False
 
     self.table = SwitchFlowTable()
+    self.table.addListeners(self)
+
     self._lookup_count = 0
     self._matched_count = 0
 
@@ -169,6 +172,26 @@ class SoftwareSwitchBase (object):
       h = getattr(self, "_stats_" + name, None)
       if not h: continue
       self.stats_handlers[value] = h
+
+  @property
+  def _time (self):
+    """
+    Get the current time
+
+    This should be used for, e.g., calculating timeouts.  It currently isn't
+    used everywhere it should be.
+
+    Override this to change time behavior.
+    """
+    return time.time()
+
+  def _handle_FlowTableModification (self, event):
+    if event.removed:
+      if event.reason in (OFPRR_IDLE_TIMEOUT,OFPRR_HARD_TIMEOUT,OFPRR_DELETE):
+        for entry in event.removed:
+          if entry.flags & OFPFF_SEND_FLOW_REM:
+            fr = entry.to_flow_removed(self._time, reason=event.reason)
+            self.send(fr)
 
   def rx_message (self, connection, msg):
     """
