@@ -654,18 +654,30 @@ class SoftwareSwitchBase (object):
         return
       packet = h(action, packet, in_port)
 
+  def _find_overlap_entry (self, match, priority, table):
+    wc_match = lambda m1, m2: m1.matches_with_wildcards(m2)
+    for entry in table.entries:
+      if wc_match(match, entry.match) or wc_match(entry.match, match):
+        if entry.priority == priority:
+          return True
+    return False
+
   def _process_flow_mod (self, flow_mod, connection, table):
     """
     Process a flow mod sent to the switch.
     """
-    if flow_mod.flags & OFPFF_CHECK_OVERLAP:
-      raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
-    
     command = flow_mod.command
     match = flow_mod.match
     priority = flow_mod.priority
 
     if command == OFPFC_ADD:
+      if flow_mod.flags & OFPFF_CHECK_OVERLAP:
+        if self._find_overlap_entry(match, priority, table):
+          # Another entry overlaps. Do not add.
+          self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_OVERLAP,
+                          ofp=flow_mod, connection=connection)
+          return
+
       # exactly matching entries have to be removed
       table.remove_matching_entries(match, priority=priority, strict=True)
       if len(table) < self.max_entries:
@@ -685,6 +697,13 @@ class SoftwareSwitchBase (object):
           modified = True
       if not modified:
         # if no matching entry is found, modify acts as add
+        if flow_mod.flags & OFPFF_CHECK_OVERLAP:
+          if self._find_overlap_entry(match, priority, table):
+            # Another entry overlaps. Do not add.
+            self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_OVERLAP,
+                            ofp=flow_mod, connection=connection)
+            return
+
         if len(table) < self.max_entries:
           table.add_flow_mod_entry(flow_mod)
         else:
