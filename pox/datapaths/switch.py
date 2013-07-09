@@ -819,9 +819,19 @@ class SoftwareSwitchBase (object):
     else:
       return self.port_stats[req.port_no]
 
-#  def _stats_queue (self, ofp, connection):
-#    # Not implemented
-#    pass
+  def _stats_queue (self, ofp, connection):
+    # We don't support queues whatsoever so either send an empty list or send
+    # an OFP_ERROR if an actual queue is requested.
+    req = ofp.body
+    #if req.port_no != OFPP_ALL:
+    #  self.send_error(type=OFPET_QUEUE_OP_FAILED, code=OFPQOFC_BAD_PORT,
+    #                  ofp=ofp, connection=connection)
+    # Note: We don't care about this case for now, even if port_no is bogus.
+    if req.queue_id == OFPQ_ALL:
+      return []
+    else:
+      self.send_error(type=OFPET_QUEUE_OP_FAILED, code=OFPQOFC_BAD_QUEUE,
+                      ofp=ofp, connection=connection)
 
   def __repr__ (self):
     return "%s(dpid=%s, num_ports=%d)" % (type(self).__name__,
