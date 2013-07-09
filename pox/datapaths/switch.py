@@ -68,6 +68,7 @@ def _generate_port (port_no, dpid=0):
   p.hw_addr = EthAddr("00:00:00:00:%2x:%2x" % (dpid % 255, port_no))
   p.name = dpid_to_str(dpid, True).replace('-','')[:12] + "." + str(port_no)
   # Fill in features sort of arbitrarily
+  p.config = OFPPC_NO_STP
   p.curr = OFPPF_10MB_HD
   p.advertised = OFPPF_10MB_HD
   p.supported = OFPPF_10MB_HD
@@ -522,7 +523,14 @@ class SoftwareSwitchBase (object):
     If msg is anything else "falsy", a "disabled" log message is generated.
     msg is only used when handled is True.
     """
-    if bit not in (OFPPC_PORT_DOWN, OFPPC_NO_FLOOD):
+    if bit == OFPPC_NO_STP:
+      if value == 0:
+        # we also might send OFPBRC_EPERM if trying to disable this bit
+        self.log.warn("Port %s: Can't enable 802.1D STP", port.port_no)
+      return (True, None)
+
+    if bit not in (OFPPC_PORT_DOWN, OFPPC_NO_STP, OFPPC_NO_RECV, OFPPC_NO_RECV_STP,
+                   OFPPC_NO_FLOOD, OFPPC_NO_FWD, OFPPC_NO_PACKET_IN):
       return (False, None)
 
     if port.set_config(value, bit):
