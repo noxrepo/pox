@@ -187,12 +187,23 @@ class SoftwareSwitchBase (object):
     return time.time()
 
   def _handle_FlowTableModification (self, event):
-    if event.removed:
-      if event.reason in (OFPRR_IDLE_TIMEOUT,OFPRR_HARD_TIMEOUT,OFPRR_DELETE):
-        for entry in event.removed:
-          if entry.flags & OFPFF_SEND_FLOW_REM:
-            fr = entry.to_flow_removed(self._time, reason=event.reason)
-            self.send(fr)
+    """
+    Handle flow table modification events
+    """
+    # Currently, we only use this for sending flow_removed messages
+    if not event.removed: return
+
+    if event.reason in (OFPRR_IDLE_TIMEOUT,OFPRR_HARD_TIMEOUT,OFPRR_DELETE):
+      # These reasons may lead to a flow_removed
+      count = 0
+      for entry in event.removed:
+        if entry.flags & OFPFF_SEND_FLOW_REM:
+          # Flow wants removal notification -- send it
+          fr = entry.to_flow_removed(self._time, reason=event.reason)
+          self.send(fr)
+          count += 1
+      self.log.debug("%d flows removed (%d removal notifications)",
+          len(event.removed), count)
 
   def rx_message (self, connection, msg):
     """
