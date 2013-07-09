@@ -258,7 +258,7 @@ class FlowTable (EventMixin):
 
   def flow_stats (self, match, out_port=None, now=None):
     mc_es = self.matching_entries(match=match, strict=False, out_port=out_port)
-    return ( e.flow_stats(now) for e in mc_es )
+    return [ e.flow_stats(now) for e in mc_es ]
 
   def _remove_specific_entries (self, flows, reason=None):
     #for entry in flows:
