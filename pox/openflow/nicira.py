@@ -265,80 +265,37 @@ class ofp_flow_mod_table_id (of.ofp_flow_mod):
 
   This is for use with the NXT_FLOW_MOD_TABLE_ID extension.
   """
-  #TODO: It'd be nice if this were a cleaner subclass of the original,
-  #      but it didn't really lend itself to subclassing.
   def __init__ (self, **kw):
     self.table_id = 0xff
     of.ofp_flow_mod.__init__(self, **kw)
 
-  @property
-  def _command (self):
-    return chr(self.table_id) + chr(self.command)
+  def splice_table_id (func):
+    """ 
+    Execute wrapped function with table_id temporarily stored as 
+    MSB of command field.
+    """
+    def splice(self, *args):
+      assert self.command <= 0xff
+      self.command |= self.table_id << 8
+      try:
+        retval = func(self, *args)
+      finally:
+        self.table_id = self.command >> 8
+        self.command &= 0xff
+      return retval 
+    return splice
 
-  @_command.setter
-  def _command (self, v):
-    self.table_id = ord(v[0])
-    self.command = ord(v[1])
-
-  # Unfortunately, there's no clean way to reuse a lot of the superclass,
-  # so we copy and paste...  Gross.
-  # (Might be worth tweaking the superclass to make this cleaner.)
+  @splice_table_id
   def pack (self):
-    """
-    Packs this object into its wire format.
-    May normalize fields.
-    NOTE: If "data" has been specified, this method may actually return
-          *more than just a single ofp_flow_mod* in packed form.
-          Specifically, it may also have a barrier and an ofp_packet_out.
-    """
-    po = None
-    if self.data:
-      #TODO: It'd be nice to log and then ignore if not data_is_complete.
-      #      Unfortunately, we currently have no logging in here, so we
-      #      assert instead which is a either too drastic or too quiet.
-      assert self.data.is_complete
-      assert self.buffer_id is None
-      self.buffer_id = self.data.buffer_id
-      if self.buffer_id is None:
-        po = ofp_packet_out(data=self.data)
-        po.in_port = self.data.in_port
-        po.actions.append(ofp_action_output(port = OFPP_TABLE))
-        # Should maybe check that packet hits the new entry...
-        # Or just duplicate the actions? (I think that's the best idea)
+    return super(ofp_flow_mod_table_id, self).pack()
 
-    assert self._assert()
-    packed = b""
-    packed += ofp_header.pack(self)
-    packed += self.match.pack(flow_mod=True)
-    packed += struct.pack("!QHHHHLHH", self.cookie, self._command,
-                          self.idle_timeout, self.hard_timeout,
-                          self.priority, self._buffer_id, self.out_port,
-                          self.flags)
-    for i in self.actions:
-      packed += i.pack()
-
-    if po:
-      packed += ofp_barrier_request().pack()
-      packed += po.pack()
-    return packed
-
+  @splice_table_id
   def unpack (self, raw, offset=0):
-    offset,length = self._unpack_header(raw, offset)
-    offset = self.match.unpack(raw, offset, flow_mod=True)
-    offset,(self.cookie, self._command, self.idle_timeout,
-            self.hard_timeout, self.priority, self._buffer_id,
-            self.out_port, self.flags) = \
-            _unpack("!QHHHHLHH", raw, offset)
-    offset,self.actions = _unpack_actions(raw,
-        length-(32 + len(self.match)), offset)
-    assert length == len(self)
-    return offset,length
+    return super(ofp_flow_mod_table_id, self).unpack()
 
+  @splice_table_id
   def __eq__ (self, other):
-    r = of.ofp_flow_mod(self, other)
-    if r:
-      if self.table_id != other.table_id: return False
-    return True
+    return super(ofp_flow_mod_table_id, self).__eq__(other)
 
   def show (self, prefix=''):
     outstr = ''
