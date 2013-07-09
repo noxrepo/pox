@@ -246,10 +246,6 @@ class FlowTable (EventMixin):
 
     self.raiseEvent(FlowTableModification(added=[entry]))
 
-  def add_flow_mod_entry (self, flow_mod):
-    #FIXME: Refactor this into add_entry?
-    self.add_entry(TableEntry.from_flow_mod(flow_mod))
-
   def remove_entry (self, entry, reason=None):
     assert isinstance(entry, TableEntry)
     self._table.remove(entry)
@@ -328,6 +324,26 @@ class FlowTable (EventMixin):
         return entry
 
     return None
+
+  def check_for_overlap_entry (self, in_entry):
+    """
+    Tests if the input entry overlaps with another entry in this table.
+
+    Returns true if there is an overlap, false otherwise. Since the table is
+    sorted, there is only a need to check a certain portion of it.
+    """
+    priority = in_entry.effective_priority
+
+    for e in self._table:
+      if e.effective_priority < priority:
+        break
+      elif e.effective_priority > priority:
+        continue
+      else:
+        if e.is_matched_by(in_entry.match) or in_entry.is_matched_by(e.match):
+          return True
+
+    return False
 
 
 class SwitchFlowTable (FlowTable):
