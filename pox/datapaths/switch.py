@@ -233,7 +233,7 @@ class SoftwareSwitchBase (object):
     """
     Handles echo requests
     """
-    msg = ofp_echo_reply(xid=ofp.xid)
+    msg = ofp_echo_reply(xid=ofp.xid, body=ofp.body)
     self.send(msg)
 
   def _rx_features_request (self, ofp, connection):
