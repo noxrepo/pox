@@ -309,8 +309,8 @@ class FlowTable (EventMixin):
     self._remove_specific_entries(hard, OFPRR_HARD_TIMEOUT)
 
   def remove_matching_entries (self, match, priority=0, strict=False,
-      reason=None):
-    remove_flows = self.matching_entries(match, priority, strict)
+                               out_port=None, reason=None):
+    remove_flows = self.matching_entries(match, priority, strict, out_port)
     self._remove_specific_entries(remove_flows, reason=reason)
 
   def entry_for_packet (self, packet, in_port):

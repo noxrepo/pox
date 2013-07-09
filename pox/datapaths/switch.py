@@ -660,8 +660,6 @@ class SoftwareSwitchBase (object):
     """
     if flow_mod.flags & OFPFF_CHECK_OVERLAP:
       raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
-    if flow_mod.out_port != OFPP_NONE and flow_mod.command == OFPFC_DELETE:
-      raise NotImplementedError("flow_mod outport checking not implemented")
 
     command = flow_mod.command
     match = flow_mod.match
@@ -696,8 +694,10 @@ class SoftwareSwitchBase (object):
                           ofp=flow_mod, connection=connection)
     elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
       is_strict = (command == OFPFC_DELETE_STRICT)
+      out_port = flow_mod.out_port
+      if out_port == OFPP_NONE: out_port = None # Don't filter
       table.remove_matching_entries(match, priority=priority, strict=is_strict,
-                                    reason=OFPRR_DELETE)
+                                    out_port=out_port, reason=OFPRR_DELETE)
     else:
       raise AttributeError("Command not yet implemented: %s" % command)
 
