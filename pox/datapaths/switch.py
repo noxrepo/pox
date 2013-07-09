@@ -227,6 +227,8 @@ class SoftwareSwitchBase (object):
       self.log.debug("Asked to send message %s, but not connected", message)
 
   def _rx_hello (self, ofp, connection):
+    #FIXME: This isn't really how hello is supposed to work -- we're supposed
+    #       to send it immediately on connection.  See _send_hello().
     self.send_hello()
 
   def _rx_echo_request (self, ofp, connection):
@@ -240,6 +242,7 @@ class SoftwareSwitchBase (object):
     """
     Handles feature requests
     """
+    self.log.debug("Send features reply")
     msg = ofp_features_reply(datapath_id = self.dpid,
                              xid = ofp.xid,
                              n_buffers = self.max_buffers,
@@ -285,6 +288,7 @@ class SoftwareSwitchBase (object):
 
   def _rx_get_config_request (self, ofp, connection):
     msg = ofp_get_config_reply(xid = ofp.xid)
+    #FIXME: Set attributes of reply!
     self.send(msg)
 
   def _rx_stats_request (self, ofp, connection):
@@ -303,6 +307,7 @@ class SoftwareSwitchBase (object):
       self.send(reply)
 
   def _rx_set_config (self, config, connection):
+    #FIXME: Implement this!
     pass
 
   def _rx_port_mod (self, port_mod, connection):
