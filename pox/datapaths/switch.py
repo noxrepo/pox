@@ -670,7 +670,13 @@ class SoftwareSwitchBase (object):
     if command == OFPFC_ADD:
       # exactly matching entries have to be removed
       table.remove_matching_entries(match, priority=priority, strict=True)
-      table.add_flow_mod_entry(flow_mod)
+      if len(table) < self.max_entries:
+        table.add_flow_mod_entry(flow_mod)
+      else:
+        # Flow table is full. Respond with error message.
+        self.send_error(type=OFPET_FLOW_MOD_FAILED,
+                        code=OFPFMFC_ALL_TABLES_FULL,
+                        ofp=flow_mod, connection=connection)
     elif command == OFPFC_MODIFY or command == OFPFC_MODIFY_STRICT:
       is_strict = (command == OFPFC_MODIFY_STRICT)
       modified = False
@@ -681,7 +687,13 @@ class SoftwareSwitchBase (object):
           modified = True
       if not modified:
         # if no matching entry is found, modify acts as add
-        table.add_flow_mod_entry(flow_mod)
+        if len(table) < self.max_entries:
+          table.add_flow_mod_entry(flow_mod)
+        else:
+          # Flow table is full. Respond with error message.
+          self.send_error(type=OFPET_FLOW_MOD_FAILED,
+                          code=OFPFMFC_ALL_TABLES_FULL,
+                          ofp=flow_mod, connection=connection)
     elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
       is_strict = (command == OFPFC_DELETE_STRICT)
       table.remove_matching_entries(match, priority=priority, strict=is_strict,
