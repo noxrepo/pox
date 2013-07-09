@@ -325,17 +325,13 @@ class SoftwareSwitchBase (object):
   def _rx_port_mod (self, port_mod, connection):
     port_no = port_mod.port_no
     if port_no not in self.ports:
-      err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT)
-      err.xid = port_mod.xid
-      err.data = port_mod.pack()
-      self.send(err)
+      self.send_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT,
+                      ofp=port_mod, connection=connection)
       return
     port = self.ports[port_no]
     if port.hw_addr != port_mod.hw_addr:
-      err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_HW_ADDR)
-      err.xid = port_mod.xid
-      err.data = port_mod.pack()
-      self.send(err)
+      self.send_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_HW_ADDR,
+                      ofp=port_mod, connection=connection)
       return
 
     mask = port_mod.mask
@@ -376,10 +372,8 @@ class SoftwareSwitchBase (object):
   def _rx_vendor (self, vendor, connection):
     # We don't support vendor extensions, so send an OFP_ERROR, per
     # page 42 of spec
-    err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
-    err.xid = vendor.xid
-    err.data = vendor.pack()
-    self.send(err)
+    self.send_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR,
+                    ofp=vendor, connection=connection)
 
   def send_hello (self, force = False):
     """
@@ -644,13 +638,7 @@ class SoftwareSwitchBase (object):
       h = self.action_handlers.get(action.type)
       if h is None:
         self.log.warn("Unknown action type: %x " % (action.type,))
-        err = ofp_error(type=OFPET_BAD_ACTION, code=OFPBAC_BAD_TYPE)
-        if ofp:
-          err.xid = ofp.xid
-          err.data = ofp.pack()
-        else:
-          err.xid = 0
-        self.send(err)
+        self.send_error(type=OFPET_BAD_ACTION, code=OFPBAC_BAD_TYPE, ofp=ofp)
         return
       packet = h(action, packet, in_port)
 
