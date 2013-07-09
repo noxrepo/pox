@@ -268,7 +268,8 @@ class SoftwareSwitchBase (object):
     Handles flow mods
     """
     self.log.debug("Flow mod details: %s", ofp.show())
-    self.table.process_flow_mod(ofp)
+    #self.table.process_flow_mod(ofp)
+    self._process_flow_mod(ofp, connection=connection, table=self.table)
     if ofp.buffer_id is not None:
       self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id,
                                                    ofp)
@@ -652,6 +653,45 @@ class SoftwareSwitchBase (object):
         self.send(err)
         return
       packet = h(action, packet, in_port)
+
+  def _process_flow_mod (self, flow_mod, connection=None, table=self.table):
+    """
+    Process a flow mod sent to the switch.
+
+    Returns a tuple (added|modified|removed, [list of affected entries])
+    """
+    if flow_mod.flags & OFPFF_CHECK_OVERLAP:
+      raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
+    if flow_mod.out_port != OFPP_NONE and flow_mod.command == OFPFC_DELETE:
+      raise NotImplementedError("flow_mod outport checking not implemented")
+
+    command = flow_mod.command
+    match = flow_mod.match
+    priority = flow_mod.priority
+
+    if command == OFPFC_ADD:
+      # exactly matching entries have to be removed
+      self.remove_matching_entries(match, priority=priority, strict=True)
+      return ("added", self.add_entry(TableEntry.from_flow_mod(flow_mod)))
+    elif command == OFPFC_MODIFY or command == OFPFC_MODIFY_STRICT:
+      is_strict = (command == OFPFC_MODIFY_STRICT)
+      modified = []
+      for entry in self._table:
+        # update the actions field in the matching flows
+        if entry.is_matched_by(match, priority=priority, strict=is_strict):
+          entry.actions = flow_mod.actions
+          modified.append(entry)
+      if len(modified) == 0:
+        # if no matching entry is found, modify acts as add
+        return ("added", self.add_entry(TableEntry.from_flow_mod(flow_mod)))
+      else:
+        return ("modified", modified)
+    elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
+      is_strict = (command == OFPFC_DELETE_STRICT)
+      return ("removed", self.remove_matching_entries(match,
+          priority=priority, strict=is_strict, reason=OFPRR_DELETE))
+    else:
+      raise AttributeError("Command not yet implemented: %s" % command)
 
   def _action_output (self, action, packet, in_port):
     self._output_packet(packet, action.port, in_port, action.max_len)
