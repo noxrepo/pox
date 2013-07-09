@@ -657,8 +657,6 @@ class SoftwareSwitchBase (object):
   def _process_flow_mod (self, flow_mod, connection, table):
     """
     Process a flow mod sent to the switch.
-
-    Returns a tuple (added|modified|removed, [list of affected entries])
     """
     if flow_mod.flags & OFPFF_CHECK_OVERLAP:
       raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
@@ -672,24 +670,22 @@ class SoftwareSwitchBase (object):
     if command == OFPFC_ADD:
       # exactly matching entries have to be removed
       table.remove_matching_entries(match, priority=priority, strict=True)
-      return ("added", table.add_flow_mod_entry(flow_mod))
+      table.add_flow_mod_entry(flow_mod)
     elif command == OFPFC_MODIFY or command == OFPFC_MODIFY_STRICT:
       is_strict = (command == OFPFC_MODIFY_STRICT)
-      modified = []
+      modified = False
       for entry in table.entries:
         # update the actions field in the matching flows
         if entry.is_matched_by(match, priority=priority, strict=is_strict):
           entry.actions = flow_mod.actions
-          modified.append(entry)
-      if len(modified) == 0:
+          modified = True
+      if not modified:
         # if no matching entry is found, modify acts as add
-        return ("added", table.add_flow_mod_entry(flow_mod))
-      else:
-        return ("modified", modified)
+        table.add_flow_mod_entry(flow_mod)
     elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
       is_strict = (command == OFPFC_DELETE_STRICT)
-      return ("removed", table.remove_matching_entries(match,
-          priority=priority, strict=is_strict, reason=OFPRR_DELETE))
+      table.remove_matching_entries(match, priority=priority, strict=is_strict,
+                                    reason=OFPRR_DELETE)
     else:
       raise AttributeError("Command not yet implemented: %s" % command)
 
