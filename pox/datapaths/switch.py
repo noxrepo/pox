@@ -37,7 +37,7 @@ from pox.lib.recoco import Timer
 from pox.openflow.libopenflow_01 import *
 import pox.openflow.libopenflow_01 as of
 from pox.openflow.util import make_type_to_unpacker_table
-from pox.openflow.flow_table import SwitchFlowTable
+from pox.openflow.flow_table import SwitchFlowTable, TableEntry
 from pox.lib.packet import *
 
 import logging
@@ -658,23 +658,31 @@ class SoftwareSwitchBase (object):
     """
     Process a flow mod sent to the switch.
     """
-    if flow_mod.flags & OFPFF_CHECK_OVERLAP:
-      raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
-
     command = flow_mod.command
     match = flow_mod.match
     priority = flow_mod.priority
 
     if command == OFPFC_ADD:
+      new_entry = TableEntry.from_flow_mod(flow_mod)
+
+      if flow_mod.flags & OFPFF_CHECK_OVERLAP:
+        if table.check_for_overlapping_entry(new_entry):
+          # Another entry overlaps. Do not add.
+          self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_OVERLAP,
+                          ofp=flow_mod, connection=connection)
+          return
+
       # exactly matching entries have to be removed
       table.remove_matching_entries(match, priority=priority, strict=True)
+
       if len(table) < self.max_entries:
-        table.add_flow_mod_entry(flow_mod)
+        table.add_entry(new_entry)
       else:
         # Flow table is full. Respond with error message.
         self.send_error(type=OFPET_FLOW_MOD_FAILED,
                         code=OFPFMFC_ALL_TABLES_FULL,
                         ofp=flow_mod, connection=connection)
+        return
     elif command == OFPFC_MODIFY or command == OFPFC_MODIFY_STRICT:
       is_strict = (command == OFPFC_MODIFY_STRICT)
       modified = False
@@ -685,13 +693,23 @@ class SoftwareSwitchBase (object):
           modified = True
       if not modified:
         # if no matching entry is found, modify acts as add
+        new_entry = TableEntry.from_flow_mod(flow_mod)
+
+        if flow_mod.flags & OFPFF_CHECK_OVERLAP:
+          if table.check_for_overlapping_entry(new_entry):
+            # Another entry overlaps. Do not add.
+            self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_OVERLAP,
+                            ofp=flow_mod, connection=connection)
+            return
+
         if len(table) < self.max_entries:
-          table.add_flow_mod_entry(flow_mod)
+          table.add_entry(new_entry)
         else:
           # Flow table is full. Respond with error message.
           self.send_error(type=OFPET_FLOW_MOD_FAILED,
                           code=OFPFMFC_ALL_TABLES_FULL,
                           ofp=flow_mod, connection=connection)
+          return
     elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
       is_strict = (command == OFPFC_DELETE_STRICT)
       out_port = flow_mod.out_port
