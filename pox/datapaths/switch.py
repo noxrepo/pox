@@ -997,7 +997,7 @@ class OFConnection (object):
       ofp_type = ord(message[1])
 
       if ofp_version != OFP_VERSION:
-        r = self._error_handler(self.ERR_BAD_VERSION, ofp_version)
+        r = self._error_handler(self.ERR_BAD_VERSION, (ofp_version, message))
         if r is False: break
         continue
 
@@ -1056,14 +1056,15 @@ class OFConnection (object):
       do this if you called connection.close() here, for example).
       """
       if reason == OFConnection.ERR_BAD_VERSION:
-        self.log.warn('Unsupported OpenFlow version 0x%02x', info)
+        ofp_version, message = info
+        self.log.warn('Unsupported OpenFlow version 0x%02x', ofp_version)
         if self.starting:
           xid = 0
-          message = io_worker.peek()
           if len(message) >= 8:
             xid = struct.unpack_from('!L', message, 4)[0]
           err = ofp_error(type=OFPET_HELLO_FAILED, code=OFPHFC_INCOMPATIBLE)
-          err.xid = port_mod.xid
+          #err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VERSION)
+          err.xid = xid
           err.data = 'Version unsupported'
           self.send(err)
         self.close()
