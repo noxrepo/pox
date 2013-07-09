@@ -718,7 +718,9 @@ class SoftwareSwitchBase (object):
       table.remove_matching_entries(match, priority=priority, strict=is_strict,
                                     out_port=out_port, reason=OFPRR_DELETE)
     else:
-      raise AttributeError("Command not yet implemented: %s" % command)
+      self.log.warn("Command not yet implemented: %s" % command)
+      self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_BAD_COMMAND,
+                      ofp=flow_mod, connection=connection)
 
   def _action_output (self, action, packet, in_port):
     self._output_packet(packet, action.port, in_port, action.max_len)
