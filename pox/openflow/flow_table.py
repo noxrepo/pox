@@ -246,6 +246,9 @@ class FlowTable (EventMixin):
 
     self.raiseEvent(FlowTableModification(added=[entry]))
 
+  def add_flow_mod_entry (self, flow_mod):
+    self.add_entry(TableEntry.from_flow_mod(flow_mod))
+
   def remove_entry (self, entry, reason=None):
     assert isinstance(entry, TableEntry)
     self._table.remove(entry)
