@@ -247,6 +247,7 @@ class FlowTable (EventMixin):
     self.raiseEvent(FlowTableModification(added=[entry]))
 
   def add_flow_mod_entry (self, flow_mod):
+    #FIXME: Refactor this into add_entry?
     self.add_entry(TableEntry.from_flow_mod(flow_mod))
 
   def remove_entry (self, entry, reason=None):
@@ -311,7 +312,6 @@ class FlowTable (EventMixin):
       reason=None):
     remove_flows = self.matching_entries(match, priority, strict)
     self._remove_specific_entries(remove_flows, reason=reason)
-    return remove_flows
 
   def entry_for_packet (self, packet, in_port):
     """
