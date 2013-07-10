@@ -337,6 +337,8 @@ class FlowTable (EventMixin):
     #NOTE: Ambiguous whether matching should be based on effective_priority
     #      or the regular priority.  Doing it based on effective_priority
     #      since that's what actually affects packet matching.
+    #NOTE: We could improve performance by doing a binary search to find the
+    #      right priority entries.
 
     priority = in_entry.effective_priority
 
@@ -350,50 +352,3 @@ class FlowTable (EventMixin):
           return True
 
     return False
-
-
-class SwitchFlowTable (FlowTable):
-  """
-  Models a flow table for our switch implementation.
-
-  Handles the behavior in response to the OF messages send to the switch
-  """
-
-  def process_flow_mod (self, flow_mod):
-    """
-    Process a flow mod sent to the switch.
-
-    Returns a tuple (added|modified|removed, [list of affected entries])
-    """
-    if flow_mod.flags & OFPFF_CHECK_OVERLAP:
-      raise NotImplementedError("OFPFF_CHECK_OVERLAP checking not implemented")
-    if flow_mod.out_port != OFPP_NONE and flow_mod.command == OFPFC_DELETE:
-      raise NotImplementedError("flow_mod outport checking not implemented")
-
-    command = flow_mod.command
-    match = flow_mod.match
-    priority = flow_mod.priority
-
-    if command == OFPFC_ADD:
-      # exactly matching entries have to be removed
-      self.remove_matching_entries(match, priority=priority, strict=True)
-      return ("added", self.add_entry(TableEntry.from_flow_mod(flow_mod)))
-    elif command == OFPFC_MODIFY or command == OFPFC_MODIFY_STRICT:
-      is_strict = (command == OFPFC_MODIFY_STRICT)
-      modified = []
-      for entry in self._table:
-        # update the actions field in the matching flows
-        if entry.is_matched_by(match, priority=priority, strict=is_strict):
-          entry.actions = flow_mod.actions
-          modified.append(entry)
-      if len(modified) == 0:
-        # if no matching entry is found, modify acts as add
-        return ("added", self.add_entry(TableEntry.from_flow_mod(flow_mod)))
-      else:
-        return ("modified", modified)
-    elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
-      is_strict = (command == OFPFC_DELETE_STRICT)
-      return ("removed", self.remove_matching_entries(match,
-          priority=priority, strict=is_strict, reason=OFPRR_DELETE))
-    else:
-      raise AttributeError("Command not yet implemented: %s" % command)
