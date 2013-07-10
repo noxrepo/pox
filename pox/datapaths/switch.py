@@ -45,6 +45,10 @@ import struct
 import time
 
 
+# Multicast address used for STP 802.1D
+_STP_MAC = EthAddr('01:80:c2:00:00:00')
+
+
 class DpPacketOut (Event):
   """
   Event raised when a dataplane packet is sent out a port
@@ -450,7 +454,14 @@ class SoftwareSwitchBase (object):
     if port is None:
       self.log.warn("Got packet on missing port %i", in_port)
       return
-    if port.config & OFPPC_NO_RECV:
+
+    is_stp = packet.dst == _STP_MAC
+
+    if (port.config & OFPPC_NO_RECV) and not is_stp:
+      # Drop all except STP
+      return
+    if (port.config & OFPPC_NO_RECV_STP) and is_stp:
+      # Drop STP
       return
 
     self.port_stats[in_port].rx_packets += 1
@@ -709,6 +720,7 @@ class SoftwareSwitchBase (object):
       self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_BAD_COMMAND,
                       ofp=flow_mod, connection=connection)
 
+
   def _action_output (self, action, packet, in_port):
     self._output_packet(packet, action.port, in_port, action.max_len)
     return packet
@@ -826,6 +838,7 @@ class SoftwareSwitchBase (object):
 #    packet.next.ttl = packet.next.ttl - 1
 #    return packet
 
+
   def _stats_desc (self, ofp, connection):
     try:
       from pox.core import core
@@ -888,6 +901,7 @@ class SoftwareSwitchBase (object):
     else:
       self.send_error(type=OFPET_QUEUE_OP_FAILED, code=OFPQOFC_BAD_QUEUE,
                       ofp=ofp, connection=connection)
+
 
   def __repr__ (self):
     return "%s(dpid=%s, num_ports=%d)" % (type(self).__name__,
