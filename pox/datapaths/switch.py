@@ -340,38 +340,22 @@ class SoftwareSwitchBase (object):
 
     mask = port_mod.mask
 
-    if mask & OFPPC_NO_FLOOD:
-      mask ^= OFPPC_NO_FLOOD
-      if port.set_config(port_mod.config, OFPPC_NO_FLOOD):
-        if port.config & OFPPC_NO_FLOOD:
-          self.log.debug("Disabling flooding on port %s", port)
-        else:
-          self.log.debug("Enabling flooding on port %s", port)
-
-    if mask & OFPPC_PORT_DOWN:
-      mask ^= OFPPC_PORT_DOWN
-      if port.set_config(port_mod.config, OFPPC_PORT_DOWN):
-        if port.config & OFPPC_PORT_DOWN:
-          self.log.debug("Set port %s down", port)
-        else:
-          self.log.debug("Set port %s up", port)
-
-      # Note (Peter Peresini): Although the spec is not clear about it,
-      # we will assume that config.OFPPC_PORT_DOWN implies
-      # state.OFPPS_LINK_DOWN.  This is consistent with Open vSwitch.
-
-      #TODO: for now, we assume that there is always physical link present
-      #      and that the link state depends only on the configuration.
-      old_state = port.state & OFPPS_LINK_DOWN
-      port.state = port.state & ~OFPPS_LINK_DOWN
-      if port.config & OFPPC_PORT_DOWN:
-        port.state = port.state | OFPPS_LINK_DOWN
-      new_state = port.state & OFPPS_LINK_DOWN
-      if old_state != new_state:
-        self.send_port_status(port, OFPPR_MODIFY)
-
-    if mask != 0:
-      self.log.warn("Unsupported PORT_MOD flags: %08x", mask)
+    for bit in range(32):
+      bit = 1 << bit
+      if mask & bit:
+        handled,r = self._set_port_config_bit(port, bit, port_mod.config & bit)
+        if not handled:
+          self.log.warn("Unsupported port config flag: %08x", bit)
+          continue
+        if r is not None:
+          msg = "Port %s: " % (port.port_no,)
+          if isinstance(r, str):
+            msg += r
+          else:
+            msg += ofp_port_config_map.get(bit, "config bit %x" % (bit,))
+            msg += " set to "
+            msg += "true" if r else "false"
+          self.log.debug(msg)
 
   def _rx_vendor (self, vendor, connection):
     # We don't support vendor extensions, so send an OFP_ERROR, per
@@ -521,6 +505,47 @@ class SoftwareSwitchBase (object):
       raise RuntimeError("Port %s already exists" % (port_no,))
     self.ports[port_no] = port
     self.send_port_status(port, OFPPR_ADD)
+
+  def _set_port_config_bit (self, port, bit, value):
+    """
+    Set a port config bit
+
+    This is called in response to port_mods.  It is passed the ofp_phy_port,
+    the bit/mask, and the value of the bit (i.e., 0 if the flag is to be
+    unset, or the same value as bit if it is to be set).
+
+    The return value is a tuple (handled, msg).
+    If bit is handled, then handled will be True, else False.
+    if msg is a string, it will be used as part of a log message.
+    If msg is None, there will be no log message.
+    If msg is anything else "truthy", an "enabled" log message is generated.
+    If msg is anything else "falsy", a "disabled" log message is generated.
+    msg is only used when handled is True.
+    """
+    if bit not in (OFPPC_PORT_DOWN, OFPPC_NO_FLOOD):
+      return (False, None)
+
+    if port.set_config(value, bit):
+      if bit == OFPPC_PORT_DOWN:
+        # Note (Peter Peresini): Although the spec is not clear about it,
+        # we will assume that config.OFPPC_PORT_DOWN implies
+        # state.OFPPS_LINK_DOWN. This is consistent with Open vSwitch.
+
+        #TODO: for now, we assume that there is always physical link present
+        # and that the link state depends only on the configuration.
+        old_state = port.state & OFPPS_LINK_DOWN
+        port.state = port.state & ~OFPPS_LINK_DOWN
+        if port.config & OFPPC_PORT_DOWN:
+          port.state = port.state | OFPPS_LINK_DOWN
+        new_state = port.state & OFPPS_LINK_DOWN
+        if old_state != new_state:
+          self.send_port_status(port, OFPPR_MODIFY)
+
+      # Do default log message.
+      return (True, value)
+
+    # No change -- no log message.
+    return (True, None)
 
   def _output_packet_physical (self, packet, port_no):
     """
