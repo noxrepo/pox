@@ -246,6 +246,10 @@ class FlowTable (EventMixin):
 
     self.raiseEvent(FlowTableModification(added=[entry]))
 
+  def add_flow_mod_entry (self, flow_mod):
+    #FIXME: Refactor this into add_entry?
+    self.add_entry(TableEntry.from_flow_mod(flow_mod))
+
   def remove_entry (self, entry, reason=None):
     assert isinstance(entry, TableEntry)
     self._table.remove(entry)
@@ -258,7 +262,20 @@ class FlowTable (EventMixin):
 
   def flow_stats (self, match, out_port=None, now=None):
     mc_es = self.matching_entries(match=match, strict=False, out_port=out_port)
-    return ( e.flow_stats(now) for e in mc_es )
+    return [ e.flow_stats(now) for e in mc_es ]
+
+  def aggregate_stats (self, match, out_port=None, now=None):
+    mc_es = self.matching_entries(match=match, strict=False, out_port=out_port)
+    packet_count = 0
+    byte_count = 0
+    flow_count = 0
+    for entry in mc_es:
+      packet_count += entry.packet_count
+      byte_count += entry.byte_count
+      flow_count += 1
+    return ofp_aggregate_stats(packet_count=packet_count,
+                               byte_count=byte_count,
+                               flow_count=flow_count)
 
   def _remove_specific_entries (self, flows, reason=None):
     #for entry in flows:
@@ -292,10 +309,9 @@ class FlowTable (EventMixin):
     self._remove_specific_entries(hard, OFPRR_HARD_TIMEOUT)
 
   def remove_matching_entries (self, match, priority=0, strict=False,
-      reason=None):
-    remove_flows = self.matching_entries(match, priority, strict)
+                               out_port=None, reason=None):
+    remove_flows = self.matching_entries(match, priority, strict, out_port)
     self._remove_specific_entries(remove_flows, reason=reason)
-    return remove_flows
 
   def entry_for_packet (self, packet, in_port):
     """
