@@ -37,7 +37,7 @@ from pox.lib.recoco import Timer
 from pox.openflow.libopenflow_01 import *
 import pox.openflow.libopenflow_01 as of
 from pox.openflow.util import make_type_to_unpacker_table
-from pox.openflow.flow_table import SwitchFlowTable
+from pox.openflow.flow_table import SwitchFlowTable, TableEntry
 from pox.lib.packet import *
 
 import logging
@@ -268,7 +268,8 @@ class SoftwareSwitchBase (object):
     Handles flow mods
     """
     self.log.debug("Flow mod details: %s", ofp.show())
-    self.table.process_flow_mod(ofp)
+    #self.table.process_flow_mod(ofp)
+    self._process_flow_mod(ofp, connection=connection, table=self.table)
     if ofp.buffer_id is not None:
       self._process_actions_for_packet_from_buffer(ofp.actions, ofp.buffer_id,
                                                    ofp)
@@ -324,17 +325,13 @@ class SoftwareSwitchBase (object):
   def _rx_port_mod (self, port_mod, connection):
     port_no = port_mod.port_no
     if port_no not in self.ports:
-      err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT)
-      err.xid = port_mod.xid
-      err.data = port_mod.pack()
-      self.send(err)
+      self.send_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_PORT,
+                      ofp=port_mod, connection=connection)
       return
     port = self.ports[port_no]
     if port.hw_addr != port_mod.hw_addr:
-      err = ofp_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_HW_ADDR)
-      err.xid = port_mod.xid
-      err.data = port_mod.pack()
-      self.send(err)
+      self.send_error(type=OFPET_PORT_MOD_FAILED, code=OFPPMFC_BAD_HW_ADDR,
+                      ofp=port_mod, connection=connection)
       return
 
     mask = port_mod.mask
@@ -375,10 +372,8 @@ class SoftwareSwitchBase (object):
   def _rx_vendor (self, vendor, connection):
     # We don't support vendor extensions, so send an OFP_ERROR, per
     # page 42 of spec
-    err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR)
-    err.xid = vendor.xid
-    err.data = vendor.pack()
-    self.send(err)
+    self.send_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR,
+                    ofp=vendor, connection=connection)
 
   def send_hello (self, force = False):
     """
@@ -643,15 +638,76 @@ class SoftwareSwitchBase (object):
       h = self.action_handlers.get(action.type)
       if h is None:
         self.log.warn("Unknown action type: %x " % (action.type,))
-        err = ofp_error(type=OFPET_BAD_ACTION, code=OFPBAC_BAD_TYPE)
-        if ofp:
-          err.xid = ofp.xid
-          err.data = ofp.pack()
-        else:
-          err.xid = 0
-        self.send(err)
+        self.send_error(type=OFPET_BAD_ACTION, code=OFPBAC_BAD_TYPE, ofp=ofp)
         return
       packet = h(action, packet, in_port)
+
+  def _process_flow_mod (self, flow_mod, connection, table):
+    """
+    Process a flow mod sent to the switch.
+    """
+    command = flow_mod.command
+    match = flow_mod.match
+    priority = flow_mod.priority
+
+    if command == OFPFC_ADD:
+      new_entry = TableEntry.from_flow_mod(flow_mod)
+
+      if flow_mod.flags & OFPFF_CHECK_OVERLAP:
+        if table.check_for_overlap_entry(new_entry):
+          # Another entry overlaps. Do not add.
+          self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_OVERLAP,
+                          ofp=flow_mod, connection=connection)
+          return
+
+      # exactly matching entries have to be removed
+      table.remove_matching_entries(match, priority=priority, strict=True)
+
+      if len(table) < self.max_entries:
+        table.add_entry(new_entry)
+      else:
+        # Flow table is full. Respond with error message.
+        self.send_error(type=OFPET_FLOW_MOD_FAILED,
+                        code=OFPFMFC_ALL_TABLES_FULL,
+                        ofp=flow_mod, connection=connection)
+        return
+    elif command == OFPFC_MODIFY or command == OFPFC_MODIFY_STRICT:
+      is_strict = (command == OFPFC_MODIFY_STRICT)
+      modified = False
+      for entry in table.entries:
+        # update the actions field in the matching flows
+        if entry.is_matched_by(match, priority=priority, strict=is_strict):
+          entry.actions = flow_mod.actions
+          modified = True
+      if not modified:
+        # if no matching entry is found, modify acts as add
+        new_entry = TableEntry.from_flow_mod(flow_mod)
+
+        if flow_mod.flags & OFPFF_CHECK_OVERLAP:
+          if table.check_for_overlap_entry(new_entry):
+            # Another entry overlaps. Do not add.
+            self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_OVERLAP,
+                            ofp=flow_mod, connection=connection)
+            return
+
+        if len(table) < self.max_entries:
+          table.add_entry(new_entry)
+        else:
+          # Flow table is full. Respond with error message.
+          self.send_error(type=OFPET_FLOW_MOD_FAILED,
+                          code=OFPFMFC_ALL_TABLES_FULL,
+                          ofp=flow_mod, connection=connection)
+          return
+    elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
+      is_strict = (command == OFPFC_DELETE_STRICT)
+      out_port = flow_mod.out_port
+      if out_port == OFPP_NONE: out_port = None # Don't filter
+      table.remove_matching_entries(match, priority=priority, strict=is_strict,
+                                    out_port=out_port, reason=OFPRR_DELETE)
+    else:
+      self.log.warn("Command not implemented: %s" % command)
+      self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_BAD_COMMAND,
+                      ofp=flow_mod, connection=connection)
 
   def _action_output (self, action, packet, in_port):
     self._output_packet(packet, action.port, in_port, action.max_len)
@@ -819,9 +875,19 @@ class SoftwareSwitchBase (object):
     else:
       return self.port_stats[req.port_no]
 
-#  def _stats_queue (self, ofp, connection):
-#    # Not implemented
-#    pass
+  def _stats_queue (self, ofp, connection):
+    # We don't support queues whatsoever so either send an empty list or send
+    # an OFP_ERROR if an actual queue is requested.
+    req = ofp.body
+    #if req.port_no != OFPP_ALL:
+    #  self.send_error(type=OFPET_QUEUE_OP_FAILED, code=OFPQOFC_BAD_PORT,
+    #                  ofp=ofp, connection=connection)
+    # Note: We don't care about this case for now, even if port_no is bogus.
+    if req.queue_id == OFPQ_ALL:
+      return []
+    else:
+      self.send_error(type=OFPET_QUEUE_OP_FAILED, code=OFPQOFC_BAD_QUEUE,
+                      ofp=ofp, connection=connection)
 
   def __repr__ (self):
     return "%s(dpid=%s, num_ports=%d)" % (type(self).__name__,
@@ -992,11 +1058,12 @@ class OFConnection (object):
         self.log.warn('Unsupported OpenFlow version 0x%02x', info)
         if self.starting:
           xid = 0
-          message = io_worker.peek()
+          message = self.io_worker.peek()
           if len(message) >= 8:
             xid = struct.unpack_from('!L', message, 4)[0]
           err = ofp_error(type=OFPET_HELLO_FAILED, code=OFPHFC_INCOMPATIBLE)
-          err.xid = port_mod.xid
+          #err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VERSION)
+          err.xid = xid
           err.data = 'Version unsupported'
           self.send(err)
         self.close()
