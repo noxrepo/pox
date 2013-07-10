@@ -1058,11 +1058,12 @@ class OFConnection (object):
         self.log.warn('Unsupported OpenFlow version 0x%02x', info)
         if self.starting:
           xid = 0
-          message = io_worker.peek()
+          message = self.io_worker.peek()
           if len(message) >= 8:
             xid = struct.unpack_from('!L', message, 4)[0]
           err = ofp_error(type=OFPET_HELLO_FAILED, code=OFPHFC_INCOMPATIBLE)
-          err.xid = port_mod.xid
+          #err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VERSION)
+          err.xid = xid
           err.data = 'Version unsupported'
           self.send(err)
         self.close()
