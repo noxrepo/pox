@@ -24,6 +24,7 @@ from copy import copy
 sys.path.append(os.path.dirname(__file__) + "/../../..")
 
 from pox.openflow.libopenflow_01 import *
+from pox.openflow.flow_table import FlowTable
 from pox.datapaths.switch import *
 
 class MockConnection(object):
@@ -229,6 +230,100 @@ class SwitchImplTest (unittest.TestCase):
 # packing-related bugs.  (Maybe?)
 class PackingTest (SwitchImplTest):
   _do_packing = True
+
+
+#class SwitchFlowTableTest(unittest.TestCase):
+class ProcessFlowModTest(unittest.TestCase):
+  _do_packing = False
+
+  def setUp(self):
+    self.conn = MockConnection(self._do_packing)
+    self.switch = SoftwareSwitch(1, name="sw1")
+    self.switch.set_connection(self.conn)
+    self.packet = ethernet(
+        src=EthAddr("00:00:00:00:00:01"),
+        dst=EthAddr("00:00:00:00:00:02"),
+        payload=ipv4(srcip=IPAddr("1.2.3.4"),
+        dstip=IPAddr("1.2.3.5"),
+        payload=udp(srcport=1234, dstport=53, payload="haha")))
+
+  def test_process_flow_mod_add(self):
+    """ test that simple insertion of a flow works"""
+    c = self.conn
+    s = self.switch
+    t = s.table
+
+    # test wrong port
+    msg = ofp_flow_mod(priority=5, cookie=0x31415926, actions=[ofp_action_output(port=5)])
+    c.to_switch(msg)
+
+    self.assertEqual(len(t.entries), 1)
+    e = t.entries[0]
+    self.assertEqual(e.priority, 5)
+    self.assertEqual(e.cookie, 0x31415926)
+    self.assertEqual(e.actions, [ ofp_action_output(port=5)])
+
+  def test_process_flow_mod_modify(self):
+    """ test that simple removal of a flow works"""
+    c = self.conn
+    s = self.switch
+
+    def table():
+      t = FlowTable()
+      t.add_entry(TableEntry(priority=6, cookie=0x1, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:01"),nw_src="1.2.3.4"), actions=[ofp_action_output(port=5)]))
+      t.add_entry(TableEntry(priority=5, cookie=0x2, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:02"), nw_src="1.2.3.0/24"), actions=[ofp_action_output(port=6)]))
+      t.add_entry(TableEntry(priority=1, cookie=0x3, match=ofp_match(), actions=[]))
+      return t
+
+    s.table = table()
+    t = s.table
+    msg = ofp_flow_mod(command = OFPFC_MODIFY, match=ofp_match(), actions = [ofp_action_output(port=1)])
+    c.to_switch(msg)
+    self.assertEquals([e.cookie for e in t.entries if e.actions == [ofp_action_output(port=1)] ], [1,2,3])
+    self.assertEquals(len(t.entries), 3)
+
+    s.table = table()
+    t = s.table
+    msg = ofp_flow_mod(command = OFPFC_MODIFY, match=ofp_match(nw_src="1.2.0.0/16"), actions = [ofp_action_output(port=8)])
+    c.to_switch(msg)
+    self.assertEquals([e.cookie for e in t.entries if e.actions == [ofp_action_output(port=8)] ], [1,2])
+    self.assertEquals(len(t.entries), 3)
+
+    # non-matching OFPFC_MODIFY acts as add
+    s.table = table()
+    t = s.table
+    msg = ofp_flow_mod(cookie=5, command = OFPFC_MODIFY, match=ofp_match(nw_src="2.2.0.0/16"), actions = [ofp_action_output(port=8)])
+    c.to_switch(msg)
+    self.assertEquals(len(t.entries), 4)
+    self.assertEquals([e.cookie for e in t.entries if e.actions == [ofp_action_output(port=8)] ], [5])
+
+  def test_process_flow_mod_modify_strict(self):
+    """ test that simple removal of a flow works"""
+    c = self.conn
+    s = self.switch
+
+    def table():
+      t = FlowTable()
+      t.add_entry(TableEntry(priority=6, cookie=0x1, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:01"),nw_src="1.2.3.4"), actions=[ofp_action_output(port=5)]))
+      t.add_entry(TableEntry(priority=5, cookie=0x2, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:02"), nw_src="1.2.3.0/24"), actions=[ofp_action_output(port=6)]))
+      t.add_entry(TableEntry(priority=1, cookie=0x3, match=ofp_match(), actions=[]))
+      return t
+
+    s.table = table()
+    t = s.table
+    msg = ofp_flow_mod(command = OFPFC_MODIFY_STRICT, priority=1, match=ofp_match(), actions = [ofp_action_output(port=1)])
+    c.to_switch(msg)
+    self.assertEquals([e.cookie for e in t.entries if e.actions == [ofp_action_output(port=1)] ], [3])
+    self.assertEquals(len(t.entries), 3)
+
+    s.table = table()
+    t = s.table
+    msg = ofp_flow_mod(command = OFPFC_MODIFY_STRICT, priority=5, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:02"), nw_src="1.2.3.0/24"), actions = [ofp_action_output(port=8)])
+    c.to_switch(msg)
+    self.assertEquals([e.cookie for e in t.entries if e.actions == [ofp_action_output(port=8)] ], [2])
+    self.assertEquals(len(t.entries), 3)
+
+
 
 
 if __name__ == '__main__':
