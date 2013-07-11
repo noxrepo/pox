@@ -295,7 +295,7 @@ class FlowTable (EventMixin):
   def remove_expired_entries (self, now=None):
     idle = []
     hard = []
-    now = time.time()
+    if now is None: now = time.time()
     for entry in self._table:
       if entry.is_idle_timed_out(now):
         idle.append(entry)
