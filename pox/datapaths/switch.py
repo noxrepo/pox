@@ -37,7 +37,7 @@ from pox.lib.recoco import Timer
 from pox.openflow.libopenflow_01 import *
 import pox.openflow.libopenflow_01 as of
 from pox.openflow.util import make_type_to_unpacker_table
-from pox.openflow.flow_table import SwitchFlowTable, TableEntry
+from pox.openflow.flow_table import FlowTable, TableEntry
 from pox.lib.packet import *
 
 import logging
@@ -101,7 +101,7 @@ class SoftwareSwitchBase (object):
     self.miss_send_len = miss_send_len
     self._has_sent_hello = False
 
-    self.table = SwitchFlowTable()
+    self.table = FlowTable()
     self.table.addListeners(self)
 
     self._lookup_count = 0
