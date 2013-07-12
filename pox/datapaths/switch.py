@@ -179,6 +179,16 @@ class SoftwareSwitchBase (object):
       if not h: continue
       self.stats_handlers[value] = h
 
+    # Set up handlers for flow mod handlers
+    # That is, self.fm_handlers[OFPFC_FOO] = self._process_flow_mod_foo
+    #TODO: Refactor this with above
+    self.fm_handlers = {}
+    for name,value in ofp_flow_mod_command_rev_map.iteritems():
+      name = name.split("OFPFC_",1)[-1].lower()
+      h = getattr(self, "_process_flow_mod_" + name, None)
+      if not h: continue
+      self.fm_handlers[value] = h
+
   @property
   def _time (self):
     """
@@ -690,69 +700,98 @@ class SoftwareSwitchBase (object):
     """
     Process a flow mod sent to the switch.
     """
+    #FIXME: Move into _rx_flow_mod?
+    #FIXME: Maybe change _process_flow_mod_* to _flow_mod_*
+    handler = self.fm_handlers.get(flow_mod.command)
+    if handler is None:
+      self.log.warn("Command not implemented: %s" % command)
+      self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_BAD_COMMAND,
+                      ofp=flow_mod, connection=connection)
+      return
+
+    handler(flow_mod=flow_mod, connection=connection, table=table)
+
+#0000000011111111112222222222333333333344444444445555555555666666666677777777778
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+  def _process_flow_mod_add (self, flow_mod, connection, table):
+    """
+    Process an OFPFC_ADD flow mod sent to the switch.
+    """
     command = flow_mod.command
     match = flow_mod.match
     priority = flow_mod.priority
 
-    if command == OFPFC_ADD:
-      new_entry = TableEntry.from_flow_mod(flow_mod)
+    new_entry = TableEntry.from_flow_mod(flow_mod)
 
-      if flow_mod.flags & OFPFF_CHECK_OVERLAP:
-        if table.check_for_overlapping_entry(new_entry):
-          # Another entry overlaps. Do not add.
-          self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_OVERLAP,
-                          ofp=flow_mod, connection=connection)
-          return
-
-      # exactly matching entries have to be removed
-      table.remove_matching_entries(match, priority=priority, strict=True)
-
-      if len(table) < self.max_entries:
-        table.add_entry(new_entry)
-      else:
-        # Flow table is full. Respond with error message.
-        self.send_error(type=OFPET_FLOW_MOD_FAILED,
-                        code=OFPFMFC_ALL_TABLES_FULL,
+    if flow_mod.flags & OFPFF_CHECK_OVERLAP:
+      if table.check_for_overlapping_entry(new_entry):
+        # Another entry overlaps. Do not add.
+        self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_OVERLAP,
                         ofp=flow_mod, connection=connection)
         return
-    elif command == OFPFC_MODIFY or command == OFPFC_MODIFY_STRICT:
-      is_strict = (command == OFPFC_MODIFY_STRICT)
-      modified = False
-      for entry in table.entries:
-        # update the actions field in the matching flows
-        if entry.is_matched_by(match, priority=priority, strict=is_strict):
-          entry.actions = flow_mod.actions
-          modified = True
-      if not modified:
-        # if no matching entry is found, modify acts as add
-        new_entry = TableEntry.from_flow_mod(flow_mod)
 
-        if flow_mod.flags & OFPFF_CHECK_OVERLAP:
-          if table.check_for_overlapping_entry(new_entry):
-            # Another entry overlaps. Do not add.
-            self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_OVERLAP,
-                            ofp=flow_mod, connection=connection)
-            return
+    if command == OFPFC_ADD:
+      # Exactly matching entries have to be removed if OFPFC_ADD
+      table.remove_matching_entries(match, priority=priority, strict=True)
 
-        if len(table) < self.max_entries:
-          table.add_entry(new_entry)
-        else:
-          # Flow table is full. Respond with error message.
-          self.send_error(type=OFPET_FLOW_MOD_FAILED,
-                          code=OFPFMFC_ALL_TABLES_FULL,
-                          ofp=flow_mod, connection=connection)
-          return
-    elif command == OFPFC_DELETE or command == OFPFC_DELETE_STRICT:
-      is_strict = (command == OFPFC_DELETE_STRICT)
-      out_port = flow_mod.out_port
-      if out_port == OFPP_NONE: out_port = None # Don't filter
-      table.remove_matching_entries(match, priority=priority, strict=is_strict,
-                                    out_port=out_port, reason=OFPRR_DELETE)
-    else:
-      self.log.warn("Command not implemented: %s" % command)
-      self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_BAD_COMMAND,
+    if len(table) >= self.max_entries:
+      # Flow table is full. Respond with error message.
+      self.send_error(type=OFPET_FLOW_MOD_FAILED,
+                      code=OFPFMFC_ALL_TABLES_FULL,
                       ofp=flow_mod, connection=connection)
+      return
 
+    table.add_entry(new_entry)
+
+  def _process_flow_mod_modify (self, flow_mod, connection, table):
+    """
+    Process an OFPFC_MODIFY flow mod sent to the switch.
+    """
+    #FIXME: Move is_strict to method arguments?
+    #FIXME: Remove command, since usage areas have no long lines?
+    command = flow_mod.command
+    match = flow_mod.match
+    priority = flow_mod.priority
+
+    is_strict = (command == OFPFC_MODIFY_STRICT)
+
+    modified = False
+    for entry in table.entries:
+      # update the actions field in the matching flows
+      if entry.is_matched_by(match, priority=priority, strict=is_strict):
+        entry.actions = flow_mod.actions
+        modified = True
+
+    if not modified:
+      # if no matching entry is found, modify acts as add
+      self._process_flow_mod_add(flow_mod, connection, table)
+
+  def _process_flow_mod_modify_strict (self, flow_mod, connection, table):
+    """
+    Process an OFPFC_MODIFY_STRICT flow mod sent to the switch.
+    """
+    self._process_flow_mod_modify(flow_mod, connection, table)
+
+  def _process_flow_mod_delete (self, flow_mod, connection, table):
+    """
+    Process an OFPFC_DELETE flow mod sent to the switch.
+    """
+    command = flow_mod.command
+    match = flow_mod.match
+    priority = flow_mod.priority
+
+    is_strict = (command == OFPFC_DELETE_STRICT)
+
+    out_port = flow_mod.out_port
+    if out_port == OFPP_NONE: out_port = None # Don't filter
+    table.remove_matching_entries(match, priority=priority, strict=is_strict,
+                                  out_port=out_port, reason=OFPRR_DELETE)
+
+  def _process_flow_mod_delete_strict (self, flow_mod, connection, table):
+    """
+    Process an OFPFC_DELETE_STRICT flow mod sent to the switch.
+    """
+    self._process_flow_mod_delete(flow_mod, connection, table)
 
   def _action_output (self, action, packet, in_port):
     self._output_packet(packet, action.port, in_port, action.max_len)
