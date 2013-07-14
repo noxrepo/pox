@@ -384,6 +384,14 @@ class SoftwareSwitchBase (object):
     self.send_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VENDOR,
                     ofp=vendor, connection=connection)
 
+  def _rx_queue_get_config_request (self, ofp, connection):
+    """
+    Handles an OFPT_QUEUE_GET_CONFIG_REQUEST message.
+    """
+    reply = ofp_queue_get_config_reply(xid=ofp.xid, port=ofp.port, queues=[])
+    self.log.debug("Sending queue get config reply %s", reply)
+    self.send(reply)
+
   def send_hello (self, force = False):
     """
     Send hello (once)
