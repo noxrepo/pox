@@ -213,7 +213,7 @@ class SoftwareSwitchBase (object):
       # These reasons may lead to a flow_removed
       count = 0
       for entry in event.removed:
-        if entry.flags & OFPFF_SEND_FLOW_REM:
+        if entry.flags & OFPFF_SEND_FLOW_REM and not entry.flags & OFPFF_EMERG:
           # Flow wants removal notification -- send it
           fr = entry.to_flow_removed(self._time, reason=event.reason)
           self.send(fr)
@@ -735,6 +735,20 @@ class SoftwareSwitchBase (object):
     """
     match = flow_mod.match
     priority = flow_mod.priority
+
+    if flow_mod.flags & OFPFF_EMERG:
+      if flow_mod.idle_timeout != 0 or flow_mod.hard_timeout != 0:
+        # Emergency flow mod has non-zero timeouts. Do not add.
+        self.send_error(type=OFPET_FLOW_MOD_FAILED,
+                        code=OFPFMFC_BAD_EMERG_TIMEOUT,
+                        ofp=flow_mod, connection=connection)
+        return
+      #NOTE: An error is sent anyways because the current implementation does
+      #      not support emergency entries.
+      self.send_error(type=OFPET_FLOW_MOD_FAILED,
+                      code=OFPFMFC_ALL_TABLES_FULL,
+                      ofp=flow_mod, connection=connection)
+      return
 
     new_entry = TableEntry.from_flow_mod(flow_mod)
 
