@@ -325,7 +325,9 @@ class SoftwareSwitchBase (object):
 
   def _rx_get_config_request (self, ofp, connection):
     msg = ofp_get_config_reply(xid = ofp.xid)
-    #FIXME: Set attributes of reply!
+    msg.miss_send_len = self.miss_send_len
+    msg.flags = self.config_flags
+    self.log.debug("Sending switch config reply %s", msg)
     self.send(msg)
 
   def _rx_stats_request (self, ofp, connection):
@@ -344,8 +346,8 @@ class SoftwareSwitchBase (object):
       self.send(reply)
 
   def _rx_set_config (self, config, connection):
-    #FIXME: Implement this!
-    pass
+    self.miss_send_len = config.miss_send_len
+    self.config_flags = config.flags
 
   def _rx_port_mod (self, port_mod, connection):
     port_no = port_mod.port_no
