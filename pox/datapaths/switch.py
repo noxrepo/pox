@@ -1107,8 +1107,8 @@ class OFConnection (object):
         if r is False: break
         continue
 
-      packet_length = ord(message[2]) << 8 | ord(message[3])
-      if packet_length > len(message):
+      message_length = ord(message[2]) << 8 | ord(message[3])
+      if message_length > len(message):
         break
 
       if ofp_type >= 0 and ofp_type < len(self.unpackers):
@@ -1118,19 +1118,19 @@ class OFConnection (object):
       if unpacker is None:
         r = self._error_handler(self.ERR_NO_UNPACKER, ofp_type)
         if r is False: break
-        io_worker.consume_receive_buf(packet_length)
+        io_worker.consume_receive_buf(message_length)
         continue
 
       new_offset, msg_obj = self.unpackers[ofp_type](message, 0)
-      if new_offset != packet_length:
+      if new_offset != message_length:
         r = self._error_handler(self.ERR_BAD_LENGTH,
-                                (msg_obj, packet_length, new_offset))
+                                (msg_obj, message_length, new_offset))
         if r is False: break
         # Assume sender was right and we should skip what it told us to.
-        io_worker.consume_receive_buf(packet_length)
+        io_worker.consume_receive_buf(message_length)
         continue
 
-      io_worker.consume_receive_buf(packet_length)
+      io_worker.consume_receive_buf(message_length)
       self.starting = False
 
       if self.on_message_received is None:
@@ -1140,7 +1140,7 @@ class OFConnection (object):
         self.on_message_received(self, msg_obj)
       except Exception as e:
         r = self._error_handler(self.ERR_EXCEPTION,
-                                (e,message[:packet_length],msg_obj))
+                                (e,message[:message_length],msg_obj))
         if r is False: break
         continue
 
