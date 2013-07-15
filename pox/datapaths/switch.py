@@ -1103,7 +1103,8 @@ class OFConnection (object):
       ofp_type = ord(message[1])
 
       if ofp_version != OFP_VERSION:
-        r = self._error_handler(self.ERR_BAD_VERSION, ofp_version)
+        info = ofp_version
+        r = self._error_handler(self.ERR_BAD_VERSION, info)
         if r is False: break
         continue
 
@@ -1116,15 +1117,16 @@ class OFConnection (object):
       else:
         unpacker = None
       if unpacker is None:
-        r = self._error_handler(self.ERR_NO_UNPACKER, ofp_type)
+        info = (ofp_type, message_length)
+        r = self._error_handler(self.ERR_NO_UNPACKER, info)
         if r is False: break
         io_worker.consume_receive_buf(message_length)
         continue
 
       new_offset, msg_obj = self.unpackers[ofp_type](message, 0)
       if new_offset != message_length:
-        r = self._error_handler(self.ERR_BAD_LENGTH,
-                                (msg_obj, message_length, new_offset))
+        info = (msg_obj, message_length, new_offset)
+        r = self._error_handler(self.ERR_BAD_LENGTH, info)
         if r is False: break
         # Assume sender was right and we should skip what it told us to.
         io_worker.consume_receive_buf(message_length)
@@ -1139,8 +1141,8 @@ class OFConnection (object):
       try:
         self.on_message_received(self, msg_obj)
       except Exception as e:
-        r = self._error_handler(self.ERR_EXCEPTION,
-                                (e,message[:message_length],msg_obj))
+        info = (e, message[:message_length], msg_obj)
+        r = self._error_handler(self.ERR_EXCEPTION, info)
         if r is False: break
         continue
 
@@ -1154,7 +1156,7 @@ class OFConnection (object):
 
       info depends on reason:
       ERR_BAD_VERSION: claimed version number
-      ERR_NO_UNPACKER: claimed message type
+      ERR_NO_UNPACKER: (claimed message type, claimed length)
       ERR_BAD_LENGTH: (unpacked message, claimed length, unpacked length)
       ERR_EXCEPTION: (exception, raw message, unpacked message)
 
@@ -1162,32 +1164,57 @@ class OFConnection (object):
       do this if you called connection.close() here, for example).
       """
       if reason == OFConnection.ERR_BAD_VERSION:
+        ofp_version = info
         self.log.warn('Unsupported OpenFlow version 0x%02x', info)
         if self.starting:
-          xid = 0
           message = self.io_worker.peek()
-          if len(message) >= 8:
-            xid = struct.unpack_from('!L', message, 4)[0]
           err = ofp_error(type=OFPET_HELLO_FAILED, code=OFPHFC_INCOMPATIBLE)
           #err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_VERSION)
-          err.xid = xid
+          err.xid = self._extract_message_xid(message)
           err.data = 'Version unsupported'
           self.send(err)
         self.close()
         return False
       elif reason == OFConnection.ERR_NO_UNPACKER:
-        self.log.warn('Unsupported OpenFlow message type 0x%02x', info)
+        ofp_type, message_length = info
+        self.log.warn('Unsupported OpenFlow message type 0x%02x', ofp_type)
+        message = self.io_worker.peek()
+        err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_TYPE)
+        err.xid = self._extract_message_xid(message)
+        err.data = message[:message_length]
+        self.send(err)
       elif reason == OFConnection.ERR_BAD_LENGTH:
-        t = type(info[0]).__name__
+        msg_obj, message_length, new_offset = info
+        t = type(msg_obj).__name__
         self.log.error('Different idea of message length for %s '
-                       '(us:%s them:%s)' % (t, info[2], info[1]))
+                       '(us:%s them:%s)' % (t, new_offset, message_length))
+        message = self.io_worker.peek()
+        err = ofp_error(type=OFPET_BAD_REQUEST, code=OFPBRC_BAD_LEN)
+        err.xid = self._extract_message_xid(message)
+        err.data = message[:message_length]
+        self.send(err)
       elif reason == OFConnection.ERR_EXCEPTION:
-        t = type(info[0]).__name__
+        ex, raw_message, msg_obj = info
+        t = type(ex).__name__
         self.log.exception('Exception handling %s' % (t,))
       else:
         self.log.error("Unhandled error")
         self.close()
         return False
+
+  def _extract_message_xid (self, message):
+    """
+    Extract and return the xid (and length) of an openflow message.
+    """
+    xid = 0
+    if len(message) >= 8:
+      #xid = struct.unpack_from('!L', message, 4)[0]
+      message_length, xid = struct.unpack_from('!HL', message, 2)
+    elif len(message) >= 4:
+      message_length = ord(message[2]) << 8 | ord(message[3])
+    else:
+      message_length = len(message)
+    return xid
 
   def close (self):
     self.io_worker.shutdown()
