@@ -632,7 +632,7 @@ class NDNeighborSolicitation (icmp_base):
 
   def pack (self):
     o = '\x00' * 4 # _PAD4
-    o += o.target.raw
+    o += self.target.raw
     for opt in self.options:
       o += opt.pack()
     return o
@@ -703,7 +703,7 @@ class NDNeighborAdvertisement (icmp_base):
     if self.is_override : o |= self.OVERRIDE_FLAG
     o = chr(o)
     o += '\x00' * 3 # _PAD3
-    o += o.target.raw
+    o += self.target.raw
     for opt in self.options:
       o += opt.pack()
     return o
