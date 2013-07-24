@@ -51,7 +51,7 @@ class MemoryEntry (object):
   longer.
 
   Another tactic would be to increase the timeouts on the switch and use
-  the Nicira extension witch can match packets with FIN set to remove them
+  the Nicira extension which can match packets with FIN set to remove them
   when the connection closes.
   """
   def __init__ (self, server, first_packet, client_port):
