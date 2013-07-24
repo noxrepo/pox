@@ -1145,12 +1145,36 @@ class ofp_match (ofp_base):
     # TODO
     return None
 
+  def _prereq_warning (self):
+    # Only checked when assertions are on
+    if not _logger: return True
+    om = self.clone()
+    om.fix()
+
+    if om == self: return True
+
+    msg = "Fields ignored due to unspecified prerequisites: "
+    wcs = []
+
+    for name in ofp_match_data.keys():
+      if getattr(self,name) is None: continue
+      if getattr(om,name) is not None: continue
+      wcs.append(name)
+
+    msg = msg + " ".join(wcs)
+
+    _log(warn = msg)
+    _log(debug = "Problematic match: " + str(self))
+
+    return True # Always; we don't actually want an assertion error
+
   def pack (self, flow_mod=False):
     assert self._assert()
 
     packed = b""
     if self.adjust_wildcards and flow_mod:
       wc = self._wire_wildcards(self.wildcards)
+      assert self._prereq_warning()
     else:
       wc = self.wildcards
     packed += struct.pack("!LH", wc, self.in_port or 0)
@@ -1207,9 +1231,10 @@ class ofp_match (ofp_base):
       wildcards |= (32 << OFPFW_NW_DST_SHIFT)
     return wildcards
 
-  def _wire_wildcards(self, wildcards):
+  def _wire_wildcards (self, wildcards):
     """
     Normalize the wildcard bits to the openflow wire representation.
+
     Note this atrocity from the OF1.1 spec:
     Protocol-specific fields within ofp_match will be ignored within
     a single table when the corresponding protocol is not specified in the
@@ -1235,10 +1260,39 @@ class ofp_match (ofp_base):
             | OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK
             | OFPFW_TP_SRC | OFPFW_TP_DST)
 
+  def fix (self):
+    """
+    Removes unmatchable fields
 
-  def _unwire_wildcards(self, wildcards):
+    The logic in this should exactly match that in _wire_wildcards()
+    """
+    if self.dl_type == 0x0800:
+        # IP
+        if  self.nw_proto not in (1,6,17):
+          # not TCP/UDP/ICMP -> Clear TP wildcards for the wire
+          self.tp_src = None
+          self.tp_dst = None
+          return
+    elif self.dl_type == 0x0806:
+        # ARP: clear NW_TOS / TP wildcards for the wire
+        self.tp_src = None
+        self.tp_dst = None
+        self.nw_tos = None
+        return
+    else:
+        # not even IP. Clear NW/TP wildcards for the wire
+        self.nw_tos = None
+        self.nw_proto = None
+        self.nw_src = None
+        self.nw_dst = None
+        self.tp_src = None
+        self.tp_dst = None
+        return
+
+  def _unwire_wildcards (self, wildcards):
     """
     Normalize the wildcard bits from the openflow wire representation.
+
     Note this atrocity from the OF1.1 spec:
     Protocol-specific fields within ofp_match will be ignored within
     a single table when the corresponding protocol is not specified in the
