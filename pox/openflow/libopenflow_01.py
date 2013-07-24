@@ -990,14 +990,21 @@ class ofp_match (ofp_base):
     n.wildcards = self.wildcards
     return n
 
-  def flip (self):
+  def flip (self, in_port = True):
     """
     Return version of this match with src and dst fields swapped
+
+    in_port can be:
+      True  : Include same in_port in new match
+      Other : Set Other as in_port in new match
     """
     reversed = self.clone()
     for field in ('dl','nw','tp'):
       setattr(reversed, field + '_src', getattr(self, field + '_dst'))
       setattr(reversed, field + '_dst', getattr(self, field + '_src'))
+    if in_port is not True:
+      reversed.in_port = in_port
+
     return reversed
 
   def __init__ (self, **kw):
