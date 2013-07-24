@@ -505,7 +505,7 @@ class PortCollection (object):
         if p.hw_addr == index:
           return p
     else:
-      for p in self.port:
+      for p in self._ports:
         if p.name == index:
           return p
     if self._chain:
