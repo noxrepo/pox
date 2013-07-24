@@ -21,7 +21,8 @@
 # We fall back to just "python" and hope that works.
 
 ''''true
-export OPT="-u -O"
+#export OPT="-u -O"
+export OPT="-u"
 export FLG=""
 if [ "$(basename $0)" = "debug-pox.py" ]; then
   export OPT=""
