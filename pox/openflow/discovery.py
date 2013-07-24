@@ -189,6 +189,31 @@ class LinkEvent (Event):
     return None
 
 
+class Link (namedtuple("LinkBase",("dpid1","port1","dpid2","port2"))):
+  @property
+  def uni (self):
+    """
+    Returns a "unidirectional" version of this link
+
+    The unidirectional versions of symmetric keys will be equal
+    """
+    pairs = list(self.end)
+    pairs.sort()
+    return Link(pairs[0][0],pairs[0][1],pairs[1][0],pairs[1][1])
+
+  @property
+  def end (self):
+    return ((self[0],self[1]),(self[2],self[3]))
+
+  def __str__ (self):
+    return "%s.%s -> %s.%s" % (dpid_to_str(self[0]),self[1],
+                               dpid_to_str(self[2]),self[3])
+
+  def __repr__ (self):
+    return "Link(dpid1=%s,port1=%s, dpid2=%s,port2=%s)" % (self.dpid1,
+        self.port1, self.dpid2, self.port2)
+
+
 class Discovery (EventMixin):
   """
   Component that attempts to discover network toplogy.
@@ -206,7 +231,7 @@ class Discovery (EventMixin):
 
   _core_name = "openflow_discovery" # we want to be core.openflow_discovery
 
-  Link = namedtuple("Link",("dpid1","port1","dpid2","port2"))
+  Link = Link
 
   def __init__ (self, install_flow = True, explicit_drop = True,
                 link_timeout = None, eat_early_packets = False):
@@ -270,9 +295,7 @@ class Discovery (EventMixin):
                if timestamp + self._link_timeout < now]
     if expired:
       for link in expired:
-        log.info('link timeout: %s.%i -> %s.%i' %
-                 (dpid_to_str(link.dpid1), link.port1,
-                  dpid_to_str(link.dpid2), link.port2))
+        log.info('link timeout: %s', link)
 
       self._delete_links(expired)
 
@@ -395,9 +418,7 @@ class Discovery (EventMixin):
 
     if link not in self.adjacency:
       self.adjacency[link] = time.time()
-      log.info('link detected: %s.%i -> %s.%i' %
-               (dpid_to_str(link.dpid1), link.port1,
-                dpid_to_str(link.dpid2), link.port2))
+      log.info('link detected: %s', link)
       self.raiseEventNoErrors(LinkEvent, True, link)
     else:
       # Just update timestamp
