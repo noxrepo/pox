@@ -983,37 +983,6 @@ class ofp_match (ofp_base):
 
     return match
 
-  def optimize (self):
-    """
-    Reduce the number of wildcards used.
-    """
-    #TODO: Fix for optional cases (i.e. ARP)
-    if self.dl_vlan == OFP_VLAN_NONE:
-      self.dl_vlan_pcp = 0
-
-    #TODO: What do we do when something is "behind" a wildcard?
-    #   e.g., does nw_src count if dl_type is wild or only if it's 0x0800?
-    if self.dl_type is not None:
-      if self.dl_type != 0x0800:
-        # Not IP
-        if self.dl_type != 0x0806:
-          # Not IP or ARP
-          self.nw_src = IPAddr(0)
-          self.nw_dst = IPAddr(0)
-          self.nw_proto = 0
-        self.nw_tos = 0
-        self.tp_src = 0
-        self.tp_dst = 0
-      else:
-        # It's IP
-        if (self.nw_proto != 6 and self.nw_proto != 17
-            and self.nw_proto != 1):
-          # Not TCP, UDP, or ICMP
-          self.tp_src = 0
-          self.tp_dst = 0
-    self.wildcards = self._normalize_wildcards(self.wildcards)
-    return self # for chaining
-
   def clone (self):
     n = ofp_match()
     for k,v in ofp_match_data.iteritems():
