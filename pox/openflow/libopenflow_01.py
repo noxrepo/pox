@@ -42,6 +42,20 @@ from pox.lib.util import is_listlike
 EMPTY_ETH = EthAddr(None)
 
 # ----------------------------------------------------------------------
+# Logging
+# ----------------------------------------------------------------------
+
+_logger = None
+def _log (debug=None, info=None, warn=None, error=None):
+  if not _logger: return
+  if debug: _logger.debug(debug)
+  if info: _logger.info(info)
+  if warn: _logger.warn(warn)
+  if error: _logger.error(error)
+
+# ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
 # XID Management
 # ----------------------------------------------------------------------
 

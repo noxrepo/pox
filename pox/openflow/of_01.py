@@ -952,6 +952,9 @@ def launch (port = 6633, address = "0.0.0.0"):
   global deferredSender
   deferredSender = DeferredSender()
 
+  if of._logger is None:
+    of._logger = core.getLogger('libopenflow_01')
+
   l = OpenFlow_01_Task(port = int(port), address = address)
   core.register("of_01", l)
   return l
