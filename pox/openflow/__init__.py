@@ -124,6 +124,10 @@ class RawStatsReply (Event):
     self.connection = connection
     self.ofp = ofp     # Raw ofp message(s)
 
+  @property
+  def dpid (self):
+    return self.connection.dpid
+
 class StatsReply (Event):
   """ Abstract superclass for all stats replies """
   def __init__ (self, connection, ofp, stats):
@@ -131,6 +135,10 @@ class StatsReply (Event):
     self.connection = connection
     self.ofp = ofp     # Raw ofp message(s)
     self.stats = stats # Processed
+
+  @property
+  def dpid (self):
+    return self.connection.dpid
 
 class SwitchDescReceived (StatsReply):
   pass
