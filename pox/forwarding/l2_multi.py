@@ -130,7 +130,7 @@ def _check_path (p):
   for a,b in zip(p[:-1],p[1:]):
     if adjacency[a[0]][b[0]] != a[2]:
       return False
-    if adjacency[b[0]][a[0]] != b[2]:
+    if adjacency[b[0]][a[0]] != b[1]:
       return False
   return True
 
