@@ -50,6 +50,7 @@ import traceback
 import time
 import inspect
 import types
+import threading
 
 import pox.core
 core = pox.core.initialize()
@@ -481,6 +482,8 @@ def boot ():
   sys.path.insert(0, os.path.abspath(os.path.join(base, 'pox')))
   sys.path.insert(0, os.path.abspath(os.path.join(base, 'ext')))
 
+  thread_count = threading.active_count()
+
   try:
     argv = sys.argv[1:]
 
@@ -504,6 +507,21 @@ def boot ():
     return
   except:
     traceback.print_exc()
+
+    # Try to exit normally, but do a hard exit if we don't.
+    # This is sort of a hack.  What's the better option?  Raise
+    # the going down event on core even though we never went up?
+
+    try:
+      for _ in range(4):
+        if threading.active_count() <= thread_count:
+          # Normal exit
+          return
+        time.sleep(0.25)
+    except:
+      pass
+
+    os._exit(1)
     return
 
   if _main_thread_function:
