@@ -100,15 +100,19 @@ class arp (packet_base):
 
         if self.hwtype != arp.HW_TYPE_ETHERNET:
             self.msg('(arp parse) hw type unknown %u' % self.hwtype)
+            return
         if self.hwlen != 6:
             self.msg('(arp parse) unknown hw len %u' % self.hwlen)
+            return
         else:
             self.hwsrc = EthAddr(raw[8:14])
             self.hwdst = EthAddr(raw[18:24])
         if self.prototype != arp.PROTO_TYPE_IP:
             self.msg('(arp parse) proto type unknown %u' % self.prototype)
+            return
         if self.protolen != 4:
             self.msg('(arp parse) unknown proto len %u' % self.protolen)
+            return
         else:
             self.protosrc = IPAddr(struct.unpack('!I',raw[14:18])[0])
             self.protodst = IPAddr(struct.unpack('!I',raw[24:28])[0])
