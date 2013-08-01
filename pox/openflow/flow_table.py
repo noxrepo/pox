@@ -317,7 +317,7 @@ class FlowTable (EventMixin):
     Returns the highest priority flow table entry that matches the given packet
     on the given in_port, or None if no matching entry is found.
     """
-    packet_match = ofp_match.from_packet(packet, in_port)
+    packet_match = ofp_match.from_packet(packet, in_port, spec_frags = True)
 
     for entry in self._table:
       if entry.match.matches_with_wildcards(packet_match,

@@ -921,7 +921,7 @@ class ofp_match (ofp_base):
   adjust_wildcards = True # Set to true to "fix" outgoing wildcards
 
   @classmethod
-  def from_packet (cls, packet, in_port = None):
+  def from_packet (cls, packet, in_port = None, spec_frags = False):
     """
     Constructs an exact match for the given packet
 
@@ -929,6 +929,7 @@ class ofp_match (ofp_base):
                    the resulting match to have its in_port set.
                    If "packet" is a packet_in, this is ignored.
     @param packet  A pox.packet.ethernet instance or a packet_in
+    @param spec_frags Handle IP fragments as specified in the spec.
     """
     if isinstance(packet, ofp_packet_in):
       in_port = packet.in_port
@@ -967,6 +968,11 @@ class ofp_match (ofp_base):
       match.nw_dst = p.dstip
       match.nw_proto = p.protocol
       match.nw_tos = p.tos
+      if spec_frags and ((p.flags & p.MF_FLAG) or p.frag != 0):
+        # This seems a bit strange, but see page 9 of the spec.
+        match.tp_src = 0
+        match.tp_dst = 0
+        return match
       p = p.next
 
       if isinstance(p, udp) or isinstance(p, tcp):
