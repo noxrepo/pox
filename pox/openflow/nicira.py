@@ -2545,7 +2545,6 @@ class nx_match (object):
 _old_unpacker = None
 
 def _unpack_nx_vendor (raw, offset):
-  from pox.lib.util import hexdump
   v = _unpack("!L", raw, offset + 8)[1][0]
   if v != NX_VENDOR_ID:
     return _old_unpacker(raw, offset)
