@@ -275,7 +275,7 @@ class RecocoIOWorker (IOWorker):
     pinger is a pinger that will wake the RecocoIOLoop
     on_close is a factory that hides details of Select loop
     """
-    IOWorker.__init__(self)
+    super(RecocoIOWorker,self).__init__()
     self.socket = socket
 
   def fileno (self):
