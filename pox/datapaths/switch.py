@@ -1152,7 +1152,7 @@ class OFConnection (object):
         return False
 
   def close (self):
-    self.io_worker.close()
+    self.io_worker.shutdown()
 
   def get_controller_id (self):
     """
