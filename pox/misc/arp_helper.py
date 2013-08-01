@@ -38,11 +38,20 @@ import pox.openflow.libopenflow_01 as of
 
 
 def send_arp_reply (reply_to, mac, src_mac = None, src_ip = None):
+  """
+  Send an ARP reply.
+
+  src_mac can be None to use the "DPID MAC" or True to use the port Mac.
+    (or it can be an EthAddr)
+  """
   # reply_to should be a PacketIn event
   arpp = reply_to.parsed.find('arp')
   mac = EthAddr(mac)
   if src_mac is None:
-    src_mac = mac
+    #src_mac = mac # Used to be this ???
+    src_mac = reply_to.connection.eth_addr
+  elif src_mac is True:
+    src_mac = reply_to.connection.ports[reply_to.port].hw_addr
   else:
     src_mac = EthAddr(src_mac)
   r = arp()
@@ -62,8 +71,26 @@ def send_arp_reply (reply_to, mac, src_mac = None, src_ip = None):
 
 def send_arp_request (connection, ip, port = of.OFPP_FLOOD,
                       src_mac = None, src_ip = None):
+  """
+  Send an ARP request
+
+  src_mac can be None to use the "DPID MAC" or True to use the port Mac.
+    (or it can be an EthAddr)
+  """
   if src_mac is None:
-    src_mac = _dpid_to_mac(connection.dpid)
+    src_mac = connection.eth_addr
+  elif src_mac is True:
+    if port in (of.OFPP_FLOOD, of.OFPP_ALL):
+      for p in connection.ports.values():
+        if p.config & OFPPC_NO_FLOOD:
+          if port == of.ofPP_FLOOD:
+            continue
+        if p.port_no < 0: continue
+        if p.port_no > of.OFPP_MAX: continue # Off by one?
+        send_arp_request(connection, ip, p.port_no,
+                         src_mac=p.hw_addr, src_ip=src_ip)
+      return
+    src_mac = connection.ports[port].hw_addr
   else:
     src_mac = EthAddr(src_mac)
   r = arp()
@@ -79,11 +106,6 @@ def send_arp_request (connection, ip, port = of.OFPP_FLOOD,
   msg.actions.append(of.ofp_action_output(port = port))
   msg.in_port = of.OFPP_NONE
   connection.send(msg)
-
-
-def _dpid_to_mac (dpid):
-  # Should maybe look at internal port MAC instead?
-  return EthAddr("%012x" % (dpid & 0xffFFffFFffFF,))
 
 
 class ARPRequest (Event):
@@ -123,20 +145,29 @@ class ARPReply (Event):
     self.port = port
 
 
+_default_src_mac = object()
+
 class ARPHelper (EventMixin):
   _eventMixin_events = set([ARPRequest,ARPReply])
   _rule_priority = 0x7000 # Pretty high
 
-  def __init__ (self, no_flow, eat_packets):
+  def __init__ (self, no_flow, eat_packets, use_port_mac = False):
     core.addListeners(self)
     self._install_flow = not no_flow
     self.eat_packets = eat_packets
+    self.use_port_mac = use_port_mac
 
-  def send_arp_request (self, *args, **kw):
-    return send_arp_request(*args, **kw)
+  def send_arp_request (self, connection, ip, port = of.OFPP_FLOOD,
+                        src_mac = _default_src_mac, src_ip = None):
+    if src_mac is _default_src_mac:
+      src_mac = True if self.use_port_mac else None
+    return send_arp_request(connection, ip, port, src_mac, src_ip)
 
-  def send_arp_reply (self, *args, **kw):
-    return send_arp_reply(*args, **kw)
+  def send_arp_reply (self, reply_to, mac,
+                      src_mac = _default_src_mac, src_ip = None):
+    if src_mac is _default_src_mac:
+      src_mac = True if self.use_port_mac else None
+    return send_arp_reply(reply_to, mac, src_mac, src_ip)
 
   def _handle_GoingUpEvent (self, event):
     core.openflow.addListeners(self)
@@ -168,8 +199,12 @@ class ARPHelper (EventMixin):
       log.debug("%s ARP request %s => %s", dpid_to_str(dpid),
                 a.protosrc, a.protodst)
 
-      ev = ARPRequest(event.connection,a,_dpid_to_mac(dpid),self.eat_packets,
-          inport)
+      if self.use_port_mac:
+        src_mac = event.connection.ports[inport].hw_addr
+      else:
+        src_mac = event.connection.eth_addr
+      ev = ARPRequest(event.connection, a, src_mac,
+                      self.eat_packets, inport)
       self.raiseEvent(ev)
       if ev.reply is not None:
         r = arp()
@@ -205,5 +240,6 @@ class ARPHelper (EventMixin):
     return EventHalt if self.eat_packets else None
 
 
-def launch (no_flow=False, eat_packets=True):
-  core.registerNew(ARPHelper, str_to_bool(no_flow), str_to_bool(eat_packets))
+def launch (no_flow=False, eat_packets=True, use_port_mac = False):
+  core.registerNew(ARPHelper, str_to_bool(no_flow), str_to_bool(eat_packets),
+                   str_to_bool(use_port_mac))
