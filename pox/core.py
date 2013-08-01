@@ -335,6 +335,12 @@ class POXCore (EventMixin):
 
     self.raiseEvent(UpEvent())
 
+    self._waiter_notify()
+
+    if self.running:
+      log.info(self.version_string + " is up.")
+
+  def _waiter_notify (self):
     if len(self._waiters):
       waiting_for = set()
       for entry in self._waiters:
@@ -348,9 +354,6 @@ class POXCore (EventMixin):
       #log.info("%i things still waiting on %i components"
       #         % (names, waiting_for))
       log.warn("Still waiting on %i component(s)" % (len(waiting_for),))
-
-    if self.running:
-      log.info(self.version_string + " is up.")
 
   def hasComponent (self, name):
     """
@@ -542,6 +545,8 @@ class POXCore (EventMixin):
     self.call_when_ready(done, components, name=sink.__class__.__name__,
                          args=(sink,components,attrs,short_attrs))
 
+    if not self.starting_up:
+      self._waiter_notify()
 
   def __getattr__ (self, name):
     if name not in self.components:
