@@ -577,7 +577,8 @@ class DHCPParameterRequestOption (DHCPOption):
     return self
 
   def pack (self):
-    return b''.join(chr(x) for x in self.options)
+    opt = ((o.CODE if issubclass(o, DHCPOption) else o) for o in self.options)
+    return b''.join(chr(x) for x in opt)
 
   def __repr__ (self):
     names = []
