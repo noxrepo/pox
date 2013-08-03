@@ -99,6 +99,7 @@ class SoftwareSwitchBase (object):
     self.max_buffers = max_buffers
     self.max_entries = max_entries
     self.miss_send_len = miss_send_len
+    self.config_flags = 0
     self._has_sent_hello = False
 
     self.table = FlowTable()
@@ -467,6 +468,21 @@ class SoftwareSwitchBase (object):
     if (port.config & OFPPC_NO_RECV_STP) and is_stp:
       # Drop STP
       return
+
+    if self.config_flags & OFPC_FRAG_MASK:
+      ipp = packet.find(ipv4)
+      if ipp:
+        if (ipp.flags & ipv4.MF_FLAG) or ipp.frag != 0:
+          frag_mode = self.config_flags & OFPC_FRAG_MASK
+          if frag_mode == OFPC_FRAG_DROP:
+            # Drop fragment
+            return
+          elif frag_mode == OFPC_FRAG_REASM:
+            if self.features.cap_ip_reasm:
+              #TODO: Implement fragment reassembly
+              self.log.info("Can't reassemble fragment: not implemented")
+          else:
+            self.log.warn("Illegal fragment processing mode: %i", frag_mode)
 
     self.port_stats[in_port].rx_packets += 1
     if packet_data is not None:
