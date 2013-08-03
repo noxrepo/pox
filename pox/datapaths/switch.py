@@ -739,12 +739,24 @@ class SoftwareSwitchBase (object):
     if flow_mod.flags & OFPFF_EMERG:
       if flow_mod.idle_timeout != 0 or flow_mod.hard_timeout != 0:
         # Emergency flow mod has non-zero timeouts. Do not add.
+        self.log.warn("Rejecting emergency flow with nonzero timeout")
         self.send_error(type=OFPET_FLOW_MOD_FAILED,
                         code=OFPFMFC_BAD_EMERG_TIMEOUT,
                         ofp=flow_mod, connection=connection)
         return
+      if flow_mod.flags & OFPFF_SEND_FLOW_REM:
+        # Emergency flows can't send removal messages, we we might want to
+        # reject this early.  Sadly, there's no error code for this, so we just
+        # abuse EPERM.  If we eventually support Nicira extended error codes,
+        # we should use one here.
+        self.log.warn("Rejecting emergency flow with flow removal flag")
+        self.send_error(type=OFPET_FLOW_MOD_FAILED,
+                        code=OFPFMFC_EPERM,
+                        ofp=flow_mod, connection=connection)
+        return
       #NOTE: An error is sent anyways because the current implementation does
       #      not support emergency entries.
+      self.log.warn("Rejecting emergency flow (not supported)")
       self.send_error(type=OFPET_FLOW_MOD_FAILED,
                       code=OFPFMFC_ALL_TABLES_FULL,
                       ofp=flow_mod, connection=connection)
