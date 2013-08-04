@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-A simple hack of misc.packet_dump that dumps pcap files to the console.
+A simple hack of info.packet_dump that dumps pcap files to the console.
 
 Use --infile=<filename> to specify the pcap file.
 Use --verbose for really verbose dumps.

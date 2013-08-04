@@ -313,10 +313,10 @@ def launch (ip, servers):
   ip = IPAddr(ip)
 
   # Boot up ARP Responder
-  from misc.arp_responder import launch as arp_launch
+  from proto.arp_responder import launch as arp_launch
   arp_launch(eat_packets=False,**{str(ip):True})
   import logging
-  logging.getLogger("misc.arp_responder").setLevel(logging.WARN)
+  logging.getLogger("proto.arp_responder").setLevel(logging.WARN)
 
   def _handle_ConnectionUp (event):
     global _dpid

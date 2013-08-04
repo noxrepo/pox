@@ -35,7 +35,7 @@ from pox.lib.addresses import IPAddr,EthAddr,parse_cidr
 from pox.lib.addresses import IP_BROADCAST, IP_ANY
 from pox.lib.revent import *
 from pox.lib.util import dpid_to_str
-from pox.misc.dhcpd import DHCPLease, DHCPD
+from pox.proto.dhcpd import DHCPLease, DHCPD
 from collections import defaultdict
 from pox.openflow.discovery import Discovery
 import time
@@ -474,7 +474,7 @@ class topo_addressing (object):
 
 def launch (debug = False):
   core.registerNew(topo_addressing)
-  from misc.arp_helper import launch
+  from proto.arp_helper import launch
   launch(eat_packets=False)
   if not debug:
-    core.getLogger("misc.arp_helper").setLevel(99)
+    core.getLogger("proto.arp_helper").setLevel(99)
