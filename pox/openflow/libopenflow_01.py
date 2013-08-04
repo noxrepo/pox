@@ -1014,6 +1014,8 @@ class ofp_match (ofp_base):
     return reversed
 
   def __init__ (self, **kw):
+    self._locked = False
+
     for k,v in ofp_match_data.iteritems():
       setattr(self, '_' + k, v[0])
 
@@ -1093,6 +1095,13 @@ class ofp_match (ofp_base):
     return (ip, b)
 
   def __setattr__ (self, name, value):
+    if name is '_locked':
+      super(ofp_match,self).__setattr__(name, value)
+      return
+
+    if self._locked:
+      raise AttributeError('match object is locked')
+
     if name not in ofp_match_data:
       self.__dict__[name] = value
       return
@@ -1339,8 +1348,8 @@ class ofp_match (ofp_base):
     """
     generate a hash value for this match
 
-    ofp_match is not properly hashable since it is mutable, but it can
-    still be useful to easily generate a hash code.
+    This generates a hash code which might be useful, but without locking
+    the match object.
     """
 
     h = self.wildcards
@@ -1350,8 +1359,14 @@ class ofp_match (ofp_base):
         h ^= v
       elif type(v) is long:
         h ^= v
+      else:
+        h ^= hash(v)
 
     return int(h & 0x7fFFffFF)
+
+  def __hash__ (self):
+    self._locked = True
+    return self.hash_code()
 
   def matches_with_wildcards (self, other, consider_other_wildcards=True):
     """
