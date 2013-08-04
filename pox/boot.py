@@ -232,7 +232,9 @@ def _do_launch (argv):
         return False
 
       try:
-        f(**params)
+        if f(**params) is False:
+          # Abort startup
+          return False
       except TypeError as exc:
         instText = ''
         if inst[cname] > 0:
@@ -484,6 +486,8 @@ def boot ():
 
   thread_count = threading.active_count()
 
+  quiet = False
+
   try:
     argv = sys.argv[1:]
 
@@ -501,12 +505,15 @@ def boot ():
       _post_startup()
       core.goUp()
     else:
-      return
+      #return
+      quiet = True
+      raise RuntimeError()
 
   except SystemExit:
     return
   except:
-    traceback.print_exc()
+    if not quiet:
+      traceback.print_exc()
 
     # Try to exit normally, but do a hard exit if we don't.
     # This is sort of a hack.  What's the better option?  Raise
