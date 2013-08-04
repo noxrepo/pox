@@ -2288,19 +2288,22 @@ class ofp_flow_mod (ofp_header):
           Specifically, it may also have a barrier and an ofp_packet_out.
     """
     po = None
+    buffer_id = self.buffer_id
     if self.data:
-      #TODO: It'd be nice to log and then ignore if not data_is_complete.
-      #      Unfortunately, we currently have no logging in here, so we
-      #      assert instead which is a either too drastic or too quiet.
-      assert self.data.is_complete
-      assert self.buffer_id is None
-      self.buffer_id = self.data.buffer_id
-      if self.buffer_id is None:
-        po = ofp_packet_out(data=self.data)
-        po.in_port = self.data.in_port
-        po.actions.append(ofp_action_output(port = OFPP_TABLE))
-        # Should maybe check that packet hits the new entry...
-        # Or just duplicate the actions? (I think that's the best idea)
+      if not self.data.is_complete:
+        _log(warn="flow_mod is trying to include incomplete data")
+      else:
+        self.buffer_id = self.data.buffer_id # Hacky
+        if self.buffer_id is None:
+          po = ofp_packet_out(data=self.data)
+          po.in_port = self.data.in_port
+          po.actions.append(ofp_action_output(port = OFPP_TABLE))
+          #FIXME: Should maybe check that packet hits the new entry...
+          #       Or just duplicate the actions? (I think that's the best idea)
+        buffer_id = self.buffer_id
+        self.buffer_id = None
+    if buffer_id is None:
+      buffer_id = NO_BUFFER
 
     assert self._assert()
     packed = b""
@@ -2308,7 +2311,7 @@ class ofp_flow_mod (ofp_header):
     packed += self.match.pack(flow_mod=True)
     packed += struct.pack("!QHHHHLHH", self.cookie, self.command,
                           self.idle_timeout, self.hard_timeout,
-                          self.priority, self._buffer_id, self.out_port,
+                          self.priority, buffer_id, self.out_port,
                           self.flags)
     for i in self.actions:
       packed += i.pack()
