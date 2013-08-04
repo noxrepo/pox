@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """
-Package of miscellaneous components
+Informational components
 
-Components in this package don't seem to clearly fit elsewhere.
+This package contains components which are in some way informational.  This
+includes, for example, components which simply log extra information or are
+helpful for debugging.
 """

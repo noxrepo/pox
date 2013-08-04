@@ -13,7 +13,11 @@
 # limitations under the License.
 
 """
-Package of miscellaneous components
+Components and utilities for working with various protocols.
 
-Components in this package don't seem to clearly fit elsewhere.
+This package contains stuff for working with protocols.  In general, this
+does not include stuff for actually working with the wire formats of protocols
+(this is handled by pox.lib.packet).  However, there are helpers for working
+with protocols here, as well as POX implementations of some protocols (e.g.,
+DHCP).
 """
