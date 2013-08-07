@@ -378,7 +378,7 @@ class Channel (EventMixin):
   def send (self, msg):
     d = dict(msg)
     d['CHANNEL'] = self._name
-    for r in self._members:
+    for r in list(self._members):
       if not r.is_connected: continue
       r.send(d)
 
