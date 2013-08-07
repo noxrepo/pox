@@ -178,7 +178,7 @@ def _process_commands (msg):
   def get (key):
     r = msg.get(key)
     if r is not None:
-      if not isinstance(r, list):
+      if not isinstance(r, dict):
         r = {None:r}
     else:
       return {}
