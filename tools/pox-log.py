@@ -14,6 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Display POX logs remotely
+
+Connects to the POX messenger bus via TCP, and listens to a log channel.
+
+Requires the messenger, messenger.tcp_transport, and messenger.log_service
+components to be running.
+"""
+
 import json
 import sys
 import socket
