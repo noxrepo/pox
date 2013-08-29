@@ -145,6 +145,11 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
     PyObject * addrs = PyList_New(0);
     for (pcap_addr_t * a = d->addresses; a != NULL; a = a->next)
     {
+      if (a->addr == NULL)
+      {
+        // No idea what to do with this entry!
+        continue;
+      }
       if (a->addr->sa_family == AF_INET)
       {
         // Assume all members for this entry are AF_INET...
