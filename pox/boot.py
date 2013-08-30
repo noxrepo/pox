@@ -296,7 +296,7 @@ def _do_launch (argv):
           missing = [k for k,x in args.iteritems()
                      if x[1] is EMPTY and x[0] is EMPTY]
           if len(missing):
-            print("You must specify a value for the '{0}'"
+            print("You must specify a value for the '{0}' "
                   "parameter.".format(missing[0]))
             return False
 
