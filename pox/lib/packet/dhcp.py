@@ -59,6 +59,7 @@ from packet_utils import *
 
 from packet_base import packet_base
 import pox.lib.util as util
+from pox.lib.util import is_subclass
 from pox.lib.addresses import *
 
 _dhcp_option_unpackers = {}
@@ -577,7 +578,7 @@ class DHCPParameterRequestOption (DHCPOption):
     return self
 
   def pack (self):
-    opt = ((o.CODE if issubclass(o, DHCPOption) else o) for o in self.options)
+    opt = ((o.CODE if is_subclass(o, DHCPOption) else o) for o in self.options)
     return b''.join(chr(x) for x in opt)
 
   def __repr__ (self):
