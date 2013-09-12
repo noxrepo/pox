@@ -141,6 +141,7 @@ class unreach(packet_base):
     MIN_LEN = 4
 
     def __init__(self, raw=None, prev=None, **kw):
+        packet_base.__init__(self)
 
         self.prev = prev
 
@@ -162,7 +163,8 @@ class unreach(packet_base):
         self.raw = raw
         dlen = len(raw)
         if dlen < self.MIN_LEN:
-            self.msg('(unreach parse) warning unreachable payload too short to parse header: data len %u' % dlen)
+            self.msg('(unreach parse) warning unreachable payload too short '
+                     'to parse header: data len %u' % dlen)
             return
 
         (self.unused, self.next_mtu) \
@@ -187,6 +189,7 @@ class icmp(packet_base):
     MIN_LEN = 4
 
     def __init__(self, raw=None, prev=None, **kw):
+        packet_base.__init__(self)
 
         self.prev = prev
 
