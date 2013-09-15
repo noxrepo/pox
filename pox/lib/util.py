@@ -14,7 +14,11 @@
 
 """
 Various utility functions
+
+Some of these are POX-specific, and some aren't.
 """
+
+#TODO: Break into multiple modules?  (data structures, POX-specific, etc.)
 
 from __future__ import print_function
 
@@ -33,6 +37,11 @@ log = logging.getLogger("util")
 
 
 class DirtyList (list):
+  """
+  A list which keeps track of changes
+
+  When the list is altered, callback (if any) is called, and dirty is set.
+  """
   #TODO: right now the callback may be called more often than needed
   #      and it may not be called with good names/parameters.
   #      All you can really rely on is that it will be called in
@@ -111,6 +120,7 @@ class DirtyList (list):
 class DirtyDict (dict):
   """
   A dict that tracks whether values have been changed shallowly.
+
   If you set a callback, it will be called when the value changes, and
   passed three values: "add"/"modify"/"delete", key, value
   """
@@ -140,10 +150,13 @@ class DirtyDict (dict):
 
 def set_extend (l, index, item, emptyValue = None):
   """
+  Sets l[index] = item, padding l if needed
+
   Adds item to the list l at position index.  If index is beyond the end
   of the list, it will pad the list out until it's large enough, using
   emptyValue for the new entries.
   """
+  #TODO: Better name?  The 'set' is a bit misleading.
   if index >= len(l):
     l += ([emptyValue] * (index - len(self) + 1))
   l[index] = item
@@ -190,6 +203,7 @@ dpidToStr = dpid_to_str # Deprecated
 def assert_type(name, obj, types, none_ok=True):
   """
   Assert that a parameter is of a given type.
+
   Raise an Assertion Error with a descriptive error msg if not.
 
   name: name of the parameter for error messages
@@ -221,6 +235,8 @@ def assert_type(name, obj, types, none_ok=True):
 
 def init_helper (obj, kw):
   """
+  Helper for classes with attributes initialized by keyword arguments.
+
   Inside a class's __init__, this will copy keyword arguments to fields
   of the same name.  See libopenflow for an example.
   """
@@ -235,6 +251,7 @@ initHelper = init_helper # Deprecated
 def make_pinger ():
   """
   A pinger is basically a thing to let you wake a select().
+
   On Unix systems, this makes a pipe pair.  But on Windows, select() only
   works with sockets, so it makes a pair of connected sockets.
   """
@@ -395,6 +412,9 @@ def str_to_bool (s):
 
 
 def hexdump (data):
+  """
+  Converts raw data to a hex dump
+  """
   if isinstance(data, (str,bytes)):
     data = [ord(c) for c in data]
   o = ""
@@ -417,13 +437,18 @@ def hexdump (data):
 
 
 def connect_socket_with_backoff (address, port, max_backoff_seconds=32):
-  '''
-  Connect to the given address and port. If the connection attempt fails,
-  exponentially back off, up to the max backoff
+  """
+  Attempt to connect to the given address and port.
+
+  If the connection attempt fails, exponentially back off, up to the maximum.
 
   return the connected socket, or raise an exception if the connection
-  was unsuccessful
-  '''
+  was unsuccessful by the time the maximum was reached.
+
+  Note: blocks while connecting.
+  """
+  #TODO: Remove?  The backoff IOWorker seems like a better way to do this
+  #      in general.
   backoff_seconds = 1
   sock = None
   print("connect_socket_with_backoff(address=%s, port=%d)"
@@ -448,7 +473,10 @@ def connect_socket_with_backoff (address, port, max_backoff_seconds=32):
 _scalar_types = (int, long, basestring, float, bool)
 
 def is_scalar (v):
- return isinstance(v, _scalar_types)
+  """
+  Is the given value a scalar-like object?
+  """
+  return isinstance(v, _scalar_types)
 
 
 def is_listlike (o):
@@ -466,6 +494,7 @@ def fields_of (obj, primitives_only=False,
   Returns key/value pairs of things that seem like public fields of an object.
   """
   #NOTE: The above docstring isn't split into two lines on purpose.
+  #NOTE: See Python builtin vars().
 
   r = {}
   for k in dir(obj):
@@ -490,7 +519,7 @@ def eval_args (f):
   """
   A decorator which causes arguments to be interpreted as Python literals
 
-  This isn't a generic decorator, but is specifically meant for component
+  This isn't a generic decorator, but is specifically meant for POX component
   launch functions -- the actual magic is in POX's boot code.
   The intention is for launch function/commandline arguments (normally all
   strings) to easily receive other types.
