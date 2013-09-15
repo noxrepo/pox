@@ -1,4 +1,4 @@
-# Copyright 2011,2012 James McCauley
+# Copyright 2011,2012,2013 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -146,6 +146,21 @@ class DirtyDict (dict):
   def __delitem__ (self, k):
     self._smudge('__delitem__', k, None)
     dict.__delitem__(self, k)
+
+
+class DefaultDict (collections.defaultdict):
+  """
+  A dictionary that can create missing values
+
+  This is similar to (and a subclass of) collections.defaultdict.  However, it
+  calls the default factory passing it the missing key.
+  """
+  #TODO: Make key-passing a constructor option so that this can serve as a
+  #      complete defaultdict replacement.
+  def __missing__ (self, key):
+    v = self.default_factory(key)
+    self[key] = v
+    return v
 
 
 def set_extend (l, index, item, emptyValue = None):
