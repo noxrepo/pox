@@ -395,7 +395,7 @@ def str_to_bool (s):
 
 
 def hexdump (data):
-  if isinstance(data, str):
+  if isinstance(data, (str,bytes)):
     data = [ord(c) for c in data]
   o = ""
   def chunks (data, length):
