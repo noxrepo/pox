@@ -1224,17 +1224,22 @@ class ofp_match (ofp_base):
 
   def _wire_wildcards (self, wildcards):
     """
-    Normalize the wildcard bits to the openflow wire representation.
+    Normalize the wildcard bits
 
-    Note this atrocity from the OF1.1 spec:
-    Protocol-specific fields within ofp_match will be ignored within
-    a single table when the corresponding protocol is not specified in the
-    match.  The IP header and transport header fields
-    will be ignored unless the Ethertype is specified as either IPv4 or
-    ARP. The tp_src and tp_dst fields will be ignored unless the network
-    protocol specified is as TCP, UDP or SCTP. Fields that are ignored
-    don't need to be wildcarded and should be set to 0.
+    Note the following from the OpenFlow 1.1 spec:
+
+      Protocol-specific fields within ofp_match will be ignored within
+      a single table when the corresponding protocol is not specified in the
+      match.  The IP header and transport header fields
+      will be ignored unless the Ethertype is specified as either IPv4 or
+      ARP. The tp_src and tp_dst fields will be ignored unless the network
+      protocol specified is as TCP, UDP or SCTP. Fields that are ignored
+      don't need to be wildcarded and should be set to 0.
+
+    OpenFlow 1.0.1 Section 3.4 actually has an improved version of the above,
+    but we won't quote it here because it seems to have a restrictive license.
     """
+    #TODO: Set the masked fields to 0.
     if self.dl_type == 0x0800:
         # IP
         if  self.nw_proto not in (1,6,17):
