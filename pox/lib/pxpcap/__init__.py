@@ -22,9 +22,13 @@ except:
 
 from pox.lib.addresses import IPAddr, EthAddr
 import parser
-from threading import Thread
+from threading import Thread, Lock
 import pox.lib.packet as pkt
 import copy
+
+# pcap's filter compiling function isn't threadsafe, so we use this
+# lock when compiling filters.
+_compile_lock = Lock()
 
 class PCap (object):
   @staticmethod
@@ -208,8 +212,10 @@ class Filter (object):
       pcap_obj = pcapc.open_dead(link_type, snaplen)
     if isinstance(pcap_obj, PCap):
       pcap_obj = pcap_obj.pcap
-    self._pprogram = pcapc.compile(pcap_obj, filter,
-                                   1 if optimize else 0, netmask)
+
+    with _compile_lock:
+      self._pprogram = pcapc.compile(pcap_obj, filter,
+                                     1 if optimize else 0, netmask)
     if delpc:
       pcapc.close(pcap_obj)
 
