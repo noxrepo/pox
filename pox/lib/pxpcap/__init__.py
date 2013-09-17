@@ -14,11 +14,19 @@
 
 enabled = False
 try:
-  import pxpcap as pcapc
+  import platform
+  import importlib
+  _module = 'pox.lib.pxpcap.%s.pxpcap' % (platform.system().lower(),)
+  pcapc = importlib.import_module(_module)
   enabled = True
 except:
-  # We can at least import the rest
-  pass
+  # Try generic...
+  try:
+    import pxpcap as pcapc
+    enabled = True
+  except:
+    # We can at least import the rest
+    pass
 
 from pox.lib.addresses import IPAddr, EthAddr
 import parser

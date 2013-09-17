@@ -1,3 +1,7 @@
 #!/bin/bash
 DEST=lib.linux*
-python setup.py build && cp build/${DEST}/pxpcap.so ..
+DEST=$(ls -d build/${DEST} | tail -1)
+OUT=../linux
+mkdir $OUT 2> /dev/null
+touch $OUT/__init__.py
+python setup.py build && cp ${DEST}/pxpcap.so .. && cp ${DEST}/pxpcap.so ${OUT}/pxpcap.so
