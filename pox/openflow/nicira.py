@@ -200,7 +200,7 @@ class nicira_base (ofp_vendor_base):
     outstr += prefix + 'header: \n'
     outstr += ofp_vendor_base.show(self, prefix + '  ')
     outstr += prefix + 'vendor: ' + str(self.vendor) + '\n'
-    outstr += prefix + 'subtype: ' + len(self.subtype) + '\n'
+    outstr += prefix + 'subtype: ' + str(self.subtype) + '\n'
     outstr += self._show(prefix)
     return outstr
 
