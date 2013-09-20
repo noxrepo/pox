@@ -2553,7 +2553,7 @@ def _unpack_nx_vendor (raw, offset):
     npi = nxt_packet_in()
     return npi.unpack(raw, offset)[0], npi
   elif subtype == NXT_ROLE_REPLY:
-    nrr = nxt_role_reply()
+    nrr = nx_role_reply()
     return nrr.unpack(raw, offset)[0], nrr
   else:
     print "NO UNPACKER FOR",subtype
