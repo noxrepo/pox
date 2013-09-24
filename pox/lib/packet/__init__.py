@@ -46,10 +46,10 @@ from dns import *
 from eap import *
 from eapol import *
 from ethernet import *
-from ipv4 import *
 from ipv6 import *
-from icmp import *
+from ipv4 import *
 from icmpv6 import *
+from icmp import *
 from lldp import *
 from tcp import *
 from udp import *
