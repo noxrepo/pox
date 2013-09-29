@@ -62,23 +62,6 @@ class DpPacketOut (Event):
     self.switch = node # For backwards compatability
 
 
-def _generate_port (port_no, dpid=0):
-  p = ofp_phy_port()
-  p.port_no = port_no
-  p.hw_addr = EthAddr("00:00:00:00:%2x:%2x" % (dpid % 255, port_no))
-  p.name = dpid_to_str(dpid, True).replace('-','')[:12] + "." + str(port_no)
-  # Fill in features sort of arbitrarily
-  p.config = OFPPC_NO_STP
-  p.curr = OFPPF_10MB_HD
-  p.advertised = OFPPF_10MB_HD
-  p.supported = OFPPF_10MB_HD
-  p.peer = OFPPF_10MB_HD
-  return p
-
-def _generate_ports (num_ports=4, dpid=0):
-  return [_generate_port(i, dpid) for i in range(1, num_ports+1)]
-
-
 class SoftwareSwitchBase (object):
   def __init__ (self, dpid, name=None, ports=4, miss_send_len=128,
                 max_buffers=100, max_entries=0x7fFFffFF, features=None):
@@ -93,7 +76,7 @@ class SoftwareSwitchBase (object):
     self.name = name
 
     if isinstance(ports, int):
-      ports = _generate_ports(num_ports=ports, dpid=dpid)
+      ports = [self.generate_port(i, dpid) for i in range(1, ports+1)]
 
     self.dpid = dpid
     self.max_buffers = max_buffers
@@ -117,9 +100,9 @@ class SoftwareSwitchBase (object):
     # Map port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
     self.port_stats = {}
+
     for port in ports:
-      self.ports[port.port_no] = port
-      self.port_stats[port.port_no] = ofp_port_stats(port_no=port.port_no)
+      self.add_port(port)
 
     if features is not None:
       self.features = features
@@ -189,6 +172,33 @@ class SoftwareSwitchBase (object):
       h = getattr(self, "_flow_mod_" + name, None)
       if not h: continue
       self.flow_mod_handlers[value] = h
+
+  def _gen_port_name (self, port_no):
+    return "%s.%s"%(dpid_to_str(self.dpid, True).replace('-','')[:12], port_no)
+
+  def _gen_ethaddr (self, port_no):
+    return EthAddr("02%06x%06x" % (self.dpid % 0x00FFff, port_no % 0xffFF))
+
+  def generate_port (self, port_no, name = None, ethaddr = None):
+    dpid = self.dpid
+    p = ofp_phy_port()
+    p.port_no = port_no
+    if ethaddr is None:
+      p.hw_addr = self._gen_ethaddr(p.port_no)
+    else:
+      p.hw_addr = EthAddr(eth)
+    p.hw_addr = EthAddr(eth)
+    if name is None:
+      p.name = self._gen_port_name(p.port_no)
+    else:
+      p.name = name
+    # Fill in features sort of arbitrarily
+    p.config = OFPPC_NO_STP
+    p.curr = OFPPF_10MB_HD
+    p.advertised = OFPPF_10MB_HD
+    p.supported = OFPPF_10MB_HD
+    p.peer = OFPPF_10MB_HD
+    return p
 
   @property
   def _time (self):
@@ -546,10 +556,11 @@ class SoftwareSwitchBase (object):
       port_no = port.port_no
     except:
       port_no = port
-      port = _generate_port(port_no, self.dpid)
+      port = self.generate_port(port_no, self.dpid)
     if port_no in self.ports:
       raise RuntimeError("Port %s already exists" % (port_no,))
     self.ports[port_no] = port
+    self.port_stats[port.port_no] = ofp_port_stats(port_no=port.port_no)
     self.send_port_status(port, OFPPR_ADD)
 
   def _set_port_config_bit (self, port, bit, value):
