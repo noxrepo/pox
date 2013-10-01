@@ -155,7 +155,22 @@ class PCap (object):
       self.deferred_filter = None
 
   def set_direction (self, incoming, outgoing):
-    pcapc.setdirection(self.pcap, incoming, outgoing)
+    pcapc.setdirection(self._pcap, incoming, outgoing)
+
+  def set_nonblocking (self, nonblocking = True):
+    pcapc.setnonblock(self._pcap, 1 if nonblocking else 0)
+
+  def set_blocking (self, blocking = True):
+    self.set_nonblocking(nonblocking = not blocking)
+
+  @property
+  def blocking (self):
+    return False if pcapc.getnonblock(self._pcap) else True
+
+  @blocking.setter
+  def blocking (self, value):
+    self.set_blocking(value)
+
 
   def _thread_func (self):
     while not self._quitting:
@@ -191,6 +206,12 @@ class PCap (object):
 
   def __del__ (self):
     self.close()
+
+  @property
+  def _pcap (self):
+    if self.pcap is None:
+      raise RuntimeError("PCap object not open")
+    return self.pcap
 
   def inject (self, data):
     if isinstance(data, pkt.ethernet):

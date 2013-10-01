@@ -441,6 +441,39 @@ static PyObject * p_setdirection (PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+static PyObject * p_setnonblock (PyObject *self, PyObject *args)
+{
+  pcap_t * ppcap;
+  int nonblock;
+  char errbuf[PCAP_ERRBUF_SIZE];
+
+  if (!PyArg_ParseTuple(args, "li", (long*)&ppcap, (int*)&nonblock)) return NULL;
+  if (pcap_setnonblock(ppcap, nonblock ? 1 : 0, errbuf) == -1)
+  {
+    PyErr_SetString(PyExc_RuntimeError, errbuf);
+    return NULL;
+  }
+
+  Py_RETURN_NONE;
+}
+
+static PyObject * p_getnonblock (PyObject *self, PyObject *args)
+{
+  pcap_t * ppcap;
+  int nonblock;
+  char errbuf[PCAP_ERRBUF_SIZE];
+
+  if (!PyArg_ParseTuple(args, "l", (long*)&ppcap)) return NULL;
+  nonblock = pcap_getnonblock(ppcap, errbuf);
+  if (nonblock == -1)
+  {
+    PyErr_SetString(PyExc_RuntimeError, errbuf);
+    return NULL;
+  }
+
+  return Py_BuildValue("i", nonblock);
+}
+
 static PyObject * p_setfilter (PyObject *self, PyObject *args)
 {
   pcap_t * ppcap;
@@ -539,6 +572,8 @@ static PyMethodDef pxpcapmethods[] =
   {"dispatch", p_dispatch, METH_VARARGS, "Capture packets\nVery similar to loop()."},
   {"open_live", p_open_live, METH_VARARGS, "Open a capture device\nPass it dev name, snaplen (max capture length), promiscuous flag (1 for on, 0 for off), timeout milliseconds.\nReturns ppcap."},
   {"open_dead", p_open_dead, METH_VARARGS, "Open a dummy capture device\nPass it a linktype and snaplen (max cap length).\nReturns ppcap."},
+  {"getnonblock", p_getnonblock, METH_VARARGS, "Returns whether a given ppcap is in blocking mode."},
+  {"setnonblock", p_setnonblock, METH_VARARGS, "Controls whether a ppcap is in blocking mode.\nTakes two parameters: a ppcap and a bool."},
   {"findalldevs",  p_findalldevs, METH_VARARGS, "List capture devices\nReturns list of tuple (name, desc, addrs).\naddr are a list of tuple (protocol, address, netmask, broadcast, dest)."},
   {"next_ex",  p_next_ex, METH_VARARGS, "Capture a single packet.\nPass it a ppcap.\nReturns tuple (data, timestamp_seconds, timestamp_useconds, total length, pcap_next_ex return value -- 1 is success)."},
   {"breakloop",  p_breakloop, METH_VARARGS, "Break capture loop.\nPass it a ppcap."},
