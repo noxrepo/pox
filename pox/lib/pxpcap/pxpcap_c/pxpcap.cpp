@@ -365,15 +365,38 @@ static PyObject * p_dispatch (PyObject *self, PyObject *args)
 static PyObject * p_next_ex (PyObject *self, PyObject *args)
 {
   pcap_t * ppcap;
-  if (!PyArg_ParseTuple(args, "l", &ppcap)) return NULL;
+  int use_bytearray;
+  int release_thread;
+  if (!PyArg_ParseTuple(args, "lii", &ppcap, (int*)&use_bytearray, (int*)&release_thread)) return NULL;
 
   struct pcap_pkthdr * h;
   const u_char * data;
   int rv;
-  Py_BEGIN_ALLOW_THREADS;
-  rv = pcap_next_ex(ppcap, &h, &data);
-  Py_END_ALLOW_THREADS;
-  if (rv != 1) data = NULL;
+  if (release_thread)
+  {
+    Py_BEGIN_ALLOW_THREADS;
+    rv = pcap_next_ex(ppcap, &h, &data);
+    Py_END_ALLOW_THREADS;
+  }
+  else
+  {
+    rv = pcap_next_ex(ppcap, &h, &data);
+  }
+
+  if (rv != 1)
+  {
+    h->caplen = 0;
+    data = NULL;
+  }
+
+  if (use_bytearray)
+  {
+    return Py_BuildValue("Nllii",
+                         PyByteArray_FromStringAndSize((const char *)data, h->caplen),
+                         (long)h->ts.tv_sec,
+                         (long)h->ts.tv_usec,
+                         h->len, rv);
+  }
 
   return Py_BuildValue("s#llii",
       data, h->caplen, (long)h->ts.tv_sec, (long)h->ts.tv_usec, h->len, rv);
@@ -575,7 +598,7 @@ static PyMethodDef pxpcapmethods[] =
   {"getnonblock", p_getnonblock, METH_VARARGS, "Returns whether a given ppcap is in blocking mode."},
   {"setnonblock", p_setnonblock, METH_VARARGS, "Controls whether a ppcap is in blocking mode.\nTakes two parameters: a ppcap and a bool."},
   {"findalldevs",  p_findalldevs, METH_VARARGS, "List capture devices\nReturns list of tuple (name, desc, addrs).\naddr are a list of tuple (protocol, address, netmask, broadcast, dest)."},
-  {"next_ex",  p_next_ex, METH_VARARGS, "Capture a single packet.\nPass it a ppcap.\nReturns tuple (data, timestamp_seconds, timestamp_useconds, total length, pcap_next_ex return value -- 1 is success)."},
+  {"next_ex",  p_next_ex, METH_VARARGS, "Capture a single packet.\nPass it a ppcap, whether to use a bytearray, and whether to let other threads run.\nReturns tuple (data, timestamp_seconds, timestamp_useconds, total length, pcap_next_ex return value -- 1 is success)."},
   {"breakloop",  p_breakloop, METH_VARARGS, "Break capture loop.\nPass it a ppcap."},
   {"stats",  p_stats, METH_VARARGS, "Get capture stats.\nPass it a ppcap.\nReturns (packets_received, packets_dropped)."},
   {"compile", p_compile, METH_VARARGS, "Compile filter.\nPass it ppcap, filter string, optimize flag (1=on/0=off), netmask\nReturns pprog."},
