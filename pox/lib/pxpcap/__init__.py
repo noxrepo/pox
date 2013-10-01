@@ -171,6 +171,16 @@ class PCap (object):
   def blocking (self, value):
     self.set_blocking(value)
 
+  def next_packet (self, allow_threads = True):
+    """
+    Get next packet
+
+    Returns tuple with:
+      data, timestamp_seconds, timestamp_useconds, total length, and
+      the pcap_next_ex return value -- 1 is success
+    """
+    return pcapc.next_ex(self._pcap, bool(self.use_bytearray), allow_threads)
+
 
   def _thread_func (self):
     while not self._quitting:
