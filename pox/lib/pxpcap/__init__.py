@@ -329,7 +329,7 @@ def get_link_type_name (dlt):
   return _link_type_names.get(dlt, "<Unknown " + str(dlt) + ">")
 
 
-def launch (interface = "en1"):
+def test (interface = "en1"):
   """ Test function """
   global drop,total,bytes_got,bytes_real,bytes_diff
   drop = 0
@@ -409,3 +409,36 @@ def do_select ():
   Sets default PCap behavior to try to use select()
   """
   PCap.use_select = True
+
+
+def interfaces (verbose = False):
+  """
+  Show interfaces
+  """
+  if not verbose:
+    print "\n".join(["%i. %s" % x for x in
+                    enumerate(PCap.get_device_names())])
+  else:
+    import pprint
+    print pprint.pprint(PCap.get_devices())
+
+  from pox.core import core
+  core.quit()
+
+
+def launch (interface, no_incoming=False, no_outgoing=False):
+  """
+  pxshark -- prints packets
+  """
+  def cb (obj, data, sec, usec, length):
+    p = pkt.ethernet(data)
+    print p.dump()
+
+  if interface.startswith("#"):
+    interface = int(interface[1:])
+    interface = PCap.get_device_names()[interface]
+
+  p = PCap(interface, callback = cb, start=False)
+  p.set_direction(not no_incoming, not no_outgoing)
+  #p.use_select = False
+  p.start()
