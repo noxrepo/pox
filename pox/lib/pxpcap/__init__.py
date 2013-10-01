@@ -246,6 +246,10 @@ class PCap (object):
     pcapc.setfilter(self.pcap, filter._pprogram)
 
 
+  def __str__ (self):
+    return "PCap(device=%s)" % (self.device)
+
+
 class Filter (object):
   def __init__ (self, filter, optimize = True, netmask = None,
                 pcap_obj = None, link_type = 1, snaplen = 65535):
