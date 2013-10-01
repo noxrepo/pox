@@ -929,10 +929,10 @@ class icmpv6 (packet_base):
   MIN_LEN = 4
 
   def __init__ (self, raw=None, prev=None, **kw):
+    super(icmpv6, self).__init__()
 
     self.prev = prev
 
-    self.raw = None
     self.type = 0
     self.code = 0
     self.csum = 0
