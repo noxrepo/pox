@@ -184,7 +184,7 @@ class PCap (object):
 
   def _thread_func (self):
     while not self._quitting:
-      pcapc.dispatch(self.pcap,100,self.callback,self,bool(self.use_bytearray))
+      pcapc.dispatch(self.pcap,100,self.callback,self,bool(self.use_bytearray),True)
       self.packets_received,self.packets_dropped = pcapc.stats(self.pcap)
 
     self._quitting = False

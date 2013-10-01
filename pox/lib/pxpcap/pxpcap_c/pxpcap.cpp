@@ -301,14 +301,16 @@ struct thread_state
   PyObject * user;
   int exception;
   int use_bytearray; // 0 means bytes, 1 means bytearray
+  int release_thread;
 };
 
 static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h, const u_char * data)
 {
   thread_state * ts = (thread_state *)my_thread_state;
-  PyEval_RestoreThread(ts->ts);
   PyObject * args;
   PyObject * rv;
+  if (ts->release_thread)
+    PyEval_RestoreThread(ts->ts);
   if (ts->use_bytearray)
   {
     args = Py_BuildValue("ONlli",
@@ -339,7 +341,8 @@ static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h,
     pcap_breakloop(ts->ppcap);
   }
   Py_DECREF(args);
-  ts->ts = PyEval_SaveThread();
+  if (ts->release_thread)
+    ts->ts = PyEval_SaveThread();
 }
 
 static PyObject * p_loop_or_dispatch (int dispatch, PyObject *self, PyObject *args)
@@ -348,19 +351,21 @@ static PyObject * p_loop_or_dispatch (int dispatch, PyObject *self, PyObject *ar
   thread_state ts;
   int cnt;
   int rv;
-  if (!PyArg_ParseTuple(args, "liOOi", &ppcap, &cnt, &ts.pycallback, &ts.user, &ts.use_bytearray)) return NULL;
+  int release_thread;
+  if (!PyArg_ParseTuple(args, "liOOii", &ppcap, &cnt, &ts.pycallback, &ts.user, &ts.use_bytearray, &release_thread)) return NULL;
   Py_INCREF(ts.user);
 
   ts.ppcap = ppcap;
   ts.exception = 0;
-  ts.ts = PyEval_SaveThread();
+  ts.release_thread = release_thread;
+  if (release_thread) ts.ts = PyEval_SaveThread();
 
   if (dispatch)
     rv = pcap_loop(ppcap, cnt, ld_callback, (u_char *)&ts);
   else
     rv = pcap_dispatch(ppcap, cnt, ld_callback, (u_char *)&ts);
 
-  PyEval_RestoreThread(ts.ts);
+  if (release_thread) PyEval_RestoreThread(ts.ts);
 
   Py_DECREF(ts.user);
 
@@ -608,7 +613,7 @@ static PyMethodDef pxpcapmethods[] =
   {"datalink", p_datalink, METH_VARARGS, "Get data link layer type.\nPass it a ppcap."},
   {"fileno", p_fileno, METH_VARARGS, "Get file descriptor for live capture\nPass it a ppcap."},
   {"close", p_close, METH_VARARGS, "Close capture device or file\nPass it a ppcap"},
-  {"loop", p_loop, METH_VARARGS, "Capture packets\nPass it a ppcap, a count, a callback, opaque 'user data', and a boolean\n(True if you want to capture to bytearray instead of bytes).\nCallback params are same as first four of next_ex()'s return value"},
+  {"loop", p_loop, METH_VARARGS, "Capture packets\nPass it a ppcap, a count, a callback, opaque 'user data', whether you want it to capture bytearrays, and whether you want it to let other threads run.\nCallback params are same as first four of next_ex()'s return value"},
   {"dispatch", p_dispatch, METH_VARARGS, "Capture packets\nVery similar to loop()."},
   {"open_live", p_open_live, METH_VARARGS, "Open a capture device\nPass it dev name, snaplen (max capture length), promiscuous flag (1 for on, 0 for off), timeout milliseconds.\nReturns ppcap."},
   {"open_dead", p_open_dead, METH_VARARGS, "Open a dummy capture device\nPass it a linktype and snaplen (max cap length).\nReturns ppcap."},
@@ -661,5 +666,4 @@ PyMODINIT_FUNC initpxpcap (void)
   ADD_CONST(DLT_LINUX_IRDA);
   ADD_CONST(DLT_LINUX_LAPD);
 }
-
 
