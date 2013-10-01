@@ -166,10 +166,21 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
         PyList_Append(addrs, addr_entry);
         Py_DECREF(addr_entry);
       }
+#ifdef IPPROTO_IPV6
       else if (a->addr->sa_family == AF_INET6)
       {
-        //TODO
+        #define GET_INET6(__f) (__f ? Py_BuildValue("s#", ((sockaddr_in6*)a->addr)->sin6_addr.s6_addr, 16) : none_ref())
+        PyObject * addr_entry = Py_BuildValue("sNNNN",
+          "AF_INET6",
+          GET_INET6(a->addr),
+          GET_INET6(a->netmask),
+          GET_INET6(a->broadaddr),
+          GET_INET6(a->dstaddr));
+
+        PyList_Append(addrs, addr_entry);
+        Py_DECREF(addr_entry);
       }
+#endif
 #ifdef AF_LINK_SOCKETS
       else if (a->addr->sa_family == AF_LINK)
       {

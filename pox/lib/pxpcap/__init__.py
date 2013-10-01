@@ -28,7 +28,7 @@ except:
     # We can at least import the rest
     pass
 
-from pox.lib.addresses import IPAddr, EthAddr
+from pox.lib.addresses import IPAddr, EthAddr, IPAddr6
 import parser
 from threading import Thread, Lock
 import pox.lib.packet as pkt
@@ -44,6 +44,9 @@ class PCap (object):
     def ip (addr):
       if addr is None: return None
       return IPAddr(addr, networkOrder=True)
+    def ip6 (addr):
+      if addr is None: return None
+      return IPAddr6.from_raw(addr)
     def link (addr):
       if addr is None: return None
       if len(addr) != 6: return None
@@ -62,6 +65,13 @@ class PCap (object):
           na['netmask'] = ip(a[2])
           na['broadaddr'] = ip(a[3])
           na['dstaddr'] = ip(a[4])
+        elif a[0] == 'AF_INET6':
+          na = {}
+          addrs[a[0]] = na
+          na['addr'] = ip6(a[1])
+          na['netmask'] = ip6(a[2])
+          na['broadaddr'] = ip6(a[3])
+          na['dstaddr'] = ip6(a[4])
         elif a[0] == 'AF_LINK':
           na = {}
           addrs[a[0]] = na
