@@ -374,7 +374,7 @@ static PyObject * p_freecode (PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple(args, "l", (long*)&fp)) return NULL;
   pcap_freecode(fp);
   delete fp;
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 static PyObject * p_compile (PyObject *self, PyObject *args)
@@ -406,7 +406,7 @@ static PyObject * p_set_datalink (PyObject *self, PyObject *args)
     PyErr_SetString(PyExc_RuntimeError, pcap_geterr(ppcap));
     return NULL;
   }
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 static PyObject * p_setdirection (PyObject *self, PyObject *args)
@@ -427,7 +427,7 @@ static PyObject * p_setdirection (PyObject *self, PyObject *args)
     PyErr_SetString(PyExc_RuntimeError, pcap_geterr(ppcap));
     return NULL;
   }
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 static PyObject * p_setfilter (PyObject *self, PyObject *args)
@@ -441,7 +441,7 @@ static PyObject * p_setfilter (PyObject *self, PyObject *args)
     PyErr_SetString(PyExc_RuntimeError, pcap_geterr(ppcap));
     return NULL;
   }
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 static PyObject * p_stats (PyObject *self, PyObject *args)
@@ -508,7 +508,7 @@ static PyObject * p_close (PyObject *self, PyObject *args)
   pcap_t * ppcap;
   if (!PyArg_ParseTuple(args, "l", (long int*)&ppcap)) return NULL;
   pcap_close(ppcap);
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 static PyObject * p_breakloop (PyObject *self, PyObject *args)
@@ -516,7 +516,7 @@ static PyObject * p_breakloop (PyObject *self, PyObject *args)
   pcap_t * ppcap;
   if (!PyArg_ParseTuple(args, "l", (long int*)&ppcap)) return NULL;
   pcap_breakloop(ppcap);
-  return Py_None;
+  Py_RETURN_NONE;
 }
 
 static PyMethodDef pxpcapmethods[] =
