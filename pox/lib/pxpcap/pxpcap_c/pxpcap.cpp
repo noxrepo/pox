@@ -124,6 +124,10 @@ bool macForName (char * name, char * mac)
 }
 #endif
 
+static inline PyObject * none_ref (void)
+{
+  Py_RETURN_NONE;
+}
 
 static PyObject * p_findalldevs (PyObject *self, PyObject *args)
 {
@@ -153,20 +157,12 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
       if (a->addr->sa_family == AF_INET)
       {
         // Assume all members for this entry are AF_INET...
-        // Code below is sort of hilarious
-        char vd[6];
-        vd[0] = 's';
-        vd[5] = 0;
-        vd[1] = a->addr ? 'i' : 'O';
-        vd[2] = a->netmask ? 'i' : 'O';
-        vd[3] = a->broadaddr ? 'i' : 'O';
-        vd[4] = a->dstaddr ? 'i' : 'O';
-        PyObject * addr_entry = Py_BuildValue(vd,
-          "AF_INET",
-          a->addr ? (PyObject*)((sockaddr_in*)a->addr)->sin_addr.s_addr : Py_None,
-          a->netmask ? (PyObject*)((sockaddr_in*)a->netmask)->sin_addr.s_addr : Py_None,
-          a->broadaddr ? (PyObject*)((sockaddr_in*)a->broadaddr)->sin_addr.s_addr : Py_None,
-          a->dstaddr ? (PyObject*)((sockaddr_in*)a->dstaddr)->sin_addr.s_addr : Py_None);
+        PyObject * e1 = a->addr      ? Py_BuildValue("i", ((sockaddr_in*)a->addr)->sin_addr.s_addr)      : none_ref();
+        PyObject * e2 = a->netmask   ? Py_BuildValue("i", ((sockaddr_in*)a->netmask)->sin_addr.s_addr)   : none_ref();
+        PyObject * e3 = a->broadaddr ? Py_BuildValue("i", ((sockaddr_in*)a->broadaddr)->sin_addr.s_addr) : none_ref();
+        PyObject * e4 = a->dstaddr   ? Py_BuildValue("i", ((sockaddr_in*)a->dstaddr)->sin_addr.s_addr)   : none_ref();
+        PyObject * addr_entry = Py_BuildValue("sNNNN", "AF_INET", e1, e2, e3, e4);
+
         PyList_Append(addrs, addr_entry);
         Py_DECREF(addr_entry);
       }
