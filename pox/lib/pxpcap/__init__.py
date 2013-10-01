@@ -39,6 +39,8 @@ import copy
 _compile_lock = Lock()
 
 class PCap (object):
+  use_select = False # Falls back to non-select
+
   @staticmethod
   def get_devices ():
     def ip (addr):
@@ -181,6 +183,33 @@ class PCap (object):
     """
     return pcapc.next_ex(self._pcap, bool(self.use_bytearray), allow_threads)
 
+  def _select_thread_func (self):
+    try:
+      import select
+      fd = [self.fileno()]
+    except:
+      # Fall back
+      self._thread_func()
+      return
+
+    self.blocking = False
+
+    while not self._quitting:
+      rr,ww,xx = select.select(fd, [], fd, 2)
+
+      if xx:
+        # Apparently we're done here.
+        break
+      if rr:
+        r = self.next_packet(allow_threads = False)
+        if r[-1] == 0: continue
+        if r[-1] == 1:
+          self.callback(self, r[0], r[1], r[2], r[3])
+        else:
+          break
+
+    self._quitting = False
+    self._thread = None
 
   def _thread_func (self):
     while not self._quitting:
@@ -197,7 +226,11 @@ class PCap (object):
     assert self._thread is None
     from pox.core import core
     core.addListeners(self, weak=True)
-    self._thread = Thread(target=self._thread_func)
+
+    if self.use_select:
+      self._thread = Thread(target=self._select_thread_func)
+    else:
+      self._thread = Thread(target=self._thread_func)
     #self._thread.daemon = True
     self._thread.start()
 
@@ -362,3 +395,17 @@ def launch (interface = "en1"):
 
   import code
   code.interact(local=locals())
+
+
+def no_select ():
+  """
+  Sets default PCap behavior to not try to use select()
+  """
+  PCap.use_select = False
+
+
+def do_select ():
+  """
+  Sets default PCap behavior to try to use select()
+  """
+  PCap.use_select = True
