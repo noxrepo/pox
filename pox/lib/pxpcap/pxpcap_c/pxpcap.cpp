@@ -276,6 +276,23 @@ static PyObject * p_open_live (PyObject *self, PyObject *args)
   return Py_BuildValue("l", (long)ppcap);
 }
 
+static PyObject * p_get_selectable_fd (PyObject *self, PyObject *args)
+{
+#ifdef HAVE_PCAP_GET_SELECTABLE_FD
+  pcap_t * ppcap;
+  int rv;
+  if (!PyArg_ParseTuple(args, "l", &ppcap)) return NULL;
+
+  rv = pcap_get_selectable_fd(ppcap);
+
+  return Py_BuildValue("i", rv);
+#else
+  PyErr_SetString(PyExc_RuntimeError, "Selectable FD not supported");
+  return NULL;
+  //return Py_BuildValue("i", -1);
+#endif
+}
+
 struct thread_state
 {
   pcap_t * ppcap;
@@ -597,6 +614,7 @@ static PyMethodDef pxpcapmethods[] =
   {"open_dead", p_open_dead, METH_VARARGS, "Open a dummy capture device\nPass it a linktype and snaplen (max cap length).\nReturns ppcap."},
   {"getnonblock", p_getnonblock, METH_VARARGS, "Returns whether a given ppcap is in blocking mode."},
   {"setnonblock", p_setnonblock, METH_VARARGS, "Controls whether a ppcap is in blocking mode.\nTakes two parameters: a ppcap and a bool."},
+  {"get_selectable_fd", p_get_selectable_fd, METH_VARARGS, "Gets selectable file descriptor corresponding to a ppcap.\nPass it a ppcap.\nReturns FD or -1.\nNot supported on all platforms and devices."},
   {"findalldevs",  p_findalldevs, METH_VARARGS, "List capture devices\nReturns list of tuple (name, desc, addrs).\naddr are a list of tuple (protocol, address, netmask, broadcast, dest)."},
   {"next_ex",  p_next_ex, METH_VARARGS, "Capture a single packet.\nPass it a ppcap, whether to use a bytearray, and whether to let other threads run.\nReturns tuple (data, timestamp_seconds, timestamp_useconds, total length, pcap_next_ex return value -- 1 is success)."},
   {"breakloop",  p_breakloop, METH_VARARGS, "Break capture loop.\nPass it a ppcap."},

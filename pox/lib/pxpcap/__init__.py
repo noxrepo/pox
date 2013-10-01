@@ -245,6 +245,13 @@ class PCap (object):
 
     pcapc.setfilter(self.pcap, filter._pprogram)
 
+  def fileno (self):
+    if self.pcap is None:
+      raise RuntimeError("PCap object not open")
+    r = pcapc.get_selectable_fd(self.pcap)
+    if r == -1:
+      raise RuntimeError("Selectable FD not available")
+    return r
 
   def __str__ (self):
     return "PCap(device=%s)" % (self.device)
