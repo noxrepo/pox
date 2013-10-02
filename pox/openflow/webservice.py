@@ -37,6 +37,7 @@ Current commands include:
   get_switches
     Get list of switches and their basic info.
 
+
 Example - Make a hub:
 curl -i -X POST -d '{"method":"set_table","params":{"dpid":
  "00-00-00-00-00-01","flows":[{"actions":[{"type":"OFPAT_OUTPUT",
