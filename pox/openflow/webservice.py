@@ -25,6 +25,14 @@ Current commands include:
     Sets the flow table on a switch.
     dpid - a string dpid
     flows - a list of flow entries
+  add_flow
+    Adds a flow entry on the switch.
+    dpid - a string dpid
+    flow - a flow entry to be added
+  del_flow
+    Deletes a flow entry on the switch.
+    dpid - a string dpid
+    flow - a flow entry to be added
   get_switch_desc
     Gets switch details.
     dpid - a string dpid
@@ -36,7 +44,6 @@ Current commands include:
     out_port - filter by out port (defaults to all)
   get_switches
     Get list of switches and their basic info.
-
 
 Example - Make a hub:
 curl -i -X POST -d '{"method":"set_table","params":{"dpid":
@@ -181,6 +188,73 @@ class OFSetTableRequest (OFConRequest):
     self._finish(make_error("OpenFlow Error", data=event.asString()))
 
 
+class OFAddFlowRequest (OFConRequest):
+
+  def _init (self, flows = []):
+    self.done = False
+
+    xid = of.generate_xid()
+    self.xid = xid
+
+    self.count = len(flows)
+
+    for flow in flows:
+      fm = dict_to_flow_mod(flow)
+      fm.xid = xid
+
+      self._con.send(fm)
+      self._con.send(of.ofp_barrier_request(xid=xid))
+
+  def _handle_BarrierIn (self, event):
+    if event.ofp.xid != self.xid: return
+    if self.done: return
+    self.count -= 1
+    if self.count <= 0:
+      self._result('flowmod', True)
+      self.done = True
+
+  def _handle_ErrorIn (self, event):
+    if event.ofp.xid != self.xid: return
+    if self.done: return
+    self.clear_table()
+    self.done = True
+    self._finish(make_error("OpenFlow Error", data=event.asString()))
+
+
+class OFDelFlowRequest (OFConRequest):
+
+  def _init (self, flows = []):
+    self.done = False
+
+    xid = of.generate_xid()
+    self.xid = xid
+
+    self.count = len(flows)
+
+    for flow in flows:
+      fm = dict_to_flow_mod(flow)
+      fm.command = 4            # OFPFC_DELETE_STRICT
+      fm.xid = xid
+
+      self._con.send(fm)
+      self._con.send(of.ofp_barrier_request(xid=xid))
+
+  def _handle_BarrierIn (self, event):
+    if event.ofp.xid != self.xid: return
+    if self.done: return
+    self.count -= 1
+    if self.count <= 0:
+      self._result('flowmod', True)
+      self.done = True
+
+  def _handle_ErrorIn (self, event):
+    if event.ofp.xid != self.xid: return
+    if self.done: return
+    self.clear_table()
+    self.done = True
+    self._finish(make_error("OpenFlow Error", data=event.asString()))
+
+
 class OFRequestHandler (JSONRPCHandler):
 
   def _exec_set_table (self, dpid, flows):
@@ -190,6 +264,22 @@ class OFRequestHandler (JSONRPCHandler):
       return make_error("No such switch")
 
     return OFSetTableRequest(con, flows).get_response()
+
+  def _exec_add_flow (self, dpid, flows):
+    dpid = strToDPID(dpid)
+    con = core.openflow.getConnection(dpid)
+    if con is None:
+      return make_error("No such switch")
+
+    return OFAddFlowRequest(con, flows).get_response()
+
+  def _exec_del_flow (self, dpid, flows):
+    dpid = strToDPID(dpid)
+    con = core.openflow.getConnection(dpid)
+    if con is None:
+      return make_error("No such switch")
+
+    return OFDelFlowRequest(con, flows).get_response()
 
   def _exec_get_switch_desc (self, dpid):
     dpid = strToDPID(dpid)
