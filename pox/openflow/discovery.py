@@ -33,7 +33,8 @@ import pox.lib.packet as pkt
 import struct
 import time
 from collections import namedtuple
-from random import shuffle
+from random import shuffle, random
+
 
 log = core.getLogger()
 
@@ -48,6 +49,9 @@ class LLDPSender (object):
   #NOTE: This class keeps the packets to send in a flat list, which makes
   #      adding/removing them on switch join/leave or (especially) port
   #      status changes relatively expensive. Could easily be improved.
+
+  # Maximum times to run the timer per second
+  _sends_per_sec = 15
 
   def __init__ (self, send_cycle_time, ttl = 120):
     """
@@ -66,6 +70,9 @@ class LLDPSender (object):
 
     # Packets we've already sent in this cycle
     self._next_cycle = []
+
+    # Packets to send in a batch
+    self._send_chunk_size = 1
 
     self._timer = None
     self._ttl = ttl
@@ -118,9 +125,19 @@ class LLDPSender (object):
     if self._timer: self._timer.cancel()
     self._timer = None
     num_packets = len(self._this_cycle) + len(self._next_cycle)
-    if num_packets != 0:
-      self._timer = Timer(self._send_cycle_time / float(num_packets),
-                          self._timer_handler, recurring=True)
+
+    if num_packets == 0: return
+
+    self._send_chunk_size = 1 # One at a time
+    interval = self._send_cycle_time / float(num_packets)
+    if interval < 1.0 / self._sends_per_sec:
+      # Would require too many sends per sec -- send more than one at once
+      interval = 1.0 / self._sends_per_sec
+      chunk = float(num_packets) / self._send_cycle_time / self._sends_per_sec
+      self._send_chunk_size = chunk
+
+    self._timer = Timer(interval,
+                        self._timer_handler, recurring=True)
 
   def _timer_handler (self):
     """
@@ -130,13 +147,18 @@ class LLDPSender (object):
     it on the next-cycle list.  When this cycle's list is empty, starts
     the next cycle.
     """
-    if len(self._this_cycle) == 0:
-      self._this_cycle = self._next_cycle
-      self._next_cycle = []
-      shuffle(self._this_cycle)
-    item = self._this_cycle.pop(0)
-    self._next_cycle.append(item)
-    core.openflow.sendToDPID(item.dpid, item.packet)
+    num = int(self._send_chunk_size)
+    fpart = self._send_chunk_size - num
+    if random() < fpart: num += 1
+
+    for _ in range(num):
+      if len(self._this_cycle) == 0:
+        self._this_cycle = self._next_cycle
+        self._next_cycle = []
+        #shuffle(self._this_cycle)
+      item = self._this_cycle.pop(0)
+      self._next_cycle.append(item)
+      core.openflow.sendToDPID(item.dpid, item.packet)
 
   def create_discovery_packet (self, dpid, port_num, port_addr):
     """
