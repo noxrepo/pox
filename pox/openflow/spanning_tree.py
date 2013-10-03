@@ -155,6 +155,14 @@ def _handle_ConnectionUp (event):
 
 def _handle_LinkEvent (event):
   # When links change, update spanning tree
+
+  (dp1,p1),(dp2,p2) = event.link.end
+  if _prev[dp1][p1] is False:
+    if _prev[dp2][p2] is False:
+      # We're disabling this link; who cares if it's up or down?
+      #log.debug("Ignoring link status for %s", event.link)
+      return
+
   _update_tree()
 
 
