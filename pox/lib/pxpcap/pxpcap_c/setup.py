@@ -1,18 +1,30 @@
 from distutils.core import setup, Extension
 import os
 
+try:
+  import __pypy__
+  is_pypy = True
+except:
+  is_pypy = False
+
 
 def make_args (selectable_fd = True):
   kw = {}
+  macros = []
+  kw["define_macros"] = macros
   if os.name == "nt":
     kw["include_dirs"] = ["WpdPack\\Include"]
     kw["library_dirs"] = ["WpdPack\\Lib"]
-    kw["define_macros"] = [("WIN32", None)]
     kw["libraries"] = ["wpcap", "Packet"]
+    macros.append(("WIN32", None))
   else:
     kw["libraries"] = ["pcap"]
     if selectable_fd:
-      kw["define_macros"] = [("HAVE_PCAP_GET_SELECTABLE_FD", None)]
+      macros.append(("HAVE_PCAP_GET_SELECTABLE_FD", None))
+
+  if is_pypy:
+    macros.append(("NO_BYTEARRAYS", None))
+
   return kw
 
 

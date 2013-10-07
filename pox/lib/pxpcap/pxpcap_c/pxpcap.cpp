@@ -311,6 +311,7 @@ static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h,
   PyObject * rv;
   if (ts->release_thread)
     PyEval_RestoreThread(ts->ts);
+#ifndef NO_BYTEARRAYS
   if (ts->use_bytearray)
   {
     args = Py_BuildValue("ONlli",
@@ -321,6 +322,7 @@ static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h,
                          h->len);
   }
   else
+#endif
   {
     args = Py_BuildValue("Os#lli",
                          ts->user,
@@ -411,6 +413,7 @@ static PyObject * p_next_ex (PyObject *self, PyObject *args)
     data = NULL;
   }
 
+#ifndef NO_BYTEARRAYS
   if (use_bytearray)
   {
     return Py_BuildValue("Nllii",
@@ -419,6 +422,7 @@ static PyObject * p_next_ex (PyObject *self, PyObject *args)
                          (long)h->ts.tv_usec,
                          h->len, rv);
   }
+#endif
 
   return Py_BuildValue("s#llii",
       data, h->caplen, (long)h->ts.tv_sec, (long)h->ts.tv_usec, h->len, rv);
