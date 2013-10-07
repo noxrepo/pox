@@ -49,6 +49,7 @@ class IOWorker (object):
   Received data is queued until read.
   """
   def __init__(self):
+    super(IOWorker,self).__init__()
     self.send_buf = b""
     self.receive_buf = b""
     self.closed = False
@@ -355,7 +356,7 @@ class RecocoIOLoop (Task):
   more_debugging = False
 
   def __init__ (self, worker_type = RecocoIOWorker):
-    Task.__init__(self)
+    super(RecocoIOLoop,self).__init__()
     self._worker_type = worker_type
     self._workers = set()
     self.pinger = makePinger()

@@ -123,7 +123,8 @@ class PersistentIOWorker (RecocoIOWorker, LoggerBase):
     If the disconnect callback returns False, a new connection will NOT
     be opened.
     """
-    IOWorker.__init__(self)
+    #IOWorker.__init__(self)
+    super(PersistentIOWorker,self).__init__()
 
     self.kw = kw
 
