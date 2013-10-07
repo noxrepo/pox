@@ -342,7 +342,6 @@ static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h,
     ts->exception = 1;
     pcap_breakloop(ts->ppcap);
   }
-  Py_DECREF(args);
   if (ts->release_thread)
     ts->ts = PyEval_SaveThread();
 }
