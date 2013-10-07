@@ -101,6 +101,13 @@ class TCPServerWorker (TCPServerWorkerBase):
     return out
 
 
+class RecocoServerWorker (TCPServerWorker, RecocoIOWorker):
+  """
+  Recoco TCP server worker
+  """
+  pass
+
+
 class PersistentIOWorker (RecocoIOWorker, LoggerBase):
   """
   An IOWorker which opens a duplicate of itself when it closes
