@@ -327,3 +327,34 @@ def list_switches (ofnexus = None):
 
   r.sort(key=lambda item:item['dpid'])
   return r
+
+def list_switch (dpidToList, ofnexus = None):
+  if ofnexus is None:
+    from pox.core import core
+    ofnexus = core.openflow
+
+  r = []
+  for dpid,con in ofnexus._connections.iteritems():
+    if dpid == dpidToList:
+      ports = []
+      for p in con.ports.values():
+	pdict = {
+	  'port_no':p.port_no,
+	  'hw_addr':str(p.hw_addr),
+	  'name':p.name}
+	for bit,name in of.ofp_port_config_map.items():
+	  if p.config & bit:
+	    pdict[name.split('OFPPC_', 1)[-1].lower()] = True
+	for bit,name in of.ofp_port_state_map.items():
+	  if p.state & bit:
+	    pdict[name.split('OFPPS_', 1)[-1].lower()] = True
+	ports.append(pdict)
+      ports.sort(key=lambda item:item['port_no'])
+
+      rr = {
+	    'dpid':dpidToStr(dpid),
+	    'n_tables':con.features.n_tables,
+	    'ports':ports}
+      r.append(rr)
+
+  return r

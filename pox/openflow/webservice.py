@@ -300,6 +300,14 @@ class OFRequestHandler (JSONRPCHandler):
   def _exec_get_switches (self):
     return {'result':list_switches()}
 
+  def _exec_get_switch (self, dpid):
+    dpid = strToDPID(dpid)
+    con = core.openflow.getConnection(dpid)
+    if con is None:
+      return make_error("No such switch")
+
+    return {'result':list_switch(dpid)}
+
 
 
 def launch (username='', password=''):
