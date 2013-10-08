@@ -131,7 +131,11 @@ class PersistentIOWorker (RecocoIOWorker, LoggerBase):
     be opened.
     """
     #IOWorker.__init__(self)
-    super(PersistentIOWorker,self).__init__()
+
+    # We pass None in as the socket, because we set it up in a moment in
+    # _make_connection().  This probably means that it shouldn't be
+    # a required argument for RecocoIOWorker...
+    super(PersistentIOWorker,self).__init__(None)
 
     self.kw = kw
 
