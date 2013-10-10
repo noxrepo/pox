@@ -1095,7 +1095,7 @@ class ofp_match (ofp_base):
     return (ip, b)
 
   def __setattr__ (self, name, value):
-    if name is '_locked':
+    if name == '_locked':
       super(ofp_match,self).__setattr__(name, value)
       return
 
