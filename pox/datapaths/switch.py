@@ -75,10 +75,11 @@ class SoftwareSwitchBase (object):
     if name is None: name = dpid_to_str(dpid)
     self.name = name
 
-    if isinstance(ports, int):
-      ports = [self.generate_port(i, dpid) for i in range(1, ports+1)]
-
     self.dpid = dpid
+
+    if isinstance(ports, int):
+      ports = [self.generate_port(i) for i in range(1, ports+1)]
+
     self.max_buffers = max_buffers
     self.max_entries = max_entries
     self.miss_send_len = miss_send_len
@@ -177,7 +178,7 @@ class SoftwareSwitchBase (object):
     return "%s.%s"%(dpid_to_str(self.dpid, True).replace('-','')[:12], port_no)
 
   def _gen_ethaddr (self, port_no):
-    return EthAddr("02%06x%06x" % (self.dpid % 0x00FFff, port_no % 0xffFF))
+    return EthAddr("02%06x%04x" % (self.dpid % 0x00FFff, port_no % 0xffFF))
 
   def generate_port (self, port_no, name = None, ethaddr = None):
     dpid = self.dpid
@@ -186,8 +187,7 @@ class SoftwareSwitchBase (object):
     if ethaddr is None:
       p.hw_addr = self._gen_ethaddr(p.port_no)
     else:
-      p.hw_addr = EthAddr(eth)
-    p.hw_addr = EthAddr(eth)
+      p.hw_addr = EthAddr(ethaddr)
     if name is None:
       p.name = self._gen_port_name(p.port_no)
     else:
