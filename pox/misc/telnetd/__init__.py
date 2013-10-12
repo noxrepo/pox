@@ -1293,11 +1293,13 @@ class LineEdit (object):
   def do_commit (self):
     #self.erase()
     self.password_mode = False
-    self._accept_line(self.__current)
-    self.__hist.append(self.__current)
+    line = self.__current
+    if self.__current.strip():
+      self.__hist.append(self.__current)
     self.__current = ''
     self.__cursor = 0
     self.__pos = None
+    self._accept_line(line)
 
   def do_text (self, text):
     for c in text:
