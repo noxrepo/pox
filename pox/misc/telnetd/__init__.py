@@ -1644,7 +1644,9 @@ class PythonTelnetPersonality (TelnetPersonality):
     self.buf += line + "\n"
     import code
     try:
-      o = code.compile_command(self.buf.strip(), "<telnet>")
+      t = self.buf.lstrip()
+      if t and t[-1] == '\n': t = t[:-1]
+      o = code.compile_command(t, "<telnet>")
     except:
       self.buf = ''
       self.send("?Syntax Error\nPOX> ")
