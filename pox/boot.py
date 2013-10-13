@@ -474,7 +474,7 @@ def set_main_function (f):
   return True
 
 
-def boot ():
+def boot (argv = None):
   """
   Start up POX.
   """
@@ -489,7 +489,8 @@ def boot ():
   quiet = False
 
   try:
-    argv = sys.argv[1:]
+    if argv is None:
+      argv = sys.argv[1:]
 
     # Always load cli (first!)
     #TODO: Can we just get rid of the normal options yet?
