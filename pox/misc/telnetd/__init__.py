@@ -1658,9 +1658,30 @@ class PythonTelnetPersonality (TelnetPersonality):
 
     # Won't necessarily play nice with multiple threads!
     import sys
+
+    # Redirect standard IO to the telnet session.  May not play nicely
+    # with multiple threads.
+    # Note that we also set stdin to an empty StringIO.  This is because
+    # otherwise doing something that tried to read would try to read from
+    # the controlling terminal, which isn't what we want at all.  So this
+    # effectively disables input.  I think the only way we could add it in
+    # would be to run the Python code in a separate thread (blocking the
+    # cooperative one except during input).  I've actually been thinking
+    # about doing this for the "py" module for a long time (so that code
+    # from the CLI runs in the cooperative context), but haven't ever
+    # gotten around to it.  Note that this doesn't appear to work in PyPy,
+    # but I haven't looked into why yet.
+
     oldout = sys.stdout
+    olderr = sys.stderr
+    oldin = sys.stdin
     from StringIO import StringIO
     sys.stdout = StringIO()
+    sys.stderr = sys.stdout
+    # Sometime in the future something like this may be more useful...
+    #sys.stdout.write = self.send
+    #sys.stderr.write = self.send
+    sys.stdin = StringIO()
     try:
       self.interp.runcode(o)
       r = sys.stdout.getvalue()
@@ -1673,6 +1694,8 @@ class PythonTelnetPersonality (TelnetPersonality):
       return
     finally:
       sys.stdout = oldout
+      sys.stderr = olderr
+      sys.stdin = oldin
 
     self.send("POX> ")
 
