@@ -1582,12 +1582,16 @@ class PythonTelnetPersonality (TelnetPersonality):
 
   _auto_password = None
 
-  def __init__ (self, worker, username, password):
+  def __init__ (self, worker, username, password, timeout=2):
     self.worker = worker
     self.buf = ''
     import code
-    self.interp = code.InteractiveInterpreter()
+    local = {'__name__':'__telnetconsole__'}
+    local['_telnet_timeout'] = timeout # Command execution timeout
+    self.variables = local
+    self.interp = code.InteractiveInterpreter(local)
     self.interp.write = self.send
+    self.timeout = timeout
 
     self.username = username
     if self.username is None:
@@ -1656,8 +1660,46 @@ class PythonTelnetPersonality (TelnetPersonality):
       return
     self.buf = ''
 
-    # Won't necessarily play nice with multiple threads!
     import sys
+
+    # Okay, we do something wacky here.  We don't want a telnet user
+    # to accidentally lock up the cooperative thread by, say, doing
+    # an infinite loop.  So we try to turn on the Python tracing
+    # feature.  Usually this is used for implementing debuggers, but
+    # for us, the upshot is that it calls a function when various
+    # events occur.  We don't actually do any real tracing there; we
+    # simply check to see whether a timeout interval has elapsed.
+    # If it has, we raise an exception, which kills whatever was
+    # hanging us up.
+    # The code here appears a bit arcane.  What it's attempting to
+    # protect us from is the fact that gettrace()/settrace() are
+    # implementation specific and may not exist.
+    try:
+      gettrace = getattr(sys, 'gettrace')
+      settrace = getattr(sys, 'settrace')
+      if gettrace(): raise RuntimeError() # Someone already tracing
+    except:
+      gettrace = lambda : None
+      settrace = lambda f : None
+
+    class TimeoutError (RuntimeError):
+      pass
+
+    import time
+    try:
+      timeout = self.variables.get('_telnet_timeout', 1)
+      if timeout is not None:
+        timeout = timeout + time.time()
+    except:
+      timeout = time.time() + 1
+
+    def check_timeout (frame, event, arg):
+      if timeout and time.time() > timeout:
+        raise TimeoutError("\n\n ** Code took too long to complete! **\n"
+            "\n (Adjust _telnet_timeout if desired.)\n")
+      if event == 'call': return check_timeout
+
+    settrace(check_timeout)
 
     # Redirect standard IO to the telnet session.  May not play nicely
     # with multiple threads.
@@ -1686,6 +1728,15 @@ class PythonTelnetPersonality (TelnetPersonality):
       self.interp.runcode(o)
       r = sys.stdout.getvalue()
       self.send(r)
+    except TimeoutError as e:
+      # I think this will only actually catch the exception if it happens at
+      # the first scope.  Otherwise, it triggers a stack trace elsewhere.
+      # Either way is fine since both stop execution.  Just be aware that
+      # this exception handler may well not get called.
+      # We print the traceback instead of just a message so that it looks
+      # more similar to when it *doesn't* get caught here.
+      import traceback
+      self.send(traceback.format_exc())
     except Exception:
       pass
     except SystemExit:
@@ -1693,6 +1744,7 @@ class PythonTelnetPersonality (TelnetPersonality):
       self.worker.shutdown()
       return
     finally:
+      settrace(None)
       sys.stdout = oldout
       sys.stderr = olderr
       sys.stdin = oldin
