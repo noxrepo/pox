@@ -835,11 +835,18 @@ class OpenFlow_01_Task (Task):
     Task.__init__(self)
     self.port = int(port)
     self.address = address
+    self.started = False
 
     core.addListener(pox.core.GoingUpEvent, self._handle_GoingUpEvent)
 
   def _handle_GoingUpEvent (self, event):
     self.start()
+
+  def start (self):
+    if self.started:
+      return
+    self.started = True
+    return super(OpenFlow_01_Task,self).start()
 
   def run (self):
     # List of open sockets/connections to select on
