@@ -193,8 +193,8 @@ class POXCore (EventMixin):
     import threading
     self.quit_condition = threading.Condition()
 
-    self.version = (0,2,0)
-    self.version_name = "carp"
+    self.version = (0,3,0)
+    self.version_name = "dart"
     print(self.banner)
 
     self.scheduler = recoco.Scheduler(daemon=True)
