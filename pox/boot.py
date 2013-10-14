@@ -424,12 +424,16 @@ def _pre_startup ():
     logging.getLogger().setLevel(logging.DEBUG)
 
   if _options.enable_openflow:
-    pox.openflow.launch() # Default OpenFlow launch
+    pox.openflow._launch() # Default OpenFlow launch
 
 
 def _post_startup ():
   if _options.enable_openflow:
-    pox.openflow.of_01.launch() # Usually, we launch of_01
+    if core._openflow_wanted:
+      pox.openflow.of_01.launch() # Usually, we launch of_01
+    else:
+      logging.getLogger("boot").debug("Not launching of_01")
+
 
 
 def _setup_logging ():

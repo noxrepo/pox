@@ -188,6 +188,8 @@ class POXCore (EventMixin):
     self.starting_up = True
     self.components = {'core':self}
 
+    self._openflow_wanted = False
+
     import threading
     self.quit_condition = threading.Condition()
 
@@ -359,6 +361,8 @@ class POXCore (EventMixin):
     """
     Returns True if a component with the given name has been registered.
     """
+    if name in ('openflow', 'OpenFlowConnectionArbiter'):
+      self._openflow_wanted = True
     return name in self.components
 
   def registerNew (self, __componentClass, *args, **kw):
@@ -549,9 +553,11 @@ class POXCore (EventMixin):
       self._waiter_notify()
 
   def __getattr__ (self, name):
-    if name not in self.components:
-      raise AttributeError("'%s' not registered" % (name,))
-    return self.components[name]
+    if name in ('openflow', 'OpenFlowConnectionArbiter'):
+      self._openflow_wanted = True
+    c = self.components.get(name)
+    if c is not None: return c
+    raise AttributeError("'%s' not registered" % (name,))
 
 
 core = None

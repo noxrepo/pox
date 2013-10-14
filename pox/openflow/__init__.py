@@ -374,10 +374,14 @@ class OpenFlowNexus (EventMixin):
       return True
     return False
 
+def _launch (default_arbiter=True):
+  from pox.core import core
+  if default_arbiter:
+    core.registerNew(OpenFlowConnectionArbiter)
+  core.register("openflow", OpenFlowNexus())
+
 def launch (default_arbiter=True):
   from pox.core import core
   if core.hasComponent("openflow"):
     return
-  if default_arbiter:
-    core.registerNew(OpenFlowConnectionArbiter)
-  core.register("openflow", OpenFlowNexus())
+  return _launch(default_arbiter)
