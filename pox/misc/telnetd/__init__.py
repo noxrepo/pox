@@ -1524,8 +1524,7 @@ class TelnetServer (EventMixin):
     self.server_worker = w
     _ioloop.register_worker(w)
 
-    log.debug("Telnet personality %s running on port %s",
-              personality.__name__, port)
+    log.debug("%s running on port %s", personality.__name__, port)
 
 
 class TelnetPersonality (object):
