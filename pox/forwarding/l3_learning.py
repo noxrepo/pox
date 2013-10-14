@@ -110,7 +110,7 @@ class l3_switch (EventMixin):
     # This timer handles expiring stuff
     self._expire_timer = Timer(5, self._handle_expiration, recurring=True)
 
-    self.listenTo(core)
+    core.listen_to_dependencies(self)
 
   def _handle_expiration (self):
     # Called by a timer so that we can remove old items.
@@ -148,11 +148,7 @@ class l3_switch (EventMixin):
         po.actions.append(of.ofp_action_output(port = port))
         core.openflow.sendToDPID(dpid, po)
 
-  def _handle_GoingUpEvent (self, event):
-    self.listenTo(core.openflow)
-    log.debug("Up...")
-
-  def _handle_PacketIn (self, event):
+  def _handle_openflow_PacketIn (self, event):
     dpid = event.connection.dpid
     inport = event.port
     packet = event.parsed
