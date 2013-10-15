@@ -490,35 +490,22 @@ class SelectHub (object):
   """
   def __init__ (self, scheduler, useEpoll=False):
     # We store tuples of (elapse-time, task)
-    self._sleepers = [] # Sleeping items stored as a heap
     self._incoming = Queue() # Threadsafe queue for new items
 
     self._scheduler = scheduler
     self._pinger = pox.lib.util.makePinger()
     self.epoll = EpollSelect() if useEpoll else None
 
-    self._ready = False
-
     self._thread = Thread(target = self._threadProc)
     self._thread.daemon = True
     self._thread.start()
 
-    # Ugly busy wait for initialization
-    #while self._ready == False:
-
   def _threadProc (self):
     tasks = {}
-    timeouts = []
     rets = {}
 
     while self._scheduler._hasQuit == False:
       #print("SelectHub cycle")
-
-      if len(timeouts) == 0:
-        timeout = None
-      else:
-        timeout = self._sleepers[0][0] - time.time()
-        if timeout < 0: timeout = 0
 
       #NOTE: Everything you select on eventually boils down to file descriptors,
       #      which are unique, obviously.  It might be possible to leverage this
