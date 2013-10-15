@@ -185,7 +185,7 @@ class POXCore (EventMixin):
   version = (0,3,0)
   version_name = "dart"
 
-  def __init__ (self):
+  def __init__ (self, threaded_selecthub=True):
     self.debug = False
     self.running = True
     self.starting_up = True
@@ -198,7 +198,8 @@ class POXCore (EventMixin):
 
     print(self.banner)
 
-    self.scheduler = recoco.Scheduler(daemon=True)
+    self.scheduler = recoco.Scheduler(daemon=True,
+                                      threaded_selecthub=threaded_selecthub)
 
     self._waiters = [] # List of waiting components
 
@@ -563,9 +564,9 @@ class POXCore (EventMixin):
 
 core = None
 
-def initialize ():
+def initialize (threaded_selecthub=True):
   global core
-  core = POXCore()
+  core = POXCore(threaded_selecthub=threaded_selecthub)
   return core
 
 # The below is a big hack to make tests and doc tools work.

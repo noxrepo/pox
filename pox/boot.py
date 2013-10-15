@@ -174,7 +174,8 @@ def _do_launch (argv):
 
   _options.process_options(pox_options)
   global core
-  core = pox.core.initialize()
+  core = pox.core.initialize(_options.threaded_selecthub)
+
   _pre_startup()
   modules = _do_imports(n.split(':')[0] for n in component_order)
   if modules is False:
@@ -372,6 +373,7 @@ class POXOptions (Options):
     self.verbose = False
     self.enable_openflow = True
     self.log_config = None
+    self.threaded_selecthub = True
 
   def _set_h (self, given_name, name, value):
     self._set_help(given_name, name, value)
@@ -387,6 +389,9 @@ class POXOptions (Options):
       core = pox.core.initialize()
     print(core._get_python_version())
     sys.exit(0)
+
+  def _set_unthreaded_sh (self, given_name, name, value):
+    self.threaded_selecthub = False
 
   def _set_no_openflow (self, given_name, name, value):
     self.enable_openflow = not str_to_bool(value)
