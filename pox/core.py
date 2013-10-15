@@ -182,6 +182,9 @@ class POXCore (EventMixin):
     ComponentRegistered
   ])
 
+  version = (0,3,0)
+  version_name = "dart"
+
   def __init__ (self):
     self.debug = False
     self.running = True
@@ -193,8 +196,6 @@ class POXCore (EventMixin):
     import threading
     self.quit_condition = threading.Condition()
 
-    self.version = (0,3,0)
-    self.version_name = "dart"
     print(self.banner)
 
     self.scheduler = recoco.Scheduler(daemon=True)
