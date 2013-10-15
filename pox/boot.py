@@ -53,10 +53,9 @@ import types
 import threading
 
 import pox.core
-core = pox.core.initialize()
+core = None
 
 import pox.openflow
-import pox.openflow.of_01
 from pox.lib.util import str_to_bool
 
 # Function to run on main thread
@@ -174,6 +173,8 @@ def _do_launch (argv):
       curargs[arg[0]] = arg[1]
 
   _options.process_options(pox_options)
+  global core
+  core = pox.core.initialize()
   _pre_startup()
   modules = _do_imports(n.split(':')[0] for n in component_order)
   if modules is False:
@@ -381,6 +382,9 @@ class POXOptions (Options):
     sys.exit(0)
 
   def _set_version (self, given_name, name, value):
+    global core
+    if core is None:
+      core = pox.core.initialize()
     print(core._get_python_version())
     sys.exit(0)
 
@@ -430,6 +434,7 @@ def _pre_startup ():
 def _post_startup ():
   if _options.enable_openflow:
     if core._openflow_wanted:
+      import pox.openflow.of_01
       pox.openflow.of_01.launch() # Usually, we launch of_01
     else:
       logging.getLogger("boot").debug("Not launching of_01")
