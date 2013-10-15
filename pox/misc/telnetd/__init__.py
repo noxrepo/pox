@@ -482,7 +482,17 @@ class CursesCodes (object):
     return o
 
   def __init__ (self, term = "vt100"):
-    curses.setupterm(term)
+    try:
+      curses.setupterm(term)
+    except:
+      # Sleazy, but let's try...
+      oldout = sys.stdout
+      sys.stdout = sys.__stdout__
+      try:
+        curses.setupterm(term)
+      finally:
+        sys.stdout = oldout
+
     self._code_to_name = {} # code -> short,long
     caps = []
     # We should do something better for ones with parameters...
