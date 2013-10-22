@@ -174,7 +174,11 @@ def _do_launch (argv):
 
   _options.process_options(pox_options)
   global core
-  core = pox.core.initialize(_options.threaded_selecthub)
+  if pox.core.core is not None:
+    core = pox.core.core
+    core.getLogger('boot').debug('Using existing POX core')
+  else:
+    core = pox.core.initialize(_options.threaded_selecthub)
 
   _pre_startup()
   modules = _do_imports(n.split(':')[0] for n in component_order)
