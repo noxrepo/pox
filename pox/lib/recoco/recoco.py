@@ -405,6 +405,88 @@ class Sleep (BlockingOperation):
     scheduler._selectHub.registerTimer(task, self._t, True) # A bit ugly
 
 
+class _LockAcquire (BlockingOperation):
+  """
+  Internal use by Lock
+  """
+  __slots__ = ['_parent', '_blocking']
+
+  def __init__ (self, parent, blocking):
+    self._parent = parent
+    self._blocking = blocking
+
+  def execute (self, task, scheduler):
+    return self._parent._do_acquire(task, scheduler, self._blocking)
+
+
+class _LockRelease (BlockingOperation):
+  """
+  Internal use by Lock
+  """
+  __slots__ = ['_parent']
+
+  def __init__ (self, parent):
+    self._parent = parent
+
+  def execute (self, task, scheduler):
+    return self._parent._do_release(task, scheduler)
+
+
+class Lock (object):
+  """
+  A lock object with similar semantics to the Python Lock.
+
+  Note that it is only safe across Tasks, not Threads.
+
+  Note that as with all recoco "sycalls", you must...
+   yield lock.release()
+   yield lock.acquire()
+  """
+  __slots__ = ['_waiting', '_locked']
+
+  def __init__ (self, locked = False):
+    self._locked = locked
+    self._waiting = set()
+
+  def release (self):
+    """
+    Release the lock
+
+    Note that this doesn't give up control, so any tasks waiting on the lock
+    won't actually run until you do so.
+    """
+    return _LockRelease(self)
+
+  def acquire (self, blocking = True):
+    return _LockAcquire(self, blocking)
+
+  def _do_release (self, task, scheduler):
+    if not self._locked:
+      raise RuntimeError("You haven't locked this lock")
+
+    self._locked = None
+
+    if self._waiting:
+      t = self._waiting.pop()
+      self._locked = t
+      t.rv = True
+      scheduler.fast_schedule(t)
+
+    return True
+
+  def _do_acquire (self, task, scheduler, blocking):
+    if not self._locked:
+      self._locked = task
+      task.rv = True
+      return True # Reclaim running state
+
+    if not blocking:
+      task.rv = False
+      return True # Reclaim running state
+
+    self._waiting.add(task)
+
+
 class Select (BlockingOperation):
   """
   Should be very similar to Python select.select()
