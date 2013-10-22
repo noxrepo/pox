@@ -273,38 +273,42 @@ class Scheduler (object):
 
     #print(len(self._ready), "tasks")
 
-    try:
-      rv = t.execute()
-    except StopIteration:
-      return True
-    except:
+    while True:
       try:
-        print("Task", t, "caused exception and was de-scheduled")
-        traceback.print_exc()
+        rv = t.execute()
+      except StopIteration:
+        return True
       except:
-        pass
-      return True
+        try:
+          print("Task", t, "caused exception and was de-scheduled")
+          traceback.print_exc()
+        except:
+          pass
+        return True
 
-    if isinstance(rv, BlockingOperation):
-      try:
-        rv.execute(t, self)
-      except:
-        print("Task", t, "caused exception during a blocking operation and " +
-              "was de-scheduled")
-        traceback.print_exc()
-    elif rv is False:
-      # Just unschedule/sleep
-      #print "Unschedule", t, rv
-      pass
-    elif type(rv) == int or type(rv) == long or type(rv) == float:
-      # Sleep time
-      if rv == 0:
-        #print "sleep 0"
-        self._ready.append(t)
-      else:
-        self._selectHub.registerTimer(t, rv)
-    elif rv == None:
-      raise RuntimeError("Must yield a value!")
+      if isinstance(rv, BlockingOperation):
+        try:
+          if rv.execute(t, self) is True:
+            continue
+        except:
+          print("Task", t, "caused exception during a blocking operation and " +
+                "was de-scheduled")
+          traceback.print_exc()
+      elif rv is False:
+        # Just unschedule/sleep
+        #print "Unschedule", t, rv
+        pass
+      elif type(rv) == int or type(rv) == long or type(rv) == float:
+        # Sleep time
+        if rv == 0:
+          #print "sleep 0"
+          self._ready.append(t)
+        else:
+          self._selectHub.registerTimer(t, rv)
+      elif rv == None:
+        raise RuntimeError("Must yield a value!")
+
+      break
 
     return True
 
