@@ -36,6 +36,7 @@ from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from collections import defaultdict
 from pox.openflow.discovery import Discovery
+from pox.lib.util import dpid_to_str
 
 # Even a simple usage of the logger is much nicer than print!
 log = core.getLogger()
@@ -46,9 +47,32 @@ log = core.getLogger()
 # (In this case, we use a Connection object for the switch.)
 table = {}
 
+# Flow timeouts
+FLOW_IDLE_TIMEOUT = 10
+FLOW_HARD_TIMEOUT = 30
 
 # A spanning tree to be used for flooding
 tree = {}
+tollway_port = {}
+
+# database file path
+dbfile = '~/xeonkung/Documents/KMUTNB/Programing/tollway/tollway.db'
+
+def _is_toll_way(event):
+  return False
+
+def _xxx_match_parse(match):
+  of_match = of.ofp_match()
+  conn = sqlite3.connect(dbfile)
+  c = conn.cursor()
+  # do somthing
+
+  conn.close()
+  if match.get("l2") is not None:
+    # apply l2 match
+
+    if :
+      pass
 
 def _calc_tree ():
   """
@@ -65,6 +89,9 @@ def _calc_tree ():
   normal = defaultdict(lambda:defaultdict(lambda:None))
   tollway = defaultdict(lambda:defaultdict(lambda:None))
   switches = set()
+  # tollway port
+  tp = defaultdict(lambda:defaultdict(lambda:None))
+
   # Add all links and switches
   for l in core.openflow_discovery.adjacency:
     adj[l.dpid1][l.dpid2].append(l)
@@ -79,27 +106,28 @@ def _calc_tree ():
       if not isinstance(adj[s1][s2], list):
         continue
       assert s1 is not s2
-      good = False
       for l in adj[s1][s2]:
         if flip(l) in core.openflow_discovery.adjacency:
-          # This is a good one
-          adj[s1][s2] = l.port1
-          adj[s2][s1] = l.port2
-          good = True
-          break
-      if not good:
-        del adj[s1][s2]
-        if s1 in adj[s2]:
-          # Delete the other way too
-          del adj[s2][s1]
+          # This is Full Duplex Link
+          if normal[s1][s2] is None:
+            normal[s1][s2] = l.port1
+            normal[s2][s1] = l.port2
+          elif tollway[s1][s2] is None:
+            tollway[s1][s2] = l.port1
+            tollway[s2][s1] = l.port2
+            # add toll way port
+            tp[s1][normal[s1][s2]] = l.port1
+            tp[s2][normal[s2][s1]] = l.port2 
 
+
+  # cal normal tree
   q = []
   more = set(switches)
 
   done = set()
 
-  tree = defaultdict(set)
-
+  nTree = defaultdict(set)
+  
   while True:
     q = sorted(list(more)) + q
     more.clear()
@@ -107,29 +135,25 @@ def _calc_tree ():
     v = q.pop(False)
     if v in done: continue
     done.add(v)
-    for w,p in adj[v].iteritems():
-      if w in tree: continue
+    for w,p in normal[v].iteritems():
+      if w in nTree: continue
       more.add(w)
-      tree[v].add((w,p))
-      tree[w].add((v,adj[w][v]))
+      nTree[v].add((w,p))
+      nTree[w].add((v,normal[w][v]))
 
-  if False:
-    log.debug("*** SPANNING TREE ***")
-    for sw,ports in tree.iteritems():
-      #print " ", dpidToStr(sw), ":", sorted(list(ports))
-      #print " ", sw, ":", [l[0] for l in sorted(list(ports))]
-      log.debug((" %i : " % sw) + " ".join([str(l[0]) for l in
-                                           sorted(list(ports))]))
-    log.debug("*********************")
+  global tree
+  tree = nTree
 
-  return tree
+  global tollway_port
+  tollway_port = tp
+
+  log.debug("Finish _calc_tree()")
 
 def _handle_links (event):
   """
   Handle discovery link events to update the spanning tree
   """
-  global tree
-  tree = _calc_tree()
+  _calc_tree()
 
 
 def _handle_PacketIn (event):
@@ -146,16 +170,27 @@ def _handle_PacketIn (event):
       msg.in_port = event.port
       event.connection.send(msg)
 
+  def send_tollway(normal_port):
+    # out when hasn't toll way
+    if tollway_port[event.connection.dpid][dst_port] is None:
+      return False
+    # Check tollway registered Packet
+    return False
+
   packet = event.parsed
 
   if packet.type == packet.LLDP_TYPE or packet.dst.isBridgeFiltered():
      return drop()
 
   # Learn the source
-  table[(event.connection,packet.src)] = event.port
+  table[(event.connection.dpid, packet.src)] = event.port
 
   if not packet.dst.is_multicast:
-    dst_port = table.get((event.connection,packet.dst))
+    dst_port = table.get((event.connection.dpid, packet.dst))
+    if _is_toll_way(event) and tollway_port[event.connection.dpid][dst_port] is not None:
+      dst_port = tollway_port[event.connection.dpid][dst_port]
+      log.debug("Go with Tollway port")
+      return    
   else:
     # Ideally, we'd install a flow entries that output multicasts
     # to all ports on the spanning tree.
@@ -191,6 +226,8 @@ def _handle_PacketIn (event):
     msg = of.ofp_flow_mod()
     msg.match.dl_dst = packet.src
     msg.match.dl_src = packet.dst
+    msg.idle_timeout = FLOW_IDLE_TIMEOUT
+    msg.hard_timeout = FLOW_HARD_TIMEOUT
     msg.actions.append(of.ofp_action_output(port = event.port))
     event.connection.send(msg)
     
@@ -200,15 +237,20 @@ def _handle_PacketIn (event):
     msg.data = event.ofp # Forward the incoming packet
     msg.match.dl_src = packet.src
     msg.match.dl_dst = packet.dst
+    msg.idle_timeout = FLOW_IDLE_TIMEOUT
+    msg.hard_timeout = FLOW_HARD_TIMEOUT
     msg.actions.append(of.ofp_action_output(port = dst_port))
     event.connection.send(msg)
 
     log.debug("Installing %s <-> %s" % (packet.src, packet.dst))
 
 
-def launch ():
+def launch (db=None):
   def start ():
     core.openflow_discovery.addListenerByName("LinkEvent", _handle_links)
     core.openflow.addListenerByName("PacketIn", _handle_PacketIn)
     log.info("FlowVisor Pair-Learning switch running.")
+  global dbfile
+  if db is not None:
+    dbfile = db
   core.call_when_ready(start, "openflow_discovery")
