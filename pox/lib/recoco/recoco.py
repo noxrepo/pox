@@ -839,11 +839,6 @@ class Timer (Task):
       raise RuntimeError("Can't have a recurring timer for an absolute time!")
     Task.__init__(self)
     self._self_stoppable = selfStoppable
-    self._next = timeToWake
-    self._interval = timeToWake if recurring else 0
-    if not absoluteTime:
-      self._next += time.time()
-
     self._cancelled = False
 
     self._recurring = recurring
@@ -851,7 +846,20 @@ class Timer (Task):
     self._args = args
     self._kw = kw
 
+    self._next = timeToWake
+    self._interval = timeToWake if recurring else 0
+    self._absolute_time = absoluteTime
+
+    self._started = False
+
     if started: self.start(scheduler)
+
+  def start (self, *args, **kw):
+    assert not self._started
+    if not self._absolute_time:
+      self._next += time.time()
+    self._started = True
+    return super(Timer,self).start(*args, **kw)
 
   def cancel (self):
     self._cancelled = True
