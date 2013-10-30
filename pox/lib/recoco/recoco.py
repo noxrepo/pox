@@ -25,6 +25,7 @@ import os
 import socket
 import pox.lib.util
 import random
+from types import GeneratorType
 from pox.lib.epoll_select import EpollSelect
 
 #TODO: Need a way to redirect the prints in here to something else (the log).
@@ -63,6 +64,7 @@ class BaseTask  (object):
     #      (better yet, refactor)
     self.id = generateTaskID()
     self.gen = self.run(*args, **kw)
+    assert isinstance(self.gen, GeneratorType), "run() method has no yield"
     self.rv = None
     self.rf = None # ReturnFunc
 
@@ -117,6 +119,7 @@ class Task (BaseTask):
     self.kwargs = kwargs
 
     self.gen = self.run(*args, **kwargs)
+    assert isinstance(self.gen, GeneratorType), "run() method has no yield"
 
     BaseTask.__init__(self)
 
