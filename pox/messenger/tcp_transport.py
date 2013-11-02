@@ -104,6 +104,7 @@ class TCPTransport (Task, Transport):
 
         rc = self._connection_class(self, listener.accept()[0])
         self._connections.add(rc)
+        self._nexus.register_session(rc)
         rc.start()
       except:
         traceback.print_exc()

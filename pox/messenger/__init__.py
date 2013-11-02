@@ -66,6 +66,12 @@ class ChannelJoin (Event):
     self.channel = channel
     self.msg = msg
 
+class ConnectionOpened (Event):
+  """ Fired by the nexus for each new connection """
+  def __init__ (self, connection):
+    Event.__init__(self)
+    self.con = connection
+
 class ConnectionClosed (Event):
   """ Fired on a connection when it closes. """
   def __init__ (self, connection):
@@ -600,6 +606,7 @@ class MessengerNexus (EventMixin):
     ChannelDestroy,
     ChannelDestroyed,
     ChannelCreate,
+    ConnectionOpened,
   ])
 
   def __init__ (self):
@@ -633,6 +640,9 @@ class MessengerNexus (EventMixin):
     key = alphahex(r) + key
 
     return key,r
+
+  def register_session (self, session):
+    self.raiseEventNoErrors(ConnectionOpened, session)
 
   def get_channel (self, name, create = True, temporary = False):
     if name is None: name = ""
