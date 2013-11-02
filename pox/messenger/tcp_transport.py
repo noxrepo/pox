@@ -71,12 +71,14 @@ class TCPConnection (Connection, Task):
 
 
 class TCPTransport (Task, Transport):
-  def __init__ (self, address = "0.0.0.0", port = 7790, nexus = None):
+  def __init__ (self, address = "0.0.0.0", port = 7790, nexus = None,
+                connection_class = TCPConnection):
     port = int(port)
     Task.__init__(self)
     Transport.__init__(self, nexus)
     self._addr = (address,port)
     self._connections = set()
+    self._connection_class = connection_class
 
   def _forget (self, connection):
     """ Forget about a connection (because it has closed) """
@@ -100,7 +102,7 @@ class TCPTransport (Task, Transport):
           # Must have been interrupted
           break
 
-        rc = TCPConnection(self, listener.accept()[0])
+        rc = self._connection_class(self, listener.accept()[0])
         self._connections.add(rc)
         rc.start()
       except:
