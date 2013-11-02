@@ -196,12 +196,23 @@ class Connection (EventMixin):
     self._transport = transport
     self._newlines = False
 
+    # If we connect to another messenger, this contains our session ID as far
+    # as it is concerned.
+    self._remote_session_id = None
+
     # Transports that don't do their own encapsulation can use _recv_raw(),
     # which uses this.  (Such should probably be broken into a subclass.)
     self._buf = bytes()
 
     key,num = self._transport._nexus.generate_session()
     self._session_id,self._session_num = key,num
+
+  def _rx_welcome (self, event):
+    """
+    Called by the default channelbot if we connect to another messenger.
+    """
+    self._remote_session_id = event.msg.get('session_id')
+    log.debug("%s welcomed as %s.", self, self._remote_session_id)
 
   def _send_welcome (self):
     """
@@ -592,6 +603,10 @@ class DefaultChannelBot (ChannelBot):
   def _exec_test (self, event, value):
     log.info("Default channel got: " + str(value))
     self.reply(event, test = value.upper())
+
+  def _exec_cmd_welcome (self, event):
+    # We get this if we're connecting to another messenger.
+    event.con._rx_welcome(event)
 
 
 class MessengerNexus (EventMixin):
