@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pox.lib.revent.revent import *
-from pox.core import core as core
+from pox.lib.revent import *
+from pox.lib.recoco import *
+from pox.core import core
 from pox.messenger import *
 
 log = core.getLogger()
-
-from pox.lib.recoco.recoco import *
 
 
 class TCPConnection (Connection, Task):
@@ -115,7 +114,6 @@ class TCPTransport (Task, Transport):
     log.debug("No longer listening for connections")
 
 
-import pox.core
 
 def launch (tcp_address = "0.0.0.0", tcp_port = 7790):
   def start ():
