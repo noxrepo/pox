@@ -20,49 +20,6 @@ log = core.getLogger()
 
 from pox.lib.recoco.recoco import *
 
-class TCPTransport (Task, Transport):
-  def __init__ (self, address = "0.0.0.0", port = 7790, nexus = None):
-    port = int(port)
-    Task.__init__(self)
-    Transport.__init__(self, nexus)
-    self._addr = (address,port)
-    self._connections = set()
-
-  def _forget (self, connection):
-    """ Forget about a connection (because it has closed) """
-    if connection in self._connections:
-      #print "forget about",connection
-      self._connections.remove(connection)
-
-  def run (self):
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    listener.bind(self._addr)
-    listener.listen(0)
-
-    log.debug("Listening on %s:%i" % (self._addr))
-
-    con = None
-    while core.running:
-      try:
-        rlist, wlist, elist = yield Select([listener])
-        if len(rlist) == 0:
-          # Must have been interrupted
-          break
-
-        rc = TCPConnection(self, listener.accept()[0])
-        self._connections.add(rc)
-        rc.start()
-      except:
-        traceback.print_exc()
-        break
-
-    try:
-      listener.close()
-    except:
-      pass
-    log.debug("No longer listening for connections")
-
 
 class TCPConnection (Connection, Task):
   def __init__ (self, transport, socket):
@@ -112,6 +69,50 @@ class TCPConnection (Connection, Task):
     s = "%s:%i" % socket.getsockname()
     s += "/%s:%i" % socket.getpeername()
     return s
+
+
+class TCPTransport (Task, Transport):
+  def __init__ (self, address = "0.0.0.0", port = 7790, nexus = None):
+    port = int(port)
+    Task.__init__(self)
+    Transport.__init__(self, nexus)
+    self._addr = (address,port)
+    self._connections = set()
+
+  def _forget (self, connection):
+    """ Forget about a connection (because it has closed) """
+    if connection in self._connections:
+      #print "forget about",connection
+      self._connections.remove(connection)
+
+  def run (self):
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(self._addr)
+    listener.listen(0)
+
+    log.debug("Listening on %s:%i" % (self._addr))
+
+    con = None
+    while core.running:
+      try:
+        rlist, wlist, elist = yield Select([listener])
+        if len(rlist) == 0:
+          # Must have been interrupted
+          break
+
+        rc = TCPConnection(self, listener.accept()[0])
+        self._connections.add(rc)
+        rc.start()
+      except:
+        traceback.print_exc()
+        break
+
+    try:
+      listener.close()
+    except:
+      pass
+    log.debug("No longer listening for connections")
 
 
 import pox.core
