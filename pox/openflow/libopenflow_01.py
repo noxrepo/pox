@@ -2200,6 +2200,8 @@ class ofp_flow_mod (ofp_header):
     packed = b""
     packed += ofp_header.pack(self)
     packed += self.match.pack(flow_mod=True)
+    if self._buffer_id < 0:
+        self._buffer_id = NO_BUFFER
     packed += struct.pack("!QHHHHLHH", self.cookie, self.command,
                           self.idle_timeout, self.hard_timeout,
                           self.priority, self._buffer_id, self.out_port,
