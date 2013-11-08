@@ -181,15 +181,19 @@ class GephiTopo (object):
       self.send(de(s1,s2))
 
 
-def launch (port = 8282):
-  core.registerNew(GephiTopo)
+loop = None
+
+def launch (port = 8282, __INSTANCE__ = None):
+  if not core.hasComponent("GephiTopo"):
+    core.registerNew(GephiTopo)
 
   # In theory, we're supposed to be running a web service, but instead
   # we just spew Gephi graph streaming junk at everyone who connects. :)
   global loop
-  loop = RecocoIOLoop()
-  #loop.more_debugging = True
-  loop.start()
+  if not loop:
+    loop = RecocoIOLoop()
+    #loop.more_debugging = True
+    loop.start()
 
   worker_type = GephiHTTPWorker
   w = RecocoServerWorker(child_worker_type=worker_type, port = int(port))
