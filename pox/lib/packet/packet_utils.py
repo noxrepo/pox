@@ -24,10 +24,8 @@ import array
 import struct
 from socket import ntohs
 
-_ethtype_to_str = {}
-_ipproto_to_str = {}
-
 # Map ethernet type to string
+_ethtype_to_str = {}
 _ethtype_to_str[0x0800] = 'IP'
 _ethtype_to_str[0x0806] = 'ARP'
 _ethtype_to_str[0x8035] = 'RARP'
@@ -53,21 +51,45 @@ _ethtype_to_str[0xffff] = 'BAD'
 # IP protocol to string
 #TODO: This should probably be integrated with the decorator used in
 #      the ipv6 module.
-_ipproto_to_str[0]  = 'HOP_OPTS'
-_ipproto_to_str[1]  = 'ICMP'
-_ipproto_to_str[2]  = 'IGMP'
-_ipproto_to_str[4]  = 'IPIP'
-_ipproto_to_str[6]  = 'TCP'
-_ipproto_to_str[9]  = 'IGRP'
-_ipproto_to_str[17] = 'UDP'
-_ipproto_to_str[43] = 'IPV6_ROUTING'
-_ipproto_to_str[44] = 'IPV6_FRAG'
-_ipproto_to_str[47] = 'GRE'
-_ipproto_to_str[58] = 'ICMP6'
-_ipproto_to_str[59] = 'IPV6_NO_NEXT'
-_ipproto_to_str[60] = 'DEST_OPTS'
-_ipproto_to_str[89] = 'OSPF'
+_ipproto_to_str = {}
+def _get_ipprotocols():
+	import csv
+	import re
+	import inspect
+	import os.path
 
+	### http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+	### wget http://www.iana.org/assignments/protocol-numbers/protocol-numbers-1.csv
+	filename = os.path.join(os.path.dirname(inspect.stack()[0][1]), 'protocol-numbers-1.csv')
+	f = None
+
+	try:
+		f = open(filename,"r")
+		r = csv.reader(f)
+		for p in r:
+			# e.g. 143-252 (Unassigned)
+			if re.match("^\d+\-\d+$", p[0]):
+				begin, end = re.split("-", p[0])
+				for i in range(int(begin),int(end),1):
+					_ipproto_to_str[i] = "UNASSIGNED_{0}".format(i)
+			# regular int
+			elif re.match("^\d+$", p[0]):
+				# no keyword -> UNKNOWN_NNN
+				if p[1] == "":
+					i = int(p[0])
+					_ipproto_to_str[i] = "UNKNOWN_{0}".format(i)
+				# plain NNN -> keyword xlate
+				else:
+					i = int(p[0])
+					_ipproto_to_str[i] = "{0}".format(str(p[1].upper()))
+			else:
+				pass
+	except:
+		import logging
+		logging.getLogger().warn("Could not load protocols list: {0}".format(filename))
+	if f: f.close()
+
+_get_ipprotocols()
 
 class MalformedException (RuntimeError):
   pass
