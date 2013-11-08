@@ -27,6 +27,8 @@ import array
 import struct
 from socket import ntohs
 
+import protocols as p
+
 _ethtype_to_str = {}
 _ipproto_to_str = {}
 
@@ -54,16 +56,7 @@ _ethtype_to_str[0xffff] = 'BAD'
 
 
 # IP protocol to string
-_ipproto_to_str[0]  = 'IP'
-_ipproto_to_str[1]  = 'ICMP'
-_ipproto_to_str[2]  = 'IGMP'
-_ipproto_to_str[4]  = 'IPIP'
-_ipproto_to_str[6]  = 'TCP'
-_ipproto_to_str[9]  = 'IGRP'
-_ipproto_to_str[17] = 'UDP'
-_ipproto_to_str[47] = 'GRE'
-_ipproto_to_str[89] = 'OSPF'
-
+_ipproto_to_str  = p.protocols().get()
 
 class MalformedException (RuntimeError):
   pass
