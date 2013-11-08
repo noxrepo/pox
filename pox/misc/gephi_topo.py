@@ -35,9 +35,6 @@ import json
 
 log = core.getLogger()
 
-class ServerWorker (TCPServerWorker, RecocoIOWorker):
-  pass
-
 clients = set()
 
 class GephiWorker (RecocoIOWorker):
@@ -194,5 +191,6 @@ def launch (port = 8282):
   #loop.more_debugging = True
   loop.start()
 
-  w = ServerWorker(child_worker_type=GephiWorker, port = int(port))
+  worker_type = GephiHTTPWorker
+  w = RecocoServerWorker(child_worker_type=worker_type, port = int(port))
   loop.register_worker(w)
