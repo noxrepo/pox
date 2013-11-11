@@ -857,7 +857,8 @@ class OpenFlow_01_Task (Task):
     try:
       listener.bind((self.address, self.port))
     except socket.error as (errno, strerror):
-      log.error("Error %i while binding socket: %s", errno, strerror)
+      log.error("Error %i while binding %s:%s: %s",
+                errno, self.address, self.port, strerror)
       if errno == EADDRNOTAVAIL:
         log.error(" You may be specifying a local address which is "
                   "not assigned to any interface.")
