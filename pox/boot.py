@@ -443,8 +443,10 @@ def _pre_startup ():
 def _post_startup ():
   if _options.enable_openflow:
     if core._openflow_wanted:
-      import pox.openflow.of_01
-      pox.openflow.of_01.launch() # Usually, we launch of_01
+      if not core.hasComponent("of_01"):
+        # Launch a default of_01
+        import pox.openflow.of_01
+        pox.openflow.of_01.launch()
     else:
       logging.getLogger("boot").debug("Not launching of_01")
 

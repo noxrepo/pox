@@ -952,16 +952,26 @@ _set_handlers()
 # Used by the Connection class
 deferredSender = None
 
-def launch (port = 6633, address = "0.0.0.0"):
-  if core.hasComponent('of_01'):
+def launch (port=6633, address="0.0.0.0", name=None, __INSTANCE__=None):
+  if name is None:
+    basename = "of_01"
+    counter = 1
+    name = basename
+    while core.hasComponent(name):
+      counter += 1
+      name = "%s-%s" % (basename, counter)
+
+  if core.hasComponent(name):
+    log.warn("of_01 '%s' already started", name)
     return None
 
   global deferredSender
-  deferredSender = DeferredSender()
+  if not deferredSender:
+    deferredSender = DeferredSender()
 
   if of._logger is None:
     of._logger = core.getLogger('libopenflow_01')
 
   l = OpenFlow_01_Task(port = int(port), address = address)
-  core.register("of_01", l)
+  core.register(name, l)
   return l
