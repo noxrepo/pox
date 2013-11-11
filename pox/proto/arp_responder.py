@@ -126,11 +126,6 @@ class ARPTable (dict):
     self[key] = value
 
 
-def _dpid_to_mac (dpid):
-  # Should maybe look at internal port MAC instead?
-  return EthAddr("%012x" % (dpid & 0xffFFffFFffFF,))
-
-
 def _handle_expiration ():
   for k,e in _arp_table.items():
     if e.is_expired:
@@ -225,10 +220,10 @@ class ARPResponder (object):
               mac = _arp_table[a.protodst].mac
               if mac is True:
                 # Special case -- use ourself
-                mac = _dpid_to_mac(dpid)
+                mac = event.connection.eth_addr
               r.hwsrc = mac
-              e = ethernet(type=packet.type, src=_dpid_to_mac(dpid),
-                            dst=a.hwsrc)
+              e = ethernet(type=packet.type, src=event.connection.eth_addr,
+                           dst=a.hwsrc)
               e.payload = r
               if packet.type == ethernet.VLAN_TYPE:
                 v_rcv = packet.find('vlan')
