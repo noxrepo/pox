@@ -13,15 +13,17 @@
 # limitations under the License.
 
 """
-Dns_responder answers mDNS queries.  (Should we rename dsn_responder
-to mdsn_respoder, mdsn_server, dsn_local, or something?)
+Dns_responder answers mDNS queries.
+
+TODO: rename dsn_responder to mdsn_responder, mdsn_server, dsn_local,
+or something?
 
 Why?  Simple routing modules might not handle multicast traffic.
 Additionally, it is sometimes not practical to set up a real DNS
 server either.
 
 On the other hand, we might take care of the lookups using out-of-band
-information.  Add dns entires on commandline like:
+information.  Add dns entries on commandline like:
   dns_responder --<IP>=<hostname> --<IP>=<hostname>
 e.g.,
   dns_responder --10.0.0.2=h2 --10.0.0.3=h3

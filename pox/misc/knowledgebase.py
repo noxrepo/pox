@@ -13,8 +13,10 @@
 # limitations under the License.
 
 """
+A simple knowledgebase for querying apriori configuration.
+
 The knowledgebase module stores some aspects of the intended
-configuration of or other apriori infomration about the controlled
+configuration of or other apriori information about the controlled
 network.  (Whereas, for example, the topology module collects the
 current/actual view of the network.)
 
