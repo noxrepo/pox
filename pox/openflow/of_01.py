@@ -57,7 +57,7 @@ import threading
 import os
 import sys
 import exceptions
-from errno import EAGAIN, ECONNRESET, EADDRINUSE, EADDRNOTAVAIL
+from errno import EAGAIN, ECONNRESET, EADDRINUSE, EADDRNOTAVAIL, EMFILE
 
 
 import traceback
@@ -916,26 +916,47 @@ class OpenFlow_01_Task (Task):
       except exceptions.KeyboardInterrupt:
         break
       except:
-        doTraceback = True
-        if sys.exc_info()[0] is socket.error:
-          if sys.exc_info()[1][0] == ECONNRESET:
-            con.info("Connection reset")
-            doTraceback = False
-
-        if doTraceback:
+        def log_tb ():
           log.exception("Exception reading connection " + str(con))
 
+        do_break = False # Break OpenFlow loop?
+        do_close = True # Close this socket?
+
+        sock_error = None
+        if sys.exc_info()[0] is socket.error:
+          sock_error = sys.exc_info()[1][0]
+
         if con is listener:
-          log.error("Exception on OpenFlow listener.  Aborting.")
+          do_close = False
+          if sock_error == ECONNRESET:
+            con.info("Connection reset")
+          elif sock_error == EMFILE:
+            log.error("Couldn't accept connection: out of file descriptors.")
+          else:
+            do_close = True
+            log_tb()
+            log.error("Exception on OpenFlow listener.  Aborting.")
+            do_break = True
+        else:
+          # Normal socket
+          if sock_error == ECONNRESET:
+            con.info("Connection reset")
+          else:
+            log_tb()
+
+        if do_close:
+          try:
+            con.close()
+          except:
+            pass
+          try:
+            sockets.remove(con)
+          except:
+            pass
+
+        if do_break:
+          # Leave the OpenFlow loop
           break
-        try:
-          con.close()
-        except:
-          pass
-        try:
-          sockets.remove(con)
-        except:
-          pass
 
     log.debug("No longer listening for connections")
 
