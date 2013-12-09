@@ -1280,15 +1280,15 @@ class nx_learn_src_immediate (nx_learn_spec_src):
     self.data = data
 
   @classmethod
-  def u8 (cls, dst, value):
+  def u8 (cls, value):
     return cls(struct.pack("!H", value))
 
   @classmethod
-  def u16 (cls, dst, value):
+  def u16 (cls, value):
     return cls(struct.pack("!H", value))
 
   @classmethod
-  def u32 (cls, dst, value):
+  def u32 (cls, value):
     return cls(struct.pack("!L", value))
 
   def __len__ (self):
