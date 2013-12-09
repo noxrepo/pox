@@ -1436,7 +1436,7 @@ class flow_mod_spec (object):
         elif k == "n_bits":
           n_bits = v
         else:
-          raise RuntimeError("Don't know what to do with '%s'", (k,))
+          raise RuntimeError("Don't know what to do with '%s'" % (k,))
         continue
 
       if s._is_src:
