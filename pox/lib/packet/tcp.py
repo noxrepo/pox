@@ -43,7 +43,7 @@
 #======================================================================
 
 import struct
-from packet_utils       import *
+from packet_utils import *
 from socket import htons
 from socket import htonl
 
@@ -52,8 +52,14 @@ from packet_base import packet_base
 import logging
 lg = logging.getLogger('packet')
 
-class tcp_opt:
+class tcp_opt (object):
+  """
+  A TCP option
 
+  Currently, this single class represents any of several TCP options, as well
+  as being a "catch all" for unknown options.  In the future, individual
+  options may be broken out into separate classes.
+  """
   EOL      = 0
   NOP      = 1
   MSS      = 2
@@ -62,11 +68,11 @@ class tcp_opt:
   SACK     = 5
   TSOPT    = 8
 
-  def __init__(self, type, val):
+  def __init__ (self, type, val):
     self.type = type
     self.val  = val
 
-  def to_bytes(self):
+  def to_bytes (self):
     if self.type == tcp_opt.EOL or self.type == tcp_opt.NOP:
       return struct.pack('B',self.type)
     elif self.type == tcp_opt.MSS:
@@ -86,8 +92,13 @@ class tcp_opt:
       return struct.pack('BB',self.type,len(self.val)) + self.val
 
 
-class tcp(packet_base):
-  "TCP packet struct"
+class tcp (packet_base):
+  """
+  A TCP packet
+
+  Note that flags can be individually read or written using attributes with
+  the name of the flag in all caps.
+  """
 
   MIN_LEN = 20
 
@@ -137,7 +148,7 @@ class tcp(packet_base):
   def _setflag (self, flag, value):
     self.flags = (self.flags & ~flag) | (flag if value else 0)
 
-  def __init__(self, raw=None, prev=None, **kw):
+  def __init__ (self, raw=None, prev=None, **kw):
     packet_base.__init__(self)
 
     self.prev = prev
@@ -161,7 +172,7 @@ class tcp(packet_base):
 
     self._init(kw)
 
-  def __str__(self):
+  def __str__ (self):
     f = ''
     if self.SYN: f += 'S'
     if self.ACK: f += 'A'
@@ -177,7 +188,7 @@ class tcp(packet_base):
 
     return s
 
-  def parse_options(self, raw):
+  def parse_options (self, raw):
 
     self.options = []
     dlen = len(raw)
@@ -238,7 +249,7 @@ class tcp(packet_base):
       i += ord(arr[i+1])
     return i
 
-  def parse(self, raw):
+  def parse (self, raw):
     assert isinstance(raw, bytes)
     self.next = None # In case of unfinished parsing
     self.raw = raw
@@ -274,7 +285,7 @@ class tcp(packet_base):
     self.next   = raw[self.hdr_len:]
     self.parsed = True
 
-  def hdr(self, payload, calc_checksum = True):
+  def hdr (self, payload, calc_checksum = True):
     if calc_checksum:
       self.csum = self.checksum(payload=payload)
       csum = self.csum
@@ -290,9 +301,10 @@ class tcp(packet_base):
       packet += option.to_bytes()
     return packet
 
-  def checksum(self, unparsed=False, payload=None):
+  def checksum (self, unparsed=False, payload=None):
     """
-    Calculates the checksum.
+    Calculates the checksum
+
     If unparsed, calculates it on the raw, unparsed data.  This is
     useful for validating that it is correct on an incoming packet.
     """
