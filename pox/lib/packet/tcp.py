@@ -72,7 +72,7 @@ class tcp_opt (object):
     self.type = type
     self.val  = val
 
-  def to_bytes (self):
+  def pack (self):
     if self.type == tcp_opt.EOL or self.type == tcp_opt.NOP:
       return struct.pack('B',self.type)
     elif self.type == tcp_opt.MSS:
@@ -87,7 +87,7 @@ class tcp_opt (object):
     elif self.type == tcp_opt.TSOPT:
       return struct.pack('!BBII',self.type,10,self.val[0],self.val[1])
     else:
-      lg.info('(tcp_opt to_bytes) warning, unknown option type ' +
+      lg.info('(tcp_opt pack) warning, unknown option type ' +
               str(self.type))
       return struct.pack('BB',self.type,len(self.val)) + self.val
 
@@ -298,7 +298,7 @@ class tcp (packet_base):
         offres, self.flags,
         self.win, csum, self.urg)
     for option in self.options:
-      packet += option.to_bytes()
+      packet += option.pack()
     return packet
 
   def checksum (self, unparsed=False, payload=None):
