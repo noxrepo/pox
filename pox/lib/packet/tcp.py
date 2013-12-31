@@ -83,7 +83,8 @@ class tcp_opt:
         else:
             lg.info('(tcp_opt to_bytes) warning, unknown option type ' +
                     str(self.type))
-            return ''
+            return struct.pack('BB',self.type,len(self.val)) + self.val
+
 
 class tcp(packet_base):
     "TCP packet struct"
