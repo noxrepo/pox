@@ -22,7 +22,7 @@ from pox.core import core
 import pox
 import pox.lib.util
 from pox.lib.addresses import EthAddr
-from pox.lib.revent.revent import EventMixin
+from pox.lib.revent.revent import EventMixin, EventHalt
 import datetime
 import time
 from pox.lib.socketcapture import CaptureSocket
@@ -129,6 +129,7 @@ def handle_FEATURES_REPLY (con, msg):
       if e is None or e.halt != True:
         con.raiseEventNoErrors(FeaturesReceived, con, msg)
     con.removeListeners(listeners)
+    return EventHalt
   listeners.append(con.addListener(BarrierIn, finish_connecting))
 
   def also_finish_connecting (event):
