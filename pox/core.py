@@ -28,6 +28,7 @@ import logging
 import inspect
 import time
 import os
+import signal
 
 _path = inspect.stack()[0][1]
 _ext_path = _path[0:_path.rindex(os.sep)]
@@ -152,6 +153,10 @@ class ComponentRegistered (Event):
     self.name = name
     self.component = component
 
+class RereadConfiguration (Event):
+  """ Fired when modules should reread their configuration files. """
+  pass
+
 import pox.lib.recoco as recoco
 
 class POXCore (EventMixin):
@@ -179,19 +184,21 @@ class POXCore (EventMixin):
     DownEvent,
     GoingUpEvent,
     GoingDownEvent,
-    ComponentRegistered
+    ComponentRegistered,
+    RereadConfiguration,
   ])
 
   version = (0,3,0)
   version_name = "dart"
 
-  def __init__ (self, threaded_selecthub=True):
+  def __init__ (self, threaded_selecthub=True, handle_signals=True):
     self.debug = False
     self.running = True
     self.starting_up = True
     self.components = {'core':self}
 
     self._openflow_wanted = False
+    self._handle_signals = handle_signals
 
     import threading
     self.quit_condition = threading.Condition()
@@ -317,6 +324,28 @@ class POXCore (EventMixin):
     except:
       return "Unknown Platform"
 
+  def _add_signal_handlers (self):
+    if not self._handle_signals:
+      return
+
+    import threading
+    # Note, python 3.4 will have threading.main_thread()
+    # http://bugs.python.org/issue18882
+    if not isinstance(threading.current_thread(), threading._MainThread):
+      raise RuntimeError("add_signal_handers must be called from MainThread")
+
+    try:
+      previous = signal.getsignal(signal.SIGHUP)
+      signal.signal(signal.SIGHUP, self._signal_handler_SIGHUP)
+      if previous != signal.SIG_DFL:
+        log.warn('Redefined signal handler for SIGHUP')
+    except (AttributeError, ValueError):
+      # SIGHUP is not supported on some systems (e.g., Windows)
+      log.debug("Didn't install handler for SIGHUP")
+
+  def _signal_handler_SIGHUP (self, signal, frame):
+    self.raiseLater(core, RereadConfiguration)
+
   def goUp (self):
     log.debug(self.version_string + " going up...")
 
@@ -336,6 +365,8 @@ class POXCore (EventMixin):
 
     self.starting_up = False
     self.raiseEvent(GoingUpEvent())
+
+    self._add_signal_handlers()
 
     self.raiseEvent(UpEvent())
 
@@ -564,9 +595,10 @@ class POXCore (EventMixin):
 
 core = None
 
-def initialize (threaded_selecthub=True):
+def initialize (threaded_selecthub=True, handle_signals=True):
   global core
-  core = POXCore(threaded_selecthub=threaded_selecthub)
+  core = POXCore(threaded_selecthub=threaded_selecthub,
+                 handle_signals=handle_signals)
   return core
 
 # The below is a big hack to make tests and doc tools work.

@@ -178,7 +178,8 @@ def _do_launch (argv):
     core = pox.core.core
     core.getLogger('boot').debug('Using existing POX core')
   else:
-    core = pox.core.initialize(_options.threaded_selecthub)
+    core = pox.core.initialize(_options.threaded_selecthub,
+                               _options.handle_signals)
 
   _pre_startup()
   modules = _do_imports(n.split(':')[0] for n in component_order)
@@ -378,6 +379,7 @@ class POXOptions (Options):
     self.enable_openflow = True
     self.log_config = None
     self.threaded_selecthub = True
+    self.handle_signals = True
 
   def _set_h (self, given_name, name, value):
     self._set_help(given_name, name, value)
