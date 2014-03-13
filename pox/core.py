@@ -28,6 +28,7 @@ import logging
 import inspect
 import time
 import os
+import signal
 
 _path = inspect.stack()[0][1]
 _ext_path = _path[0:_path.rindex(os.sep)]
@@ -152,6 +153,10 @@ class ComponentRegistered (Event):
     self.name = name
     self.component = component
 
+class RereadConfiguration (Event):
+  """ Fired when modules should reread their configuration files. """
+  pass
+
 import pox.lib.recoco as recoco
 
 class POXCore (EventMixin):
@@ -179,7 +184,8 @@ class POXCore (EventMixin):
     DownEvent,
     GoingUpEvent,
     GoingDownEvent,
-    ComponentRegistered
+    ComponentRegistered,
+    RereadConfiguration
   ])
 
   version = (0,3,0)
@@ -317,6 +323,15 @@ class POXCore (EventMixin):
     except:
       return "Unknown Platform"
 
+  def _add_signal_handlers (self):
+    try:
+      signal.signal(signal.SIGHUP, self._handler_signal_SIGHUP)
+    except ValueError:
+      log.warn('failed to install handler SIGHUP')
+
+  def _handler_signal_SIGHUP (self, signal, frame):
+    self.raiseLater(core, RereadConfiguration)
+
   def goUp (self):
     log.debug(self.version_string + " going up...")
 
@@ -336,6 +351,8 @@ class POXCore (EventMixin):
 
     self.starting_up = False
     self.raiseEvent(GoingUpEvent())
+
+    self._add_signal_handlers()
 
     self.raiseEvent(UpEvent())
 
