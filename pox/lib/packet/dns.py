@@ -236,10 +236,13 @@ class dns(packet_base):
           return s
 
         def putData (s, r):
-          if r.qtype in (2,12,5,15):
+          if r.qtype in (2,12,5,15): # NS, PTR, CNAME, MX
             return putName(s, r.rddata)
-          elif r.qtype in (1, 28):
-            assert isinstance(r.rddata, (IPAddr, IPAddr6))
+          elif r.qtype == 1: # A
+            assert isinstance(r.rddata, IPAddr)
+            return s + r.rddata.raw
+          elif r.qtype == 28: # AAAA
+            assert isinstance(r.rddata, IPAddr6)
             return s + r.rddata.raw
           else:
             return s + r.rddata
