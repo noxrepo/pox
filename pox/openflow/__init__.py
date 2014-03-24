@@ -38,6 +38,16 @@ from pox.lib.util import dpidToStr
 import libopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
 
+
+class ConnectionHandshakeComplete (Event):
+  """
+  Event when a switch handshake completes
+
+  Fired immediately before ConnectionUp
+  """
+  def __init__ (self, connection):
+    self.connection = connection
+
 class ConnectionUp (Event):
   """
   Event raised when the connection to an OpenFlow switch has been
@@ -294,6 +304,7 @@ class OpenFlowNexus (EventMixin):
   specific connections.
   """
   _eventMixin_events = set([
+    ConnectionHandshakeComplete,
     ConnectionUp,
     ConnectionDown,
     FeaturesReceived,

@@ -63,134 +63,6 @@ from errno import EAGAIN, ECONNRESET, EADDRINUSE, EADDRNOTAVAIL, EMFILE
 import traceback
 
 
-def handle_HELLO (con, msg): #S
-  #con.msg("HELLO wire protocol " + hex(msg.version))
-
-  # Send a features request
-  msg = of.ofp_features_request()
-  con.send(msg)
-
-def handle_ECHO_REPLY (con, msg):
-  #con.msg("Got echo reply")
-  pass
-
-def handle_ECHO_REQUEST (con, msg): #S
-  reply = msg
-
-  reply.header_type = of.OFPT_ECHO_REPLY
-  con.send(reply)
-
-def handle_FLOW_REMOVED (con, msg): #A
-  e = con.ofnexus.raiseEventNoErrors(FlowRemoved, con, msg)
-  if e is None or e.halt != True:
-    con.raiseEventNoErrors(FlowRemoved, con, msg)
-
-def handle_FEATURES_REPLY (con, msg):
-  connecting = con.connect_time == None
-  con.features = msg
-  con.original_ports._ports = set(msg.ports)
-  con.ports._reset()
-  con.dpid = msg.datapath_id
-
-  if not connecting:
-    con.ofnexus._connect(con)
-    e = con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
-    if e is None or e.halt != True:
-      con.raiseEventNoErrors(FeaturesReceived, con, msg)
-    return
-
-  nexus = core.OpenFlowConnectionArbiter.getNexus(con)
-  if nexus is None:
-    # Cancel connection
-    con.info("No OpenFlow nexus for " +
-             pox.lib.util.dpidToStr(msg.datapath_id))
-    con.disconnect()
-    return
-  con.ofnexus = nexus
-  con.ofnexus._connect(con)
-  #connections[con.dpid] = con
-
-  barrier = of.ofp_barrier_request()
-
-  listeners = []
-
-  def finish_connecting (event):
-    if event.xid != barrier.xid:
-      con.dpid = None
-      con.err("failed connect")
-      con.disconnect()
-    else:
-      con.info("connected")
-      con.connect_time = time.time()
-      e = con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
-      if e is None or e.halt != True:
-        con.raiseEventNoErrors(ConnectionUp, con, msg)
-      e = con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
-      if e is None or e.halt != True:
-        con.raiseEventNoErrors(FeaturesReceived, con, msg)
-    con.removeListeners(listeners)
-  listeners.append(con.addListener(BarrierIn, finish_connecting))
-
-  def also_finish_connecting (event):
-    if event.xid != barrier.xid: return
-    if event.ofp.type != of.OFPET_BAD_REQUEST: return
-    if event.ofp.code != of.OFPBRC_BAD_TYPE: return
-    # Okay, so this is probably an HP switch that doesn't support barriers
-    # (ugh).  We'll just assume that things are okay.
-    finish_connecting(event)
-  listeners.append(con.addListener(ErrorIn, also_finish_connecting))
-
-  #TODO: Add a timeout for finish_connecting
-
-  if con.ofnexus.miss_send_len is not None:
-    con.send(of.ofp_set_config(miss_send_len =
-                                  con.ofnexus.miss_send_len))
-  if con.ofnexus.clear_flows_on_connect:
-    con.send(of.ofp_flow_mod(match=of.ofp_match(),command=of.OFPFC_DELETE))
-
-  con.send(barrier)
-
-  """
-  # Hack for old versions of cbench
-  class C (object):
-    xid = barrier.xid
-  finish_connecting(C())
-  """
-
-def handle_STATS_REPLY (con, msg):
-  e = con.ofnexus.raiseEventNoErrors(RawStatsReply, con, msg)
-  if e is None or e.halt != True:
-    con.raiseEventNoErrors(RawStatsReply, con, msg)
-  con._incoming_stats_reply(msg)
-
-def handle_PORT_STATUS (con, msg): #A
-  if msg.reason == of.OFPPR_DELETE:
-    con.ports._forget(msg.desc)
-  else:
-    con.ports._update(msg.desc)
-  e = con.ofnexus.raiseEventNoErrors(PortStatus, con, msg)
-  if e is None or e.halt != True:
-    con.raiseEventNoErrors(PortStatus, con, msg)
-
-def handle_PACKET_IN (con, msg): #A
-  e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
-  if e is None or e.halt != True:
-    con.raiseEventNoErrors(PacketIn, con, msg)
-
-def handle_ERROR_MSG (con, msg): #A
-  err = ErrorIn(con, msg)
-  e = con.ofnexus.raiseEventNoErrors(err)
-  if e is None or e.halt != True:
-    con.raiseEventNoErrors(err)
-  if err.should_log:
-    log.error(str(con) + " OpenFlow Error:\n" +
-              msg.show(str(con) + " Error: ").strip())
-
-def handle_BARRIER (con, msg):
-  e = con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)
-  if e is None or e.halt != True:
-    con.raiseEventNoErrors(BarrierIn, con, msg)
-
 # handlers for stats replies
 def handle_OFPST_DESC (con, parts):
   msg = parts[0].body
@@ -237,29 +109,239 @@ def handle_OFPST_QUEUE (con, parts):
   if e is None or e.halt != True:
     con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
 
-def handle_VENDOR (con, msg):
-  log.info("Vendor msg: " + str(msg))
+
+class OpenFlowHandlers (object):
+  """
+  A superclass for a thing which handles incoming OpenFlow messages
+
+  The only public part of the interface is that it should have a "handlers"
+  attribute which is a list where the index is an OFPT and the value is a
+  function to call for that type with the parameters (connection, msg).  Oh,
+  and the add_handler() method to add a handler.
+
+  The default implementation assumes these handler functions are all methods
+  with the names "handle_<TYPE>" and resolves those into the handlers list
+  on init.
+  """
+
+  def __init__ (self):
+    # A list, where the index is an OFPT, and the value is a function to
+    # call for that type
+    self.handlers = []
+
+    self._build_table()
+
+  def handle_default (self, con, msg):
+    pass
+
+  def add_handler (self, msg_type, handler):
+    if msg_type >= len(self.handlers):
+      missing = msg_type - len(self.handlers) + 1
+      self.handlers.extend([self.handle_default] * missing)
+    self.handlers[msg_type] = handler
+
+  def _build_table (self):
+    try:
+      super(OpenFlowHandlers, self)._build_table()
+    except:
+      pass
+    def add (n):
+      t = getattr(of, 'OFPT_' + n)
+      h = getattr(self, 'handle_' + n, None)
+      if h is None: return
+      self.add_handler(t, h)
+    add('HELLO')
+    add('ECHO_REQUEST')
+    add('ECHO_REPLY')
+    add('PACKET_IN')
+    add('FEATURES_REPLY')
+    add('PORT_STATUS')
+    add('ERROR')
+    add('BARRIER_REPLY') #FIXME: Handler name mismatch
+    add('STATS_REPLY')
+    add('FLOW_REMOVED')
+    add('VENDOR')
 
 
-# A list, where the index is an OFPT, and the value is a function to
-# call for that type
-# This is generated automatically based on handlerMap
-handlers = []
+class DefaultOpenFlowHandlers (OpenFlowHandlers):
+  """
+  Basic OpenFlow message handling functionality
 
-# Message handlers
-handlerMap = {
-  of.OFPT_HELLO : handle_HELLO,
-  of.OFPT_ECHO_REQUEST : handle_ECHO_REQUEST,
-  of.OFPT_ECHO_REPLY : handle_ECHO_REPLY,
-  of.OFPT_PACKET_IN : handle_PACKET_IN,
-  of.OFPT_FEATURES_REPLY : handle_FEATURES_REPLY,
-  of.OFPT_PORT_STATUS : handle_PORT_STATUS,
-  of.OFPT_ERROR : handle_ERROR_MSG,
-  of.OFPT_BARRIER_REPLY : handle_BARRIER,
-  of.OFPT_STATS_REPLY : handle_STATS_REPLY,
-  of.OFPT_FLOW_REMOVED : handle_FLOW_REMOVED,
-  of.OFPT_VENDOR : handle_VENDOR,
-}
+  There is generally a single instance of this class which is shared by all
+  Connections.
+  """
+  @staticmethod
+  def handle_STATS_REPLY (con, msg):
+    e = con.ofnexus.raiseEventNoErrors(RawStatsReply, con, msg)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(RawStatsReply, con, msg)
+    con._incoming_stats_reply(msg)
+
+  @staticmethod
+  def handle_PORT_STATUS (con, msg): #A
+    if msg.reason == of.OFPPR_DELETE:
+      con.ports._forget(msg.desc)
+    else:
+      con.ports._update(msg.desc)
+    e = con.ofnexus.raiseEventNoErrors(PortStatus, con, msg)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(PortStatus, con, msg)
+
+  @staticmethod
+  def handle_PACKET_IN (con, msg): #A
+    e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(PacketIn, con, msg)
+
+  @staticmethod
+  def handle_ERROR_MSG (con, msg): #A
+    err = ErrorIn(con, msg)
+    e = con.ofnexus.raiseEventNoErrors(err)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(err)
+    if err.should_log:
+      log.error(str(con) + " OpenFlow Error:\n" +
+                msg.show(str(con) + " Error: ").strip())
+
+  @staticmethod
+  def handle_BARRIER_REPLY (con, msg):
+    e = con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(BarrierIn, con, msg)
+
+  @staticmethod
+  def handle_VENDOR (con, msg):
+    log.info("Vendor msg: " + str(msg))
+
+  @staticmethod
+  def handle_HELLO (con, msg): #S
+    #con.msg("HELLO wire protocol " + hex(msg.version))
+
+    # Send a features request
+    msg = of.ofp_features_request()
+    con.send(msg)
+
+  @staticmethod
+  def handle_ECHO_REPLY (con, msg):
+    #con.msg("Got echo reply")
+    pass
+
+  @staticmethod
+  def handle_ECHO_REQUEST (con, msg): #S
+    reply = msg
+
+    reply.header_type = of.OFPT_ECHO_REPLY
+    con.send(reply)
+
+  @staticmethod
+  def handle_FLOW_REMOVED (con, msg): #A
+    e = con.ofnexus.raiseEventNoErrors(FlowRemoved, con, msg)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(FlowRemoved, con, msg)
+
+  @staticmethod
+  def handle_FEATURES_REPLY (con, msg):
+    con.features = msg
+    con.original_ports._ports = set(msg.ports)
+    con.ports._reset()
+    con.dpid = msg.datapath_id # Check this
+
+    con.ofnexus._connect(con) #FIXME: Should this be here?
+    e = con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(FeaturesReceived, con, msg)
+
+# Default handlers for connections in connected state
+_default_handlers = DefaultOpenFlowHandlers()
+
+
+class HandshakeOpenFlowHandlers (OpenFlowHandlers):
+  """
+  OpenFlow message handling for the handshake state
+  """
+  def __init__ (self):
+    self._features_request_sent = False
+    self._barrier = None
+    super(HandshakeOpenFlowHandlers, self).__init__()
+
+  def handle_BARRIER_REPLY (self, con, msg):
+    if not self._barrier: return
+    if msg.xid != self._barrier.xid:
+      con.dpid = None
+      con.err("failed connect")
+      con.disconnect()
+    else:
+      self._finish_connecting(con)
+
+  def handle_ERROR_MSG (self, con, msg): #A
+    if not self._barrier: return
+    if msg.xid != self._barrier.xid: return
+    if msg.type != of.OFPET_BAD_REQUEST: return
+    if msg.code != of.OFPBRC_BAD_TYPE: return
+    # Okay, so this is probably an HP switch that doesn't support barriers
+    # (ugh).  We'll just assume that things are okay.
+    self._finish_connecting(con)
+
+  def handle_HELLO (self, con, msg): #S
+    # Send a features request
+    if not self._features_request_sent:
+      self._features_request_sent = True
+      msg = of.ofp_features_request()
+      con.send(msg)
+
+  @staticmethod
+  def handle_ECHO_REQUEST (con, msg): #S
+    reply = msg
+
+    reply.header_type = of.OFPT_ECHO_REPLY
+    con.send(reply)
+
+  def handle_FEATURES_REPLY (self, con, msg):
+    connecting = con.connect_time == None
+    con.features = msg
+    con.original_ports._ports = set(msg.ports)
+    con.ports._reset()
+    con.dpid = msg.datapath_id
+
+    nexus = core.OpenFlowConnectionArbiter.getNexus(con)
+    if nexus is None:
+      # Cancel connection
+      con.info("No OpenFlow nexus for " +
+              pox.lib.util.dpidToStr(msg.datapath_id))
+      con.disconnect()
+      return
+    con.ofnexus = nexus
+    con.ofnexus._connect(con)
+
+    #TODO: Add a timeout for finish_connecting
+
+    if con.ofnexus.miss_send_len is not None:
+      con.send(of.ofp_set_config(miss_send_len =
+                                    con.ofnexus.miss_send_len))
+    if con.ofnexus.clear_flows_on_connect:
+      con.send(of.ofp_flow_mod(match=of.ofp_match(),command=of.OFPFC_DELETE))
+
+    self._barrier = of.ofp_barrier_request()
+    con.send(self._barrier)
+
+    # To support old versions of cbench, just finish connecting here.
+    #self._finish_connecting(con)
+
+  def _finish_connecting (self, con):
+    con.info("connected")
+    con.connect_time = time.time()
+    con.handlers = _default_handlers.handlers
+    con.ofnexus.raiseEventNoErrors(ConnectionHandshakeComplete, con)
+
+    e = con.ofnexus.raiseEventNoErrors(ConnectionUp, con, con.features)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(ConnectionUp, con, con.features)
+
+    if con.features:
+      e = con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, con.features)
+      if e is None or e.halt != True:
+        con.raiseEventNoErrors(FeaturesReceived, con, con.features)
+
 
 statsHandlerMap = {
   of.OFPST_DESC : handle_OFPST_DESC,
@@ -269,6 +351,7 @@ statsHandlerMap = {
   of.OFPST_PORT : handle_OFPST_PORT,
   of.OFPST_QUEUE : handle_OFPST_QUEUE,
 }
+
 
 # Deferred sending should be unusual, so don't worry too much about
 # efficiency
@@ -641,6 +724,9 @@ class Connection (EventMixin):
     #TODO: set a time that makes sure we actually establish a connection by
     #      some timeout
 
+    self.unpackers = unpackers
+    self.handlers = HandshakeOpenFlowHandlers().handlers
+
   @property
   def eth_addr (self):
     dpid = self.dpid
@@ -763,12 +849,12 @@ class Connection (EventMixin):
 
       if buf_len - offset < msg_length: break
 
-      new_offset,msg = unpackers[ofp_type](self.buf, offset)
+      new_offset,msg = self.unpackers[ofp_type](self.buf, offset)
       assert new_offset - offset == msg_length
       offset = new_offset
 
       try:
-        h = handlers[ofp_type]
+        h = self.handlers[ofp_type]
         h(self, msg)
       except:
         log.exception("%s: Exception while handling OpenFlow message:\n" +
@@ -978,12 +1064,6 @@ class OpenFlow_01_Task (Task):
     #pox.core.quit()
 
 
-def _set_handlers ():
-  handlers.extend([None] * (1 + sorted(handlerMap.keys(),reverse=True)[0]))
-  for h in handlerMap:
-    handlers[h] = handlerMap[h]
-    #print handlerMap[h]
-_set_handlers()
 
 
 # Used by the Connection class
