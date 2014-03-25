@@ -464,22 +464,37 @@ class PortCollection (object):
   """
   Keeps track of lists of ports and provides nice indexing.
 
+  One of the complexities of this class is due to how we get port information
+  from OpenFlow.  We get an initial set of ports during handshake.  We then
+  get updates after that.  We actually want to keep the original info around,
+  but we *usually* are only interested in the "up to date" version with
+  all the "delta" updates applied.  Thus, this collection can "chain" to a
+  parent collection.  The original ports are stored in one collection, and
+  deltas are applied to a child.  It's usually this child which is queried.
+
+  If a port is removed from a child, the child *masks* it.  If the entry were
+  simply removed from the child, then when a user queries for it, we might
+  walk down the chain and find it in a parent which isn't what we want.
+
   NOTE: It's possible this could be simpler by inheriting from UserDict,
         but I couldn't swear without looking at UserDict in some detail,
         so I just implemented a lot of stuff by hand.
   """
   def __init__ (self):
-    self._ports = set()
-    self._masks = set()
-    self._chain = None
+    self._ports = set() # Set of ofp_phy_ports
+    self._masks = set() # port_nos of ports which have been removed
+    self._chain = None  # A parent port collection
 
   def _reset (self):
     self._ports.clear()
     self._masks.clear()
 
-  def _forget (self, port_no):
-    self._masks.add(port_no)
-    self._ports = set([p for p in self._ports if p.port_no != port_no])
+  def _forget (self, port):
+    # Note that all we really need here is the port_no.  We pass an entire
+    # ofp_phy_port anyway for consistency with _update(), though this could
+    # be re-evaluated if there's ever another caller of _forget().
+    self._masks.add(port.port_no)
+    self._ports = set([p for p in self._ports if p.port_no != port.port_no])
 
   def _update (self, port):
     self._masks.discard(port.port_no)
