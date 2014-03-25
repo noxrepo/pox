@@ -1,3 +1,6 @@
+***
+This is an experimental hack of POX for libfluid.  See below.
+***
 POX is a networking software platform written in Python
 
 POX started life as an OpenFlow controller, but can now also function
@@ -34,3 +37,16 @@ pox.py also supports a few command line options of its own which should
 be given first:
  --verbose      print stack traces for initialization exceptions
  --no-openflow  don't start the openflow module automatically
+
+
+This is a quick hack to make POX at least sort of work with libfluid.  It
+at least works well enough to run l2_pairs and l2_learning.  Currently
+it only uses libfluid for reading from the switch.  Messages *to* the
+switch are still crafted using POX's OpenFlow library.
+
+To run it, first apply the included patch to libfluid and build libfluid
+and its Python bindings as per the libfluid documentation.  Copy or
+symlink the Python bindings directory (libfluid/examples/python/fluid)
+into POX's openflow package (pox/openflow).
+
+Then run POX as normal (specifying l2_pairs or l2_learning).

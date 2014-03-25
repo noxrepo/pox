@@ -37,6 +37,7 @@ from pox.lib.revent import *
 from pox.lib.util import dpidToStr
 import libopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
+import fluid.msg.of10 as fl01
 
 class ConnectionUp (Event):
   """
@@ -87,7 +88,7 @@ class PortStatus (Event):
     self.modified = ofp.reason == of.OFPPR_MODIFY
     self.added = ofp.reason == of.OFPPR_ADD
     self.deleted = ofp.reason == of.OFPPR_DELETE
-    self.port = ofp.desc.port_no
+    self.port = ofp.desc.port_no()
 
 class FlowRemoved (Event):
   """
@@ -169,8 +170,8 @@ class PacketIn (Event):
     Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
-    self.port = ofp.in_port
-    self.data = ofp.data
+    self.port = ofp.in_port()
+    self.data = fl01.cdata(ofp.data(), ofp.data_len())
     self._parsed = None
     self.dpid = connection.dpid
 
@@ -191,7 +192,7 @@ class ErrorIn (Event):
     Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
-    self.xid = ofp.xid
+    self.xid = ofp.xid()
     self.dpid = connection.dpid
     self.should_log = True # If this remains True, an error will be logged
 
@@ -238,7 +239,7 @@ class BarrierIn (Event):
     self.connection = connection
     self.ofp = ofp
     self.dpid = connection.dpid
-    self.xid = ofp.xid
+    self.xid = ofp.xid()
 
 class ConnectionIn (Event):
   def __init__ (self, connection):

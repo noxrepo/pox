@@ -38,10 +38,23 @@ table = {}
 # it selectable.
 all_ports = of.OFPP_FLOOD
 
+NO_BUFFER = 4294967295
+def set_data (po, pi):
+  print pi.buffer_id()
+  po.in_port = pi.in_port()
+  if pi.buffer_id() != NO_BUFFER:
+    po.buffer_id = pi.buffer_id()
+  else:
+    po.data = pi.data
+
 
 # Handle messages the switch has sent us because it has no
 # matching rule.
 def _handle_PacketIn (event):
+  m = of.ofp_flow_mod()
+  m.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
+  event.connection.send(m)
+
   packet = event.parsed
 
   # Learn the source
@@ -53,7 +66,8 @@ def _handle_PacketIn (event):
     # We don't know where the destination is yet.  So, we'll just
     # send the packet out all ports (except the one it came in on!)
     # and hope the destination is out there somewhere. :)
-    msg = of.ofp_packet_out(data = event.ofp)
+    msg = of.ofp_packet_out()
+    set_data(msg, event.ofp)
     msg.actions.append(of.ofp_action_output(port = all_ports))
     event.connection.send(msg)
   else:
@@ -64,11 +78,11 @@ def _handle_PacketIn (event):
     msg.match.dl_src = packet.dst
     msg.actions.append(of.ofp_action_output(port = event.port))
     event.connection.send(msg)
-    
+
     # This is the packet that just came in -- we want to
     # install the rule and also resend the packet.
     msg = of.ofp_flow_mod()
-    msg.data = event.ofp # Forward the incoming packet
+    set_data(msg, event.ofp) # Forward the incoming packet...
     msg.match.dl_src = packet.src
     msg.match.dl_dst = packet.dst
     msg.actions.append(of.ofp_action_output(port = dst_port))

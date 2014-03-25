@@ -32,6 +32,16 @@ log = core.getLogger()
 # Can be overriden on commandline.
 _flood_delay = 0
 
+
+NO_BUFFER = 4294967295
+def set_data (po, pi):
+  po.in_port = pi.in_port()
+  if pi.buffer_id() != NO_BUFFER:
+    po.buffer_id = pi.buffer_id()
+  else:
+    po.data = pi.data
+
+
 class LearningSwitch (object):
   """
   The learning switch "brain" associated with a single OpenFlow switch.
@@ -118,7 +128,7 @@ class LearningSwitch (object):
       else:
         pass
         #log.info("Holding down flood for %s", dpid_to_str(event.dpid))
-      msg.data = event.ofp
+      set_data(msg, event.ofp)
       msg.in_port = event.port
       self.connection.send(msg)
 
@@ -134,11 +144,11 @@ class LearningSwitch (object):
         msg.match = of.ofp_match.from_packet(packet)
         msg.idle_timeout = duration[0]
         msg.hard_timeout = duration[1]
-        msg.buffer_id = event.ofp.buffer_id
+        msg.buffer_id = event.ofp.buffer_id()
         self.connection.send(msg)
-      elif event.ofp.buffer_id is not None:
+      elif event.ofp.buffer_id() != NO_BUFFER:
         msg = of.ofp_packet_out()
-        msg.buffer_id = event.ofp.buffer_id
+        msg.buffer_id = event.ofp.buffer_id()
         msg.in_port = event.port
         self.connection.send(msg)
 
@@ -170,7 +180,7 @@ class LearningSwitch (object):
         msg.idle_timeout = 10
         msg.hard_timeout = 30
         msg.actions.append(of.ofp_action_output(port = port))
-        msg.data = event.ofp # 6a
+        set_data(msg, event.ofp) # 6a
         self.connection.send(msg)
 
 

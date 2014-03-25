@@ -1,4 +1,4 @@
-# Copyright 2011,2012 James McCauley
+# Copyright 2011,2012,2014 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,7 @@
 """
 In charge of OpenFlow 1.0 switches.
 
-NOTE: This module is loaded automatically on startup unless POX is run
-      with --no-openflow .
+This version is modified to use libfluid.
 """
 from pox.core import core
 import pox
@@ -29,6 +28,7 @@ from pox.lib.socketcapture import CaptureSocket
 import pox.openflow.debug
 from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow import *
+import fluid.msg.of10 as fl
 
 log = core.getLogger()
 
@@ -38,7 +38,36 @@ import select
 # List where the index is an OpenFlow message type (OFPT_xxx), and
 # the values are unpack functions that unpack the wire format of that
 # type into a message object.
-unpackers = make_type_to_unpacker_table()
+def _setup_unpackers ():
+  def ismsg (c):
+    if not isinstance(c, type): return False
+    if not issubclass(c, fl.OFMsg): return False
+    return True
+  fl_cls = {n.lower():v for n,v in vars(fl).iteritems() if ismsg(v)}
+
+  top = max(of._message_type_to_class)
+  ou = [of._message_type_to_class[i] for i in range(0, top)]
+  r = []
+  for u in ou:
+    n = u.__name__[4:].replace("_","")
+    if n == "vendorgeneric": n = "vendor"
+    def make_unpack (t):
+      def unpack (data, offset):
+        c = t()
+        e = c.unpack(data[offset:])
+        if e: raise RuntimeError("Failed to unpack.  Error: %s" % (e,))
+        offset += c.length()
+        assert offset >= 8
+        return offset,c
+      return unpack
+
+    cls = fl_cls.get(n)
+    r.append(make_unpack(cls))
+  global unpackers
+  unpackers = r
+
+_setup_unpackers()
+
 
 try:
   PIPE_BUF = select.PIPE_BUF
@@ -88,9 +117,9 @@ def handle_FLOW_REMOVED (con, msg): #A
 def handle_FEATURES_REPLY (con, msg):
   connecting = con.connect_time == None
   con.features = msg
-  con.original_ports._ports = set(msg.ports)
+  con.original_ports._ports = set(msg.ports())
   con.ports._reset()
-  con.dpid = msg.datapath_id
+  con.dpid = msg.datapath_id()
 
   if not connecting:
     con.ofnexus._connect(con)
@@ -103,7 +132,7 @@ def handle_FEATURES_REPLY (con, msg):
   if nexus is None:
     # Cancel connection
     con.info("No OpenFlow nexus for " +
-             pox.lib.util.dpidToStr(msg.datapath_id))
+             pox.lib.util.dpidToStr(msg.datapath_id()))
     con.disconnect()
     return
   con.ofnexus = nexus
@@ -165,9 +194,9 @@ def handle_STATS_REPLY (con, msg):
 
 def handle_PORT_STATUS (con, msg): #A
   if msg.reason == of.OFPPR_DELETE:
-    con.ports._forget(msg.desc)
+    con.ports._forget(msg.desc())
   else:
-    con.ports._update(msg.desc)
+    con.ports._update(msg.desc())
   e = con.ofnexus.raiseEventNoErrors(PortStatus, con, msg)
   if e is None or e.halt != True:
     con.raiseEventNoErrors(PortStatus, con, msg)
@@ -477,19 +506,20 @@ class PortCollection (object):
     self._ports.clear()
     self._masks.clear()
 
-  def _forget (self, port_no):
+  def _forget (self, port):
+    port_no = port.port_no()
     self._masks.add(port_no)
-    self._ports = set([p for p in self._ports if p.port_no != port_no])
+    self._ports = set([p for p in self._ports if p.port_no() != port_no])
 
   def _update (self, port):
-    self._masks.discard(port.port_no)
-    self._ports = set([p for p in self._ports if p.port_no != port.port_no])
+    self._masks.discard(port.port_no())
+    self._ports = set([p for p in self._ports if p.port_no() != port.port_no()])
     self._ports.add(port)
 
   def __str__ (self):
     if len(self) == 0:
       return "<Ports: Empty>"
-    l = ["%s:%i"%(p.name,p.port_no) for p in sorted(self.values())]
+    l = ["%s:%i"%(p.name,p.port_no()) for p in sorted(self.values())]
     return "<Ports: %s>" % (", ".join(l),)
 
   def __len__ (self):
@@ -498,7 +528,7 @@ class PortCollection (object):
   def __getitem__ (self, index):
     if isinstance(index, (int,long)):
       for p in self._ports:
-        if p.port_no == index:
+        if p.port_no() == index:
           return p
     elif isinstance(index, EthAddr):
       for p in self._ports:
@@ -510,7 +540,7 @@ class PortCollection (object):
           return p
     if self._chain:
       p = self._chain[index]
-      if p.port_no not in self._masks:
+      if p.port_no() not in self._masks:
         return p
 
     raise IndexError("No key %s" % (index,))
@@ -521,7 +551,7 @@ class PortCollection (object):
       k.difference_update(self._masks)
     else:
       k = set()
-    k.update([p.port_no for p in self._ports])
+    k.update([p.port_no() for p in self._ports])
     return list(k)
 
   def __iter__ (self):
@@ -688,7 +718,7 @@ class Connection (EventMixin):
       # There's actually no reason the data has to be an instance of
       # ofp_header, but this check is likely to catch a lot of bugs,
       # so we check it anyway.
-      assert isinstance(data, of.ofp_header)
+      #assert isinstance(data, of.ofp_header)
       data = data.pack()
 
     if deferredSender.sending:

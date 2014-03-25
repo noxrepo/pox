@@ -1,0 +1,20 @@
+diff --git a/examples/python/swig/of10.i b/examples/python/swig/of10.i
+index 3992762..56f9032 100755
+--- a/examples/python/swig/of10.i
++++ b/examples/python/swig/of10.i
+@@ -1,5 +1,8 @@
+ %module of10
+ #pragma SWIG nowarn=362,503,509
++
++%include "std_vector.i"
++
+ %{
+ /* Includes the header in the wrapper code */
+ typedef uint32_t of_error;
+@@ -46,4 +49,6 @@ btom = lambda b : ":".join([c.encode("hex") for c in b])
+ 
+ %include "fluid/of10msg.hh"
+ 
++%template(vector_port) std::vector<fluid_msg::of10::Port>;
++
+ typedef uint32_t of_error;
