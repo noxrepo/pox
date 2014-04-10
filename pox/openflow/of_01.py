@@ -145,23 +145,14 @@ class OpenFlowHandlers (object):
       super(OpenFlowHandlers, self)._build_table()
     except:
       pass
-    def add (n):
-      t = getattr(of, 'OFPT_' + n)
-      h = getattr(self, 'handle_' + n, None)
-      if h is None: return
-      self.add_handler(t, h)
-    add('HELLO')
-    add('ECHO_REQUEST')
-    add('ECHO_REPLY')
-    add('PACKET_IN')
-    add('FEATURES_REPLY')
-    add('PORT_STATUS')
-    add('ERROR')
-    add('BARRIER_REPLY') #FIXME: Handler name mismatch
-    add('STATS_REPLY')
-    add('FLOW_REMOVED')
-    add('VENDOR')
 
+    # Set up handlers for incoming OpenFlow messages
+    # That is, self.ofp_handlers[OFPT_FOO] = self.handle_foo
+    for type,name in of.ofp_type_map.iteritems():
+      name = name.split("OFPT_",1)[-1]
+      h = getattr(self, "handle_" + name, None)
+      if not h: continue
+      self.add_handler(type, h)
 
 class DefaultOpenFlowHandlers (OpenFlowHandlers):
   """
