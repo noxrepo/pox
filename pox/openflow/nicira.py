@@ -26,6 +26,8 @@ from pox.openflow.libopenflow_01 import ofp_header, ofp_vendor_base
 from pox.openflow.libopenflow_01 import _PAD, _PAD2, _PAD4, _PAD6
 from pox.openflow.libopenflow_01 import _unpack, _read, _skip
 
+from pox.openflow.of_01 import DefaultOpenFlowHandlers
+
 import struct
 
 
@@ -2581,31 +2583,26 @@ def _init_unpacker ():
   _old_unpacker = unpackers[of.OFPT_VENDOR]
   unpackers[of.OFPT_VENDOR] = _unpack_nx_vendor
 
-
-_old_handler = None
-
 from pox.openflow import PacketIn
 
-def _handle_VENDOR (con, msg):
-  if isinstance(msg, nxt_packet_in) and core.NX.convert_packet_in:
-    e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
-    if e is None or e.halt != True:
-      con.raiseEventNoErrors(PacketIn, con, msg)
-#  elif isinstance(msg, nxt_role_reply):
-#    pass
-#    #TODO
-  else:
-    _old_handler(con, msg)
+class NiciraOpenFlowHandlers (DefaultOpenFlowHandlers):
+  """
+  Nicira OpenFlow message handling functionality
+  """
+  @staticmethod
+  def handle_VENDOR (con, msg):
+      if isinstance(msg, nxt_packet_in) and core.NX.convert_packet_in:
+        e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
+        if e is None or e.halt != True:
+          con.raiseEventNoErrors(PacketIn, con, msg)
+    #  elif isinstance(msg, nxt_role_reply):
+    #    pass
+    #    #TODO
+      else:
+        DefaultOpenFlowHandlers.handle_VENDOR(con, msg)
 
-
-def _init_handler ():
-  global _old_handler
-  from pox.openflow.of_01 import handlerMap, _set_handlers
-
-  _old_handler = handlerMap.get(of.OFPT_VENDOR)
-  handlerMap[of.OFPT_VENDOR] = _handle_VENDOR
-  _set_handlers()
-
+def _handle_ConnectionHandshakeComplete (event):
+  event.connection.handlers = NiciraOpenFlowHandlers().handlers
 
 class NX (object):
   """
@@ -2615,7 +2612,8 @@ class NX (object):
 
 
 def launch (convert_packet_in = False):
-  _init_handler()
+  core.openflow.addListenerByName("ConnectionHandshakeComplete",
+                                  _handle_ConnectionHandshakeComplete)
   _init_unpacker()
 
   nx = NX()
