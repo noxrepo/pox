@@ -2583,11 +2583,15 @@ def _init_unpacker ():
   _old_unpacker = unpackers[of.OFPT_VENDOR]
   unpackers[of.OFPT_VENDOR] = _unpack_nx_vendor
 
+
 from pox.openflow import PacketIn
 
 class NiciraOpenFlowHandlers (DefaultOpenFlowHandlers):
   """
   Nicira OpenFlow message handling functionality
+
+  In particular, we probably want to handle VENDOR messages specially for
+  switches with Nicira extensions.
   """
   @staticmethod
   def handle_VENDOR (con, msg):
@@ -2601,8 +2605,15 @@ class NiciraOpenFlowHandlers (DefaultOpenFlowHandlers):
       else:
         DefaultOpenFlowHandlers.handle_VENDOR(con, msg)
 
+# Handlers used for switches with Nicira extensions
+_nicira_handlers = NiciraOpenFlowHandlers()
+
+
 def _handle_ConnectionHandshakeComplete (event):
-  event.connection.handlers = NiciraOpenFlowHandlers().handlers
+  # Ideally, we might want to check the switch desc here to ensure that the
+  # switch actually implements Nicira extensions.
+  event.connection.handlers = _nicira_handlers.handlers
+
 
 class NX (object):
   """
