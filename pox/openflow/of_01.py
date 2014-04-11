@@ -148,11 +148,15 @@ class OpenFlowHandlers (object):
 
     # Set up handlers for incoming OpenFlow messages
     # That is, self.ofp_handlers[OFPT_FOO] = self.handle_foo
-    for type,name in of.ofp_type_map.iteritems():
-      name = name.split("OFPT_",1)[-1]
-      h = getattr(self, "handle_" + name, None)
+    for of_type,name in of.ofp_type_map.iteritems():
+      assert name[:5] == "OFPT_"
+      h = getattr(self, "handle_" + name[5:], None)
       if not h: continue
-      self.add_handler(type, h)
+      assert callable(h)
+      assert getattr(of._message_type_to_class.get(of_type), '_from_switch',
+                     False), "%s is not switch-to-controller message" % (name,)
+      self.add_handler(of_type, h)
+
 
 class DefaultOpenFlowHandlers (OpenFlowHandlers):
   """
