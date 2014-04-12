@@ -2610,8 +2610,14 @@ _nicira_handlers = NiciraOpenFlowHandlers()
 
 
 def _handle_ConnectionHandshakeComplete (event):
-  # Ideally, we might want to check the switch desc here to ensure that the
-  # switch actually implements Nicira extensions.
+  desc = event.connection.description
+  if not desc: return
+  if "Open vSwitch" not in event.connection.description.hw_desc: return
+
+  # We think we have Nicira extensions.  Log message and do initialization.
+  log = core.getLogger("nicira")
+  log.debug("%s is %s %s", event.connection, desc.hw_desc, desc.sw_desc)
+
   event.connection.handlers = _nicira_handlers.handlers
 
 
