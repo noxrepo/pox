@@ -745,7 +745,11 @@ class Connection (EventMixin):
     """
     if self.disconnected:
       self.msg("already disconnected")
-    self.info(msg)
+    if self.dpid is None:
+      # If we never got a DPID, log at DEBUG level
+      self.msg(msg)
+    else:
+      self.info(msg)
     self.disconnected = True
     try:
       self.ofnexus._disconnect(self.dpid)
