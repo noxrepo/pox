@@ -254,6 +254,9 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
   """
   OpenFlow message handling for the handshake state
   """
+  # If False, don't send a switch desc request when connecting
+  request_description = True
+
   def __init__ (self):
     self._features_request_sent = False
     self._barrier = None
@@ -278,11 +281,18 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
     self._finish_connecting(con)
 
   def handle_HELLO (self, con, msg): #S
-    # Send a features request
+    # Send features and switch desc requests
     if not self._features_request_sent:
       self._features_request_sent = True
-      msg = of.ofp_features_request()
-      con.send(msg)
+      fr = of.ofp_features_request()
+
+      if self.request_description:
+        ss = of.ofp_stats_request()
+        ss.body = of.ofp_desc_stats_request()
+
+        con.send(fr.pack() + ss.pack())
+      else:
+        con.send(fr)
 
   @staticmethod
   def handle_ECHO_REQUEST (con, msg): #S
@@ -290,6 +300,11 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
 
     reply.header_type = of.OFPT_ECHO_REPLY
     con.send(reply)
+
+  @staticmethod
+  def handle_STATS_REPLY (con, msg):
+    if msg.body and isinstance(msg.body, of.ofp_desc_stats_reply):
+      con.description = msg.body
 
   def handle_FEATURES_REPLY (self, con, msg):
     connecting = con.connect_time == None
@@ -701,10 +716,17 @@ class Connection (EventMixin):
     self.buf = ''
     Connection.ID += 1
     self.ID = Connection.ID
-    # TODO: dpid and features don't belong here; they should be eventually
-    # be in topology.switch
+
+    # DPID of connected switch.  None before connection is complete.
     self.dpid = None
+
+    # Switch features reply.  Set during handshake.
     self.features = None
+
+    # Switch desc stats reply.  Set during handshake ordinarily, but may
+    # be None.
+    self.description = None
+
     self.disconnected = False
     self.disconnection_raised = False
     self.connect_time = None
