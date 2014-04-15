@@ -1,4 +1,4 @@
-# Copyright 2011,2013 James McCauley
+# Copyright 2011,2013,2014 James McCauley
 # Copyright 2008 (C) Nicira, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,9 +87,57 @@ class tcp_opt (object):
     elif self.type == tcp_opt.TSOPT:
       return struct.pack('!BBII',self.type,10,self.val[0],self.val[1])
     else:
-      lg.info('(tcp_opt pack) warning, unknown option type ' +
-              str(self.type))
-      return struct.pack('BB',self.type,len(self.val)) + self.val
+      lg.debug('(tcp_opt pack) warning, unknown option type ' +
+               str(self.type))
+      return struct.pack('BB',self.type,2+len(self.val)) + self.val
+
+  @classmethod
+  def unpack_new (cls, buf, offset = 0):
+    o = cls(ord(buf[offset]), None)
+
+    arr = buf
+    i = offset
+    length = ord(arr[i+1])
+
+    # These should be special-cased elsewhere
+    assert o.type != tcp_opt.EOL
+    assert o.type != tcp_opt.NOP
+
+    if o.type == tcp_opt.MSS:
+      if length != 4:
+        raise RuntimeError("MSS option length != 4")
+      o.val = struct.unpack('!H',arr[i+2:i+4])[0]
+    elif o.type == tcp_opt.WSOPT:
+      if length != 3:
+        raise RuntimeError("WSOPT option length != 3")
+      o.val = ord(arr[i+2])
+    elif o.type == tcp_opt.SACKPERM:
+      if length != 2:
+        raise RuntimeError("SACKPERM option length != 2")
+    elif o.type == tcp_opt.SACK:
+      if length >= 2 and ((length-2) % 8) == 0:
+        num = (length - 2) / 8
+        val = struct.unpack("!" + "II" * num, arr[i+2:])
+        val = [(x,y) for x,y in zip(val[0::2],val[1::2])]
+        o.val = val
+      else:
+        raise RuntimeError("Invalid SACK option")
+    elif o.type == tcp_opt.TSOPT:
+      if length != 10:
+        raise RuntimeError("TSOPT option length != 10")
+      (val1,val2) = struct.unpack('!II',arr[i+2:i+10])
+      o.val = (val1,val2)
+    else:
+      #self.msg('(tcp parse_options) warning, unknown option %x '
+      #         % (ord(arr[i]),))
+      o.val = arr[i+2:i+2+length]
+
+    return offset+length,o
+
+  def __str__ (self):
+    #FIXME: Ugly
+    names={0:'EOL',1:'NOP',2:'MSS',3:'WSOPT',4:'SACKPERM',5:'SACK',8:'TSOPT'}
+    return names.get(self.type,"tcp_opt-%s" % (self.type,))
 
 
 class tcp (packet_base):
@@ -183,8 +231,12 @@ class tcp (packet_base):
     if self.ECN: f += 'E'
     if self.CWR: f += 'C'
 
-    s = '[TCP %s>%s seq:%s ack:%s f:%s]' % (self.srcport,
-        self.dstport, self.seq, self.ack, f)
+    ops = ''
+    if self.options:
+      ops = ' opt:'+','.join(str(o) for o in self.options)
+
+    s = '[TCP %s>%s seq:%s ack:%s f:%s%s]' % (self.srcport,
+        self.dstport, self.seq, self.ack, f, ops)
 
     return s
 
@@ -198,7 +250,7 @@ class tcp (packet_base):
     arr = raw
 
     while i < self.hdr_len:
-      # Single-byte options
+      # Special case single-byte options
       if ord(arr[i]) == tcp_opt.EOL:
         break
       if ord(arr[i]) == tcp_opt.NOP:
@@ -214,39 +266,10 @@ class tcp (packet_base):
       if ord(arr[i+1]) < 2:
         raise RuntimeError("Illegal TCP option length")
 
-      # Actual option parsing
-      if ord(arr[i]) == tcp_opt.MSS:
-        if ord(arr[i+1]) != 4:
-          raise RuntimeError("MSS option length != 4")
-        val = struct.unpack('!H',arr[i+2:i+4])[0]
-        self.options.append(tcp_opt(tcp_opt.MSS,val))
-      elif ord(arr[i]) == tcp_opt.WSOPT:
-        if ord(arr[i+1]) != 3:
-          raise RuntimeError("WSOPT option length != 3")
-        self.options.append(tcp_opt(tcp_opt.WSOPT, ord(arr[i+2])))
-      elif ord(arr[i]) == tcp_opt.SACKPERM:
-        if ord(arr[i+1]) != 2:
-          raise RuntimeError("SACKPERM option length != 2")
-        self.options.append(tcp_opt(tcp_opt.SACKPERM, None))
-      elif ord(arr[i]) == tcp_opt.SACK:
-        if ord(arr[i+1]) >= 2 and ((ord(arr[i+1])-2) % 8) == 0:
-          num = (ord(arr[i+1]) - 2) / 8
-          val = struct.unpack("!" + "II" * num, arr[i+2:])
-          val = [(x,y) for x,y in zip(val[0::2],val[1::2])]
-          self.options.append(tcp_opt(tcp_opt.SACK, val))
-        else:
-          raise RuntimeError("Invalid SACK option")
-      elif ord(arr[i]) == tcp_opt.TSOPT:
-        if ord(arr[i+1]) != 10:
-          raise RuntimeError("TSOPT option length != 10")
-        (val1,val2) = struct.unpack('!II',arr[i+2:i+10])
-        self.options.append(tcp_opt(tcp_opt.TSOPT,(val1,val2)))
-      else:
-        self.msg('(tcp parse_options) warning, unknown option %x '
-                 % (ord(arr[i]),))
-        self.options.append(tcp_opt(ord(arr[i]), arr[i+2:i+2+ord(arr[i+1])]))
+      i,opt = tcp_opt.unpack_new(arr, i)
+      if opt:
+        self.options.append(opt)
 
-      i += ord(arr[i+1])
     return i
 
   def parse (self, raw):
