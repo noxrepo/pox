@@ -1531,6 +1531,19 @@ class _nxm_numeric (object):
       raise RuntimeError("Can't unpack %i bytes for %s"
                          % (self._nxm_length, self.__class__.__name__))
 
+
+class _nxm_tcp_flags (_nxm_numeric):
+  """
+  Allows setting of TCP flags, while sanity checking mask
+  """
+  def _pack_mask (self, v):
+    assert self._nxm_length == 2
+    assert isinstance(v, (int, long))
+    if (v & 0xf000) != 0:
+      raise RuntimeError("Top bits of TCP flags mask must be 0")
+    return struct.pack("!H", v)
+
+
 class _nxm_ip (object):
   """
   Allows setting of IP address in many formats
@@ -2068,6 +2081,9 @@ _make_nxm("NXM_NX_IP_TTL", 1, 29, 1)
 
 # Flow cookie
 _make_nxm_w("NXM_NX_COOKIE", 1, 30, 8)
+
+# TCP flags
+_make_nxm_w("NXM_NX_TCP_FLAGS", 1, 34, 2, type=_nxm_tcp_flags)
 
 
 # MPLS label, traffic class, and bottom-of-stack flag
