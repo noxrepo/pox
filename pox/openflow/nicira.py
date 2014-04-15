@@ -2519,7 +2519,6 @@ class nx_match (object):
 #from pox.lib.revent import Event
 #class NXPacketIn (Event):
 #  def __init__ (self, connection, ofp):
-#    Event.__init__(self)
 #    self.connection = connection
 #    self.ofp = ofp
 #    self.port = ofp.in_port

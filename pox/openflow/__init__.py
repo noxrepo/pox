@@ -44,7 +44,6 @@ class ConnectionUp (Event):
   established.
   """
   def __init__ (self, connection, ofp):
-    Event.__init__(self)
     self.connection = connection
     self.dpid = connection.dpid
     self.ofp = ofp
@@ -56,7 +55,6 @@ class FeaturesReceived (Event):
   This generally happens as part of a connection automatically.
   """
   def __init__ (self, connection, ofp):
-    Event.__init__(self)
     self.connection = connection
     self.dpid = connection.dpid
     self.ofp = ofp
@@ -67,7 +65,6 @@ class ConnectionDown (Event):
   lost.
   """
   def __init__ (self, connection):
-    Event.__init__(self)
     self.connection = connection
     self.dpid = connection.dpid
 
@@ -80,7 +77,6 @@ class PortStatus (Event):
   port (int) - number of port in question
   """
   def __init__ (self, connection, ofp):
-    Event.__init__(self)
     self.connection = connection
     self.dpid = connection.dpid
     self.ofp = ofp
@@ -101,7 +97,6 @@ class FlowRemoved (Event):
   deleted (bool) - True if deleted explicitly
   """
   def __init__ (self, connection, ofp):
-    Event.__init__(self)
     self.connection = connection
     self.dpid = connection.dpid
     self.ofp = ofp
@@ -120,7 +115,6 @@ class FlowRemoved (Event):
 
 class RawStatsReply (Event):
   def __init__ (self, connection, ofp):
-    Event.__init__(self)
     self.connection = connection
     self.ofp = ofp     # Raw ofp message(s)
 
@@ -131,7 +125,6 @@ class RawStatsReply (Event):
 class StatsReply (Event):
   """ Abstract superclass for all stats replies """
   def __init__ (self, connection, ofp, stats):
-    Event.__init__(self)
     self.connection = connection
     self.ofp = ofp     # Raw ofp message(s)
     self.stats = stats # Processed
@@ -166,7 +159,6 @@ class PacketIn (Event):
   parsed (packet subclasses) - pox.lib.packet's parsed version
   """
   def __init__ (self, connection, ofp):
-    Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
     self.port = ofp.in_port
@@ -188,7 +180,6 @@ class PacketIn (Event):
 
 class ErrorIn (Event):
   def __init__ (self, connection, ofp):
-    Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
     self.xid = ofp.xid
@@ -234,7 +225,6 @@ class BarrierIn (Event):
   xid (int) - XID of barrier request
   """
   def __init__ (self, connection, ofp):
-    Event.__init__(self)
     self.connection = connection
     self.ofp = ofp
     self.dpid = connection.dpid

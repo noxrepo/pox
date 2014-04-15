@@ -149,7 +149,6 @@ class ComponentRegistered (Event):
   depends on are available.
   """
   def __init__ (self, name, component):
-    Event.__init__(self)
     self.name = name
     self.component = component
 

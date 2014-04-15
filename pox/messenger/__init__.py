@@ -61,7 +61,6 @@ defaultDecoder = json.JSONDecoder()
 class ChannelJoin (Event):
   """ Fired on a channel when a client joins. """
   def __init__ (self, connection, channel, msg = {}):
-    Event.__init__(self)
     self.con = connection
     self.channel = channel
     self.msg = msg
@@ -69,26 +68,22 @@ class ChannelJoin (Event):
 class ConnectionOpened (Event):
   """ Fired by the nexus for each new connection """
   def __init__ (self, connection):
-    Event.__init__(self)
     self.con = connection
 
 class ConnectionClosed (Event):
   """ Fired on a connection when it closes. """
   def __init__ (self, connection):
-    Event.__init__(self)
     self.con = connection
 
 class ChannelLeave (Event):
   """ Fired on a channel when a client leaves. """
   def __init__ (self, connection, channel):
-    Event.__init__(self)
     self.con = connection
     self.channel = channel
 
 class ChannelCreate (Event):
   """ Fired on a Nexus when a channel is created. """
   def __init__ (self, channel):
-    Event.__init__(self)
     self.channel = channel
 
 class ChannelDestroy (Event):
@@ -97,7 +92,6 @@ class ChannelDestroy (Event):
   Set .keep = True to keep the channel after all.
   """
   def __init__ (self, channel):
-    Event.__init__(self)
     self.channel = channel
     self.keep = False
 
@@ -106,7 +100,6 @@ class ChannelDestroyed (Event):
   Fired on the channel and its Nexus right after a channel is destroyed.
   """
   def __init__ (self, channel):
-    Event.__init__(self)
     self.channel = channel
 
 class MissingChannel (Event):
@@ -115,7 +108,6 @@ class MissingChannel (Event):
   You can create the channel in response to this.
   """
   def __init__ (self, connection, channel_name, msg):
-    Event.__init__(self)
     self.con = connection
     self.channel_name = channel_name
     self.msg = msg
@@ -131,7 +123,6 @@ class MessageReceived (Event):
   def _handle_MessageReceived (event, msg):
   """
   def __init__ (self, connection, channel, msg):
-    Event.__init__(self)
     self.con = connection
     self.msg = msg
     self.channel = channel

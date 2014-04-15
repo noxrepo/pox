@@ -223,7 +223,6 @@ class PathInstalled (Event):
   Fired when a path is installed
   """
   def __init__ (self, path):
-    Event.__init__(self)
     self.path = path
 
 
