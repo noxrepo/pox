@@ -148,9 +148,12 @@ class Event (object):
   """
   Superclass for events
   """
+  # halt and source aren't really class variables, but this way they get
+  # created on each instance without having to call the base constructor.
+  halt = False
+  source = False
   def __init__ (self):
-    self.halt = False
-    self.source = None
+    pass
 
   def _invoke (self, handler, *args, **kw):
     return handler(self, *args, **kw)
