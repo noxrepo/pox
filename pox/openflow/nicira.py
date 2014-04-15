@@ -1580,14 +1580,14 @@ class _nxm_ip (object):
 
 class _nxm_ipv6 (object):
   """
-  Placeholder until we have real IPv6 support
+  Allows setting of IPv6 address in many formats
 
-  Allows setting of IP address in many formats
-
-  The value can be any format known by IPAddr.  If it's a string, it can
+  The value can be any format known by IPAddr6.  If it's a string, it can
   also have a trailing /netmask or /cidr-bits.  If it's a tuple, the
   first is assumed to be any kind of IP address and the second is either
   a netmask or the number of network bits.
+
+  TODO: Add a way of setting raw addresses?
   """
 
   @property
