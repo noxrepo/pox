@@ -52,6 +52,7 @@ from packet_base import packet_base
 import logging
 lg = logging.getLogger('packet')
 
+
 class tcp_opt (object):
   """
   A TCP option
@@ -67,6 +68,7 @@ class tcp_opt (object):
   SACKPERM = 4
   SACK     = 5
   TSOPT    = 8
+  MPTCP    = 30
 
   def __init__ (self, type, val):
     self.type = type
@@ -127,6 +129,9 @@ class tcp_opt (object):
         raise RuntimeError("TSOPT option length != 10")
       (val1,val2) = struct.unpack('!II',arr[i+2:i+10])
       o.val = (val1,val2)
+    elif o.type == tcp_opt.MPTCP:
+      #TODO: Clean this up (we're throwing away an already-initialized tcp_opt)
+      return mptcp_opt.unpack_new(buf, offset)
     else:
       #self.msg('(tcp parse_options) warning, unknown option %x '
       #         % (ord(arr[i]),))
@@ -138,6 +143,235 @@ class tcp_opt (object):
     #FIXME: Ugly
     names={0:'EOL',1:'NOP',2:'MSS',3:'WSOPT',4:'SACKPERM',5:'SACK',8:'TSOPT'}
     return names.get(self.type,"tcp_opt-%s" % (self.type,))
+
+
+# Decorator for mptcp subtypes
+_mptcp_opts = {} # type -> class
+def _register_mptcp_opt (type):
+  def register_subtype (cls):
+    _mptcp_opts[type] = cls
+  return register_subtype
+
+
+class mptcp_opt (tcp_opt):
+  """
+  An MPTCP option
+
+  MPTCP uses a single TCP option with subtypes.  We handle this specially.
+  This is really an abstract superclass.
+  """
+  MP_CAPABLE     = 0
+  MP_JOIN        = 1
+  MP_DSS         = 2
+  MP_ADD_ADDR    = 3
+  MP_REMOVE_ADDR = 4
+  MP_PRIO        = 5
+  MP_FAIL        = 6
+  MP_FASTCLOSE   = 7
+
+  def __init__ (self):
+    self.type = self.MPTCP
+
+  @classmethod
+  def unpack_new (dummy, buf, offset = 0):
+    """
+    Unpacks an MPTCP option
+
+    Returns a subclass for the specific option subtype.  If the subtype
+    is unknown, returns a generic mp_unknown.
+    """
+    t = ord(buf[offset])
+    assert t == 30
+    st = (ord(buf[offset+2]) & 0xf0) >> 4
+    cls = _mptcp_opts.get(st, mp_unknown)
+    return cls.unpack_new(buf, offset)
+
+  def pack (self):
+    raise RuntimeError("You can only pack a subtype")
+
+  def __str__ (self):
+    n = type(self).__name__
+    return "%s" % (n,)
+
+
+class mp_unknown (mptcp_opt):
+  """
+  An unknown MPTCP option
+  """
+  def __init__ (self):
+    self.type = self.MPTCP
+    self.data = b''
+
+  def pack (self):
+    return struct.pack('BB',self.type,2+len(self.data)) + self.data
+
+  @classmethod
+  def unpack_new (cls, buf, offset = 0):
+    o = cls()
+    o.type = ord(buf[offset])
+    length = ord(buf[offset+1])
+    o.data = buf[offset+2:offset+2+length]
+
+    return offset+length,o
+
+  def __str__ (self):
+    # Special case.  We don't parse the subtype, into an attribute, but
+    # we'll display it.
+    if len(self.data):
+      subtype = (ord(self.data[0]) & 0xf0) >> 4
+    else:
+      subtype = "???"
+    return "mptcp_opt-%s" % (subtype,)
+
+
+@_register_mptcp_opt(mptcp_opt.MP_CAPABLE)
+class mp_capable_opt (mptcp_opt):
+  def __init__ (self):
+    self.type = self.MPTCP
+    self.subtype = self.MP_CAPABLE
+    self.version = 0
+    self.flags = 0
+    self.skey = None
+    self.rkey = None
+
+  @property
+  def checksum_required (self):
+    return self.flags & (1<<7)
+
+  @property
+  def use_hmac_sha1 (self):
+    return self.flags & (1<<0)
+
+  @classmethod
+  def unpack_new (cls, buf, offset = 0):
+    o = cls()
+    o.type,length,subver,o.flags = struct.unpack_from('!BBBB', buf, offset)
+    o.subtype = (subver & 0xf0) >> 4
+    o.version = (subver & 0x0f) >> 0
+
+    if length != 12 and length != 20:
+      # Should this be an exception?  Do we handle it?
+      raise RuntimeError("Bad MP_CAPABLE option")
+    offset += 4
+
+    o.skey = buf[offset:offset+8]
+    offset += 8
+    if length == 20:
+      o.rkey = buf[offset:offset+8]
+      offset += 8
+
+    return offset,o
+
+  def pack (self):
+    length = 20 if self.rkey else 12
+    subver = (self.subtype << 4) | self.version
+
+    assert len(self.skey) == 8
+    if self.rkey: assert len(self.rkey) == 8
+
+    r = struct.pack("!BBBB", self.type, length, subver, self.flags)
+    r += self.skey
+    if self.rkey: r += self.rkey
+
+    return r
+
+
+@_register_mptcp_opt(mptcp_opt.MP_DSS)
+class mp_dss_opt (mptcp_opt):
+  def __init__ (self):
+    self.type = self.MPTCP
+    self.subtype = self.MP_DSS
+    self.ack = None
+    self.dsn = None
+    self.seq = None
+    self.length = None
+    self.csum = None
+
+  @property
+  def has_ack (self):
+    return self.flags & (1<<0)
+
+  @property
+  def ack_length (self):
+    if not self.has_ack:
+      return 0
+    return 8 if self.flags & (1<<1) else 4
+
+  @property
+  def has_dsn (self):
+    return self.flags & (1<<2)
+
+  @property
+  def dsn_length (self):
+    if not self.has_dsn:
+      return 0
+    return 8 if self.flags & (1<<3) else 4
+
+  @property
+  def FIN (self):
+    return self.flags & (1<<4)
+
+  @classmethod
+  def unpack_new (cls, buf, offset = 0):
+    off = offset
+    o = cls()
+    o.type,length,subver,o.flags = struct.unpack_from('!BBBB', buf, offset)
+    off += 4
+    o.subtype = (subver & 0xf0) >> 4
+    assert o.subtype == o.MP_DSS
+
+    good_len = 4 + o.ack_length + o.dsn_length
+    if o.has_dsn: good_len += 4 + 2 + 2
+    if length != good_len:
+      raise RuntimeError("Malformed mp_dss")
+
+    if o.has_ack:
+      if o.ack_length == 4:
+        o.ack = struct.unpack_from("!I", buf, off)[0]
+      else:
+        o.ack = struct.unpack_from("!Q", buf, off)[0]
+      off += o.ack_length
+
+    if o.has_dsn:
+      if o.dsn_length == 4:
+        o.dsn = struct.unpack_from("!I", buf, off)[0]
+      else:
+        o.dsn = struct.unpack_from("!Q", buf, off)[0]
+      off += o.ack_length
+
+      o.seq,o.length,o.csum = struct.unpack_from("!IHH", buf, off)
+      off += 4 + 2 + 2
+
+      #TODO: Check csum?
+
+    return off,o
+
+  def pack (self):
+    o = self
+    good_len = 4 + o.ack_length + o.dsn_length
+    if o.has_dsn: good_len += 4 + 2 + 2
+
+    subver = (self.subtype << 4) | 0
+
+    r = struct.pack("!BBBB", self.type, good_len, subver, self.flags)
+
+    if o.has_ack:
+      if o.ack_length == 4:
+        r += struct.pack("!I", o.ack)
+      else:
+        r += struct.pack("!Q", o.ack)
+
+    if o.has_dsn:
+      if o.dsn_length == 4:
+        r += struct.unpack_from("!I", o.dsn)
+      else:
+        r += struct.unpack_from("!Q", o.dsn)
+
+      #TODO: Compute csum?
+      r += struct.pack("!IHH", o.seq,o.length,o.csum)
+
+    assert len(r) == good_len
+    return r
 
 
 class tcp (packet_base):
