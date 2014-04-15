@@ -98,3 +98,11 @@ def main (addr = "127.0.0.1", port = 7790):
 if __name__ == "__main__":
   import sys
   main(*sys.argv[1:])
+else:
+  # This will get run if you try to run this as a POX component.
+  def launch ():
+    from pox.core import core
+    log = core.getLogger()
+    log.critical("This isn't a POX component.")
+    log.critical("Please see the documentation.")
+    raise RuntimeError("This isn't a POX component.")
