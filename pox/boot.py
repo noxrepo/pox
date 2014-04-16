@@ -179,6 +179,7 @@ def _do_launch (argv):
     core.getLogger('boot').debug('Using existing POX core')
   else:
     core = pox.core.initialize(_options.threaded_selecthub,
+                               _options.epoll_selecthub,
                                _options.handle_signals)
 
   _pre_startup()
@@ -379,6 +380,7 @@ class POXOptions (Options):
     self.enable_openflow = True
     self.log_config = None
     self.threaded_selecthub = True
+    self.epoll_selecthub = False
     self.handle_signals = True
 
   def _set_h (self, given_name, name, value):
@@ -398,6 +400,9 @@ class POXOptions (Options):
 
   def _set_unthreaded_sh (self, given_name, name, value):
     self.threaded_selecthub = False
+
+  def _set_epoll_sh (self, given_name, name, value):
+    self.epoll_selecthub = str_to_bool(value)
 
   def _set_no_openflow (self, given_name, name, value):
     self.enable_openflow = not str_to_bool(value)

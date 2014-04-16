@@ -190,7 +190,8 @@ class POXCore (EventMixin):
   version = (0,3,0)
   version_name = "dart"
 
-  def __init__ (self, threaded_selecthub=True, handle_signals=True):
+  def __init__ (self, threaded_selecthub=True, epoll_selecthub=False,
+                handle_signals=True):
     self.debug = False
     self.running = True
     self.starting_up = True
@@ -205,7 +206,8 @@ class POXCore (EventMixin):
     print(self.banner)
 
     self.scheduler = recoco.Scheduler(daemon=True,
-                                      threaded_selecthub=threaded_selecthub)
+                                      threaded_selecthub=threaded_selecthub,
+                                      use_epoll=epoll_selecthub)
 
     self._waiters = [] # List of waiting components
 
@@ -594,9 +596,11 @@ class POXCore (EventMixin):
 
 core = None
 
-def initialize (threaded_selecthub=True, handle_signals=True):
+def initialize (threaded_selecthub=True, epoll_selecthub=False,
+                handle_signals=True):
   global core
   core = POXCore(threaded_selecthub=threaded_selecthub,
+                 epoll_selecthub=epoll_selecthub,
                  handle_signals=handle_signals)
   return core
 
