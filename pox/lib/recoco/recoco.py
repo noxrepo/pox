@@ -137,12 +137,12 @@ class Scheduler (object):
   """ Scheduler for Tasks """
 
   def __init__ (self, isDefaultScheduler = None, startInThread = True,
-                daemon = False, useEpoll=False, threaded_selecthub = True):
+                daemon = False, use_epoll=False, threaded_selecthub = True):
 
     self._ready = deque()
     self._hasQuit = False
 
-    self._selectHub = SelectHub(self, useEpoll=useEpoll,
+    self._selectHub = SelectHub(self, use_epoll=use_epoll,
                                 threaded=threaded_selecthub)
     self._thread = None
 
@@ -582,13 +582,16 @@ class SelectHub (object):
   This class is a single select() loop that handles all Select() requests for
   a scheduler as well as timed wakes (i.e., Sleep()).
   """
-  def __init__ (self, scheduler, useEpoll=False, threaded=True):
+  def __init__ (self, scheduler, use_epoll=False, threaded=True):
     # We store tuples of (elapse-time, task)
     self._incoming = Queue() # Threadsafe queue for new items
 
     self._scheduler = scheduler
     self._pinger = pox.lib.util.makePinger()
-    self.epoll = EpollSelect() if useEpoll else None
+    if use_epoll:
+      self._select_func = EpollSelect().select
+    else:
+      self._select_func = select.select
 
     self._tasks = {}
 
@@ -680,14 +683,9 @@ class SelectHub (object):
         self._return(t, ([],[],[]))
 
     if timeout is None: timeout = CYCLE_MAXIMUM
-    if self.epoll:
-      ro, wo, xo = self.epoll.select( rl.keys() + [self._pinger],
-                                wl.keys(),
-                                xl.keys(), timeout )
-    else:
-      ro, wo, xo = select.select( rl.keys() + [self._pinger],
-                                wl.keys(),
-                                xl.keys(), timeout )
+    ro, wo, xo = self._select_func( rl.keys() + [self._pinger],
+                                    wl.keys(),
+                                    xl.keys(), timeout )
 
     if len(ro) == 0 and len(wo) == 0 and len(xo) == 0 and timeoutTask != None:
       # IO is idle - dispatch timers / release timeouts
