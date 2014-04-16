@@ -2585,6 +2585,16 @@ def _init_unpacker ():
 
 
 from pox.openflow import PacketIn
+from pox.lib.revent import Event
+
+
+class RoleReply (Event):
+  def __init__ (self, connection, ofp):
+    self.connection = connection
+    self.ofp = ofp
+    self.role = ofp.role
+    self.dpid = connection.dpid
+
 
 class NiciraOpenFlowHandlers (DefaultOpenFlowHandlers):
   """
@@ -2599,9 +2609,10 @@ class NiciraOpenFlowHandlers (DefaultOpenFlowHandlers):
         e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
         if e is None or e.halt != True:
           con.raiseEventNoErrors(PacketIn, con, msg)
-    #  elif isinstance(msg, nxt_role_reply):
-    #    pass
-    #    #TODO
+      elif isinstance(msg, nx_role_reply):
+        e = con.ofnexus.raiseEventNoErrors(RoleReply, con, msg)
+        if e is None or e.halt != True:
+          con.raiseEventNoErrors(RoleReply, con, msg)
       else:
         DefaultOpenFlowHandlers.handle_VENDOR(con, msg)
 
@@ -2619,6 +2630,7 @@ def _handle_ConnectionHandshakeComplete (event):
   log.debug("%s is %s %s", event.connection, desc.hw_desc, desc.sw_desc)
 
   event.connection.handlers = _nicira_handlers.handlers
+  event.connection._eventMixin_events.add(RoleReply)
 
 
 class NX (object):
@@ -2629,9 +2641,12 @@ class NX (object):
 
 
 def launch (convert_packet_in = False):
+  _init_unpacker()
+
+  core.openflow._eventMixin_events.add(RoleReply)
+
   core.openflow.addListenerByName("ConnectionHandshakeComplete",
                                   _handle_ConnectionHandshakeComplete)
-  _init_unpacker()
 
   nx = NX()
   if convert_packet_in:
