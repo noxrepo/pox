@@ -196,7 +196,7 @@ class ARPResponder (object):
                       dpid_to_str(dpid), a.protosrc, old_entry.mac, a.hwsrc)
                 else:
                   log.warn("%s RE-learned %s: %s->%s", dpid_to_str(dpid),
-                      a.protosrc, old.entry.mac, a.hwsrc)
+                      a.protosrc, old_entry.mac, a.hwsrc)
                   _arp_table[a.protosrc] = Entry(a.hwsrc)
               else:
                 # Update timestamp
