@@ -953,11 +953,29 @@ class OpenFlow_01_Task (Task):
   """
   The main recoco thread for listening to openflow messages
   """
-  def __init__ (self, port = 6633, address = '0.0.0.0'):
+  def __init__ (self, port = 6633, address = '0.0.0.0',
+                ssl_key = None, ssl_cert = None, ssl_ca_cert = None):
+    """
+    Initialize
+
+    This listener will be for SSL connections if the SSL params are specified
+    """
     Task.__init__(self)
     self.port = int(port)
     self.address = address
     self.started = False
+    self.ssl_key = ssl_key
+    self.ssl_cert = ssl_cert
+    self.ssl_ca_cert = ssl_ca_cert
+
+    if self.ssl_key or self.ssl_cert or ssl_ca_cert:
+      global ssl
+      ssl = None
+      try:
+        import ssl as sslmodule
+        ssl = sslmodule
+      except:
+        raise RuntimeError("SSL is not available")
 
     core.addListener(pox.core.GoingUpEvent, self._handle_GoingUpEvent)
 
@@ -1022,6 +1040,31 @@ class OpenFlow_01_Task (Task):
           for con in rlist:
             if con is listener:
               new_sock = listener.accept()[0]
+
+              if self.ssl_key or self.ssl_cert or self.ssl_ca_cert:
+                cert_reqs = ssl.CERT_REQUIRED
+                if self.ssl_ca_cert is None:
+                  cert_reqs = ssl.CERT_NONE
+                new_sock = ssl.wrap_socket(new_sock, server_side=True,
+                    keyfile = self.ssl_key, certfile = self.ssl_cert,
+                    ca_certs = self.ssl_ca_cert, cert_reqs = cert_reqs,
+                    do_handshake_on_connect = False,
+                    suppress_ragged_eofs = True)
+                #FIXME: We currently do a blocking handshake so that SSL errors
+                #       can't occur out of the blue later.  This isn't a good
+                #       thing, but getting around it will take some effort.
+                try:
+                  new_sock.setblocking(1)
+                  new_sock.do_handshake()
+                except ssl.SSLError as exc:
+                  if exc.errno == 8 and "EOF occurred" in exc.strerror:
+                    # Annoying, but just ignore
+                    pass
+                  else:
+                    #log.exception("SSL negotiation failed")
+                    log.warn("SSL negotiation failed: " + str(exc))
+                  continue
+
               if pox.openflow.debug.pcap_traces:
                 new_sock = wrap_socket(new_sock)
               new_sock.setblocking(0)
@@ -1086,11 +1129,20 @@ class OpenFlow_01_Task (Task):
 
 
 
-
 # Used by the Connection class
 deferredSender = None
 
-def launch (port=6633, address="0.0.0.0", name=None, __INSTANCE__=None):
+def launch (port=6633, address="0.0.0.0", name=None,
+            private_key=None, certificate=None, ca_cert=None,
+            __INSTANCE__=None):
+  """
+  Start a listener for OpenFlow connections
+
+  If you want to enable SSL, pass private_key/certificate/ca_cert in reasonable
+  combinations and pointing to reasonable key/cert files.  These have the same
+  meanings as with Open vSwitch's old test controller, but they are more
+  flexible (e.g., ca-cert can be skipped).
+  """
   if name is None:
     basename = "of_01"
     counter = 1
@@ -1110,6 +1162,8 @@ def launch (port=6633, address="0.0.0.0", name=None, __INSTANCE__=None):
   if of._logger is None:
     of._logger = core.getLogger('libopenflow_01')
 
-  l = OpenFlow_01_Task(port = int(port), address = address)
+  l = OpenFlow_01_Task(port = int(port), address = address,
+                       ssl_key = private_key, ssl_cert = certificate,
+                       ssl_ca_cert = ca_cert)
   core.register(name, l)
   return l
