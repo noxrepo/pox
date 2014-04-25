@@ -697,6 +697,8 @@ class Connection (EventMixin):
   # Globally unique identifier for the Connection instance
   ID = 0
 
+  _aborted_connections = 0
+
   def msg (self, m):
     #print str(self), m
     log.debug(str(self) + " " + str(m))
@@ -761,6 +763,17 @@ class Connection (EventMixin):
     except:
       pass
 
+  def _do_abort_message (self):
+    """
+    Log a message about aborted (no DPID) disconnects
+    """
+    assert Connection._aborted_connections > 0
+    msg = str(Connection._aborted_connections) + " connection"
+    if Connection._aborted_connections != 1: msg += "s"
+    msg += " aborted"
+    log.debug(msg)
+    Connection._aborted_connections = 0
+
   def disconnect (self, msg = 'disconnected', defer_event = False):
     """
     disconnect this Connection (usually not invoked manually).
@@ -768,8 +781,10 @@ class Connection (EventMixin):
     if self.disconnected:
       self.msg("already disconnected")
     if self.dpid is None:
-      # If we never got a DPID, log at DEBUG level
-      self.msg(msg)
+      # If we never got a DPID, log later (coalesce the messages)
+      Connection._aborted_connections += 1
+      if Connection._aborted_connections == 1:
+        core.callDelayed(20, self._do_abort_message)
     else:
       self.info(msg)
     self.disconnected = True
