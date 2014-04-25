@@ -2400,11 +2400,14 @@ class nx_match (object):
 
   def find (self, t):
     """
-    Returns nxm_entry of given type
+    Returns nxm_entry of given type or None
     """
     if isinstance(t, nxm_entry) or _issubclass(t, nxm_entry):
       t = t._nxm_type
     return self._map.get(t)
+
+  def __contains__ (self, t):
+    return self.find is not None
 
   def index (self, t):
     """
