@@ -197,10 +197,11 @@ class LinkEvent (Event):
   """
   Link up/down event
   """
-  def __init__ (self, add, link):
+  def __init__ (self, add, link, event = None):
     self.link = link
     self.added = add
     self.removed = not add
+    self.event = event # PacketIn which caused this, if any
 
   def port_for_dpid (self, dpid):
     if self.link.dpid1 == dpid:
@@ -440,7 +441,7 @@ class Discovery (EventMixin):
     if link not in self.adjacency:
       self.adjacency[link] = time.time()
       log.info('link detected: %s', link)
-      self.raiseEventNoErrors(LinkEvent, True, link)
+      self.raiseEventNoErrors(LinkEvent, True, link, event)
     else:
       # Just update timestamp
       self.adjacency[link] = time.time()
