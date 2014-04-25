@@ -564,6 +564,9 @@ class nx_output_reg (of.ofp_action_vendor_base):
     return True
 
   def _pack_body (self):
+    if self.nbits is None:
+      self.nbits = self.reg._get_size_hint() - self.offset
+
     nbits = self.nbits - 1
     assert nbits >= 0 and nbits <= 63
     assert self.offset >= 0 and self.offset < (1 << 10)
