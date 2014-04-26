@@ -28,6 +28,11 @@ Configure the OVS instances to have tunnels along the lines of:
 ovs-vsctl add-port br0 tun0 -- set Interface tun0 type=gre \
   options:remote_ip=flow
 
+Then run another OpenFlow controller which the aggregate switch will connect
+to.  It currently tries to connect to 127.0.0.1:7744, but you can adjust it
+from the commandline.  So try something like:
+./pox.py openflow.of_01 --port=7744 forwarding.l2_learning
+
 This may require a recent (2.1.0+) version of OVS to work correctly.
 
 The IPs are the IPs of the tunnel endpoints on the OVS instances. We do a
