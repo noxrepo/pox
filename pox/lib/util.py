@@ -310,6 +310,9 @@ def make_pinger ():
       self._r = pair[0]
     def ping (self):
       self._w.send(' ')
+    #FIXME: Since the read socket is now nonblocking, there's the possibility
+    #       that the recv() calls for pong will not complete.  We should
+    #       deal with this.
     def pong (self):
       self._r.recv(1)
     def pongAll (self):
@@ -326,26 +329,33 @@ def make_pinger ():
     return PipePinger(os.pipe())
 
   #TODO: clean up sockets?
-  localaddress = '127.127.127.127'
+  #TODO: use socketpair if available?
+  localaddresses = ['127.0.0.1', '127.127.127.127'] # Try oddball one first
   startPort = 10000
 
   import socket
   import select
 
   def tryConnect ():
-    l = socket.socket()
-    l.setblocking(0)
-
-    port = startPort
+    l = None
+    localaddress = None
+    port = None
     while True:
+      if localaddress is None:
+        if not localaddresses:
+          raise RuntimeError("Could not find a free socket")
+        localaddress = localaddresses.pop()
+        port = startPort
       try:
+        l = socket.socket()
         l.bind( (localaddress, port) )
+        l.listen(0)
         break
       except:
         port += 1
         if port - startPort > 1000:
-          raise RuntimeError("Could not find a free socket")
-    l.listen(0)
+          localaddress = None
+    l.setblocking(0)
 
     r = socket.socket()
 
@@ -359,11 +369,15 @@ def make_pinger ():
       log.warning("makePinger: connect exception:\n" + ei)
       return False
 
-    rlist, wlist,elist = select.select([l], [], [l], 2)
-    if len(elist):
-      log.warning("makePinger: socket error in select()")
-      return False
-    if len(rlist) == 0:
+    t = time.time() + 2
+    while time.time() < t:
+      rlist, wlist,elist = select.select([l], [], [l], 2)
+      if len(elist):
+        log.warning("makePinger: socket error in select()")
+        return False
+      if len(rlist) != 0:
+        break
+    else:
       log.warning("makePinger: socket didn't connect")
       return False
 
@@ -377,7 +391,7 @@ def make_pinger ():
       log.info("makePinger: pair didn't connect to each other!")
       return False
 
-    r.setblocking(1)
+    r.setblocking(0)
 
     # Turn off Nagle
     r.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
