@@ -1024,6 +1024,7 @@ class OpenFlow_01_Task (Task):
       return
 
     listener.listen(16)
+    listener.setblocking(0)
     sockets.append(listener)
 
     log.debug("Listening on %s:%s" %
