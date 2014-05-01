@@ -606,10 +606,30 @@ class OVSDBNexus (EventMixin):
 
 
 
-def launch (port = 6640):
+def launch (port = 6640, no_auto_connect = False):
   global log
   log = core.getLogger()
   core.registerNew(OVSDBNexus)
+
+  if not no_auto_connect:
+    # When a switch connects, try to connect back to an OVSDB running there
+    connected_ips = {}
+
+    def new_connection (event):
+      ip = event.connection.sock.getpeername()[0]
+      if ip in connected_ips: return
+      log.info("Connecting back to switch at %s", ip)
+      client = core.OVSDBNexus.connect(ip, port=port)
+      connected_ips[ip] = client #FIXME: Not really connected yet!
+
+    core.openflow.addListenerByName("ConnectionUp", new_connection)
+
+
+def example (port = 6640):
+  """
+  Every time we get a connection, query what switches it knows
+  """
+  launch(port)
 
   def query_dpids (event):
     # Send a query for DPIDs this OVSDB knows about
@@ -622,16 +642,4 @@ def launch (port = 6640):
         SELECT|'name'|AND|'datapath_id'|FROM|'Bridge'
         ).callback(show_result)
 
-
-  connected_ips = {}
-  def new_connection (event):
-    # When a switch connects, try to connect back to an OVSDB running there
-    ip = event.connection.sock.getpeername()[0]
-    if ip in connected_ips: return
-    log.info("Connecting back to switch at %s", ip)
-    client = core.OVSDBNexus.connect(ip, port=port)
-    connected_ips[ip] = client
-    client.addListener(ConnectionUp, query_dpids)
-
-  core.openflow.addListenerByName("ConnectionUp", new_connection)
-
+  core.OVSDBNexus.addListener(ConnectionUp, query_dpids)
