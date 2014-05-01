@@ -453,6 +453,8 @@ class OVSDBConnection (EventMixin):
     if self._state == self.STATE_CONNECTING:
       self._state = self.STATE_CONNECTED
       self.raiseEvent(ConnectionUp, self, msg)
+      self._nexus.raiseEvent(ConnectionUp, self, msg)
+      #FIXME: Propagate events properly
 
     method = getattr(msg, 'method', 'FAILURE')
     handler = getattr(self, '_exec_' + method, None)
@@ -572,8 +574,8 @@ class ClientWorker (RecocoIOWorker):
 
 class OVSDBNexus (EventMixin):
   #TODO: Have events from connection propagate here?
-  # _eventMixin_events = set([
-  #   ConnectionUp,
+  _eventMixin_events = set([
+     ConnectionUp,
   #   ConnectionDown,
 
   #   UpdateNotification,
@@ -582,7 +584,7 @@ class OVSDBNexus (EventMixin):
 
   #   Error,
   #   Complete
-  # ])
+  ])
 
   def __init__ (self):
     self.loop = pox.lib.ioworker.RecocoIOLoop()
