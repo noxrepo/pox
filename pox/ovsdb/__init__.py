@@ -652,6 +652,10 @@ def launch (connect_back = False, listen = False):
   if connect_back:
     connect_back = 6640 if connect_back is True else int(connect_back)
     # When a switch connects, try to connect back to an OVSDB running there
+    #FIXME: This code is awful and needs fixing!  For starters, it never
+    #       removes IPs from this dictionary, so it will never try to
+    #       reconnect.  These should probably be handled by the nexus,
+    #       or at least we should monitor disconnections and remove them.
     connected_ips = {}
 
     def new_connection (event):
