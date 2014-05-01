@@ -357,20 +357,3 @@ def parse_conditions (data):
     data.pop(0)
 
   return conditions
-
-
-
-# Quick test stuff
-
-def _test ():
-  p = parse_statement
-  print p( SELECT|FROM|"Bridge"|WHERE|"datapath_id" == "0000000000000001"
-           |AND|"a2" == "bad" )
-  print p( SELECT|"controller"|FROM|"Bridge"|WHERE|
-           "datapath_id" == "0000000000000001"|AND|"a2" == "bad" )
-  print p( IN|"Bridge"|WHERE|"dpid" == 3|AND|"controller" != 5|MUTATE|
-           "dpid"|INCREMENT|4|AND|DELETE|"hi"|FROM|"greetings" )
-
-
-if __name__ == '__main__':
-  _test()
