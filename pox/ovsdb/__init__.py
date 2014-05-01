@@ -21,7 +21,7 @@ from pox.core import core
 import pox.lib.ioworker
 from pox.messenger.test_client import JSONDestreamer
 from pox.lib.revent import Event, EventMixin
-from pox.lib.ioworker.workers import RecocoIOWorker
+from pox.lib.ioworker.workers import RecocoIOWorker, RecocoServerWorker
 from pox.lib.ioworker import RecocoIOLoop
 from pox.lib.util import init_helper
 
@@ -530,7 +530,11 @@ class OVSDBConnection (EventMixin):
 
 
 class ClientWorker (RecocoIOWorker):
-  #TODO: async name resolution
+  """
+  A generic worker for making TCP connections
+  """
+  #TODO: This should just be included in IOWorker
+  #TODO: multiplatform async name resolution
   def __init__ (self, **kw):
     super(ClientWorker,self).__init__(None)
     self._make_connection(**kw)
@@ -604,14 +608,49 @@ class OVSDBNexus (EventMixin):
     self.connections.add(c)
     return c
 
+  def listen (self, port=6641):
+    l = RecocoServerWorker(child_worker_type=OVSDBServerWorker, port=port,
+                           child_args={'ovsdb_nexus':self})
+    self.loop.register_worker(l)
 
 
-def launch (port = 6640, no_auto_connect = False):
+
+class OVSDBServerWorker (RecocoIOWorker):
+  """
+  Worker to handle incoming connections from an OVSDB
+  """
+  def __init__ (self, *args, **kw):
+    self.ovsdb_nexus = kw.pop('ovsdb_nexus')
+    super(OVSDBServerWorker, self).__init__(*args, **kw)
+    self._connecting = True
+
+  def _handle_connect (self):
+    super(OVSDBServerWorker, self)._handle_connect()
+
+    c = OVSDBConnection(self.ovsdb_nexus, self)
+    c.log.debug("Client connected")
+    # We're already *in* the connect handler, so c will never see it called.
+    # Call its connect handler ourself.
+    c._connect_handler(self)
+
+
+
+def launch (connect_back = False, listen = False):
+  """
+  Starts the OVSDB component
+
+  --connect_back tries to connect back to connected switches (experimental)
+  --listen puts us in listening mode for OVSDB connections
+
+  Both of these can have a port number specified.  They default to 6640 and
+  6641 respectively.
+  """
   global log
   log = core.getLogger()
   core.registerNew(OVSDBNexus)
 
-  if not no_auto_connect:
+  if connect_back:
+    connect_back = 6640 if connect_back is True else int(connect_back)
     # When a switch connects, try to connect back to an OVSDB running there
     connected_ips = {}
 
@@ -619,17 +658,25 @@ def launch (port = 6640, no_auto_connect = False):
       ip = event.connection.sock.getpeername()[0]
       if ip in connected_ips: return
       log.info("Connecting back to switch at %s", ip)
-      client = core.OVSDBNexus.connect(ip, port=port)
+      client = core.OVSDBNexus.connect(ip, port=connect_back)
       connected_ips[ip] = client #FIXME: Not really connected yet!
 
     core.openflow.addListenerByName("ConnectionUp", new_connection)
 
+  if listen:
+    listen = 6641 if listen is True else int(listen)
+    core.OVSDBNexus.listen(port=listen)
 
-def example (port = 6640):
+  if not connect_back and not listen:
+    log.warn("Neither connect-back nor listening enabled.")
+    log.warn("(You may want to see pox.py help --ovsdb)")
+
+
+
+def example ():
   """
   Every time we get a connection, query what switches it knows
   """
-  launch(port)
 
   def query_dpids (event):
     # Send a query for DPIDs this OVSDB knows about
@@ -642,4 +689,7 @@ def example (port = 6640):
         SELECT|'name'|AND|'datapath_id'|FROM|'Bridge'
         ).callback(show_result)
 
-  core.OVSDBNexus.addListener(ConnectionUp, query_dpids)
+  def begin ():
+    core.OVSDBNexus.addListener(ConnectionUp, query_dpids)
+
+  core.call_when_ready(begin, ['OVSDBNexus'])
