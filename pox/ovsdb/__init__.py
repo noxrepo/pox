@@ -414,7 +414,7 @@ class OVSDBConnection (EventMixin):
 
   def __init__ (self, nexus, worker):
     self._state = self.STATE_CONNECTING
-    self._nexus = OVSDBNexus
+    self._nexus = nexus
     self._worker = worker
     self._destreamer = JSONDestreamer(callback = self._rx_json)
     self._worker.rx_handler = self._rx_raw
