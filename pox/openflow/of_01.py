@@ -56,7 +56,6 @@ import pox.openflow.libopenflow_01 as of
 import threading
 import os
 import sys
-import exceptions
 from errno import EAGAIN, ECONNRESET, EADDRINUSE, EADDRNOTAVAIL, EMFILE
 
 
@@ -1094,7 +1093,7 @@ class OpenFlow_01_Task (Task):
               if con.read() is False:
                 con.close()
                 sockets.remove(con)
-      except exceptions.KeyboardInterrupt:
+      except KeyboardInterrupt:
         break
       except:
         def log_tb ():
