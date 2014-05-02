@@ -216,11 +216,11 @@ def _do_launch (argv):
               pass
 
       multi = False
-      if f.func_code.co_argcount > 0:
+      if f.__code__.co_argcount > 0:
         #FIXME: This code doesn't look quite right to me and may be broken
         #       in some cases.  We should refactor to use inspect anyway,
         #       which should hopefully just fix it.
-        if (f.func_code.co_varnames[f.func_code.co_argcount-1]
+        if (f.__code__.co_varnames[f.__code__.co_argcount-1]
             == '__INSTANCE__'):
           # It's a multi-instance-aware component.
 
