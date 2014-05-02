@@ -715,7 +715,7 @@ class Connection (EventMixin):
 
     self.ofnexus = _dummyOFNexus
     self.sock = sock
-    self.buf = ''
+    self.buf = b''
     Connection.ID += 1
     self.ID = Connection.ID
 

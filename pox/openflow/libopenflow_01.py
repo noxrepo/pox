@@ -115,15 +115,15 @@ def _skip (data, offset, num):
 
 def _unpad (data, offset, num):
   (offset, o) = _read(data, offset, num)
-  assert len(o.replace("\x00", "")) == 0
+  assert len(o.replace(b"\x00", b"")) == 0
   return offset
 
 def _readzs (data, offset, length):
   (offset, d) = _read(data, offset, length)
-  d = d.split("\x00", 1)
-  #if len(d[1].replace("\x00", "")) > 0:
+  d = d.split(b"\x00", 1)
+  #if len(d[1].replace(b"\x00", b"")) > 0:
   #  raise RuntimeError("Non-zero string padding")
-  assert True if (len(d) == 1) else (len(d[1].replace("\x00", "")) == 0)
+  assert True if (len(d) == 1) else (len(d[1].replace(b"\x00", b"")) == 0)
   return (offset, d[0])
 
 def _readether (data, offset):
@@ -3760,7 +3760,7 @@ class ofp_packet_in (ofp_header):
     return self._data
   @data.setter
   def data (self, data):
-    assert assert_type("data", data, (packet_base, str))
+    assert assert_type("data", data, (packet_base, bytes))
     if data is None:
       self._data = ''
     elif isinstance(data, packet_base):
