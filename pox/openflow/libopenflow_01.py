@@ -2152,7 +2152,7 @@ class ofp_features_reply (ofp_header):
         _unpack("!QLB", raw, offset)
     offset = _skip(raw, offset, 3)
     offset,(self.capabilities, self.actions) = _unpack("!LL", raw, offset)
-    portCount = (length - 32) / len(ofp_phy_port)
+    portCount = (length - 32) // len(ofp_phy_port)
     self.ports = []
     for i in xrange(0, portCount):
       p = ofp_phy_port()
