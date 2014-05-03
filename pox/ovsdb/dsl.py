@@ -255,6 +255,30 @@ class Delete (Operation):
 
 
 
+class Commit (Operation):
+  """
+  COMMIT [DURABLE]
+  """
+  def __init__ (self, durable = True):
+    self.op = 'commit'
+    self.durable = durable
+
+  @classmethod
+  def parse (cls, expr):
+    data = expr
+    expect(data, COMMIT)
+
+    durable = False
+    if expect(data, DURABLE, optional=True):
+      durable = True
+
+    if data:
+      raise RuntimeError("Trailing junk")
+
+    return cls(durable=durable)
+
+
+
 class Mutate (Operation):
   """
   IN <table> [WHERE <conditions>] MUTATE <mutations>
@@ -312,9 +336,9 @@ def _reserve_word (symbols):
     __all__.append(op)
     globals()[op] = n
 
-_keywords = 'AND FROM INTO WHERE IN WITH UUID_NAME'.split()
+_keywords = 'AND FROM INTO WHERE IN WITH UUID_NAME DURABLE'.split()
 
-_operations = 'SELECT INSERT MUTATE UPDATE DELETE'.split()
+_operations = 'SELECT INSERT MUTATE UPDATE DELETE COMMIT'.split()
 
 _conditions = ('INCLUDES EXCLUDES GREATER LESSER GREATEREQUAL LESSEREQUAL '
               'EQUAL INEQUAL').split()
@@ -365,11 +389,15 @@ def expect (list, expect, optional = False):
   got = list.pop(0)
   if got != expect:
     raise RuntimeError("Expected '%s' but got '%s'" % (expect, got))
+    #FIXME: Error message could be better when optional=True
   return got
 
 
 def parse_statement (expr):
-  expr = expr.els
+  if isinstance(expr, ReservedWord):
+    expr = [expr]
+  else:
+    expr = expr.els
   if expr[0] is SELECT:
     return Select.parse(expr)
   elif expr[0] is INSERT:
@@ -380,6 +408,8 @@ def parse_statement (expr):
     return Update.parse(expr)
   elif expr[0] is DELETE:
     return Delete.parse(expr)
+  elif expr[0] is COMMIT:
+    return Commit.parse(expr)
   raise RuntimeError("Syntax error")
 
 
