@@ -343,17 +343,20 @@ def parse_statement (expr):
   raise RuntimeError("Syntax error")
 
 
-def parse_conditions (data):
+def parse_conditions (data, offset=0):
+  """
+  Parse conditions from data, removing them as it goes
+  """
   conditions = []
   while True:
-    col = data.pop(0)
-    op = data.pop(0)
-    val = data.pop(0)
+    col = data.pop(offset)
+    op = data.pop(offset)
+    val = data.pop(offset)
     op = _condition_map[op]
     conditions.append([col,op,val])
 
-    if not data: break
-    if data[0] is not AND: break
-    data.pop(0)
+    if offset >= len(data): break
+    if data[offset] is not AND: break
+    data.pop(offset)
 
   return conditions
