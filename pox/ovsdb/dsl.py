@@ -297,6 +297,27 @@ class Abort (Operation):
 
 
 
+class Comment (Operation):
+  """
+  Comment [<comment>]
+  """
+  def __init__ (self, comment):
+    self.op = 'comment'
+    self.comment = comment
+
+  @classmethod
+  def parse (cls, data):
+    expect(data, COMMENT)
+
+    comment = data.pop(0)
+
+    if data:
+      raise RuntimeError("Trailing junk")
+
+    return cls(comment=comment)
+
+
+
 class Mutate (Operation):
   """
   IN <table> [WHERE <conditions>] MUTATE <mutations>
@@ -356,7 +377,7 @@ def _reserve_word (symbols):
 
 _keywords = 'AND FROM INTO WHERE IN WITH UUID_NAME DURABLE'.split()
 
-_operations = 'SELECT INSERT MUTATE UPDATE DELETE COMMIT ABORT'.split()
+_operations = 'SELECT INSERT MUTATE UPDATE DELETE COMMIT ABORT COMMENT'.split()
 
 _conditions = ('INCLUDES EXCLUDES GREATER LESSER GREATEREQUAL LESSEREQUAL '
               'EQUAL INEQUAL').split()
@@ -430,6 +451,8 @@ def parse_statement (expr):
     return Commit.parse(expr)
   elif expr[0] is ABORT:
     return Abort.parse(expr)
+  elif expr[0] is COMMENT:
+    return Comment.parse(expr)
   raise RuntimeError("Syntax error")
 
 
