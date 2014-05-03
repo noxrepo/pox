@@ -317,6 +317,29 @@ class Comment (Operation):
 
 
 
+class Assert (Operation):
+  """
+  ASSERT OWN [LOCK] <lock-id>
+  """
+  def __init__ (self, lock):
+    self.op = 'assert'
+    self.lock = lock
+
+  @classmethod
+  def parse (cls, data):
+    expect(data, ASSERT)
+    expect(data, OWN)
+    if data[0] is LOCK:
+      del data[0]
+    lock_id = data.pop(0)
+
+    if data:
+      raise RuntimeError("Trailing junk")
+
+    return cls(lock=lock_id)
+
+
+
 class Mutate (Operation):
   """
   IN <table> [WHERE <conditions>] MUTATE <mutations>
@@ -374,9 +397,10 @@ def _reserve_word (symbols):
     __all__.append(op)
     globals()[op] = n
 
-_keywords = 'AND FROM INTO WHERE IN WITH UUID_NAME DURABLE'.split()
+_keywords = 'AND FROM INTO WHERE IN WITH UUID_NAME DURABLE OWN LOCK'.split()
 
-_operations = 'SELECT INSERT MUTATE UPDATE DELETE COMMIT ABORT COMMENT'.split()
+_operations = ('SELECT INSERT MUTATE UPDATE DELETE COMMIT ABORT COMMENT '
+               'ASSERT').split()
 
 _conditions = ('INCLUDES EXCLUDES GREATER LESSER GREATEREQUAL LESSEREQUAL '
               'EQUAL INEQUAL').split()
@@ -452,6 +476,8 @@ def parse_statement (expr):
     return Abort.parse(expr)
   elif expr[0] is COMMENT:
     return Comment.parse(expr)
+  elif expr[0] is ASSERT:
+    return Assert.parse(expr)
   raise RuntimeError("Syntax error")
 
 
