@@ -217,6 +217,44 @@ class Update (Operation):
 
 
 
+class Delete (Operation):
+  """
+  DELETE [IN|FROM] <table> [WHERE <conditions>]
+   or
+  DELETE [WHERE <conditions>] IN|FROM <table>
+  """
+  def __init__ (self, table, where=[]):
+    self.op = 'delete'
+    self.table = table
+    self.where = where
+
+  @classmethod
+  def parse (cls, expr):
+    data = expr
+    expect(data, DELETE)
+
+    where = []
+    for i in range(len(data)-1):
+      if data[i] is WHERE:
+        del data[i]
+        where = parse_conditions(data, i)
+        break
+
+    if not data:
+      raise RuntimeError("Expected table specification")
+
+    if data[0] in (IN, FROM):
+      del data[0]
+
+    table = data.pop(0)
+
+    if data:
+      raise RuntimeError("Trailing junk")
+
+    return cls(table=table, where=where)
+
+
+
 class Mutate (Operation):
   """
   IN <table> [WHERE <conditions>] MUTATE <mutations>
@@ -276,7 +314,7 @@ def _reserve_word (symbols):
 
 _keywords = 'AND FROM INTO WHERE IN WITH UUID_NAME'.split()
 
-_operations = 'SELECT INSERT MUTATE UPDATE'.split()
+_operations = 'SELECT INSERT MUTATE UPDATE DELETE'.split()
 
 _conditions = ('INCLUDES EXCLUDES GREATER LESSER GREATEREQUAL LESSEREQUAL '
               'EQUAL INEQUAL').split()
@@ -340,6 +378,8 @@ def parse_statement (expr):
     return Mutate.parse(expr)
   elif expr[0] is UPDATE:
     return Update.parse(expr)
+  elif expr[0] is DELETE:
+    return Delete.parse(expr)
   raise RuntimeError("Syntax error")
 
 
