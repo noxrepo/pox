@@ -264,8 +264,7 @@ class Commit (Operation):
     self.durable = durable
 
   @classmethod
-  def parse (cls, expr):
-    data = expr
+  def parse (cls, data):
     expect(data, COMMIT)
 
     durable = False
@@ -299,7 +298,7 @@ class Abort (Operation):
 
 class Comment (Operation):
   """
-  Comment [<comment>]
+  COMMENT [<comment>]
   """
   def __init__ (self, comment):
     self.op = 'comment'
