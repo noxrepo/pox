@@ -30,9 +30,8 @@ import json
 import errno
 import time
 
-from dsl import * # Grab the DSL interface
-import dsl
-
+from pox.ovsdb.dsl import * # Grab the DSL interface
+from pox.ovsdb.dsl import Operation, Statement
 
 #TODO: It'd be nice to use a retrieved schema to build a bunch of types that
 #      did validation and stuff on the client side.
@@ -372,9 +371,9 @@ class Transact (Method):
     # If a parameter isn't an Operation, maybe it parses into one...
     params = list(params) # May have to alter it
     for i,p in enumerate(params[1:],1):
-      if not isinstance(p, dsl.Operation):
+      if not isinstance(p, Operation):
         # It better be a statement!
-        assert isinstance(p, dsl.Statement)
+        assert isinstance(p, Statement)
         params[i] = p._parse()
 
     return params
@@ -697,3 +696,9 @@ def example ():
     core.OVSDBNexus.addListener(ConnectionUp, query_dpids)
 
   core.call_when_ready(begin, ['OVSDBNexus'])
+
+
+# We want to allow importing all of these here, so give everything except a
+# couple thingst we really *don't* want to come with it.
+__all__ = list(v for v in vars() if not v.startswith("_"))
+__all__.remove("launch")

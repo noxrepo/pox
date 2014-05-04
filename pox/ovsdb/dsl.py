@@ -18,6 +18,8 @@ An embedded DSL for OVSDB in Python
 Highly experimental.  Possibly insane?
 """
 
+import pox.ovsdb
+
 __all__ = [] # Stuff to export (added to later)
 
 class Statement (object):
@@ -105,8 +107,7 @@ class Operation (object):
     return {k:v for k,v in vars(self).items() if v is not NO_VALUE}
 
   def __str__ (self):
-    from ovsdb import to_raw_json
-    return to_raw_json(self._format__json())
+    return pox.ovsdb.to_raw_json(self._format__json())
     #return str(self._format__json())
 
 
