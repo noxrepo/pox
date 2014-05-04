@@ -432,7 +432,7 @@ class POXCore (EventMixin):
         name = component._core_name
 
     if name in self.components:
-      log.warn("Warning: Registered '%s' multipled times" % (name,))
+      log.warn("Warning: Registered '%s' multiple times" % (name,))
     self.components[name] = component
     self.raiseEventNoErrors(ComponentRegistered, name, component)
     self._try_waiters()
