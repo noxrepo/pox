@@ -22,7 +22,7 @@ exact-match rules for each flow.
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
-from pox.lib.util import dpid_to_str
+from pox.lib.util import dpid_to_str, str_to_dpid
 from pox.lib.util import str_to_bool
 import time
 
@@ -178,16 +178,26 @@ class l2_learning (object):
   """
   Waits for OpenFlow switches to connect and makes them learning switches.
   """
-  def __init__ (self, transparent):
+  def __init__ (self, transparent, ignore = None):
+    """
+    Initialize
+
+    See LearningSwitch for meaning of 'transparent'
+    'ignore' is an optional list/set of DPIDs to ignore
+    """
     core.openflow.addListeners(self)
     self.transparent = transparent
+    self.ignore = set(ignore) if ignore else ()
 
   def _handle_ConnectionUp (self, event):
+    if event.dpid in self.ignore:
+      log.debug("Ignoring connection %s" % (event.connection,))
+      return
     log.debug("Connection %s" % (event.connection,))
     LearningSwitch(event.connection, self.transparent)
 
 
-def launch (transparent=False, hold_down=_flood_delay):
+def launch (transparent=False, hold_down=_flood_delay, ignore = None):
   """
   Starts an L2 learning switch.
   """
@@ -198,4 +208,8 @@ def launch (transparent=False, hold_down=_flood_delay):
   except:
     raise RuntimeError("Expected hold-down to be a number")
 
-  core.registerNew(l2_learning, str_to_bool(transparent))
+  if ignore:
+    ignore = ignore.replace(',', ' ').split()
+    ignore = set(str_to_dpid(dpid) for dpid in ignore)
+
+  core.registerNew(l2_learning, str_to_bool(transparent), ignore)
