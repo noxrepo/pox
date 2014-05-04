@@ -156,6 +156,8 @@ class Select (Operation):
     els = expr
     expect(els, SELECT)
 
+    #FIXME: use parse_list() in this function
+
     columns = NO_VALUE
     cur = els[0]
     if cur != FROM:
@@ -184,6 +186,78 @@ class Select (Operation):
       raise RuntimeError("Junk trailing SELECT")
 
     return cls(table=table, where=where, columns=columns)
+
+
+
+class Wait (Operation):
+  """
+  WAIT UNTIL/WHILE <columns> [WHERE <conditions>] IN <table> ARE|IS [NOT] <rows>
+      [[WITH] TIMEOUT <timeout>]
+
+  columns is a list/tuple or AND-separated list of column names
+  rows in AND-separated list of rows
+  """
+  def __init__ (self, table, columns, rows, where=[], timeout=NO_VALUE,
+                invert=False):
+    """
+    Initialize
+
+    If invert is true, wait until the condition is NOT true
+    """
+    self.op = 'wait'
+    self.table = table
+    self.columns = columns
+    self.rows = rows
+    self.where = where
+    self.timeout = timeout
+    self.until = '!=' if invert else '=='
+
+  @classmethod
+  def parse (cls, data):
+    expect(data, WAIT)
+
+    invert = False
+    if data[0] is UNTIL:
+      pass
+    elif data[0] is WHILE:
+      invert = True
+    else:
+      raise RuntimeError("Expected UNTIL or WHILE")
+    del data[0]
+
+    columns = parse_list(data)
+
+    where = []
+    if data[0] is WHERE:
+      del data[0]
+      where = parse_conditions(data)
+
+    expect(data, IN)
+    table = data.pop(0)
+
+    if data.pop(0) not in (ARE, IS):
+      raise RuntimeError("Expected IS or ARE")
+
+    if data[0] is NOT:
+      invert = not invert
+      del data[0]
+
+    rows = parse_list(data)
+
+    timeout = NO_VALUE
+    if data and data[0] is WITH:
+      del data[0]
+      expect(data, TIMEOUT)
+      timeout = data.pop(0)
+    else:
+      if expect(data, TIMEOUT, optional=True):
+        timeout = data.pop(0)
+
+    if data:
+      raise RuntimeError("Trailing garbage")
+
+    return cls(table=table, columns=columns, rows=rows, where=where,
+               timeout=timeout, invert=invert)
 
 
 
@@ -398,16 +472,17 @@ def _reserve_word (symbols):
     __all__.append(op)
     globals()[op] = n
 
-_keywords = 'AND FROM INTO WHERE IN WITH UUID_NAME DURABLE OWN LOCK'.split()
+_keywords =   ('AND FROM INTO WHERE IN WITH UUID_NAME DURABLE OWN LOCK '
+               'UNTIL WHILE IS NOT ARE TIMEOUT').split()
 
 _operations = ('SELECT INSERT MUTATE UPDATE DELETE COMMIT ABORT COMMENT '
-               'ASSERT').split()
+               'ASSERT WAIT').split()
 
 _conditions = ('INCLUDES EXCLUDES GREATER LESSER GREATEREQUAL LESSEREQUAL '
               'EQUAL INEQUAL').split()
 
-_mutations = ('INCREMENT DECREMENT MULTIPLYBY DIVIDEBY REMAINDEROF ' #INSERT '
-             ' DELETE').split()
+_mutations =  ('INCREMENT DECREMENT MULTIPLYBY DIVIDEBY REMAINDEROF ' #INSERT '
+               ' DELETE').split()
 
 
 _reserve_word(_keywords)
@@ -479,6 +554,8 @@ def parse_statement (expr):
     return Comment.parse(expr)
   elif expr[0] is ASSERT:
     return Assert.parse(expr)
+  elif expr[0] is WAIT:
+    return Wait.parse(expr)
   raise RuntimeError("Syntax error")
 
 
@@ -499,3 +576,30 @@ def parse_conditions (data, offset=0):
     data.pop(offset)
 
   return conditions
+
+
+def parse_list (data, offset=0, allow_empty=False):
+  """
+  Parse a tuple/list of items or an AND-separated list
+  """
+  r = []
+  while True:
+    if offset >= len(data) or isinstance(data[offset], ReservedWord):
+      if not r and allow_empty:
+        # No items, but that's okay.
+        break
+      raise RuntimeError("Expected list of items")
+    elif isinstance(data[offset], (tuple, list)):
+      #FIXME: anything list-like will do
+      r.extend(data.pop(offset))
+    else:
+      r.append(data.pop(offset))
+    if offset >= len(data): break
+    if data[offset] is not AND:
+      break
+    del data[offset]
+
+  if not r and not allow_empty:
+    raise RuntimeError("Expected list of items")
+
+  return r
