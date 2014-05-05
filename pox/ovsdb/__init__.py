@@ -31,7 +31,7 @@ import errno
 import time
 
 from pox.ovsdb.dsl import * # Grab the DSL interface
-from pox.ovsdb.dsl import Operation, Statement
+from pox.ovsdb.dsl import Operation, Statement, MonitorRequest, NO_VALUE
 
 #TODO: It'd be nice to use a retrieved schema to build a bunch of types that
 #      did validation and stuff on the client side.
@@ -72,11 +72,77 @@ class ConnectionDown (OVSDBEvent):
 #     self.opaque = self.msg.params[0]
 #     self.dpid = ...
 
+
+class TableUpdate (object):
+  """
+  Holds results from an UpdateNotification
+  """
+  def __init__ (self, table, row_uuid, row, initial):
+    self.is_initial = False
+    self.is_modify = False
+    self.is_delete = False
+    self.is_insert = False
+    self.new = None
+    self.old = None
+    if initial:
+      self.is_initial = True
+      self.new = row['new']
+    elif 'new' in row and 'old' in row:
+      self.is_modify = True
+      self.new = row['new']
+      self.old = row['old']
+    elif 'old' in row:
+      self.is_delete = True
+      self.old = row['old']
+    elif 'new' in row:
+      self.is_insert = True
+      self.new = row['new']
+    else:
+      assert False, "Impossible update?"
+    self.table = table
+    self.row_uuid = row_uuid
+
+  def __str__ (self):
+    old = self.old
+    new = self.new
+    if old: old = to_raw_json(old)
+    if new: new = to_raw_json(new)
+    return "%s %s->%s" % (self.table, old, new)
+
+
 class UpdateNotification (OVSDBEvent):
+  #TODO: Should be able to group these together by opaque ID better.
+  #      Probably just by using the Monitor object...
   def __init__ (self, *args, **kw):
+    initial = kw.pop('initial', False)
     super(UpdateNotification,self).__init__(*args, **kw)
     self.opaque = self.msg.params[0]
-    self.updates = self.msg.params[1]
+    self.raw_updates = self.msg.params[1]
+
+    self.initial = []
+    self.insert = []
+    self.modify = []
+    self.delete = []
+    self.updates = [] # All
+
+    for table_name,table in self.raw_updates[JSON].items():
+      for row_uuid,row_update in table[JSON].items():
+        tu = TableUpdate(table_name, row_uuid, row_update, initial)
+        if tu.is_initial:
+          self.initial.append(tu)
+        elif tu.is_insert:
+          self.insert.append(tu)
+        elif tu.is_modify:
+          self.modify.append(tu)
+        elif tu.is_delete:
+          self.delete.append(tu)
+        self.updates.append(tu)
+
+  def __str__ (self):
+    r = "<updates opaque=%s init:%s insert:%s mod:%s del:%s>" % (self.opaque,
+        len(self.initial),len(self.insert),len(self.modify),len(self.delete))
+    return r
+
 
 class LockNotification (OVSDBEvent):
   pass
@@ -396,6 +462,20 @@ class Transact (Method):
     return (self._reply.result,)
 
 
+class Monitor (Method):
+  _method_name = 'monitor'
+  #TODO: Fire callback or add new callback for notifications?
+
+  def _postprocess (self):
+    # We need to craft a fake update notification message because that's
+    # what the event constructor expects (ugly)
+    opaque = self._args[1]
+    msg = JSON(id=None, method='update', params=[opaque, self._reply.result])
+
+    if self._reply.result:
+      self._owner.raiseEvent(UpdateNotification, connection=self._owner,
+                            msg=msg, initial=True)
+
 class OVSDBConnection (EventMixin):
   _eventMixin_events = set([
     ConnectionUp,
@@ -522,8 +602,17 @@ class OVSDBConnection (EventMixin):
   def cancel (self, transaction_id):
     self._send(JSON(method='cancel',params=[transaction_id],id=None))
 
-  def monitor (self, db_name, opaque, *monitor_requests):
-    raise NotImplementedError()
+  def monitor (self, db_name, monitor_id, *monitor_requests):
+    # Each monitor_request should be MonitorRequest or parsable into one
+    assert monitor_requests
+    reqs = {}
+    for req in monitor_requests:
+      if not isinstance(req, MonitorRequest):
+        # Maybe it can be parsed into one...
+        req = MonitorRequest.parse(req)
+      reqs[req.table] = req
+      req.table = NO_VALUE
+    return self._call(Monitor, db_name, monitor_id, reqs)
 
   def _call (self, method, *params):
     m = method(self)

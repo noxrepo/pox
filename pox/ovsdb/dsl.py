@@ -464,6 +464,65 @@ class Mutate (Operation):
 
 
 
+class MonitorRequest (Operation):
+  """
+  MONITOR [<columns>] IN <table> [FOR [INITIAL] [INSERT] [DELETE] [MODIFY]]
+
+  Not actually a transact operation.  This is used with the 'monitor' method.
+  """
+  def __init__ (self, table, columns = NO_VALUE, select = NO_VALUE):
+    self.table = table
+    self.columns = columns
+    self.select = select
+
+  @classmethod
+  def parse (cls, data):
+    if isinstance(data, ReservedWord):
+      data = [data]
+    else:
+      data = data.els
+
+    if data[0] is MONITOR: del data[0]
+
+    # Somewhat more flexible than advertised...
+    table = None
+    if IN in data:
+      table_pos = data.index(IN)
+      del data[table_pos]
+      table = data[table_pos]
+      del data[table_pos]
+    else:
+      # Assume it's at the beginning
+      table = data.pop(0)
+
+    columns = parse_list(data, allow_empty=True)
+    if not columns:
+      columns = NO_VALUE
+
+    select = NO_VALUE
+
+    if data:
+      select = {x:False for x in 'initial insert delete modify'.split()}
+      if data[0] is FOR:
+        del data[0]
+
+      while data:
+        if data[0] in (INITIAL, INSERT, DELETE, MODIFY):
+          #select[type(data[0]).__name__.lower()] = True
+          select.pop(type(data[0]).__name__.lower())
+          del data[0]
+        else:
+          raise RuntimeError("Expected INITIAL/INSERT/DELETE/MODIFY")
+        if data and data[0] == AND:
+          del data[0]
+
+    if data:
+      raise RuntimeError("Trailing junk")
+
+    return cls(table = table, columns = columns, select = select)
+
+
+
 # OVSDB DSL definition stuff
 
 def _reserve_word (symbols):
@@ -484,11 +543,13 @@ _conditions = ('INCLUDES EXCLUDES GREATER LESSER GREATEREQUAL LESSEREQUAL '
 _mutations =  ('INCREMENT DECREMENT MULTIPLYBY DIVIDEBY REMAINDEROF ' #INSERT '
                ' DELETE').split()
 
+_monitor =    ('INITIAL INSERT DELETE MODIFY MONITOR FOR').split()
 
 _reserve_word(_keywords)
 _reserve_word(_operations)
 _reserve_word(_conditions)
 _reserve_word(_mutations)
+_reserve_word(_monitor)
 
 NOTEQUAL = INEQUAL # A synonym
 
