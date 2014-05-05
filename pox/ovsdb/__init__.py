@@ -417,20 +417,12 @@ class Method (object):
 
 
 
-class GetSchema (Method):
-  _method_name = 'get_schema'
-
-
 class ListDBs (Method):
   _method_name = 'list_dbs'
 
 
-class Echo (Method):
-  _method_name = 'echo'
-
-  def _postprocess (self):
-    # We use this to set our connection's reply time.
-    self._owner._last_echo_reply = time.time()
+class GetSchema (Method):
+  _method_name = 'get_schema'
 
 
 class Transact (Method):
@@ -475,6 +467,32 @@ class Monitor (Method):
     if self._reply.result:
       self._owner.raiseEvent(UpdateNotification, connection=self._owner,
                             msg=msg, initial=True)
+
+
+class MonitorCancel (Method):
+  _method_name = 'monitor_cancel'
+
+
+class Lock (Method):
+  _method_name = 'lock'
+
+
+class Steal (Method):
+  _method_name = 'steal'
+
+
+class Unlock (Method):
+  _method_name = 'unlock'
+
+
+class Echo (Method):
+  _method_name = 'echo'
+
+  def _postprocess (self):
+    # We use this to set our connection's reply time.
+    self._owner._last_echo_reply = time.time()
+
+
 
 class OVSDBConnection (EventMixin):
   _eventMixin_events = set([
@@ -585,9 +603,6 @@ class OVSDBConnection (EventMixin):
     self._worker.send(to_raw_json(msg))
 
 
-  def echo (self, *params):
-    return self._call(Echo, *params)
-
   def list_dbs (self):
     return self._call(ListDBs)
 
@@ -613,6 +628,22 @@ class OVSDBConnection (EventMixin):
       reqs[req.table] = req
       req.table = NO_VALUE
     return self._call(Monitor, db_name, monitor_id, reqs)
+
+  def monitor_cancel (self, monitor_id):
+    #TODO: We should be able to send this from a monitor object
+    return self._call(MonitorCancel, monitor_id)
+
+  def lock (self, lock_id):
+    return self._call(Lock, lock_id)
+
+  def steal (self, lock_id):
+    return self._call(Steal, lock_id)
+
+  def unlock (self, lock_id):
+    return self._call(Unlock, lock_id)
+
+  def echo (self, *params):
+    return self._call(Echo, *params)
 
   def _call (self, method, *params):
     m = method(self)
