@@ -274,7 +274,7 @@ class Switch (object):
       for port,gport in self.ports.items():
         table.entry()
         table.last.actions.append( ofp_action_output(port=port.port_no) )
-        table.last.match.tun_id = gport
+        table.last.match.tun_id = port.port_no
 
       table.entry()
       table.last.match.tun_id = MALL
