@@ -427,6 +427,9 @@ class Switch (object):
         self.tun_port = p.port_no
 
         do_setup = True
+      elif p.port_no >= OFPP_MAX: # Off-by-one?
+        # Ignore special ports
+        pass
       else:
         if p not in self.ports:
           self.ports[p] = self.core.add_interface(self, p)
