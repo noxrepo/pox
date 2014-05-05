@@ -22,7 +22,7 @@ all one big switch.
 This is a very early prototype.
 
 Run like:
-./pox.py edge_pairs --ips=172.16.0.x,172.16.0.y
+./pox.py edge.aggregator --ips=172.16.0.x,172.16.0.y
 
 Configure the OVS instances to have tunnels along the lines of:
 ovs-vsctl add-port br0 tun0 -- set Interface tun0 type=gre \
@@ -466,7 +466,7 @@ class Switch (object):
         # if it's being sent to a port, it should have been handled at the
         # switch!
         self.log.warn("Got non-discovery from tunnel at controller")
-        print event.ofp
+        #print event.ofp
       return
 
     # Translate in_port
