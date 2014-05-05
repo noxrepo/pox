@@ -175,6 +175,9 @@ class JSON (object):
   def __contains__ (self, key):
     return key in self._JSON__items
 
+  def __len__ (self):
+    return len(self._JSON__items)
+
   def __iter__ (self):
     return iter(self._JSON__items)
 
@@ -193,7 +196,7 @@ class JSON (object):
     try:
       return self._JSON__items[attr]
     except:
-      raise AttributeError()
+      raise AttributeError(attr)
 
   def __setattr__ (self, attr, value):
     if attr.startswith("_JSON__"):
@@ -263,7 +266,7 @@ class Method (object):
   _method_name = None # Fill this in
 
   def __init__ (self, owner):
-    self._owner = owner
+    self._owner = owner # Connection
     self._xid = owner.new_xid()
     self._args = None
     self._request = None
