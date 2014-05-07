@@ -149,7 +149,7 @@ _default_src_mac = object()
 
 class ARPHelper (EventMixin):
   _eventMixin_events = set([ARPRequest,ARPReply])
-  _rule_priority = 0x7000 # Pretty high
+  _rule_priority = 0x7000 # lower than the default
 
   def __init__ (self, no_flow, eat_packets, use_port_mac = False):
     core.addListeners(self)
