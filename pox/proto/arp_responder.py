@@ -149,7 +149,7 @@ class ARPResponder (object):
   def _handle_ConnectionUp (self, event):
     if _install_flow:
       fm = of.ofp_flow_mod()
-      fm.priority = 0x7000 # lower than the default
+      fm.priority -= 0x1000 # lower than the default
       fm.match.dl_type = ethernet.ARP_TYPE
       fm.actions.append(of.ofp_action_output(port=of.OFPP_CONTROLLER))
       event.connection.send(fm)
