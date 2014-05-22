@@ -211,8 +211,7 @@ class l3_switch (EventMixin):
                                 hard_timeout=of.OFP_FLOW_PERMANENT,
                                 buffer_id=event.ofp.buffer_id,
                                 actions=actions,
-                                match=of.ofp_match.from_packet(packet,
-                                                               inport))
+                                match=match)
           event.connection.send(msg.pack())
       elif self.arp_for_unknowns:
         # We don't know this destination.
