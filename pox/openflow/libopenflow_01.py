@@ -197,6 +197,10 @@ class ofp_base (object):
     assert (r-offset) == length, o
     return (r, o)
 
+  def clone (self):
+    # Works for any packable+unpackable ofp_base subclass.
+    # Can override if you have a better implementation
+    return type(self).unpack_new(self.pack())[1]
 
 # ----------------------------------------------------------------------
 # Class decorators
