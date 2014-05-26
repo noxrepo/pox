@@ -19,8 +19,8 @@ A utility module for handling some mundane parts of ARP
 """
 TODO
 ----
-arp_responder should be refactored to use this.  Also, it should be possible
-to have a simple ARP learner which keeps an ARP table without responding...
+It should be possible to have a simple ARP learner which keeps an ARP
+table without responding...
 """
 
 from pox.core import core
