@@ -141,18 +141,11 @@ class ARPResponder (object):
     self._expire_timer = Timer(5, _handle_expiration, recurring=True)
 
     core.addListeners(self)
+    core.listen_to_dependencies(self, ['ARPHelper'])
 
   def _handle_GoingUpEvent (self, event):
     core.openflow.addListeners(self)
     log.debug("Up...")
-
-  def _handle_ConnectionUp (self, event):
-    if _install_flow:
-      fm = of.ofp_flow_mod()
-      fm.priority -= 0x1000 # lower than the default
-      fm.match.dl_type = ethernet.ARP_TYPE
-      fm.actions.append(of.ofp_action_output(port=of.OFPP_CONTROLLER))
-      event.connection.send(fm)
 
   def _learn (self, dpid, a):
     """
@@ -282,16 +275,13 @@ class ARPResponder (object):
 
 
 _arp_table = ARPTable() # IPAddr -> Entry
-_install_flow = None
 _eat_packets = None
 _failed_queries = {} # IP -> time : queries we couldn't answer
 _learn = None
 
-def launch (timeout=ARP_TIMEOUT, no_flow=False, eat_packets=True,
-            no_learn=False, **kw):
+def launch (timeout=ARP_TIMEOUT, eat_packets=True, no_learn=False, **kw):
   global ARP_TIMEOUT, _install_flow, _eat_packets, _learn
   ARP_TIMEOUT = timeout
-  _install_flow = not no_flow
   _eat_packets = str_to_bool(eat_packets)
   _learn = not no_learn
 
