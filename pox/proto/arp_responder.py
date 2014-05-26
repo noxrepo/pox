@@ -25,6 +25,7 @@ Add ARP entries on commandline like:
 Leave MAC unspecified if you want to use the switch MAC.
 """
 
+from logging import INFO, DEBUG
 from pox.core import core
 import pox
 log = core.getLogger()
@@ -196,19 +197,11 @@ class ARPResponder (object):
 
     if self._check_for_flood(dpid, a):
       # Didn't know how to handle this ARP, so just flood it
-      msg = "%s flooding ARP %s %s => %s" % (dpid_to_str(dpid),
-          {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
-          'op:%i' % (a.opcode,)), a.protosrc, a.protodst)
-
+      event.flood = True
       if squelch:
-        log.debug(msg)
+        self._log_flood(DEBUG, dpid, a)
       else:
-        log.info(msg)
-
-      msg = of.ofp_packet_out()
-      msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-      msg.data = event.ofp
-      event.connection.send(msg.pack())
+        self._log_flood(INFO, dpid, a)
 
     return EventHalt if _eat_packets else None
 
@@ -221,16 +214,8 @@ class ARPResponder (object):
 
     if self._check_for_flood(dpid, a):
       # Didn't know how to handle this ARP, so just flood it
-      msg = "%s flooding ARP %s %s => %s" % (dpid_to_str(dpid),
-          {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
-          'op:%i' % (a.opcode,)), a.protosrc, a.protodst)
-
-      log.info(msg)
-
-      msg = of.ofp_packet_out()
-      msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-      msg.data = event.ofp
-      event.connection.send(msg.pack())
+      event.flood = True
+      self._log_flood(INFO, dpid, a)
 
     return EventHalt if _eat_packets else None
 
@@ -241,6 +226,12 @@ class ARPResponder (object):
     if a.protodst in _arp_table:
       return _arp_table[a.protodst].flood
     return True
+
+  def _log_flood (self, log_level, dpid, a):
+    msg = "%s flooding ARP %s %s => %s" % (dpid_to_str(dpid),
+          {arp.REQUEST:"request",arp.REPLY:"reply"}.get(a.opcode,
+          'op:%i' % (a.opcode,)), a.protosrc, a.protodst)
+    log.log(log_level, msg)
 
 
 _arp_table = ARPTable() # IPAddr -> Entry

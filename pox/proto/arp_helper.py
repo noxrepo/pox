@@ -108,6 +108,15 @@ def send_arp_request (connection, ip, port = of.OFPP_FLOOD,
   msg.in_port = of.OFPP_NONE
   connection.send(msg)
 
+def flood_packet (packet_in):
+  """
+  Send a packet_out that floods the packet received in the packet_in event.
+  """
+  msg = of.ofp_packet_out()
+  msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+  msg.data = packet_in.ofp
+  packet_in.connection.send(msg.pack())
+
 
 class ARPRequest (Event):
   @property
@@ -127,6 +136,7 @@ class ARPRequest (Event):
 
     self.ip = arpp.protosrc
     self.reply = None # Set to desired EthAddr
+    self.flood = False # Flood the original packet in case of no reply?
 
 
 class ARPReply (Event):
@@ -144,7 +154,7 @@ class ARPReply (Event):
     self.reply = arpp
     self.eat_packet = eat_packet
     self.port = port
-
+    self.flood = False # Should ARPHelper flood the packet?
 
 _default_src_mac = object()
 
@@ -236,6 +246,9 @@ class ARPHelper (EventMixin):
         msg.in_port = inport
         event.connection.send(msg)
         return EventHalt if ev.eat_packet else None
+      elif ev.flood:
+        flood_packet(event)
+        return EventHalt if ev.eat_packet else None
 
     elif a.opcode == arp.REPLY:
       log.debug("%s ARP reply %s => %s", dpid_to_str(dpid),
@@ -243,6 +256,8 @@ class ARPHelper (EventMixin):
 
       ev = ARPReply(event.connection,a,self.eat_packets,inport)
       self.raiseEvent(ev)
+      if ev.flood:
+        flood_packet(event)
       return EventHalt if ev.eat_packet else None
 
     return EventHalt if self.eat_packets else None
