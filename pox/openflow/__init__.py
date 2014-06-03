@@ -51,8 +51,7 @@ class ConnectionHandshakeComplete (Event):
 
 class ConnectionUp (Event):
   """
-  Event raised when the connection to an OpenFlow switch has been
-  established.
+  Raised when a connection to a switch has been established.
   """
   def __init__ (self, connection, ofp):
     self.connection = connection
@@ -72,8 +71,7 @@ class FeaturesReceived (Event):
 
 class ConnectionDown (Event):
   """
-  Event raised when the connection to an OpenFlow switch has been
-  lost.
+  Raised when a connection to switch has been lost.
   """
   def __init__ (self, connection):
     self.connection = connection
@@ -82,6 +80,7 @@ class ConnectionDown (Event):
 class PortStatus (Event):
   """
   Fired in response to port status changes.
+
   added (bool) - True if fired because a port was added
   deleted (bool) - True if fired because a port was deleted
   modified (bool) - True if fired because a port was modified
@@ -99,6 +98,7 @@ class PortStatus (Event):
 class FlowRemoved (Event):
   """
   Raised when a flow entry has been removed from a flow table.
+
   This may either be because of a timeout or because it was removed
   explicitly.
   Properties:
@@ -134,7 +134,9 @@ class RawStatsReply (Event):
     return self.connection.dpid
 
 class StatsReply (Event):
-  """ Abstract superclass for all stats replies """
+  """
+  Abstract superclass for all stats replies
+  """
   def __init__ (self, connection, ofp, stats):
     self.connection = connection
     self.ofp = ofp     # Raw ofp message(s)
@@ -165,6 +167,7 @@ class QueueStatsReceived (StatsReply):
 class PacketIn (Event):
   """
   Fired in response to PacketIn events
+
   port (int) - number of port the packet came in on
   data (bytes) - raw packet data
   parsed (packet subclasses) - pox.lib.packet's parsed version
@@ -233,6 +236,7 @@ class ErrorIn (Event):
 class BarrierIn (Event):
   """
   Fired in response to a barrier reply
+
   xid (int) - XID of barrier request
   """
   def __init__ (self, connection, ofp):

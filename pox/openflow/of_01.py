@@ -13,11 +13,13 @@
 # limitations under the License.
 
 """
-In charge of OpenFlow 1.0 switches.
+This component manages connections to OpenFlow 1.0 switches.
 
-NOTE: This module is loaded automatically on startup unless POX is run
-      with --no-openflow .
+Because many POX applications use OpenFlow, this component gets some
+special treatment, and an attempt is made to load it automatically if
+any other component references it during initialization.
 """
+
 from pox.core import core
 import pox
 import pox.lib.util
