@@ -252,6 +252,31 @@ class ConnectionIn (Event):
     self.dpid = connection.dpid
     self.nexus = None
 
+class ConfigurationReceived (Event):
+  """
+  Fired in response to OFPT_GET_CONFIG_REPLY
+  """
+  def __init__ (self, connection, ofp):
+    self.connection = connection
+    self.ofp = ofp
+    self.dpid = connection.dpid
+    self.xid = ofp.xid
+
+  @property
+  def flags (self):
+    return self.ofp.flags
+
+  @property
+  def miss_send_len (self):
+    return self.ofp.miss_send_len
+
+  @property
+  def drop_fragments (self):
+    return (self.ofp.flags & of.OFPC_FRAG_MASK) == of.OFPC_FRAG_DROP
+
+  @property
+  def reassemble_fragments (self):
+    return (self.ofp.flags & of.OFPC_FRAG_MASK) == of.OFPC_FRAG_REASM
 
 
 class OpenFlowConnectionArbiter (EventMixin):
@@ -325,6 +350,7 @@ class OpenFlowNexus (EventMixin):
     PortStatsReceived,
     QueueStatsReceived,
     FlowRemoved,
+    ConfigurationReceived,
   ])
 
   # Bytes to send to controller when a packet misses all flows

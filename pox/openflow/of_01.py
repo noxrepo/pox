@@ -253,6 +253,17 @@ class DefaultOpenFlowHandlers (OpenFlowHandlers):
     if e is None or e.halt != True:
       con.raiseEventNoErrors(FeaturesReceived, con, msg)
 
+  @staticmethod
+  def handle_GET_CONFIG_REPLY (con, msg):
+    e = con.ofnexus.raiseEventNoErrors(ConfigurationReceived, con, msg)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(ConfigurationReceived, con, msg)
+
+  @staticmethod
+  def handle_QUEUE_GET_CONFIG_REPLY (con, msg):
+    #TODO
+    pass
+
 # Default handlers for connections in connected state
 _default_handlers = DefaultOpenFlowHandlers()
 
@@ -698,6 +709,7 @@ class Connection (EventMixin):
     PortStatsReceived,
     QueueStatsReceived,
     FlowRemoved,
+    ConfigurationReceived,
   ])
 
   # Globally unique identifier for the Connection instance
