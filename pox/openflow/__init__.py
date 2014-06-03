@@ -314,7 +314,6 @@ class OpenFlowNexus (EventMixin):
     ConnectionDown,
     FeaturesReceived,
     PortStatus,
-    FlowRemoved,
     PacketIn,
     BarrierIn,
     ErrorIn,
