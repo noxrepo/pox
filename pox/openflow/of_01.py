@@ -190,7 +190,7 @@ class DefaultOpenFlowHandlers (OpenFlowHandlers):
       con.raiseEventNoErrors(PacketIn, con, msg)
 
   @staticmethod
-  def handle_ERROR_MSG (con, msg): #A
+  def handle_ERROR (con, msg): #A
     err = ErrorIn(con, msg)
     e = con.ofnexus.raiseEventNoErrors(err)
     if e is None or e.halt != True:
@@ -272,7 +272,7 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
     else:
       self._finish_connecting(con)
 
-  def handle_ERROR_MSG (self, con, msg): #A
+  def handle_ERROR (self, con, msg): #A
     if not self._barrier: return
     if msg.xid != self._barrier.xid: return
     if msg.type != of.OFPET_BAD_REQUEST: return
