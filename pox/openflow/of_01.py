@@ -709,6 +709,7 @@ class Connection (EventMixin):
     PortStatsReceived,
     QueueStatsReceived,
     FlowRemoved,
+    FeaturesReceived,
     ConfigurationReceived,
   ])
 
