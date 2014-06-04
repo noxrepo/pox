@@ -613,7 +613,7 @@ def _maybe_initialize ():
     return
   import __main__
   mod = getattr(__main__, '__file__', '')
-  if 'pydoc' in mod:
+  if 'pydoc' in mod or 'pdoc' in mod:
     initialize()
     return
 _maybe_initialize()
