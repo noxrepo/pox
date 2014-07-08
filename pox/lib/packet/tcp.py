@@ -636,21 +636,31 @@ class tcp (packet_base):
     self.next   = raw[self.hdr_len:]
     self.parsed = True
 
-  def hdr (self, payload, calc_checksum = True):
+  def hdr (self, payload, calc_checksum = True, calc_off = True):
     if calc_checksum:
       self.csum = self.checksum(payload=payload)
       csum = self.csum
     else:
       csum = 0
 
+    options_packed = b"".join(opt.pack() for opt in self.options)
+    hdr_len = self.MIN_LEN
+    hdr_len += len(options_packed)
+    if hdr_len % 4:
+        options_pad_len = 4 - (hdr_len % 4) # number of bytes to pad
+        options_packed += b"\000" * options_pad_len
+        hdr_len += options_pad_len
+    assert hdr_len % 4 == 0
+
+    if calc_off:
+        self.off = hdr_len / 4
+
     offres = self.off << 4 | self.res
-    packet = struct.pack('!HHIIBBHHH',
+    header = struct.pack('!HHIIBBHHH',
         self.srcport, self.dstport, self.seq, self.ack,
         offres, self.flags,
         self.win, csum, self.urg)
-    for option in self.options:
-      packet += option.pack()
-    return packet
+    return header + options_packed
 
   def checksum (self, unparsed=False, payload=None):
     """
