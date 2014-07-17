@@ -172,6 +172,7 @@ class mptcp_opt (tcp_opt):
 
   def __init__ (self):
     self.type = self.MPTCP
+    self.subtype = None
 
   @classmethod
   def unpack_new (dummy, buf, offset = 0):
@@ -201,6 +202,7 @@ class mp_unknown (mptcp_opt):
   """
   def __init__ (self):
     self.type = self.MPTCP
+    self.subtype = None
     self.data = b''
 
   def pack (self):
@@ -212,14 +214,18 @@ class mp_unknown (mptcp_opt):
     o.type = ord(buf[offset])
     length = ord(buf[offset+1])
     o.data = buf[offset+2:offset+2+length]
+    try:
+      self.subtype = (ord(buf[offset+2]) & 0xf0) >> 4
+    except:
+      pass
 
     return offset+length,o
 
   def __str__ (self):
     # Special case.  We don't parse the subtype, into an attribute, but
     # we'll display it.
-    if len(self.data):
-      subtype = (ord(self.data[0]) & 0xf0) >> 4
+    if self.subtype is not None:
+      subtype = self.subtype
     else:
       subtype = "???"
     return "mptcp_opt-%s" % (subtype,)
