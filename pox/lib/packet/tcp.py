@@ -150,6 +150,7 @@ _mptcp_opts = {} # type -> class
 def _register_mptcp_opt (type):
   def register_subtype (cls):
     _mptcp_opts[type] = cls
+    return cls
   return register_subtype
 
 
