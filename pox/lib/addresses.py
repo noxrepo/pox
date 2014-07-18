@@ -842,6 +842,4 @@ def infer_netmask (addr):
     # Class D (Multicast)
     return 32-0 # exact match
   # Must be a Class E (Experimental)
-    return 32-0
-
-
+  return 32-0
