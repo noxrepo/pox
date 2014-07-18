@@ -65,6 +65,7 @@ def _load_oui_names ():
 _load_oui_names()
 
 
+
 class EthAddr (object):
   """
   An Ethernet (MAC) address type.
@@ -174,6 +175,9 @@ class EthAddr (object):
     return self._value
 
   def toTuple (self):
+    return self.to_tuple()
+
+  def to_tuple (self):
     """
     Returns a 6-entry long tuple where each entry is the numeric value
     of the corresponding byte of the address.
@@ -220,7 +224,7 @@ class EthAddr (object):
     return self._value.__hash__()
 
   def __repr__ (self):
-    return self.__class__.__name__ + "('" + self.toStr() + "')"
+    return type(self).__name__ + "('" + self.to_str() + "')"
 
   def __len__ (self):
     return 6
@@ -229,6 +233,7 @@ class EthAddr (object):
     if hasattr(self, '_value'):
       raise TypeError("This object is immutable")
     object.__setattr__(self, a, v)
+
 
 
 class IPAddr (object):
@@ -243,11 +248,13 @@ class IPAddr (object):
 
     If addr is an int/long, then it is assumed to be in host byte order
     unless networkOrder = True
-    Stored in network byte order as a signed int
+
+    We only handle dotted-quad textual representations.  That is, three dots
+    and four numbers.  Oddball representations ("10.1") maybe not so much.
     """
 
     # Always stores as a signed network-order int
-    if isinstance(addr, basestring) or isinstance(addr, bytes):
+    if isinstance(addr, (basestring, bytes, bytearray)):
       if len(addr) != 4:
         # dotted quad
         self._value = struct.unpack('i', socket.inet_aton(addr))[0]
@@ -364,6 +371,11 @@ class IPAddr (object):
     if hasattr(self, '_value'):
       raise TypeError("This object is immutable")
     object.__setattr__(self, a, v)
+
+
+IP_ANY       = IPAddr("0.0.0.0")
+IP_BROADCAST = IPAddr("255.255.255.255")
+
 
 
 class IPAddr6 (object):
@@ -809,5 +821,3 @@ def infer_netmask (addr):
     return 32-0
 
 
-IP_ANY = IPAddr("0.0.0.0")
-IP_BROADCAST = IPAddr("255.255.255.255")
