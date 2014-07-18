@@ -1,4 +1,4 @@
-# Copyright 2011,2012,2013 James McCauley
+# Copyright 2011,2012,2013,2014 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,47 +26,42 @@ if 'long' not in sys.modules['__builtin__'].__dict__:
   long = int
 
 
-"""
-# Unfinished oui name stuff formerly from packet library.
 
-    oui = int(a[0]) << 16 | int(a[1]) << 8 | int(a[2])
-
-    # check if globally unique
-    if resolve_name and not (a[0] & 0x2):
-        if _ethoui2name.has_key(oui):
-            return "(%s):%02x:%02x:%02x" %( _ethoui2name[oui], a[3],a[4],a[5])
-"""
-_eth_oui_to_name = {}
+_eth_oui_to_name = {} # OUI (3 bytes) -> name
 
 def _load_oui_names ():
-    import inspect
-    import os.path
-    filename = os.path.join(os.path.dirname(inspect.stack()[0][1]), 'oui.txt')
-    f = None
-    try:
-        f = open(filename)
-        for line in f.readlines():
-            if len(line) < 1:
-                continue
-            if line[0].isspace():
-                continue
-            split = line.split(' ')
-            if not '-' in split[0]:
-                continue
-            # grab 3-byte OUI
-            oui_str  = split[0].replace('-','')
-            # strip off (hex) identifer and keep rest of name
-            end = ' '.join(split[1:]).strip()
-            end = end.split('\t')
-            end.remove('(hex)')
-            oui_name = ' '.join(end)
-            # convert oui to int
-            oui = int(oui_str, 16)
-            _eth_oui_to_name[oui] = oui_name.strip()
-    except:
-        import logging
-        logging.getLogger().warn("Could not load OUI list")
-    if f: f.close()
+  """
+  Load OUI names from textfile
+
+  Assumes the textfile is adjacent to this source file.
+  """
+  import inspect
+  import os.path
+  filename = os.path.join(os.path.dirname(inspect.stack()[0][1]), 'oui.txt')
+  f = None
+  try:
+    f = open(filename)
+    for line in f.readlines():
+      if len(line) < 1:
+        continue
+      if line[0].isspace():
+        continue
+      split = line.split(' ')
+      if not '-' in split[0]:
+        continue
+      # grab 3-byte OUI
+      oui  = b''.join(chr(int(x,16)) for x in split[0].split('-'))
+      # strip off (hex) identifer and keep rest of name
+      end = ' '.join(split[1:]).strip()
+      end = end.split('\t')
+      end.remove('(hex)')
+      oui_name = ' '.join(end)
+      _eth_oui_to_name[oui] = oui_name.strip()
+  except:
+    raise
+    import logging
+    logging.getLogger().warn("Could not load OUI list")
+  if f: f.close()
 _load_oui_names()
 
 
@@ -186,6 +181,9 @@ class EthAddr (object):
     return tuple((ord(x) for x in self._value))
 
   def toStr (self, separator = ':', resolveNames  = False):
+    return self.to_str(separator, resolveNames)
+
+  def to_str (self, separator = ':', resolve_names  = False):
     """
     Returns string representation of address
 
@@ -193,7 +191,13 @@ class EthAddr (object):
     If resolve_names is True, it the first three bytes may be replaced by a
     string corresponding to the OUI.
     """
-    #TODO: show OUI info from packet lib ?
+    if resolve_names and self.is_global:
+      # Don't even bother for local (though it should never match and OUI!)
+      name = _eth_oui_to_name.get(self._value[:3])
+      if name:
+        rest = separator.join('%02x' % (ord(x),) for x in self._value[3:])
+        return name + separator + rest
+
     return separator.join(('%02x' % (ord(x),) for x in self._value))
 
   def __str__ (self):

@@ -31,6 +31,11 @@ class MockEthAddrTest(unittest.TestCase):
     self.assertEqual("00:11:22:33:44:55", str(EthAddr("00:11:22:33:44:55")),
         "str(eth) doesn't match original string")
 
+  def test_oui_lookup (self):
+    e = EthAddr("00-10-fa-c2-bf-d5")
+    s = e.to_str(resolve_names=True)
+    self.assertEqual(s, "Apple Inc:c2:bf:d5")
+
 #  def test_int_ctor(self):
 #    int_val = EthAddr("00:00:00:00:01:00").toInt()
 #    self.assertEqual(int_val, 1<<8)
