@@ -106,8 +106,11 @@ class EthAddr (object):
       self._value = addr
     elif isinstance(addr, EthAddr):
       self._value = addr.toRaw()
-    elif type(addr) == list or (hasattr(addr, '__len__') and len(addr) == 6
+    elif isinstance(addr, (list,tuple,bytearray)):
+      self._value = b''.join( (chr(x) for x in addr) )
+    elif (hasattr(addr, '__len__') and len(addr) == 6
           and hasattr(addr, '__iter__')):
+      # Pretty much same as above case, but for sequences we don't know.
       self._value = b''.join( (chr(x) for x in addr) )
     elif addr is None:
       self._value = b'\x00' * 6
