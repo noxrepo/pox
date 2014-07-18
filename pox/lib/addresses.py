@@ -73,13 +73,16 @@ _load_oui_names()
 class EthAddr (object):
   """
   An Ethernet (MAC) address type.
+
+  Internal storage is six raw bytes.
   """
   def __init__ (self, addr):
     """
+    Constructor
+
     Understands Ethernet address is various forms.  Hex strings, raw byte
     strings, etc.
     """
-    # Always stores as a 6 character string
     if isinstance(addr, bytes) or isinstance(addr, basestring):
       if len(addr) == 6:
         # raw
@@ -184,10 +187,11 @@ class EthAddr (object):
 
   def toStr (self, separator = ':', resolveNames  = False):
     """
-    Returns the address as string consisting of 12 hex chars separated
-    by separator.
-    If resolveNames is True, it may return company names based on
-    the OUI. (Currently unimplemented)
+    Returns string representation of address
+
+    Usually this is six two-digit hex numbers separated by colons.
+    If resolve_names is True, it the first three bytes may be replaced by a
+    string corresponding to the OUI.
     """
     #TODO: show OUI info from packet lib ?
     return separator.join(('%02x' % (ord(x),) for x in self._value))
@@ -226,6 +230,8 @@ class EthAddr (object):
 class IPAddr (object):
   """
   Represents an IPv4 address.
+
+  Internal storage is a signed int in network byte order.
   """
   def __init__ (self, addr, networkOrder = False):
     """
@@ -359,13 +365,21 @@ class IPAddr (object):
 class IPAddr6 (object):
   """
   Represents an IPv6 address.
+
+  Internally stored as 16 raw bytes.
   """
   @classmethod
   def from_raw (cls, raw):
+    """
+    Factory that creates an IPAddr6 from six raw bytes
+    """
     return cls(raw, raw=True)
 
   @classmethod
   def from_num (cls, num):
+    """
+    Factory that creates an IPAddr6 from a large integer
+    """
     o = b''
     for i in xrange(16):
       o = chr(num & 0xff) + o
@@ -373,6 +387,17 @@ class IPAddr6 (object):
     return cls.from_raw(o)
 
   def __init__ (self, addr = None, raw = False, network_order = False):
+    """
+    Construct IPv6 address
+
+    We accept the following as inputs:
+    Textual IPv6 representations as a str or unicode (including mixed notation
+      with an IPv4-like component)
+    Raw IPv6 addresses (128 bits worth of bytearray or, if raw=True, bytes)
+    IPAddr (converted to IPv4-mapped IPv6 addresses)
+    IPAddr6 (just copied)
+    None (creates an "undefined" IPv6 address)
+    """
     # When we move to Python 3, we can use bytes to infer raw.
     if addr is None and isinstance(raw, (bytes,bytearray)):
       addr = raw
@@ -441,7 +466,10 @@ class IPAddr6 (object):
 
   def to_ipv4 (self, check_ipv4 = True):
     """
-    Only makes sense if this address is ipv4 mapped/compatible
+    Convert to an IPAddr
+
+    This only makes sense if this address is ipv4 mapped/compatible.  By
+    default we check that this is the case.
     """
     if check_ipv4:
       if not self.is_ipv4:
@@ -576,7 +604,17 @@ class IPAddr6 (object):
     return (self.num & ~((1 << (128-b))-1)) == n.num
 
   def to_str (self, zero_drop = True, section_drop = True, ipv4 = None):
+    """
+    Creates string representation of address
 
+    There are many ways to represent IPv6 addresses.  You get some options.
+    zero_drop and section_drop allow for creating minimized representations.
+    ipv4 controls whether we print a "mixed notation" representation.  By
+    default, we do this only for IPv4-mapped addresses.  You can stop this by
+    passing ipv4=False.  You can also force mixed notation representation
+    by passing ipv4=True; this probably only makes sense if .is_ipv4_compatible
+    (or .is_ipv4_mapped, of course).
+    """
     o = [ord(lo) | (ord(hi)<<8) for hi,lo in
          (self._value[i:i+2] for i in xrange(0,16,2))]
 
