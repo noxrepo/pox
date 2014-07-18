@@ -417,17 +417,27 @@ class IPAddr6 (object):
     IPAddr6 (just copied)
     None (creates an "undefined" IPv6 address)
     """
-    # When we move to Python 3, we can use bytes to infer raw.
+    # When we move to Python 3, we can use bytes to infer raw.  For now, we
+    # have the 'raw' argument, which we'll take as either a boolean indicating
+    # that addr is raw, or we'll take it as the raw address itself.
     if addr is None and isinstance(raw, (bytes,bytearray)):
+      # Allow passing in raw value using either addr=address + raw=True or
+      # addr=None + raw=address
       addr = raw
       raw = True
+
     if addr is None:
-      return self.UNDEFINED
-    if isinstance(addr, unicode) or (isinstance(addr, bytes) and not raw):
+      # Should we even allow this?  It's a weird case.
+      self._value = self.UNDEFINED._value
+    elif isinstance(addr, unicode) or (isinstance(addr, bytes) and not raw):
+      # A textual IPv6 representation
       ip4part = None
       if '.' in addr:
+        # It contains a dot, so it is in "mixed notation"
         addr,ip4part = addr.rsplit(':',1)
         if '.' in addr:
+          # We don't implement this, which is probably fine because they are
+          # deprecated.
           raise RuntimeError('IPv4-compatible representation unimplemented')
         if ':' in ip4part:
           raise RuntimeError('Bad address format')
@@ -439,6 +449,8 @@ class IPAddr6 (object):
       if len(segs) < 3 or len(segs) > 8:
         raise RuntimeError("Bad address format " + str(addr))
 
+      # Parse the two "sides" of the address (left and right of the optional
+      # dropped section)
       p = ([],[])
       side = 0
       for i,s in enumerate(segs):
@@ -450,27 +462,36 @@ class IPAddr6 (object):
           continue
         s = int(s,16)
         if s < 0 or s > 0xffff:
+          # Each chunk must be at most 16 bits!
           raise RuntimeError("Bad address format " + str(addr))
         p[side].append(s)
 
+      # Add the zeroes (if any) between the sides
       o = p[0] + ([0] * (8-len(p[0])-len(p[1]))) + p[1]
 
+      # Pack into raw format
       v = b''
       for b in o:
         v += struct.pack('!H', b)
 
+      # Append IPv4 part which we chopped off earlier
       if ip4part is not None:
         v = v[:-4] + IPAddr(ip4part).toRaw()
 
       self._value = v
     elif isinstance(addr, type(self)):
+      # Copy constructor
       self._value = addr._value
     elif isinstance(addr, IPAddr):
-      #FIXME: This is hacky.
-      self._value = IPAddr6("::ffff:0:0:" + str(addr))
+      # IPv4-mapped
+      self._value = IPAddr6("::ffff:0:0:" + str(addr))._value
     elif isinstance(addr, bytearray):
+      # Raw value
+      if len(addr) != 16: raise ValueError("Raw IPv6 addresses are 16 bytes")
       self._value = bytes(addr)
     elif isinstance(addr, bytes):
+      # Raw value
+      if len(addr) != 16: raise ValueError("Raw IPv6 addresses are 16 bytes")
       self._value = addr
     else:
       raise RuntimeError("Unexpected IP address format")
