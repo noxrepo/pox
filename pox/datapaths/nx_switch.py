@@ -15,7 +15,7 @@
 import inspect
 
 import pox.openflow.libopenflow_01 as of
-import pox.openflow.nicira_ext as nx
+import pox.openflow.nicira as nx
 from pox.datapaths.switch import SoftwareSwitch, OFConnection
 
 _slave_blacklist = set([of.ofp_flow_mod, of.ofp_packet_out, of.ofp_port_mod,
