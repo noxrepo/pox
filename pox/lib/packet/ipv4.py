@@ -123,18 +123,21 @@ class ipv4(packet_base):
         self.srcip = IPAddr(self.srcip)
 
         if self.v != ipv4.IPv4:
-            self.msg('(ip parse) warning IP version %u not IPv4' % self.v)
+            self.msg('(ip parse) warning: IP version %u not IPv4' % self.v)
             return
-        elif self.hl < 5:
-            self.msg('(ip parse) warning IP header %u longer than len %u' \
+        if self.hl < 5:
+            self.msg('(ip parse) warning: IP header length shorter than MIN_LEN (IHL=%u => header len=%u)' \
+                        % (self.hl, 4 * self.hl))
+            return
+        if self.iplen < ipv4.MIN_LEN:
+            self.msg('(ip parse) warning: Invalid IP len %u' % self.iplen)
+            return
+        if (self.hl * 4) > self.iplen:
+            self.msg('(ip parse) warning: IP header longer than IP length including payload (%u vs %u)' \
                         % (self.hl, self.iplen))
             return
-        elif self.iplen < ipv4.MIN_LEN:
-            self.msg('(ip parse) warning invalid IP len %u' % self.iplen)
-            return
-        elif (self.hl * 4) >= self.iplen or (self.hl * 4) > dlen:
-            self.msg('(ip parse) warning IP header %u longer than len %u' \
-                        % (self.hl, self.iplen))
+        if (self.hl * 4) > dlen:
+            self.msg('(ip parse) warning: IP header is truncated')
             return
 
         # At this point, we are reasonably certain that we have an IP
