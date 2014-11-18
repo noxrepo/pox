@@ -118,16 +118,19 @@ class Task (BaseTask):
     self.args = args
     self.kwargs = kwargs
 
-    self.gen = self.run(*args, **kwargs)
+    if self.target:
+      self.gen = self.run()
+    else:
+      self.gen = self.run(*args, **kwargs)
     assert isinstance(self.gen, GeneratorType), "run() method has no yield"
 
     BaseTask.__init__(self)
 
   def run (self):
     g = self.target(*self.args, **self.kwargs)
-    g.next()
+    x = g.send(None)
     while True:
-      g.send((yield))
+      x = g.send((yield x))
 
   def __str__ (self):
     return "<" + self.__class__.__name__ + "/tid" + str(self.name) + ">"
