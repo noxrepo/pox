@@ -339,6 +339,19 @@ class BlockingOperation (object):
     pass
 
 
+class DummyOp (BlockingOperation):
+  """
+  A BlockingOperation which just returns a value immediately
+  """
+  def __init__ (self, rv):
+    self.rv = rv
+    assert rv is not None
+
+  def execute (self, task, scheduler):
+    scheduler.fast_schedule(task)
+    task.rv = self.rv
+
+
 class CallBlocking (BlockingOperation):
   """
   Syscall that calls an actual blocking operation (like a real .recv()).
