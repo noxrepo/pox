@@ -339,7 +339,6 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
       con.disconnect()
       return
     con.ofnexus = nexus
-    con.ofnexus._connect(con)
 
     #TODO: Add a timeout for finish_connecting
 
@@ -356,6 +355,7 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
     #self._finish_connecting(con)
 
   def _finish_connecting (self, con):
+    con.ofnexus._connect(con)
     con.info("connected")
     con.connect_time = time.time()
     con.handlers = _default_handlers.handlers
