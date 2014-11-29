@@ -25,7 +25,10 @@ import os
 import socket
 import pox.lib.util
 import random
+from types import GeneratorType
 from pox.lib.epoll_select import EpollSelect
+
+#TODO: Need a way to redirect the prints in here to something else (the log).
 
 CYCLE_MAXIMUM = 2
 
@@ -61,6 +64,7 @@ class BaseTask  (object):
     #      (better yet, refactor)
     self.id = generateTaskID()
     self.gen = self.run(*args, **kw)
+    assert isinstance(self.gen, GeneratorType), "run() method has no yield"
     self.rv = None
     self.rf = None # ReturnFunc
 
@@ -115,6 +119,7 @@ class Task (BaseTask):
     self.kwargs = kwargs
 
     self.gen = self.run(*args, **kwargs)
+    assert isinstance(self.gen, GeneratorType), "run() method has no yield"
 
     BaseTask.__init__(self)
 
@@ -130,13 +135,16 @@ class Task (BaseTask):
 
 class Scheduler (object):
   """ Scheduler for Tasks """
+
   def __init__ (self, isDefaultScheduler = None, startInThread = True,
-                daemon = False, useEpoll=False):
+                daemon = False, use_epoll=False, threaded_selecthub = True):
+
     self._ready = deque()
     self._hasQuit = False
-    self._selectHub = SelectHub(self, useEpoll=useEpoll)
+
+    self._selectHub = SelectHub(self, use_epoll=use_epoll,
+                                threaded=threaded_selecthub)
     self._thread = None
-    self._event = threading.Event()
 
     self._lock = threading.Lock()
     self._callLaterTask = None
@@ -232,7 +240,7 @@ class Scheduler (object):
     else:
       self._ready.append(task)
 
-    self._event.set()
+    self._selectHub.break_idle()
 
   def quit (self):
     self._hasQuit = True
@@ -241,8 +249,7 @@ class Scheduler (object):
     try:
       while self._hasQuit == False:
         if len(self._ready) == 0:
-          self._event.wait(CYCLE_MAXIMUM) # Wait for a while
-          self._event.clear()
+          self._selectHub.idle()
           if self._hasQuit: break
         r = self.cycle()
     finally:
@@ -269,38 +276,42 @@ class Scheduler (object):
 
     #print(len(self._ready), "tasks")
 
-    try:
-      rv = t.execute()
-    except StopIteration:
-      return True
-    except:
+    while True:
       try:
-        print("Task", t, "caused exception and was de-scheduled")
-        traceback.print_exc()
+        rv = t.execute()
+      except StopIteration:
+        return True
       except:
-        pass
-      return True
+        try:
+          print("Task", t, "caused exception and was de-scheduled")
+          traceback.print_exc()
+        except:
+          pass
+        return True
 
-    if isinstance(rv, BlockingOperation):
-      try:
-        rv.execute(t, self)
-      except:
-        print("Task", t, "caused exception during a blocking operation and " +
-              "was de-scheduled")
-        traceback.print_exc()
-    elif rv is False:
-      # Just unschedule/sleep
-      #print "Unschedule", t, rv
-      pass
-    elif type(rv) == int or type(rv) == long or type(rv) == float:
-      # Sleep time
-      if rv == 0:
-        #print "sleep 0"
-        self._ready.append(t)
-      else:
-        self._selectHub.registerTimer(t, rv)
-    elif rv == None:
-      raise RuntimeError("Must yield a value!")
+      if isinstance(rv, BlockingOperation):
+        try:
+          if rv.execute(t, self) is True:
+            continue
+        except:
+          print("Task", t, "caused exception during a blocking operation and " +
+                "was de-scheduled")
+          traceback.print_exc()
+      elif rv is False:
+        # Just unschedule/sleep
+        #print "Unschedule", t, rv
+        pass
+      elif type(rv) == int or type(rv) == long or type(rv) == float:
+        # Sleep time
+        if rv == 0:
+          #print "sleep 0"
+          self._ready.append(t)
+        else:
+          self._selectHub.registerTimer(t, rv)
+      elif rv == None:
+        raise RuntimeError("Must yield a value!")
+
+      break
 
     return True
 
@@ -397,6 +408,88 @@ class Sleep (BlockingOperation):
     scheduler._selectHub.registerTimer(task, self._t, True) # A bit ugly
 
 
+class _LockAcquire (BlockingOperation):
+  """
+  Internal use by Lock
+  """
+  __slots__ = ['_parent', '_blocking']
+
+  def __init__ (self, parent, blocking):
+    self._parent = parent
+    self._blocking = blocking
+
+  def execute (self, task, scheduler):
+    return self._parent._do_acquire(task, scheduler, self._blocking)
+
+
+class _LockRelease (BlockingOperation):
+  """
+  Internal use by Lock
+  """
+  __slots__ = ['_parent']
+
+  def __init__ (self, parent):
+    self._parent = parent
+
+  def execute (self, task, scheduler):
+    return self._parent._do_release(task, scheduler)
+
+
+class Lock (object):
+  """
+  A lock object with similar semantics to the Python Lock.
+
+  Note that it is only safe across Tasks, not Threads.
+
+  Note that as with all recoco "sycalls", you must...
+   yield lock.release()
+   yield lock.acquire()
+  """
+  __slots__ = ['_waiting', '_locked']
+
+  def __init__ (self, locked = False):
+    self._locked = locked
+    self._waiting = set()
+
+  def release (self):
+    """
+    Release the lock
+
+    Note that this doesn't give up control, so any tasks waiting on the lock
+    won't actually run until you do so.
+    """
+    return _LockRelease(self)
+
+  def acquire (self, blocking = True):
+    return _LockAcquire(self, blocking)
+
+  def _do_release (self, task, scheduler):
+    if not self._locked:
+      raise RuntimeError("You haven't locked this lock")
+
+    self._locked = None
+
+    if self._waiting:
+      t = self._waiting.pop()
+      self._locked = t
+      t.rv = True
+      scheduler.fast_schedule(t)
+
+    return True
+
+  def _do_acquire (self, task, scheduler, blocking):
+    if not self._locked:
+      self._locked = task
+      task.rv = True
+      return True # Reclaim running state
+
+    if not blocking:
+      task.rv = False
+      return True # Reclaim running state
+
+    self._waiting.add(task)
+
+
 class Select (BlockingOperation):
   """
   Should be very similar to Python select.select()
@@ -482,131 +575,155 @@ class Send (BlockingOperation):
     task.rf = self._sendReturnFunc
     scheduler._selectHub.registerSelect(task, None, [self._fd], [self._fd])
 
+
 #TODO: just merge this in with Scheduler?
 class SelectHub (object):
   """
   This class is a single select() loop that handles all Select() requests for
   a scheduler as well as timed wakes (i.e., Sleep()).
   """
-  def __init__ (self, scheduler, useEpoll=False):
+  def __init__ (self, scheduler, use_epoll=False, threaded=True):
     # We store tuples of (elapse-time, task)
-    self._sleepers = [] # Sleeping items stored as a heap
     self._incoming = Queue() # Threadsafe queue for new items
 
     self._scheduler = scheduler
     self._pinger = pox.lib.util.makePinger()
-    self.epoll = EpollSelect() if useEpoll else None
+    if use_epoll:
+      self._select_func = EpollSelect().select
+    else:
+      self._select_func = select.select
 
-    self._ready = False
+    self._tasks = {}
 
-    self._thread = Thread(target = self._threadProc)
-    self._thread.daemon = True
-    self._thread.start()
+    self._thread = None
+    if threaded:
+      self._thread = Thread(target = self._threadProc)
+      self._thread.daemon = True
+      self._thread.start()
+      self._event = threading.Event()
 
-    # Ugly busy wait for initialization
-    #while self._ready == False:
+  def idle (self):
+    """
+    Called by the scheduler when the scheduler has nothing to do
+
+    This should block until there's IO or until break_idle().
+    (Or at least should block up to CYCLE_MAXIMUM)
+    """
+    if self._thread:
+      # We're running select on another thread
+
+      self._event.wait(CYCLE_MAXIMUM) # Wait for a while
+      self._event.clear()
+    else:
+      # We're running select on the same thread as scheduler
+      self._select(self._tasks, {})
+
+  def break_idle (self):
+    """
+    Break a call to idle()
+    """
+    if self._thread:
+      self._event.set()
+    else:
+      self._cycle()
 
   def _threadProc (self):
-    tasks = {}
-    timeouts = []
+    tasks = self._tasks
     rets = {}
+    _select = self._select
+    _scheduler = self._scheduler
 
-    while self._scheduler._hasQuit == False:
-      #print("SelectHub cycle")
+    while not _scheduler._hasQuit:
+      _select(tasks, rets)
 
-      if len(timeouts) == 0:
-        timeout = None
-      else:
-        timeout = self._sleepers[0][0] - time.time()
-        if timeout < 0: timeout = 0
+  def _select (self, tasks, rets):
+    #print("SelectHub cycle")
 
-      #NOTE: Everything you select on eventually boils down to file descriptors,
-      #      which are unique, obviously.  It might be possible to leverage this
-      #      to reduce hashing cost (i.e. by picking a really good hashing
-      #      function), though this is complicated by wrappers, etc...
-      rl = {}
-      wl = {}
-      xl = {}
+    #NOTE: Everything you select on eventually boils down to file descriptors,
+    #      which are unique, obviously.  It might be possible to leverage this
+    #      to reduce hashing cost (i.e. by picking a really good hashing
+    #      function), though this is complicated by wrappers, etc...
+    rl = {}
+    wl = {}
+    xl = {}
 
-      timeout = None
-      timeoutTask = None
+    timeout = None
+    timeoutTask = None
 
-      now = time.time()
+    now = time.time()
 
-      expired = None
+    expired = None
 
-      for t,trl,twl,txl,tto in tasks.itervalues():
-        if tto != None:
-          if tto <= now:
-            # Already expired
-            if expired is None: expired = []
-            expired.append(t)
-            if tto-now > 0.1: print("preexpired",tto,now,tto-now)
-            continue
-          tt = tto - now
-          if tt < timeout or timeout is None:
-            timeout = tt
-            timeoutTask = t
+    #TODO: Fix this.  It's pretty expensive.  There had been some code which
+    #      priority heaped this, but I don't think a fully working version
+    #      ever quite made it.
+    for t,trl,twl,txl,tto in tasks.itervalues():
+      if tto != None:
+        if tto <= now:
+          # Already expired
+          if expired is None: expired = []
+          expired.append(t)
+          if tto-now > 0.1: print("preexpired",tto,now,tto-now)
+          continue
+        tt = tto - now
+        if tt < timeout or timeout is None:
+          timeout = tt
+          timeoutTask = t
 
-        if trl:
-          for i in trl: rl[i] = t
-        if twl:
-          for i in twl: wl[i] = t
-        if txl:
-          for i in txl: xl[i] = t
+      if trl:
+        for i in trl: rl[i] = t
+      if twl:
+        for i in twl: wl[i] = t
+      if txl:
+        for i in txl: xl[i] = t
 
-      if expired:
-        for t in expired:
-          del tasks[t]
-          self._return(t, ([],[],[]))
+    if expired:
+      for t in expired:
+        del tasks[t]
+        self._return(t, ([],[],[]))
 
-      if timeout is None: timeout = CYCLE_MAXIMUM
-      if self.epoll:
-        ro, wo, xo = self.epoll.select( rl.keys() + [self._pinger],
-                                  wl.keys(),
-                                  xl.keys(), timeout )
-      else:
-        ro, wo, xo = select.select( rl.keys() + [self._pinger],
-                                  wl.keys(),
-                                  xl.keys(), timeout )
+    if timeout is None: timeout = CYCLE_MAXIMUM
+    ro, wo, xo = self._select_func( rl.keys() + [self._pinger],
+                                    wl.keys(),
+                                    xl.keys(), timeout )
 
-      if len(ro) == 0 and len(wo) == 0 and len(xo) == 0 and timeoutTask != None:
-        # IO is idle - dispatch timers / release timeouts
-        del tasks[timeoutTask]
-        self._return(timeoutTask, ([],[],[]))
-      else:
-        # We have IO events
-        if self._pinger in ro:
-          self._pinger.pongAll()
-          while not self._incoming.empty():
-            stuff = self._incoming.get(True)
-            task = stuff[0]
-            assert task not in tasks
-            tasks[task] = stuff
-            self._incoming.task_done()
-          if len(ro) == 1 and len(wo) == 0 and len(xo) == 0:
-            # Just recycle
-            continue
-          ro.remove(self._pinger)
+    if len(ro) == 0 and len(wo) == 0 and len(xo) == 0 and timeoutTask != None:
+      # IO is idle - dispatch timers / release timeouts
+      del tasks[timeoutTask]
+      self._return(timeoutTask, ([],[],[]))
+    else:
+      # We have IO events
+      if self._pinger in ro:
+        self._pinger.pongAll()
+        while not self._incoming.empty():
+          stuff = self._incoming.get(True)
+          task = stuff[0]
+          assert task not in tasks
+          tasks[task] = stuff
+          self._incoming.task_done()
+        if len(ro) == 1 and len(wo) == 0 and len(xo) == 0:
+          # Just recycle
+          return
+        ro.remove(self._pinger)
 
-        # At least one thread is going to be resumed
-        for i in ro:
-          task = rl[i]
-          if task not in rets: rets[task] = ([],[],[])
-          rets[task][0].append(i)
-        for i in wo:
-          task = wl[i]
-          if task not in rets: rets[task] = ([],[],[])
-          rets[task][1].append(i)
-        for i in xo:
-          task = xl[i]
-          if task not in rets: rets[task] = ([],[],[])
-          rets[task][2].append(i)
+      # At least one thread is going to be resumed
+      for i in ro:
+        task = rl[i]
+        if task not in rets: rets[task] = ([],[],[])
+        rets[task][0].append(i)
+      for i in wo:
+        task = wl[i]
+        if task not in rets: rets[task] = ([],[],[])
+        rets[task][1].append(i)
+      for i in xo:
+        task = xl[i]
+        if task not in rets: rets[task] = ([],[],[])
+        rets[task][2].append(i)
 
-        for t,v in rets.iteritems():
-          del tasks[t]
-          self._return(t, v)
-        rets.clear()
+      for t,v in rets.iteritems():
+        del tasks[t]
+        self._return(t, v)
+      rets.clear()
 
   def registerSelect (self, task, rlist = None, wlist = None, xlist = None,
                       timeout = None, timeIsAbsolute = False):
@@ -723,11 +840,6 @@ class Timer (Task):
       raise RuntimeError("Can't have a recurring timer for an absolute time!")
     Task.__init__(self)
     self._self_stoppable = selfStoppable
-    self._next = timeToWake
-    self._interval = timeToWake if recurring else 0
-    if not absoluteTime:
-      self._next += time.time()
-
     self._cancelled = False
 
     self._recurring = recurring
@@ -735,7 +847,20 @@ class Timer (Task):
     self._args = args
     self._kw = kw
 
+    self._next = timeToWake
+    self._interval = timeToWake if recurring else 0
+    self._absolute_time = absoluteTime
+
+    self._started = False
+
     if started: self.start(scheduler)
+
+  def start (self, *args, **kw):
+    assert not self._started
+    if not self._absolute_time:
+      self._next += time.time()
+    self._started = True
+    return super(Timer,self).start(*args, **kw)
 
   def cancel (self):
     self._cancelled = True

@@ -183,7 +183,6 @@ class TableEntry (object):
 
 class FlowTableModification (Event):
   def __init__ (self, added=[], removed=[], reason=None):
-    Event.__init__(self)
     self.added = added
     self.removed = removed
 

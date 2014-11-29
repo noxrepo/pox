@@ -1070,11 +1070,10 @@ class ofp_match (ofp_base):
     b = None
     if type(ipOrIPAndBits) is tuple:
       ip = ipOrIPAndBits[0]
-      b = int(ipOrIPAndBits[1])
-
-    if (type(ipOrIPAndBits) is str) and (len(ipOrIPAndBits) != 4):
+      b = ipOrIPAndBits[1]
+      b = 32 if b is None else int(b)
+    elif (type(ipOrIPAndBits) is str) and (len(ipOrIPAndBits) != 4):
       if ipOrIPAndBits.find('/') != -1:
-        #s = ipOrIPAndBits.split('/')
         s = parse_cidr(ipOrIPAndBits, infer=False)
         ip = s[0]
         b = int(s[1]) if b is None else b

@@ -72,8 +72,9 @@ class Entry (object):
   def __eq__ (self, other):
     if isinstance(other, Entry):
       return (self.static,self.mac)==(other.static,other.mac)
-    else:
-      return self.mac == other
+    elif self.mac is True:
+      raise AttributeError("Can't comapre MAC on this Entry")
+    return self.mac == other
   def __ne__ (self, other):
     return not self.__eq__(other)
 
@@ -123,11 +124,6 @@ class ARPTable (dict):
     if not isinstance(value, Entry):
       value = Entry(value, static=static)
     self[key] = value
-
-
-def _dpid_to_mac (dpid):
-  # Should maybe look at internal port MAC instead?
-  return EthAddr("%012x" % (dpid & 0xffFFffFFffFF,))
 
 
 def _handle_expiration ():
@@ -185,13 +181,26 @@ class ARPResponder (object):
 
           if _learn:
             # Learn or update port/MAC info
-            if a.protosrc in _arp_table:
-              if _arp_table[a.protosrc] != a.hwsrc:
-                log.warn("%s RE-learned %s: %s->%s", dpid_to_str(dpid),
-                    a.protosrc, _arp_table[a.protosrc].mac, a.hwsrc)
-            else:
+            old_entry = _arp_table.get(a.protosrc)
+            if old_entry is None:
               log.info("%s learned %s", dpid_to_str(dpid), a.protosrc)
-            _arp_table[a.protosrc] = Entry(a.hwsrc)
+              _arp_table[a.protosrc] = Entry(a.hwsrc)
+            else:
+              if old_entry.mac is True:
+                # We never replace these special cases.
+                # Might want to warn on conflict?
+                pass
+              elif old_entry.mac != a.hwsrc:
+                if old_entry.static:
+                  log.warn("%s static entry conflict %s: %s->%s",
+                      dpid_to_str(dpid), a.protosrc, old_entry.mac, a.hwsrc)
+                else:
+                  log.warn("%s RE-learned %s: %s->%s", dpid_to_str(dpid),
+                      a.protosrc, old_entry.mac, a.hwsrc)
+                  _arp_table[a.protosrc] = Entry(a.hwsrc)
+              else:
+                # Update timestamp
+                _arp_table[a.protosrc] = Entry(a.hwsrc)
 
           if a.opcode == arp.REQUEST:
             # Maybe we can answer
@@ -211,10 +220,10 @@ class ARPResponder (object):
               mac = _arp_table[a.protodst].mac
               if mac is True:
                 # Special case -- use ourself
-                mac = _dpid_to_mac(dpid)
+                mac = event.connection.eth_addr
               r.hwsrc = mac
-              e = ethernet(type=packet.type, src=_dpid_to_mac(dpid),
-                            dst=a.hwsrc)
+              e = ethernet(type=packet.type, src=event.connection.eth_addr,
+                           dst=a.hwsrc)
               e.payload = r
               if packet.type == ethernet.VLAN_TYPE:
                 v_rcv = packet.find('vlan')

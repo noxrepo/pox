@@ -236,11 +236,14 @@ class dns(packet_base):
           return s
 
         def putData (s, r):
-          if r.qtype in (2,12,5,15):
+          if r.qtype in (2,12,5,15): # NS, PTR, CNAME, MX
             return putName(s, r.rddata)
-          elif r.qtype == 1:
+          elif r.qtype == 1: # A
             assert isinstance(r.rddata, IPAddr)
-            return s + r.rddata.toRaw()
+            return s + r.rddata.raw
+          elif r.qtype == 28: # AAAA
+            assert isinstance(r.rddata, IPAddr6)
+            return s + r.rddata.raw
           else:
             return s + r.rddata
 
@@ -429,7 +432,7 @@ class dns(packet_base):
         elif type == 28:
             if dlen != 16:
                 raise Exception('(dns) invalid a data size',system='packet')
-            return IPAddr6(l[beg_index : beg_index + dlen])
+            return IPAddr6.from_raw(l[beg_index : beg_index + dlen])
         # NS
         elif type == 2:
             return self.read_dns_name_from_index(l, beg_index)[1]

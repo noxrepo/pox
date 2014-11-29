@@ -116,6 +116,7 @@ class HTTPTransport (Transport):
   def create_session (self):
     ses = HTTPConnection(self)
     self._connections[ses._session_id] = ses
+    self._nexus.register_session(ses)
     return ses
 
   def get_session (self, key):

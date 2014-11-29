@@ -39,6 +39,7 @@ import tcp as TCP
 import udp as UDP
 import vlan as VLAN
 import mpls as MPLS
+import llc as LLC
 
 from arp import *
 from dhcp import *
@@ -55,6 +56,7 @@ from tcp import *
 from udp import *
 from vlan import *
 from mpls import *
+from llc import *
 
 __all__ = [
   'arp',
@@ -73,6 +75,7 @@ __all__ = [
   'udp',
   'vlan',
   'mpls',
+  'llc',
 
   'ARP',
   'DHCP',
@@ -89,4 +92,5 @@ __all__ = [
   'UDP',
   'VLAN',
   'MPLS',
+  'LLC',
 ]

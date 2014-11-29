@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2014 James McCauley
 # Copyright 2008 (C) Nicira, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,7 @@
 #======================================================================
 import struct
 import random
-from packet_utils       import *
+from packet_utils import *
 
 from packet_base import packet_base
 
@@ -62,6 +62,7 @@ _type_to_name = {
 
 # This is such a hack; someone really needs to rewrite the
 # stringizing.
+# (Note: There may actually be a better way now using _to_str().)
 def _str_rest (s, p):
   if p.next is None:
     return s
@@ -125,6 +126,69 @@ class echo(packet_base):
 
 #----------------------------------------------------------------------
 #
+#  Time Exceeded
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |                              Unused                           |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#  |       IP Header + 8 bytes of original datagram's data         |
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+#----------------------------------------------------------------------
+class time_exceeded (packet_base):
+    """
+    ICMP time exceeded packet struct
+    """
+
+    #NOTE: unreachable and time_exceeded are really similar.  If you
+    #      update one, please look at the other as well!
+
+    MIN_LEN = 4
+
+    def __init__ (self, raw=None, prev=None, **kw):
+        packet_base.__init__(self)
+
+        self.prev = prev
+
+        self.unused = 0
+
+        if raw is not None:
+            self.parse(raw)
+
+        self._init(kw)
+
+    def __str__ (self):
+        s = '[time_exceeded]'
+
+        return _str_rest(s, self)
+
+    def parse (self, raw):
+        assert isinstance(raw, bytes)
+        self.raw = raw
+        dlen = len(raw)
+        if dlen < self.MIN_LEN:
+            self.msg('(time_exceeded parse) warning payload too short '
+                     'to parse header: data len %u' % (dlen,))
+            return
+
+        self.unused = struct.unpack('!I', raw[:self.MIN_LEN])[0]
+
+        self.parsed = True
+
+        if dlen >= 28:
+            # xxx We're assuming this is IPv4!
+            import ipv4
+            self.next = ipv4.ipv4(raw=raw[self.MIN_LEN:],prev=self)
+        else:
+            self.next = raw[self.MIN_LEN:]
+
+    def hdr (self, payload):
+        return struct.pack('!I', self.unused)
+
+
+#----------------------------------------------------------------------
+#
 #  Destination Unreachable
 #   0                   1                   2                   3
 #   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -136,7 +200,12 @@ class echo(packet_base):
 #
 #----------------------------------------------------------------------
 class unreach(packet_base):
-    "ICMP unreachable packet struct"
+    """
+    ICMP unreachable packet struct
+    """
+
+    #NOTE: unreachable and time_exceeded are really similar.  If you
+    #      update one, please look at the other as well!
 
     MIN_LEN = 4
 
@@ -220,10 +289,12 @@ class icmp(packet_base):
 
         self.parsed = True
 
-        if (self.type == TYPE_ECHO_REQUEST or self.type == TYPE_ECHO_REPLY):
+        if self.type == TYPE_ECHO_REQUEST or self.type == TYPE_ECHO_REPLY:
             self.next = echo(raw=raw[self.MIN_LEN:],prev=self)
         elif self.type == TYPE_DEST_UNREACH:
             self.next = unreach(raw=raw[self.MIN_LEN:],prev=self)
+        elif self.type == TYPE_TIME_EXCEED:
+            self.next = time_exceeded(raw=raw[self.MIN_LEN:],prev=self)
         else:
             self.next = raw[self.MIN_LEN:]
 

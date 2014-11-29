@@ -61,28 +61,29 @@ defaultDecoder = json.JSONDecoder()
 class ChannelJoin (Event):
   """ Fired on a channel when a client joins. """
   def __init__ (self, connection, channel, msg = {}):
-    Event.__init__(self)
     self.con = connection
     self.channel = channel
     self.msg = msg
 
+class ConnectionOpened (Event):
+  """ Fired by the nexus for each new connection """
+  def __init__ (self, connection):
+    self.con = connection
+
 class ConnectionClosed (Event):
   """ Fired on a connection when it closes. """
   def __init__ (self, connection):
-    Event.__init__(self)
     self.con = connection
 
 class ChannelLeave (Event):
   """ Fired on a channel when a client leaves. """
   def __init__ (self, connection, channel):
-    Event.__init__(self)
     self.con = connection
     self.channel = channel
 
 class ChannelCreate (Event):
   """ Fired on a Nexus when a channel is created. """
   def __init__ (self, channel):
-    Event.__init__(self)
     self.channel = channel
 
 class ChannelDestroy (Event):
@@ -91,7 +92,6 @@ class ChannelDestroy (Event):
   Set .keep = True to keep the channel after all.
   """
   def __init__ (self, channel):
-    Event.__init__(self)
     self.channel = channel
     self.keep = False
 
@@ -100,7 +100,6 @@ class ChannelDestroyed (Event):
   Fired on the channel and its Nexus right after a channel is destroyed.
   """
   def __init__ (self, channel):
-    Event.__init__(self)
     self.channel = channel
 
 class MissingChannel (Event):
@@ -109,7 +108,6 @@ class MissingChannel (Event):
   You can create the channel in response to this.
   """
   def __init__ (self, connection, channel_name, msg):
-    Event.__init__(self)
     self.con = connection
     self.channel_name = channel_name
     self.msg = msg
@@ -125,7 +123,6 @@ class MessageReceived (Event):
   def _handle_MessageReceived (event, msg):
   """
   def __init__ (self, connection, channel, msg):
-    Event.__init__(self)
     self.con = connection
     self.msg = msg
     self.channel = channel
@@ -190,12 +187,23 @@ class Connection (EventMixin):
     self._transport = transport
     self._newlines = False
 
+    # If we connect to another messenger, this contains our session ID as far
+    # as it is concerned.
+    self._remote_session_id = None
+
     # Transports that don't do their own encapsulation can use _recv_raw(),
     # which uses this.  (Such should probably be broken into a subclass.)
     self._buf = bytes()
 
     key,num = self._transport._nexus.generate_session()
     self._session_id,self._session_num = key,num
+
+  def _rx_welcome (self, event):
+    """
+    Called by the default channelbot if we connect to another messenger.
+    """
+    self._remote_session_id = event.msg.get('session_id')
+    log.debug("%s welcomed as %s.", self, self._remote_session_id)
 
   def _send_welcome (self):
     """
@@ -587,6 +595,10 @@ class DefaultChannelBot (ChannelBot):
     log.info("Default channel got: " + str(value))
     self.reply(event, test = value.upper())
 
+  def _exec_cmd_welcome (self, event):
+    # We get this if we're connecting to another messenger.
+    event.con._rx_welcome(event)
+
 
 class MessengerNexus (EventMixin):
   """
@@ -600,6 +612,7 @@ class MessengerNexus (EventMixin):
     ChannelDestroy,
     ChannelDestroyed,
     ChannelCreate,
+    ConnectionOpened,
   ])
 
   def __init__ (self):
@@ -633,6 +646,9 @@ class MessengerNexus (EventMixin):
     key = alphahex(r) + key
 
     return key,r
+
+  def register_session (self, session):
+    self.raiseEventNoErrors(ConnectionOpened, session)
 
   def get_channel (self, name, create = True, temporary = False):
     if name is None: name = ""

@@ -196,6 +196,7 @@ class EthAddr (object):
     return self.toStr()
 
   def __cmp__ (self, other):
+    #TODO: Revisit this and other __cmp__ in Python 3.4
     try:
       if type(other) == EthAddr:
         other = other._value
@@ -203,15 +204,9 @@ class EthAddr (object):
         pass
       else:
         other = EthAddr(other)._value
-      if self._value == other:
-        return 0
-      if self._value < other:
-        return -1
-      if self._value > other:
-        return -1
-      raise RuntimeError("Objects can not be compared?")
+      return cmp(self._value, other)
     except:
-      return -other.__cmp__(self)
+      return -cmp(other, self)
 
   def __hash__ (self):
     return self._value.__hash__()
