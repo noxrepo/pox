@@ -60,6 +60,7 @@ class Interactive (object):
     core.register("Interactive", self)
     self.enabled = False
     self.completion = False
+    self.ipython = False
 
     #import pox.license
     import sys
@@ -104,17 +105,36 @@ class Interactive (object):
     #print("Type 'help(pox.license)' for details.")
     time.sleep(1)
 
-    import code
-    import sys
-    sys.ps1 = "POX> "
-    sys.ps2 = " ... "
-    self.running = True
-    code.interact('Ready.', local=self.variables)
-    self.running = False
-    core.quit()
+    # Check if we have ipython
+    if self.ipython:
+      try:
+        from IPython import Config, embed
+        we_have_ipython = True
+      except ImportError:
+        we_have_ipython = False
+
+    if self.ipython and we_have_ipython:
+      cfg = Config()
+      cfg.PromptManager.in_template = r'POX (\#)> '
+      cfg.PromptManager.in2_template = r' ... '
+      cfg.PromptManager.out_template = r'Out (\#): '
+      cfg.TerminalInteractiveShell.confirm_exit = False
+      self.running = True
+      embed(config=cfg, user_global_ns=self.variables, display_banner=False)
+      self.running = False
+      core.quit()
+    else:
+      import code
+      import sys
+      sys.ps1 = "POX> "
+      sys.ps2 = " ... "
+      self.running = True
+      code.interact('Ready.', local=self.variables)
+      self.running = False
+      core.quit()
 
 
-def launch (disable = False, completion = None, __INSTANCE__ = None):
+def launch (disable = False, completion = None, ipython = None, __INSTANCE__ = None):
   if not core.hasComponent("Interactive"):
     Interactive()
 
@@ -123,6 +143,9 @@ def launch (disable = False, completion = None, __INSTANCE__ = None):
     boot.set_main_function(core.Interactive.interact)
   else:
     boot.set_main_function(None)
+
   core.Interactive.enabled = not disable
   if completion is not None:
     core.Interactive.completion = str_to_bool(completion)
+  if ipython is not None:
+    core.Interactive.ipython = str_to_bool(ipython)
