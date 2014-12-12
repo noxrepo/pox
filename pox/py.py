@@ -115,12 +115,17 @@ class Interactive (object):
         we_have_ipython = False
 
     if we_have_ipython:
+      banner = """POX's interactive interpreter is an IPython console now. 
+To revert to the builtin interactive interpreter, invoke the py component with 
+the --no-ipython option.
+
+Ready."""
       cfg = Config()
       cfg.PromptManager.in_template = r'POX (\#)> '
       cfg.PromptManager.in2_template = r' ... '
       cfg.PromptManager.out_template = r'Out (\#): '
       cfg.TerminalInteractiveShell.confirm_exit = False
-      start_console = lambda vars_: embed(config=cfg, user_global_ns=vars_, display_banner=False)
+      start_console = lambda vars_: embed(config=cfg, user_global_ns=vars_, banner1=banner)
     else:
       import code
       import sys
