@@ -120,19 +120,18 @@ class Interactive (object):
       cfg.PromptManager.in2_template = r' ... '
       cfg.PromptManager.out_template = r'Out (\#): '
       cfg.TerminalInteractiveShell.confirm_exit = False
-      self.running = True
-      embed(config=cfg, user_global_ns=self.variables, display_banner=False)
-      self.running = False
-      core.quit()
+      start_console = lambda vars_: embed(config=cfg, user_global_ns=vars_, display_banner=False)
     else:
       import code
       import sys
       sys.ps1 = "POX> "
       sys.ps2 = " ... "
-      self.running = True
-      code.interact('Ready.', local=self.variables)
-      self.running = False
-      core.quit()
+      start_console = lambda vars_: code.interact('Ready.', local=vars_)
+      
+    self.running = True
+    start_console(self.variables)
+    self.running = False
+    core.quit()
 
 
 def launch (disable = False, completion = None, no_ipython = None, __INSTANCE__ = None):
