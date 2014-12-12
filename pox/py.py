@@ -60,7 +60,7 @@ class Interactive (object):
     core.register("Interactive", self)
     self.enabled = False
     self.completion = False
-    self.ipython = False
+    self.ipython = True
 
     #import pox.license
     import sys
@@ -106,6 +106,7 @@ class Interactive (object):
     time.sleep(1)
 
     # Check if we have ipython
+    we_have_ipython = False
     if self.ipython:
       try:
         from IPython import Config, embed
@@ -113,7 +114,7 @@ class Interactive (object):
       except ImportError:
         we_have_ipython = False
 
-    if self.ipython and we_have_ipython:
+    if we_have_ipython:
       cfg = Config()
       cfg.PromptManager.in_template = r'POX (\#)> '
       cfg.PromptManager.in2_template = r' ... '
@@ -134,7 +135,7 @@ class Interactive (object):
       core.quit()
 
 
-def launch (disable = False, completion = None, ipython = None, __INSTANCE__ = None):
+def launch (disable = False, completion = None, no_ipython = None, __INSTANCE__ = None):
   if not core.hasComponent("Interactive"):
     Interactive()
 
@@ -147,5 +148,5 @@ def launch (disable = False, completion = None, ipython = None, __INSTANCE__ = N
   core.Interactive.enabled = not disable
   if completion is not None:
     core.Interactive.completion = str_to_bool(completion)
-  if ipython is not None:
-    core.Interactive.ipython = str_to_bool(ipython)
+  if no_ipython is not None:
+    core.Interactive.ipython = not str_to_bool(no_ipython)
