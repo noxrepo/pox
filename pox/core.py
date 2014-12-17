@@ -187,8 +187,8 @@ class POXCore (EventMixin):
     RereadConfiguration,
   ])
 
-  version = (0,3,0)
-  version_name = "dart"
+  version = (0,5,0)
+  version_name = "eel"
 
   def __init__ (self, threaded_selecthub=True, epoll_selecthub=False,
                 handle_signals=True):
