@@ -80,11 +80,12 @@ def launch (__INSTANCE__ = None, **kw):
     if v is True:
       h = C()
     else:
-      v = [_parse(p) for p in v.split(',')]
       if use_kw:
-        v = dict([x.split('=',1) for x in v])
+        v = dict([x.split('=',1) for x in v.split(',')])
+        v = {k:_parse(v) for k,v in v.items()}
         h = C(**v)
       else:
+        v = [_parse(p) for p in v.split(',')]
         h = C(*v)
     h.setFormatter(formatter)
     logging.getLogger().addHandler(h)
