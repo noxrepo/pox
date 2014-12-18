@@ -85,6 +85,8 @@ class PortStatus (Event):
   deleted (bool) - True if fired because a port was deleted
   modified (bool) - True if fired because a port was modified
   port (int) - number of port in question
+  name (str) - interface name related to port
+  hw_addr(EthAddr) - interface hardware address related to port
   """
   def __init__ (self, connection, ofp):
     self.connection = connection
@@ -94,6 +96,8 @@ class PortStatus (Event):
     self.added = ofp.reason == of.OFPPR_ADD
     self.deleted = ofp.reason == of.OFPPR_DELETE
     self.port = ofp.desc.port_no
+    self.name = ofp.desc.name
+    self.hw_addr = ofp.desc.hw_addr
 
 class FlowRemoved (Event):
   """
