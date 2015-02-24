@@ -53,7 +53,7 @@ import types
 import threading
 
 import pox.core
-core = pox.core.initialize()
+#core = pox.core.initialize()
 
 import pox.openflow
 import pox.openflow.of_01
@@ -381,7 +381,7 @@ class POXOptions (Options):
     sys.exit(0)
 
   def _set_version (self, given_name, name, value):
-    print(core._get_python_version())
+    #print(core._get_python_version())
     sys.exit(0)
 
   def _set_no_openflow (self, given_name, name, value):
@@ -479,6 +479,9 @@ def boot (argv = None):
   Start up POX.
   """
 
+  core = pox.core.initialize()
+  pox.openflow.of_01.core = core 
+  pox.openflow.of_01.log = core.getLogger()
   # Add pox directory to path
   base = sys.path[0]
   sys.path.insert(0, os.path.abspath(os.path.join(base, 'pox')))
