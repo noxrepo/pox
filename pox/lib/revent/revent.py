@@ -158,7 +158,7 @@ class Event (object):
   # halt and source aren't really class variables, but this way they get
   # created on each instance without having to call the base constructor.
   halt = False
-  source = False
+  source = None
   def __init__ (self):
     pass
 
