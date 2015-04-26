@@ -347,7 +347,7 @@ class FlowTable (EventMixin):
       elif e.effective_priority > priority:
         continue
       else:
-        if e.is_matched_by(in_entry.match) or in_entry.is_matched_by(e.match):
+        if e.match.check_overlap(in_entry.match):
           return True
 
     return False
