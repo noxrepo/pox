@@ -1504,6 +1504,45 @@ class ofp_match (ofp_base):
     outstr += append('tp_dst')
     return outstr
 
+  def check_overlap(self, other):
+    
+    def overlap_fail(mine, other):
+      return (mine is not None and other is not None) and (mine != other)
+    
+    def overlap_fail_nw(self_nw, other_nw):
+      self_addr = self_nw[0]
+      self_netbits = self_nw[1]
+      
+      other_addr = other_nw[0]
+      other_netbits = other_nw[1]
+      
+      if self_addr is not None and other_addr is not None:
+        netmask_bits = 32 - min(self_netbits, other_netbits)
+        self_msbs = (self_addr.toUnsigned() >> netmask_bits)
+        other_msbs = (other_addr.toUnsigned() >> netmask_bits)
+       
+        if self_msbs != other_msbs:
+          return True
+      return False
+    
+    # regular fields
+    if overlap_fail(self.in_port, other.in_port): return False
+    if overlap_fail(self.dl_vlan, other.dl_vlan): return False
+    if overlap_fail(self.dl_src, other.dl_src): return False
+    if overlap_fail(self.dl_dst, other.dl_dst): return False
+    if overlap_fail(self.dl_type, other.dl_type): return False
+    if overlap_fail(self.nw_proto, other.nw_proto): return False
+    if overlap_fail(self.tp_src, other.tp_src): return False
+    if overlap_fail(self.tp_dst, other.tp_dst): return False
+    if overlap_fail(self.dl_vlan_pcp, other.dl_vlan_pcp): return False
+    if overlap_fail(self.nw_tos, other.nw_tos): return False
+    
+    
+    if overlap_fail_nw(self.get_nw_dst(), other.get_nw_dst()):
+      return False
+    if overlap_fail_nw(self.get_nw_src(), other.get_nw_src()):
+      return False
+    return True
 
 class ofp_action_generic (ofp_action_base):
   _MIN_LENGTH = 8
