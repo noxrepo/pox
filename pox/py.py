@@ -125,7 +125,7 @@ Ready."""
       cfg.PromptManager.in2_template = r' ... '
       cfg.PromptManager.out_template = r'Out (\#): '
       cfg.TerminalInteractiveShell.confirm_exit = False
-      start_console = lambda vars_: embed(config=cfg, user_global_ns=vars_, banner1=banner)
+      start_console = lambda vars_: embed(config=cfg, user_ns=vars_, banner1=banner)
     else:
       import code
       import sys
