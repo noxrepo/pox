@@ -279,6 +279,18 @@ class ConfigurationReceived (Event):
     return (self.ofp.flags & of.OFPC_FRAG_MASK) == of.OFPC_FRAG_REASM
 
 
+class Vendor (Event):
+  """
+  Raised upon receipt of an OFPT_VENDOR message
+  """
+  def __init__ (self, connection, ofp):
+    self.connection = connection
+    self.ofp = ofp
+    self.dpid = connection.dpid
+    self.xid = ofp.xid
+    self.vendor = ofp.vendor
+
+
 class OpenFlowConnectionArbiter (EventMixin):
   """
   Determines which OpenFlowNexus gets the switch.
@@ -351,6 +363,7 @@ class OpenFlowNexus (EventMixin):
     QueueStatsReceived,
     FlowRemoved,
     ConfigurationReceived,
+    Vendor,
   ])
 
   # Bytes to send to controller when a packet misses all flows
