@@ -76,8 +76,8 @@ class tcp_opt:
         elif self.type == tcp_opt.SACKPERM:
             return struct.pack('!BB',self.type,2)
         elif self.type == tcp_opt.SACK:
-            return struct.pack("!" + "II" * len(self.val),
-                               *[x for p in self.val for x in p])
+            return struct.pack("!BB" + "II" * len(self.val),
+                               *([self.type, 2+8*len(self.val)] + [x for p in self.val for x in p]))
         elif self.type == tcp_opt.TSOPT:
             return struct.pack('!BBII',self.type,10,self.val[0],self.val[1])
         else:
@@ -219,7 +219,7 @@ class tcp(packet_base):
             elif ord(arr[i]) == tcp_opt.SACK:
                 if ord(arr[i+1]) >= 2 and ((ord(arr[i+1])-2) % 8) == 0:
                     num = (ord(arr[i+1]) - 2) / 8
-                    val = struct.unpack("!" + "II" * num, arr[i+2:])
+                    val = struct.unpack("!" + "II" * num, arr[i+2:i+2+num*8])
                     val = [(x,y) for x,y in zip(val[0::2],val[1::2])]
                     self.options.append(tcp_opt(tcp_opt.SACK, val))
                 else:
