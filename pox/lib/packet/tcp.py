@@ -219,7 +219,7 @@ class tcp(packet_base):
             elif ord(arr[i]) == tcp_opt.SACK:
                 if ord(arr[i+1]) >= 2 and ((ord(arr[i+1])-2) % 8) == 0:
                     num = (ord(arr[i+1]) - 2) / 8
-                    val = struct.unpack("!" + "II" * num, arr[i+2:])
+                    val = struct.unpack("!" + "II" * num, arr[i+2:i+2+num*8])
                     val = [(x,y) for x,y in zip(val[0::2],val[1::2])]
                     self.options.append(tcp_opt(tcp_opt.SACK, val))
                 else:
