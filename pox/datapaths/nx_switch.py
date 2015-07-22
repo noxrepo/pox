@@ -80,7 +80,7 @@ class NXSoftwareSwitch (SoftwareSwitch):
     self.connection_in_action = None
 
   def check_rights (self, ofp, connection):
-    if self.role_by_conn[connection.ID] != nx.ROLE_SLAVE:
+    if self.role_by_conn[connection.ID] != nx.NX_ROLE_SLAVE:
       return True
     else:
       return not type(ofp) in _slave_blacklist
@@ -102,13 +102,13 @@ class NXSoftwareSwitch (SoftwareSwitch):
       connections_used.append(self.connection_in_action)
     else:
       masters = [c for c in self.connections
-                 if self.role_by_conn[c.ID] == nx.ROLE_MASTER]
+                 if self.role_by_conn[c.ID] == nx.NX_ROLE_MASTER]
       if len(masters) > 0:
         masters[0].send(message)
         connections_used.append(masters[0])
       else:
         others = [c for c in self.connections
-                  if self.role_by_conn[c.ID] == nx.ROLE_OTHER]
+                  if self.role_by_conn[c.ID] == nx.NX_ROLE_OTHER]
         if len(others) > 0:
           self.next_other = self.next_other % len(others)
           #self.log.info("Sending %s to 'other' connection %d",
@@ -122,7 +122,7 @@ class NXSoftwareSwitch (SoftwareSwitch):
     return connections_used
 
   def add_connection (self, connection):
-    self.role_by_conn[connection.ID] = nx.ROLE_OTHER
+    self.role_by_conn[connection.ID] = nx.NX_ROLE_OTHER
     connection.set_message_handler(self.rx_message)
     self.connections.append(connection)
     return connection
@@ -132,10 +132,10 @@ class NXSoftwareSwitch (SoftwareSwitch):
 
   def set_role (self, connection, role):
     self.role_by_conn[connection.ID] = role
-    if role == nx.ROLE_MASTER:
+    if role == nx.NX_ROLE_MASTER:
       for c in self.connections:
         if c != connection:
-          self.role_by_conn[c.ID] = nx.ROLE_SLAVE
+          self.role_by_conn[c.ID] = nx.NX_ROLE_SLAVE
 
   def _rx_hello (self, ofp, connection):
     # Override the usual hello-send logic
@@ -145,13 +145,13 @@ class NXSoftwareSwitch (SoftwareSwitch):
 
   def _rx_vendor (self, vendor, connection):
     self.log.debug("Vendor %s %s", self.name, str(vendor))
-    if vendor.vendor == nx.VENDOR_ID:
+    if vendor.vendor == nx.NX_VENDOR_ID:
       try:
-        data = nx.unpack_vendor_data_nx(vendor.data)
-        if isinstance(data, nx.role_request_data):
+        data = nx._unpack_nx_vendor(vendor.data)
+        if isinstance(data, nx.nx_role_request):
           self.set_role(connection, data.role)
-          reply = of.ofp_vendor(xid=vendor.xid, vendor = nx.VENDOR_ID,
-                                data = nx.role_reply_data(role = data.role))
+          reply = of.ofp_vendor(xid=vendor.xid, vendor = nx.NX_VENDOR_ID,
+                                data = nx.nx_role_reply(role = data.role))
           self.send(reply)
           return
       except NotImplementedError:
