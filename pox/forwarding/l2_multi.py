@@ -450,6 +450,7 @@ class l2_multi (EventMixin):
 
       # But maybe there's another way to connect these...
       for ll in core.openflow_discovery.adjacency:
+        if ll == event.link: continue
         if ll.dpid1 == l.dpid1 and ll.dpid2 == l.dpid2:
           if flip(ll) in core.openflow_discovery.adjacency:
             # Yup, link goes both ways
