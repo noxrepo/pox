@@ -906,7 +906,7 @@ class unreach (packet_base, unpack_new_adapter):
                + 'short to parse header: data len %u' % (dlen,))
       return
 
-    (self.unused, _) = struct.unpack('!I', raw[:self.MIN_LEN])
+    (self.unused,) = struct.unpack('!I', raw[:self.MIN_LEN])
 
     self.parsed = True
 
