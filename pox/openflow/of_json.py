@@ -144,9 +144,24 @@ def dict_to_action (d):
     d['port'] = _fix_of_int(d['port'])
 
   t = d['type'].upper()
-  del d['type']
+
   if not t.startswith("OFPAT_"): t = "OFPAT_" + t
+
+  # only delete type if the underlying method doesn't need it...
+  if t not in ('OFPAT_SET_NW_DST',
+               'OFPAT_SET_NW_SRC',
+               'OFPAT_SET_DL_DST',
+               'OFPAT_SET_DL_SRC',
+               'OFPAT_SET_TP_DST',
+               'OFPAT_SET_TP_SRC'):
+    del d['type']
+
   t = of.ofp_action_type_rev_map[t]
+
+  # if type is needed replace text with value
+  if 'type' in d.keys():
+    d['type'] = t
+
   cls = of._action_type_to_class[t]
   a = cls(**d)
   return a
