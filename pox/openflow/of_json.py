@@ -150,7 +150,12 @@ def dict_to_action (d):
   cls = of._action_type_to_class[t]
   d['type'] = t
 
-  a = cls(**d)
+  try:
+    a = cls(**d)
+  except TypeError:
+    del d['type']
+    a = cls(**d)
+
   return a
 
 
