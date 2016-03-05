@@ -565,7 +565,15 @@ def initialize ():
 # We should do something better.
 def _maybe_initialize ():
   import sys
-  if 'unittest' in sys.modules or 'nose' in sys.modules:
+  
+  needs_init = False
+  test_runner_modules = ['unittest', 'nose', 'pytest']
+  for module_name in test_runner_modules:
+    if module_name in sys.modules:
+      needs_init = True
+      break
+
+  if needs_init:
     initialize()
     return
   import __main__
