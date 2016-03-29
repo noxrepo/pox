@@ -1253,6 +1253,11 @@ class ofp_match (ofp_base):
     elif self.dl_type == 0x0806:
         # ARP: clear NW_TOS / TP wildcards for the wire
         return wildcards & ~( OFPFW_NW_TOS | OFPFW_TP_SRC | OFPFW_TP_DST)
+    elif self.dl_type == 0x86dd:
+        # IPv6: OVS (2.4?) seems to not ignore nw_proto and nw_tos even
+        #       though OF 1.0 doesn't do anything special for IPv6...
+        return wildcards & ~( OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK
+            | OFPFW_TP_SRC | OFPFW_TP_DST)
     else:
         # not even IP. Clear NW/TP wildcards for the wire
         return wildcards & ~( OFPFW_NW_TOS | OFPFW_NW_PROTO
