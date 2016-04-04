@@ -151,7 +151,7 @@ def _get_nexus (nexus):
       log.error(s)
       raise RuntimeError(s)
     return getattr(core, nexus)
-  assert isinstance(nexus, MessengerNexus)
+  assert isinstance(nexus, MessengerNexus), nexus
   return nexus
 
 

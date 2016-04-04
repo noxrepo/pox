@@ -546,7 +546,7 @@ class Recv (BlockingOperation):
     try:
       return sock.recv(self._length, self._flags)
     except:
-      traceback.print_exc()
+      #traceback.print_exc()
       return None #
 
   def execute (self, task, scheduler):
