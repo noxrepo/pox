@@ -331,6 +331,10 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
     con.ports._reset()
     con.dpid = msg.datapath_id
 
+    # If any port status messages come between now and when the connection is
+    # actually up, buffer them to raise later.
+    con._deferred_port_status = []
+
     nexus = core.OpenFlowConnectionArbiter.getNexus(con)
     if nexus is None:
       # Cancel connection
@@ -354,6 +358,11 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
     # To support old versions of cbench, just finish connecting here.
     #self._finish_connecting(con)
 
+  def handle_PORT_STATUS (self, con, msg): #A
+    if con._deferred_port_status is None: return
+    con.debug("Got early port status message for port %s" % (msg.desc.port_no,))
+    con._deferred_port_status.append(msg)
+
   def _finish_connecting (self, con):
     con.ofnexus._connect(con)
     con.info("connected")
@@ -370,6 +379,12 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
       if e is None or e.halt != True:
         con.raiseEventNoErrors(FeaturesReceived, con, con.features)
 
+    # Now that we're connected, raise deferred events, if any
+    if con._deferred_port_status:
+      h = con.handlers[of.OFPT_PORT_STATUS]
+      for msg in con._deferred_port_status:
+        h(con,msg)
+      con._deferred_port_status = None
 
 statsHandlerMap = {
   of.OFPST_DESC : handle_OFPST_DESC,
@@ -743,6 +758,10 @@ class Connection (EventMixin):
 
     # Switch features reply.  Set during handshake.
     self.features = None
+
+    # Port status messages that arrive before the handshake finishes are
+    # temporarily kept here, and raised as events *after* the handshake.
+    self._deferred_port_status = None
 
     # Switch desc stats reply.  Set during handshake ordinarily, but may
     # be None.
