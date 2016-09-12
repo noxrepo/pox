@@ -360,7 +360,7 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
 
   def handle_PORT_STATUS (self, con, msg): #A
     if con._deferred_port_status is None: return
-    con.debug("Got early port status message for port %s" % (msg.desc.port_no,))
+    con.msg("Got early port status message for port %s" % (msg.desc.port_no,))
     con._deferred_port_status.append(msg)
 
   def _finish_connecting (self, con):
