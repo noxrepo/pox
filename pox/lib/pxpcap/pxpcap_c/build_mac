@@ -1,7 +1,8 @@
 #!/bin/bash
-DEST=lib.macosx*
-DEST=$(ls -d build/${DEST} | tail -1)
 OUT=../darwin
 mkdir $OUT 2> /dev/null
 touch $OUT/__init__.py
-python setup.py build && cp ${DEST}/pxpcap.so .. && cp ${DEST}/pxpcap.so ${OUT}/pxpcap.so
+python setup.py build
+DEST=lib.macosx*
+DEST=$(ls -d build/${DEST} | tail -1)
+cp ${DEST}/pxpcap.so .. && cp ${DEST}/pxpcap.so ${OUT}/pxpcap.so

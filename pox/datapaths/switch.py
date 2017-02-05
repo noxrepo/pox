@@ -55,7 +55,6 @@ class DpPacketOut (Event):
   """
   def __init__ (self, node, packet, port):
     assert assert_type("packet", packet, ethernet, none_ok=False)
-    Event.__init__(self)
     self.node = node
     self.packet = packet
     self.port = port

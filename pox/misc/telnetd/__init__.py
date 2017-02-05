@@ -482,7 +482,17 @@ class CursesCodes (object):
     return o
 
   def __init__ (self, term = "vt100"):
-    curses.setupterm(term)
+    try:
+      curses.setupterm(term)
+    except:
+      # Sleazy, but let's try...
+      oldout = sys.stdout
+      sys.stdout = sys.__stdout__
+      try:
+        curses.setupterm(term)
+      finally:
+        sys.stdout = oldout
+
     self._code_to_name = {} # code -> short,long
     caps = []
     # We should do something better for ones with parameters...
@@ -1580,6 +1590,8 @@ class PythonTelnetPersonality (TelnetPersonality):
   """
 
   _auto_password = None
+  ps1 = 'POX> '
+  ps2 = '...> '
 
   def __init__ (self, worker, username, password, timeout=2):
     self.worker = worker
@@ -1619,7 +1631,7 @@ class PythonTelnetPersonality (TelnetPersonality):
   def _handle_connect (self):
     self.send(core.banner + "\n")
     if self.logged_in:
-      self.send("POX> ")
+      self.send(self.ps1)
     else:
       self.send("Username: ")
 
@@ -1636,7 +1648,7 @@ class PythonTelnetPersonality (TelnetPersonality):
         if user == self.username:
           if line == self.password:
             log.debug("User %s logged in", user)
-            self.send("\n\nWelcome!\nPOX> ")
+            self.send("\n\nWelcome!\n" + self.ps1)
             self.logged_in = True
             return
         log.warn("Failed login attempt.")
@@ -1652,10 +1664,10 @@ class PythonTelnetPersonality (TelnetPersonality):
       o = code.compile_command(t, "<telnet>")
     except:
       self.buf = ''
-      self.send("?Syntax Error\nPOX> ")
+      self.send("?Syntax Error\n" + self.ps1)
       return
     if o is None:
-      self.send("...> ")
+      self.send(self.ps2)
       return
     self.buf = ''
 
@@ -1748,7 +1760,7 @@ class PythonTelnetPersonality (TelnetPersonality):
       sys.stderr = olderr
       sys.stdin = oldin
 
-    self.send("POX> ")
+    self.send(self.ps1)
 
 
 def launch (username = "pox", password = None, port = 2323):

@@ -512,8 +512,8 @@ class system_capabilities (simple_tlv):
     del self.caps[:]
     del self.enabled_caps[:]
     for i in range(0, 16):
-      self.caps.append(True if (cap and (1 << i)) else False)
-      self.enabled_caps.append(True if (en and (1 << i)) else False)
+      self.caps.append(True if (cap & (1 << i)) else False)
+      self.enabled_caps.append(True if (en & (1 << i)) else False)
 
   def _pack_data (self):
     cap = 0

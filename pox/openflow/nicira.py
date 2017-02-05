@@ -26,6 +26,8 @@ from pox.openflow.libopenflow_01 import ofp_header, ofp_vendor_base
 from pox.openflow.libopenflow_01 import _PAD, _PAD2, _PAD4, _PAD6
 from pox.openflow.libopenflow_01 import _unpack, _read, _skip
 
+from pox.openflow.of_01 import DefaultOpenFlowHandlers
+
 import struct
 
 
@@ -562,6 +564,9 @@ class nx_output_reg (of.ofp_action_vendor_base):
     return True
 
   def _pack_body (self):
+    if self.nbits is None:
+      self.nbits = self.reg._get_size_hint() - self.offset
+
     nbits = self.nbits - 1
     assert nbits >= 0 and nbits <= 63
     assert self.offset >= 0 and self.offset < (1 << 10)
@@ -668,7 +673,7 @@ class nx_reg_load (of.ofp_action_vendor_base):
     self.offset = 0
     self.nbits = None
     self.dst = None # an nxm_entry class
-    self.value = 0
+    self.value = None # Integer or an nxm_entry instance
 
   def _eq (self, other):
     if self.subtype != other.subtype: return False
@@ -679,6 +684,20 @@ class nx_reg_load (of.ofp_action_vendor_base):
     return True
 
   def _pack_body (self):
+    value = self.value
+    dst = self.dst
+    if isinstance(self.dst, nxm_entry):
+      assert self.dst.mask is None
+      assert self.value is None
+      value = dst.pack(omittable=False)[4:]
+      while len(value) < 8:
+        value = '\x00' + value
+      dst = type(dst)
+    else:
+      value = struct.pack('!Q', value)
+
+    assert value is not None
+
     if self.nbits is None:
       self.nbits = self.dst._get_size_hint() - self.offset
     nbits = self.nbits - 1
@@ -686,11 +705,11 @@ class nx_reg_load (of.ofp_action_vendor_base):
     assert self.offset >= 0 and self.offset < (1 << 10)
     ofs_nbits = self.offset << 6 | nbits
 
-    o = self.dst()
+    o = dst()
     o._force_mask = False
     dst = o.pack(omittable=False, header_only=True)
 
-    p = struct.pack('!HH4sQ', self.subtype, ofs_nbits, dst, self.value)
+    p = struct.pack('!HH4s8s', self.subtype, ofs_nbits, dst, value)
     return p
 
   def _unpack_body (self, raw, offset, avail):
@@ -701,6 +720,7 @@ class nx_reg_load (of.ofp_action_vendor_base):
     self.nbits = (ofs_nbits & 0x3f) + 1
 
     self.dst = _class_for_nxm_header(dst)
+    #TODO: Unpack into an actual nxm_entry class?
 
     return offset
 
@@ -1280,15 +1300,15 @@ class nx_learn_src_immediate (nx_learn_spec_src):
     self.data = data
 
   @classmethod
-  def u8 (cls, dst, value):
+  def u8 (cls, value):
     return cls(struct.pack("!H", value))
 
   @classmethod
-  def u16 (cls, dst, value):
+  def u16 (cls, value):
     return cls(struct.pack("!H", value))
 
   @classmethod
-  def u32 (cls, dst, value):
+  def u32 (cls, value):
     return cls(struct.pack("!L", value))
 
   def __len__ (self):
@@ -1436,7 +1456,7 @@ class flow_mod_spec (object):
         elif k == "n_bits":
           n_bits = v
         else:
-          raise RuntimeError("Don't know what to do with '%s'", (k,))
+          raise RuntimeError("Don't know what to do with '%s'" % (k,))
         continue
 
       if s._is_src:
@@ -1531,6 +1551,19 @@ class _nxm_numeric (object):
       raise RuntimeError("Can't unpack %i bytes for %s"
                          % (self._nxm_length, self.__class__.__name__))
 
+
+class _nxm_tcp_flags (_nxm_numeric):
+  """
+  Allows setting of TCP flags, while sanity checking mask
+  """
+  def _pack_mask (self, v):
+    assert self._nxm_length == 2
+    assert isinstance(v, (int, long))
+    if (v & 0xf000) != 0:
+      raise RuntimeError("Top bits of TCP flags mask must be 0")
+    return struct.pack("!H", v)
+
+
 class _nxm_ip (object):
   """
   Allows setting of IP address in many formats
@@ -1580,14 +1613,14 @@ class _nxm_ip (object):
 
 class _nxm_ipv6 (object):
   """
-  Placeholder until we have real IPv6 support
+  Allows setting of IPv6 address in many formats
 
-  Allows setting of IP address in many formats
-
-  The value can be any format known by IPAddr.  If it's a string, it can
+  The value can be any format known by IPAddr6.  If it's a string, it can
   also have a trailing /netmask or /cidr-bits.  If it's a tuple, the
   first is assumed to be any kind of IP address and the second is either
   a netmask or the number of network bits.
+
+  TODO: Add a way of setting raw addresses?
   """
 
   @property
@@ -2069,6 +2102,9 @@ _make_nxm("NXM_NX_IP_TTL", 1, 29, 1)
 # Flow cookie
 _make_nxm_w("NXM_NX_COOKIE", 1, 30, 8)
 
+# TCP flags
+_make_nxm_w("NXM_NX_TCP_FLAGS", 1, 34, 2, type=_nxm_tcp_flags)
+
 
 # MPLS label, traffic class, and bottom-of-stack flag
 # Note that these are from OpenFlow 1.2 and I think BOS is from 1.3,
@@ -2379,11 +2415,14 @@ class nx_match (object):
 
   def find (self, t):
     """
-    Returns nxm_entry of given type
+    Returns nxm_entry of given type or None
     """
     if isinstance(t, nxm_entry) or _issubclass(t, nxm_entry):
       t = t._nxm_type
     return self._map.get(t)
+
+  def __contains__ (self, t):
+    return self.find is not None
 
   def index (self, t):
     """
@@ -2519,7 +2558,6 @@ class nx_match (object):
 #from pox.lib.revent import Event
 #class NXPacketIn (Event):
 #  def __init__ (self, connection, ofp):
-#    Event.__init__(self)
 #    self.connection = connection
 #    self.ofp = ofp
 #    self.port = ofp.in_port
@@ -2567,29 +2605,53 @@ def _init_unpacker ():
   unpackers[of.OFPT_VENDOR] = _unpack_nx_vendor
 
 
-_old_handler = None
-
 from pox.openflow import PacketIn
-
-def _handle_VENDOR (con, msg):
-  if isinstance(msg, nxt_packet_in) and core.NX.convert_packet_in:
-    e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
-    if e is None or e.halt != True:
-      con.raiseEventNoErrors(PacketIn, con, msg)
-#  elif isinstance(msg, nxt_role_reply):
-#    pass
-#    #TODO
-  else:
-    _old_handler(con, msg)
+from pox.lib.revent import Event
 
 
-def _init_handler ():
-  global _old_handler
-  from pox.openflow.of_01 import handlerMap, _set_handlers
+class RoleReply (Event):
+  def __init__ (self, connection, ofp):
+    self.connection = connection
+    self.ofp = ofp
+    self.role = ofp.role
+    self.dpid = connection.dpid
 
-  _old_handler = handlerMap.get(of.OFPT_VENDOR)
-  handlerMap[of.OFPT_VENDOR] = _handle_VENDOR
-  _set_handlers()
+
+class NiciraOpenFlowHandlers (DefaultOpenFlowHandlers):
+  """
+  Nicira OpenFlow message handling functionality
+
+  In particular, we probably want to handle VENDOR messages specially for
+  switches with Nicira extensions.
+  """
+  @staticmethod
+  def handle_VENDOR (con, msg):
+      if isinstance(msg, nxt_packet_in) and core.NX.convert_packet_in:
+        e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
+        if e is None or e.halt != True:
+          con.raiseEventNoErrors(PacketIn, con, msg)
+      elif isinstance(msg, nx_role_reply):
+        e = con.ofnexus.raiseEventNoErrors(RoleReply, con, msg)
+        if e is None or e.halt != True:
+          con.raiseEventNoErrors(RoleReply, con, msg)
+      else:
+        DefaultOpenFlowHandlers.handle_VENDOR(con, msg)
+
+# Handlers used for switches with Nicira extensions
+_nicira_handlers = NiciraOpenFlowHandlers()
+
+
+def _handle_ConnectionHandshakeComplete (event):
+  desc = event.connection.description
+  if not desc: return
+  if "Open vSwitch" not in event.connection.description.hw_desc: return
+
+  # We think we have Nicira extensions.  Log message and do initialization.
+  log = core.getLogger("nicira")
+  log.debug("%s is %s %s", event.connection, desc.hw_desc, desc.sw_desc)
+
+  event.connection.handlers = _nicira_handlers.handlers
+  event.connection._eventMixin_events.add(RoleReply)
 
 
 class NX (object):
@@ -2600,8 +2662,12 @@ class NX (object):
 
 
 def launch (convert_packet_in = False):
-  _init_handler()
   _init_unpacker()
+
+  core.openflow._eventMixin_events.add(RoleReply)
+
+  core.openflow.addListenerByName("ConnectionHandshakeComplete",
+                                  _handle_ConnectionHandshakeComplete)
 
   nx = NX()
   if convert_packet_in:

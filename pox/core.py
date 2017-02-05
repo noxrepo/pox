@@ -1,4 +1,4 @@
-# Copyright 2011-2013 James McCauley
+# Copyright 2011-2014 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import logging
 import inspect
 import time
 import os
+import signal
 
 _path = inspect.stack()[0][1]
 _ext_path = _path[0:_path.rindex(os.sep)]
@@ -148,9 +149,12 @@ class ComponentRegistered (Event):
   depends on are available.
   """
   def __init__ (self, name, component):
-    Event.__init__(self)
     self.name = name
     self.component = component
+
+class RereadConfiguration (Event):
+  """ Fired when modules should reread their configuration files. """
+  pass
 
 import pox.lib.recoco as recoco
 
@@ -179,29 +183,37 @@ class POXCore (EventMixin):
     DownEvent,
     GoingUpEvent,
     GoingDownEvent,
-    ComponentRegistered
+    ComponentRegistered,
+    RereadConfiguration,
   ])
 
-  def __init__ (self):
+  version = (0,3,0)
+  version_name = "dart"
+
+  def __init__ (self, threaded_selecthub=True, epoll_selecthub=False,
+                handle_signals=True):
     self.debug = False
     self.running = True
     self.starting_up = True
     self.components = {'core':self}
 
+    self._openflow_wanted = False
+    self._handle_signals = handle_signals
+
     import threading
     self.quit_condition = threading.Condition()
 
-    self.version = (0,2,0)
-    self.version_name = "carp"
     print(self.banner)
 
-    self.scheduler = recoco.Scheduler(daemon=True)
+    self.scheduler = recoco.Scheduler(daemon=True,
+                                      threaded_selecthub=threaded_selecthub,
+                                      use_epoll=epoll_selecthub)
 
     self._waiters = [] # List of waiting components
 
   @property
   def banner (self):
-    return "{0} / Copyright 2011-2013 James McCauley, et al.".format(
+    return "{0} / Copyright 2011-2014 James McCauley, et al.".format(
      self.version_string)
 
   @property
@@ -313,6 +325,28 @@ class POXCore (EventMixin):
     except:
       return "Unknown Platform"
 
+  def _add_signal_handlers (self):
+    if not self._handle_signals:
+      return
+
+    import threading
+    # Note, python 3.4 will have threading.main_thread()
+    # http://bugs.python.org/issue18882
+    if not isinstance(threading.current_thread(), threading._MainThread):
+      raise RuntimeError("add_signal_handers must be called from MainThread")
+
+    try:
+      previous = signal.getsignal(signal.SIGHUP)
+      signal.signal(signal.SIGHUP, self._signal_handler_SIGHUP)
+      if previous != signal.SIG_DFL:
+        log.warn('Redefined signal handler for SIGHUP')
+    except (AttributeError, ValueError):
+      # SIGHUP is not supported on some systems (e.g., Windows)
+      log.debug("Didn't install handler for SIGHUP")
+
+  def _signal_handler_SIGHUP (self, signal, frame):
+    self.raiseLater(core, RereadConfiguration)
+
   def goUp (self):
     log.debug(self.version_string + " going up...")
 
@@ -332,6 +366,8 @@ class POXCore (EventMixin):
 
     self.starting_up = False
     self.raiseEvent(GoingUpEvent())
+
+    self._add_signal_handlers()
 
     self.raiseEvent(UpEvent())
 
@@ -359,6 +395,8 @@ class POXCore (EventMixin):
     """
     Returns True if a component with the given name has been registered.
     """
+    if name in ('openflow', 'OpenFlowConnectionArbiter'):
+      self._openflow_wanted = True
     return name in self.components
 
   def registerNew (self, __componentClass, *args, **kw):
@@ -406,7 +444,7 @@ class POXCore (EventMixin):
     """
     if callback is None:
       callback = lambda:None
-      callback.func_name = "<None>"
+      callback.__name__ = "<None>"
     if isinstance(components, basestring):
       components = [components]
     elif isinstance(components, set):
@@ -425,7 +463,7 @@ class POXCore (EventMixin):
       else:
         name += "()"
         if hasattr(callback, 'im_class'):
-          name = getattr(callback.im_class,'__name__', '') + '.' + name
+          name = getattr(callback.__self__.__class__,'__name__','')+'.'+name
       if hasattr(callback, '__module__'):
         # Is this a good idea?  If not here, we should do it in the
         # exception printing in try_waiter().
@@ -549,16 +587,21 @@ class POXCore (EventMixin):
       self._waiter_notify()
 
   def __getattr__ (self, name):
-    if name not in self.components:
-      raise AttributeError("'%s' not registered" % (name,))
-    return self.components[name]
+    if name in ('openflow', 'OpenFlowConnectionArbiter'):
+      self._openflow_wanted = True
+    c = self.components.get(name)
+    if c is not None: return c
+    raise AttributeError("'%s' not registered" % (name,))
 
 
 core = None
 
-def initialize ():
+def initialize (threaded_selecthub=True, epoll_selecthub=False,
+                handle_signals=True):
   global core
-  core = POXCore()
+  core = POXCore(threaded_selecthub=threaded_selecthub,
+                 epoll_selecthub=epoll_selecthub,
+                 handle_signals=handle_signals)
   return core
 
 # The below is a big hack to make tests and doc tools work.
@@ -570,7 +613,7 @@ def _maybe_initialize ():
     return
   import __main__
   mod = getattr(__main__, '__file__', '')
-  if 'pydoc' in mod:
+  if 'pydoc' in mod or 'pdoc' in mod:
     initialize()
     return
 _maybe_initialize()

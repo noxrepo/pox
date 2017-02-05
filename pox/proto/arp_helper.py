@@ -149,7 +149,7 @@ _default_src_mac = object()
 
 class ARPHelper (EventMixin):
   _eventMixin_events = set([ARPRequest,ARPReply])
-  _rule_priority = 0x7000 # Pretty high
+  _rule_priority_adjustment = -0x1000 # lower than the default
 
   def __init__ (self, no_flow, eat_packets, use_port_mac = False):
     core.addListeners(self)
@@ -176,7 +176,7 @@ class ARPHelper (EventMixin):
   def _handle_ConnectionUp (self, event):
     if self._install_flow:
       fm = of.ofp_flow_mod()
-      fm.priority = self._rule_priority
+      fm.priority += self._rule_priority_adjustment
       fm.match.dl_type = ethernet.ARP_TYPE
       fm.actions.append(of.ofp_action_output(port=of.OFPP_CONTROLLER))
       event.connection.send(fm)

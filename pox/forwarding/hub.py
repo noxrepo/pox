@@ -14,6 +14,8 @@
 
 """
 Turns your complex OpenFlow switches into stupid hubs.
+
+There are actually two hubs in here -- a reactive one and a proactive one.
 """
 
 from pox.core import core
@@ -24,12 +26,29 @@ log = core.getLogger()
 
 
 def _handle_ConnectionUp (event):
+  """
+  Be a proactive hub by telling every connected switch to flood all packets
+  """
   msg = of.ofp_flow_mod()
   msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
   event.connection.send(msg)
   log.info("Hubifying %s", dpidToStr(event.dpid))
 
-def launch ():
-  core.openflow.addListenerByName("ConnectionUp", _handle_ConnectionUp)
 
-  log.info("Hub running.")
+def _handle_PacketIn (event):
+  """
+  Be a reactive hub by flooding every incoming packet
+  """
+  msg = of.ofp_packet_out()
+  msg.data = event.ofp
+  msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+  event.connection.send(msg)
+
+
+def launch (reactive = False):
+  if reactive:
+    core.openflow.addListenerByName("PacketIn", _handle_PacketIn)
+    log.info("Reactive hub running.")
+  else:
+    core.openflow.addListenerByName("ConnectionUp", _handle_ConnectionUp)
+    log.info("Proactive hub running.")
