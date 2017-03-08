@@ -110,9 +110,9 @@ class JSONRPCHandler (SplitRequestHandler):
     if not self.auth_function:
       return True
 
-    auth = self.headers.get("Authorization", "").strip().lower()
+    auth = self.headers.get("Authorization", "").strip()
     success = False
-    if auth.startswith("basic "):
+    if auth.lower().startswith("basic "):
       try:
         auth = base64.decodestring(auth[6:].strip()).split(':', 1)
         success = self.auth_function(auth[0], auth[1])
