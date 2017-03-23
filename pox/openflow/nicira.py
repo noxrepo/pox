@@ -79,6 +79,8 @@ def _init_constants ():
     "NXAST_STACK_PUSH",
     "NXAST_STACK_POP",
     "NXAST_SAMPLE",
+    "NXAST_SET_MPLS_LABEL",
+    "NXAST_SET_MPLS_TC",
   ]
   for i,name in enumerate(actions):
     globals()[name] = i
@@ -785,7 +787,6 @@ class nx_action_controller (of.ofp_action_vendor_base):
 class nx_action_push_mpls (of.ofp_action_vendor_base):
   """
   Push an MPLS label
-
   """
   def _init (self, kw):
     self.vendor = NX_VENDOR_ID
@@ -847,6 +848,71 @@ class nx_action_pop_mpls (of.ofp_action_vendor_base):
     s = ''
     s += prefix + ('subtype: %s\n' % (self.subtype,))
     s += prefix + ('ethertype: %s\n' % (self.ethertype,))
+    return s
+
+
+class nx_action_mpls_label (of.ofp_action_vendor_base):
+  """
+  Set the label of the topmost MPLS tag
+  """
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_SET_MPLS_LABEL
+    self.label = None # Force setting
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.label != other.label: return False
+    return True
+
+  def _pack_body (self):
+    p = struct.pack('!HHI', self.subtype, 0, self.label)
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype,_zero,self.label) = of._unpack('!HHI', raw, offset)
+    return offset
+
+  def _body_length (self):
+    return 8
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    s += prefix + ('label: %s\n' % (self.label,))
+    return s
+
+
+class nx_action_mpls_tc (of.ofp_action_vendor_base):
+  """
+  Set the TC of the topmost MPLS tag
+  """
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_SET_MPLS_TC
+    self.tc = None # Purposely bad
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.tc != other.tc: return False
+    return True
+
+  def _pack_body (self):
+    p = struct.pack('!HBIB', self.subtype, self.tc, 0, 0) # 5 bytes pad
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    offset,(self.subtype,self.tc) = of._unpack('!HB', raw, offset)
+    offset = of._skip(raw, offset, 5)
+    return offset
+
+  def _body_length (self):
+    return 8
+
+  def _show (self, prefix):
+    s = ''
+    s += prefix + ('subtype: %s\n' % (self.subtype,))
+    s += prefix + ('tc: %s\n' % (self.tc,))
     return s
 
 
