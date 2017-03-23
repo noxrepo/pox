@@ -2373,7 +2373,7 @@ class ofp_flow_mod (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'match: \n'
-    outstr += self.match.show(prefix + '  ')
+    outstr += self.match.show(prefix + '  ') + '\n'
     outstr += prefix + 'cookie: ' + str(self.cookie) + '\n'
     outstr += prefix + 'command: ' + str(self.command) + '\n'
     outstr += prefix + 'idle_timeout: ' + str(self.idle_timeout) + '\n'
