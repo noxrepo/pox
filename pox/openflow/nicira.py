@@ -2438,7 +2438,7 @@ class nx_match (object):
 
   def __eq__ (self, other):
     if not isinstance(other, self.__class__): return False
-    return self._parts == other.__parts
+    return self._parts == other._parts
 
   def clone (self):
     n = nx_match()
