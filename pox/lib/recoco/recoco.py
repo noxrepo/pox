@@ -133,7 +133,9 @@ class Task (BaseTask):
       x = g.send((yield x))
 
   def __str__ (self):
-    return "<" + self.__class__.__name__ + "/tid" + str(self.name) + ">"
+    return "<%s %s tid:%s>" % (type(self).__name__,
+                               getattr(self,'name',object.__str__(self)),
+                               getattr(self,'id',None))
 
 
 class Scheduler (object):
