@@ -556,6 +556,20 @@ class Recv (BlockingOperation):
     scheduler._selectHub.registerSelect(task, [self._fd], None, [self._fd],
                                         timeout=self._timeout)
 
+class RecvFrom (Recv):
+  def _recvReturnFunc (self, task):
+    # Select() will have placed file descriptors in rv
+    if len(task.rv[2]) != 0 or len(task.rv[0]) == 0:
+      # Socket error
+      task.rv = None
+      return None
+    sock = task.rv[0][0]
+    task.rv = None
+    try:
+      return sock.recvfrom(self._length, self._flags)
+    except:
+      #traceback.print_exc()
+      return None #
 
 class Send (BlockingOperation):
   def __init__ (self, fd, data):
