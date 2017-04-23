@@ -252,7 +252,7 @@ class JSONRPCHandler (SplitRequestHandler):
         return
       if 'id' in req or 'error' in response:
         response['id'] = req.get('id')
-        responses.append(response)
+      responses.append(response)
 
     if len(responses) == 0:
       responses = ''
