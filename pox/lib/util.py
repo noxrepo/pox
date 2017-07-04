@@ -263,6 +263,9 @@ def init_helper (obj, kw):
 initHelper = init_helper # Deprecated
 
 
+class Pinger (object):
+  pass
+
 def make_pinger ():
   """
   A pinger is basically a thing to let you wake a select().
@@ -270,8 +273,7 @@ def make_pinger ():
   On Unix systems, this makes a pipe pair.  But on Windows, select() only
   works with sockets, so it makes a pair of connected sockets.
   """
-
-  class PipePinger (object):
+  class PipePinger (Pinger):
     def __init__ (self, pair):
       self._w = pair[1]
       self._r = pair[0]
@@ -284,7 +286,10 @@ def make_pinger ():
     def fileno (self):
       return self._r
 
-    def pongAll (self):
+    def pongAll (self): # Deprecated
+      return self.pong_all()
+
+    def pong_all (self):
       #TODO: make this actually read all
       os.read(self._r, 1024)
 
@@ -304,7 +309,7 @@ def make_pinger ():
     def __repr__ (self):
       return "<%s %i/%i>" % (self.__class__.__name__, self._w, self._r)
 
-  class SocketPinger (object):
+  class SocketPinger (Pinger):
     def __init__ (self, pair):
       self._w = pair[1]
       self._r = pair[0]
@@ -315,7 +320,9 @@ def make_pinger ():
     #       deal with this.
     def pong (self):
       self._r.recv(1)
-    def pongAll (self):
+    def pongAll (self): # Deprecated
+      return self.pong_all()
+    def pong_all (self):
       #TODO: make this actually read all
       self._r.recv(1024)
     def fileno (self):
