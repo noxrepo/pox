@@ -226,7 +226,7 @@ class DHCPClient (EventMixin):
   def _try_start (self):
     if self.state != self.NEW:
       return
-    
+
     dpid = self.dpid
     port = self.port_name
 
@@ -319,10 +319,10 @@ class DHCPClient (EventMixin):
         if self.install_flows:
           fm = get_flow(False)
           fm.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
-          self._con.send(fm)
+          self.send(fm)
           fm = get_flow(True)
           fm.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
-          self._con.send(fm)
+          self.send(fm)
     else:
       if self._packet_listener is not None:
         core.openflow.removeListener(self._packet_listener)
@@ -330,10 +330,10 @@ class DHCPClient (EventMixin):
         if self.install_flows:
           fm = get_flow(False)
           fm.command = of.OFPFC_DELETE_STRICT
-          self._con.send(fm)
+          self.send(fm)
           fm = get_flow(True)
           fm.command = of.OFPFC_DELETE_STRICT
-          self._con.send(fm)
+          self.send(fm)
 
     self._state = state
 
@@ -443,11 +443,10 @@ class DHCPClient (EventMixin):
     ethp.payload = ipp
     po = of.ofp_packet_out(data=ethp.pack())
     po.actions.append(of.ofp_action_output(port=self.portno))
-    self._con.send(po)
+    self.send(po)
 
-  @property
-  def _con (self):
-    return core.openflow.connections[self.dpid]
+  def send (self, data):
+    return core.openflow.connections[self.dpid].send(data)
 
   def _handle_PacketIn (self, event):
     if event.dpid != self.dpid: return
