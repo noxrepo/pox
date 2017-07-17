@@ -387,6 +387,24 @@ class EventMixin (object):
     kw['byName'] = True
     return self.addListener(*args,**kw)
 
+  def add_listener (self, handler, event_type=None, event_name=None,
+                    once=False, weak=False, priority=None):
+    """
+    Add an event handler for an event triggered by this object (subscribe).
+
+    This is a replacement for addListener() (which is being deprecated).
+    """
+    assert not (event_type and event_name)
+    if (not event_type) and not (event_name):
+      if not handler.func_name.startswith("_handle_"):
+        raise RuntimeError("Could not infer event type")
+      event_name = handler.func_name[8:]
+    by_name = True if event_name else False
+    t = event_name if by_name else event_type
+
+    return self.addListener(t, handler, once=once, weak=weak, byName=by_name,
+                            priority=priority)
+
   def addListener (self, eventType, handler, once=False, weak=False,
                    priority=None, byName=False):
     """
