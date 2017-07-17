@@ -1,4 +1,4 @@
-# Copyright 2011,2013 James McCauley
+# Copyright 2011,2013,2017 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 enabled = False
 try:
+  # Try platform-specific module...
   import platform
   import importlib
   _module = 'pox.lib.pxpcap.%s.pxpcap' % (platform.system().lower(),)
@@ -30,16 +31,156 @@ except:
 
 from pox.lib.addresses import IPAddr, EthAddr, IPAddr6
 import parser
-from threading import Thread, Lock
+from threading import Thread, Lock, RLock, Semaphore
 import pox.lib.packet as pkt
+import pox.lib.util
 import copy
 
 # pcap's filter compiling function isn't threadsafe, so we use this
 # lock when compiling filters.
 _compile_lock = Lock()
 
+
+class PCapSelectLoop (object):
+  """
+  Select loop for PCap objects
+
+  This juggles the select for *all* PCap objects using a single thread.  This
+  differs from the non-select behavior (and the *old* select behavior), which
+  creates a thread for each PCap.
+  """
+  _lock = RLock()
+  _quitting = False # Not super-common; usually wait for all PCaps to quit
+  _thread = None
+  _pinger = None
+
+  # Only modify in our thread
+  _filenos = {} # fileno -> PCap
+
+  # Only modify under lock:
+  _pend_add = []
+  _pend_remove = []
+
+  _idle_timeout = 2
+
+  def add (self, pcap):
+    with self._lock:
+      if pcap not in self._pend_add:
+        self._pend_add.append(pcap)
+        self._start_thread()
+        self._ping()
+      return self._thread
+
+  def _start_thread (self):
+    with self._lock:
+      if self._pinger is None:
+        self._pinger = pox.lib.util.make_pinger()
+      if self._thread is None:
+        # Start up the thread...
+        self._thread = Thread(target=self._thread_func)
+        self._thread.start()
+
+  def _ping (self):
+    """
+    Wakes the thread if it's sleeping in select()
+    """
+    self._pinger.ping()
+
+  def remove (self, pcap):
+    ping = False
+    with self._lock:
+      if pcap not in self._pend_remove:
+        self._pend_remove.append(pcap)
+        ping = True
+    if ping: self._ping()
+
+  def _thread_func (self):
+    def quit_pcap (pcap):
+      pcap._notify_quit()
+      del _filenos[pcap.fileno()]
+
+    import select
+    _filenos = self._filenos
+
+    reread = True
+
+    while not self._quitting:
+      if reread:
+        reread = False
+        with self._lock:
+          must_remove = []
+          for pcap in self._pend_add:
+            try:
+              _filenos[pcap.fileno()] = pcap
+            except:
+              must_remove.append(pcap)
+          for pcap in self._pend_remove:
+            try:
+              quit_pcap(pcap)
+            except:
+              must_remove.append(pcap)
+          del self._pend_remove[:]
+          del self._pend_add[:]
+          if must_remove:
+            backwards = dict([(v,k) for k,v in _filenos.items()])
+            for pcap in must_remove:
+              if pcap not in backwards: continue
+              del _filenos[backwards[pcap]]
+        fds = _filenos.keys()
+        fds.append(self._pinger)
+
+      if len(fds) <= 1:
+        # Everyone quit
+        break
+
+      rr,ww,xx = select.select(fds, [], fds, self._idle_timeout)
+      if rr:
+        for r in rr:
+          pcap = _filenos.get(r)
+          if pcap:
+            if pcap._quitting:
+              quit_pcap(pcap)
+              reread = True
+            else:
+              r = pcap.next_packet(allow_threads = False)
+              if r[-1] == 0: continue
+              if r[-1] == 1:
+                pcap.callback(pcap, r[0], r[1], r[2], r[3])
+              else:
+                quit_pcap(pcap)
+                reread = True
+          else:
+            if isinstance(r, pox.lib.util.Pinger):
+              r.pong_all()
+              reread = True
+      elif not xx:
+        # Nothing!
+        quit = []
+        for pcap in _filenos.itervalues():
+          if pcap._quitting: quit.append(pcap)
+        if quit:
+          reread = True
+          for pcap in quit:
+            quit_pcap(pcap)
+      if xx:
+        for x in xx:
+          pcap = _filenos.get(x)
+          if pcap:
+            quit_pcap(pcap)
+            reread = True
+          else:
+            reread = True
+
+    with self._lock:
+      self._quitting = False
+      self._thread = None
+
+
+pcap_select_loop = PCapSelectLoop() # It's basically a singleton
+
+
 class PCap (object):
-  use_select = False # Falls back to non-select
+  use_select = True # Falls back to non-select
 
   @staticmethod
   def get_devices ():
@@ -107,6 +248,7 @@ class PCap (object):
     self.packets_received = 0
     self.packets_dropped = 0
     self._thread = None
+    self._stop_semaphore = None # Used when use_select=True
     self.pcap = None
     self.promiscuous = promiscuous
     self.device = None
@@ -183,34 +325,6 @@ class PCap (object):
     """
     return pcapc.next_ex(self._pcap, bool(self.use_bytearray), allow_threads)
 
-  def _select_thread_func (self):
-    try:
-      import select
-      fd = [self.fileno()]
-    except:
-      # Fall back
-      self._thread_func()
-      return
-
-    self.blocking = False
-
-    while not self._quitting:
-      rr,ww,xx = select.select(fd, [], fd, 2)
-
-      if xx:
-        # Apparently we're done here.
-        break
-      if rr:
-        r = self.next_packet(allow_threads = False)
-        if r[-1] == 0: continue
-        if r[-1] == 1:
-          self.callback(self, r[0], r[1], r[2], r[3])
-        else:
-          break
-
-    self._quitting = False
-    self._thread = None
-
   def _thread_func (self):
     while not self._quitting:
       pcapc.dispatch(self.pcap,100,self.callback,self,bool(self.use_bytearray),True)
@@ -228,18 +342,39 @@ class PCap (object):
     core.addListeners(self, weak=True)
 
     if self.use_select:
-      self._thread = Thread(target=self._select_thread_func)
+      try:
+        import select
+      except:
+        # Fall back
+        self.use_select = False
+        # Log warning?
+
+    if self.use_select:
+      self.blocking = False
+      self._thread = pcap_select_loop.add(self)
     else:
       self._thread = Thread(target=self._thread_func)
-    #self._thread.daemon = True
-    self._thread.start()
+      self._thread.start()
 
   def stop (self):
     t = self._thread
     if t is not None:
-      self._quitting = True
-      pcapc.breakloop(self.pcap)
-      t.join()
+      if self.use_select:
+        self._quitting = True
+        self._stop_semaphore = Semaphore(0)
+        pcap_select_loop.remove(self)
+        pcapc.breakloop(self.pcap)
+        self._stop_semaphore.acquire()
+        self._stop_semaphore = None
+      else:
+        self._quitting = True
+        pcapc.breakloop(self.pcap)
+        t.join()
+      self._thread = None
+
+  def _notify_quit (self):
+    if self._stop_semaphore:
+      self._stop_semaphore.release()
 
   def close (self):
     if self.pcap is None: return
