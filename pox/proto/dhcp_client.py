@@ -1,4 +1,4 @@
-# Copyright 2013 James McCauley
+# Copyright 2013,2017 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,6 +67,9 @@ class DHCPOffer (Event):
   def accept (self):
     self._accept = True
 
+  def option (self, option, default=None):
+    return self.offer.options.get(option, default=None)
+
 
 class DHCPOffers (Event):
   """
@@ -96,7 +99,7 @@ class DHCPClientError (Event):
   pass
 
 
-class DHCPClient (EventMixin):
+class DHCPClientBase (EventMixin):
   """
   A DHCP client
 
@@ -107,9 +110,16 @@ class DHCPClient (EventMixin):
   """
   """
   TODO:
-  * Bind port_name -> port_no later?
   * Renew
   * Keep track of lease times
+  """
+  """
+  Usage (subclasses):
+  * Implement _send_data()
+  * Call _rx() with packets
+  Usage (consumers):
+  * Set .state = INIT
+  * Handle events
   """
 
   _eventMixin_events = set([DHCPOffer, DHCPOffers, DHCPLeased,
@@ -137,8 +147,14 @@ class DHCPClient (EventMixin):
   ERROR = '<ERROR>'
   IDLE = '<IDLE>'
 
+  # Parameters to request (in discover)
+  param_requests = [
+    pkt.DHCP.DHCPDNSServersOption,
+    pkt.DHCP.DHCPRoutersOption,
+    pkt.DHCP.DHCPSubnetMaskOption,
+  ]
 
-  def __init__ (self, dpid, port,
+  def __init__ (self,
                 port_eth = None,
                 auto_accept = False,
                 install_flows = True,
@@ -147,12 +163,9 @@ class DHCPClient (EventMixin):
                 total_timeout = None,
                 discovery_timeout = None,
                 name = None):
-    """
-    Initializes
 
-    port_eth can be True to use the MAC associated with the port by the
-      switch, None to use the 'dpid MAC', or an EthAddr.
-    """
+    # Eth addr of port
+    self.port_eth = port_eth
 
     # Accept first offer?
     # If True the first non-rejected offer is used immediately, without
@@ -165,13 +178,6 @@ class DHCPClient (EventMixin):
       self.log = log
     else:
       self.log = core.getLogger(name)
-
-    if hasattr(dpid, 'dpid'):
-      dpid = dpid.dpid
-    self.dpid = dpid
-
-    self.port_name = port
-    self.port_eth = port_eth
 
     self._state = self.NEW
     self._start = None
@@ -211,46 +217,6 @@ class DHCPClient (EventMixin):
 
     # We add and remove the PacketIn listener.  This is its event ID
     self._packet_listener = None
-
-    self._try_start()
-    if self.state != self.INIT:
-      self._listen_for_connection()
-
-  def _handle_ConnectionUp (self, event):
-    self._try_start()
-
-  def _listen_for_connection (self):
-    core.openflow.addListenerByName('ConnectionUp', self._handle_ConnectionUp,
-                                    once = True)
-
-  def _try_start (self):
-    if self.state != self.NEW:
-      return
-
-    dpid = self.dpid
-    port = self.port_name
-
-    con = core.openflow.connections.get(dpid, None)
-
-    if con is None:
-      #raise RuntimeError('DPID %s not connected' % (dpid_to_str(dpid),))
-      self._listen_for_connection()
-      return
-
-    if isinstance(port, str):
-      if port not in con.ports:
-        self.log.error('No such port as %s.%s' % (dpid_to_str(dpid), port))
-        #raise RuntimeError('No such port as %s.%s' % (dpid_to_str(dpid),port))
-        self.state = self.ERROR
-        return
-      self.portno = con.ports[port].port_no
-
-    if self.port_eth is None:
-      self.port_eth = con.eth_addr
-    elif self.port_eth is True:
-      self.port_eth = con.ports[port].hw_addr
-
-    self.state = self.INIT
 
   def _total_timeout (self):
     # If this goes off and we haven't finished, tell the user we failed
@@ -295,45 +261,7 @@ class DHCPClient (EventMixin):
       killtimer('request')
       self.requested = None
 
-
-    # Make sure we're seeing packets if needed...
-
-    def get_flow (broadcast = False):
-      fm = of.ofp_flow_mod()
-      if broadcast:
-        fm.match.dl_dst = pkt.ETHER_BROADCAST
-      else:
-        fm.match.dl_dst = self.port_eth
-      fm.match.in_port = self.portno
-      fm.match.dl_type = pkt.ethernet.IP_TYPE
-      fm.match.nw_proto = pkt.ipv4.UDP_PROTOCOL
-      fm.match.tp_src = pkt.dhcp.SERVER_PORT
-      fm.match.tp_dst = pkt.dhcp.CLIENT_PORT
-      fm.priority += 1
-      return fm
-
-    if state not in (self.IDLE, self.ERROR, self.BOUND):
-      if self._packet_listener is None:
-        self._packet_listener = core.openflow.addListenerByName('PacketIn',
-            self._handle_PacketIn)
-        if self.install_flows:
-          fm = get_flow(False)
-          fm.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
-          self.send(fm)
-          fm = get_flow(True)
-          fm.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
-          self.send(fm)
-    else:
-      if self._packet_listener is not None:
-        core.openflow.removeListener(self._packet_listener)
-        self._packet_listener = None
-        if self.install_flows:
-          fm = get_flow(False)
-          fm.command = of.OFPFC_DELETE_STRICT
-          self.send(fm)
-          fm = get_flow(True)
-          fm.command = of.OFPFC_DELETE_STRICT
-          self.send(fm)
+    self._state_transition(old, state)
 
     self._state = state
 
@@ -362,10 +290,10 @@ class DHCPClient (EventMixin):
     elif state == self.BOUND:
       killtimer('total')
       ev = DHCPLeased(self.bound)
+      routers = ','.join(str(g) for g in self.bound.routers)
+      if not routers: routers = "(No routers)"
       self.log.info("Got %s/%s -> %s",
-                    self.bound.address,
-                    self.bound.subnet_mask,
-                    ','.join(str(g) for g in self.bound.routers))
+                    self.bound.address, self.bound.subnet_mask, routers)
 
       self.raiseEventNoErrors(ev)
       #TODO: Handle expiring leases
@@ -374,16 +302,15 @@ class DHCPClient (EventMixin):
       #TODO: Error info
       self.raiseEventNoErrors(DHCPClientError())
 
+  def _state_transition (self, old, state):
+    pass
+
   def _do_total_timeout (self):
     self.log.error('Did not successfully bind in time')
     self.state = self.ERROR
 
   def _add_param_requests (self, msg):
-    req = pkt.DHCP.DHCPParameterRequestOption([
-      pkt.DHCP.DHCPDNSServersOption,
-      pkt.DHCP.DHCPRoutersOption,
-      pkt.DHCP.DHCPSubnetMaskOption,
-      ])
+    req = pkt.DHCP.DHCPParameterRequestOption(self.param_requests)
     msg.add_option(req)
 
   def _discover (self):
@@ -441,26 +368,24 @@ class DHCPClient (EventMixin):
     udpp.payload = msg
     ipp.payload = udpp
     ethp.payload = ipp
-    po = of.ofp_packet_out(data=ethp.pack())
-    po.actions.append(of.ofp_action_output(port=self.portno))
-    self.send(po)
+    self._send_data(ethp.pack())
 
-  def send (self, data):
-    return core.openflow.connections[self.dpid].send(data)
+  def _send_data (self, data):
+    raise RuntimeError("_send_data() unimplemented")
 
-  def _handle_PacketIn (self, event):
-    if event.dpid != self.dpid: return
-    if event.port != self.portno: return
-
+  def _rx (self, parsed):
+    """
+    Input packet here
+    """
     # Is it to us?  (Or at least not specifically NOT to us...)
-    ipp = event.parsed.find('ipv4')
+    ipp = parsed.find('ipv4')
     if not ipp or not ipp.parsed:
       return
     if self.bound and self.bound.address == ipp.dstip:
       pass # Okay.
     elif ipp.dstip not in (pkt.IP_ANY,pkt.IP_BROADCAST):
       return
-    p = event.parsed.find('dhcp')
+    p = parsed.find('dhcp')
     if p is None:
       return
     if not isinstance(p.prev, pkt.udp):
@@ -489,7 +414,7 @@ class DHCPClient (EventMixin):
       if self.state != self.SELECTING:
         self.log.warn('Recieved an offer while in state %s', self.state)
         return
-      self._exec_offer(event, p)
+      self._exec_offer(p)
     elif t.type in (p.ACK_MSG, p.NAK_MSG):
       if p.xid != self.request_xid:
         if self.state in (self.REQUESTING):
@@ -501,11 +426,11 @@ class DHCPClient (EventMixin):
         self.log.warn('Recieved an ACK/NAK while in state %s', self.state)
         return
       if t.type == p.NAK_MSG:
-        self._exec_request_nak(event, p)
+        self._exec_request_nak(p)
       else:
-        self._exec_request_ack(event, p)
+        self._exec_request_ack(p)
 
-  def _exec_offer (self, event, p):
+  def _exec_offer (self, p):
     o = DHCPOffer(p)
     self.offers.append(o)
     self.raiseEventNoErrors(o)
@@ -515,11 +440,11 @@ class DHCPClient (EventMixin):
       o._accept = True
       self._do_accept()
 
-  def _exec_request_ack (self, event, p):
+  def _exec_request_ack (self, p):
     self.bound = self.requested
     self.state = self.BOUND
 
-  def _exec_request_nak (self, event, p):
+  def _exec_request_nak (self, p):
     self.log.warn('DHCP server NAKed our attempted acceptance of an offer')
 
     # Try again...
@@ -549,6 +474,125 @@ class DHCPClient (EventMixin):
     self.requested = ev.accepted
 
     self.state = self.REQUESTING
+
+
+class OFDHCPClient (DHCPClientBase):
+  """
+  DHCP client via an OpenFlow switch
+  """
+
+  """
+  TODO:
+  * Bind port_name -> port_no later?
+  """
+
+  def __init__ (self, dpid, port, **kw):
+    """
+    Initializes
+
+    port_eth can be True to use the MAC associated with the port by the
+      switch, None to use the 'dpid MAC', or an EthAddr.
+    """
+    self.port_name = port
+
+    if hasattr(dpid, 'dpid'):
+      dpid = dpid.dpid
+    self.dpid = dpid
+
+    super(OpenFlowDHCPClient,self).__init__(**kw)
+
+    self._try_start()
+    if self.state != self.INIT:
+      self._listen_for_connection()
+
+  def _handle_PacketIn (self, event):
+    if event.dpid != self.dpid: return
+    if event.port != self.portno: return
+    self._rx(event.parsed)
+
+  def _send_data (self, data):
+    po = of.ofp_packet_out(data=data)
+    po.actions.append(of.ofp_action_output(port=self.portno))
+    self._send_of(po)
+
+  def _send_of (self, data):
+    return core.openflow.connections[self.dpid].send(data)
+
+  def _handle_ConnectionUp (self, event):
+    self._try_start()
+
+  def _listen_for_connection (self):
+    core.openflow.addListenerByName('ConnectionUp', self._handle_ConnectionUp,
+                                    once = True)
+
+  def _try_start (self):
+    if self.state != self.NEW:
+      return
+
+    dpid = self.dpid
+    port = self.port_name
+
+    con = core.openflow.connections.get(dpid, None)
+
+    if con is None:
+      #raise RuntimeError('DPID %s not connected' % (dpid_to_str(dpid),))
+      self._listen_for_connection()
+      return
+
+    if isinstance(port, str):
+      if port not in con.ports:
+        self.log.error('No such port as %s.%s' % (dpid_to_str(dpid), port))
+        #raise RuntimeError('No such port as %s.%s' % (dpid_to_str(dpid),port))
+        self.state = self.ERROR
+        return
+      self.portno = con.ports[port].port_no
+
+    if self.port_eth is None:
+      self.port_eth = con.eth_addr
+    elif self.port_eth is True:
+      self.port_eth = con.ports[port].hw_addr
+
+    self.state = self.INIT
+
+  def _state_transition (self, old, state):
+    # Make sure we're seeing packets if needed...
+
+    def get_flow (broadcast = False):
+      fm = of.ofp_flow_mod()
+      if broadcast:
+        fm.match.dl_dst = pkt.ETHER_BROADCAST
+      else:
+        fm.match.dl_dst = self.port_eth
+      fm.match.in_port = self.portno
+      fm.match.dl_type = pkt.ethernet.IP_TYPE
+      fm.match.nw_proto = pkt.ipv4.UDP_PROTOCOL
+      fm.match.tp_src = pkt.dhcp.SERVER_PORT
+      fm.match.tp_dst = pkt.dhcp.CLIENT_PORT
+      fm.priority += 1
+      return fm
+
+    if state not in (self.IDLE, self.ERROR, self.BOUND):
+      if self._packet_listener is None:
+        self._packet_listener = core.openflow.addListenerByName('PacketIn',
+            self._handle_PacketIn)
+        if self.install_flows:
+          fm = get_flow(False)
+          fm.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
+          self._send_of(fm)
+          fm = get_flow(True)
+          fm.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
+          self._send_of(fm)
+    else:
+      if self._packet_listener is not None:
+        core.openflow.removeListener(self._packet_listener)
+        self._packet_listener = None
+        if self.install_flows:
+          fm = get_flow(False)
+          fm.command = of.OFPFC_DELETE_STRICT
+          self._send_of(fm)
+          fm = get_flow(True)
+          fm.command = of.OFPFC_DELETE_STRICT
+          self._send_of(fm)
 
 
 def launch (dpid, port, port_eth = None, name = None, __INSTANCE__ = None):
@@ -584,7 +628,7 @@ def launch (dpid, port, port_eth = None, name = None, __INSTANCE__ = None):
         self.log.error("Already have component %s", n)
         return
 
-    client = DHCPClient(port=port, dpid=dpid, name=n, port_eth=port_eth)
+    client = OFDHCPClient(port=port, dpid=dpid, name=n, port_eth=port_eth)
     core.register(n, client)
 
   core.call_when_ready(dhcpclient_init, ['openflow'])
