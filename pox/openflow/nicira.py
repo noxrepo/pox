@@ -209,6 +209,16 @@ class nicira_base (ofp_vendor_base):
     return outstr
 
 
+class nx_hash_fields (object):
+  NX_HASH_FIELDS_ETH_SRC = 0
+  NX_HASH_FIELDS_SYMMETRIC_L4 = 1
+
+
+class nx_bd_algorithm (object):
+  NX_BD_ALG_ACTIVE_BACKUP = 0
+  NX_BD_ALG_HRW = 1
+
+
 class nx_flow_mod_table_id (nicira_base):
   """
   Used to enable the flow mod table ID extension
@@ -547,6 +557,95 @@ class nx_role_reply (nx_role_request):
 # -----------------------------------------------------------------------
 # Actions
 # -----------------------------------------------------------------------
+
+class nx_action_bundle (of.ofp_action_vendor_base):
+  """
+  Sends a packet via a chosen "slave" from supplied list
+  """
+  def _init (self, kw):
+    self.vendor = NX_VENDOR_ID
+    self.subtype = NXAST_BUNDLE_LOAD if kw.pop("load", False) else NXAST_BUNDLE
+
+    self.algorithm = nx_bd_algorithm.NX_BD_ALG_ACTIVE_BACKUP
+
+    self.fields = nx_hash_fields.NX_HASH_FIELDS_ETH_SRC
+
+    self.basis = 0
+
+    self.slave_type = NXM_OF_IN_PORT
+    self.slaves = []
+
+    # Used for bundle_load
+    self.nbits = None
+    self.offset = 0
+    self.dst = None # An NXM type
+
+  def _eq (self, other):
+    if self.subtype != other.subtype: return False
+    if self.algorithm != other.algorithm: return False
+    if self.fields != other.fields: return False
+    if self.basis != other.basis: return False
+    if self.slave_type != other.slave_type: return False
+    if self.slaves != other.slaves: return False
+    if self.nbits != other.nbits: return False
+    if self.offset != other.offset: return False
+    if self.dst != other.dst: return False
+    return True
+
+  def _pack_body (self):
+    p = struct.pack('!HHHH', self.subtype, self.algorithm, self.fields,
+                    self.basis)
+
+    dst = self.dst
+    if dst is None:
+      dst = "\x00\x00\x00\x00"
+      assert self.nbits is None
+      assert self.offset == 0
+      ofs_nbits = 0
+    elif isinstance(self.dst, nxm_entry):
+      assert self.dst.mask is None
+      dst = type(dst)
+
+      if self.nbits is None:
+        self.nbits = self.dst._get_size_hint() - self.offset
+      nbits = self.nbits - 1
+      assert nbits >= 0 and nbits <= 63
+      assert self.offset >= 0 and self.offset < (1 << 10)
+      ofs_nbits = self.offset << 6 | nbits
+
+      o = dst()
+      o._force_mask = False
+      dst = o.pack(omittable=False, header_only=True)
+
+    assert len(dst) == 4
+
+    p += self.slave_type().pack(omittable=False, header_only=True)
+    p += struct.pack('!HH', len(self.slaves), ofs_nbits)
+    p += dst
+    p += of._PAD4
+
+    for sl in self.slaves:
+      if not isinstance(sl, nxm_entry):
+        sl = self.slave_type(sl)
+      assert sl.mask is None
+      sl = sl.pack(omittable=False, header_only=False)[4:]
+      p += sl
+
+    while len(p) % 8:
+      p += "\x00"
+
+    return p
+
+  def _unpack_body (self, raw, offset, avail):
+    raise NotImplementedError()
+
+  def _show (self, prefix):
+    s = ''
+    for f in ("subtype algorithm fields basis slave_type nbits offset "
+              "dst").split():
+      s += prefix + ('%s: %s\n' % (f, getattr(self, f, None)))
+    return s
+
 
 class nx_output_reg (of.ofp_action_vendor_base):
   def _init (self, kw):
