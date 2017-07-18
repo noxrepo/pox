@@ -602,9 +602,10 @@ class nx_action_bundle (of.ofp_action_vendor_base):
       assert self.nbits is None
       assert self.offset == 0
       ofs_nbits = 0
-    elif isinstance(self.dst, nxm_entry):
-      assert self.dst.mask is None
-      dst = type(dst)
+    else:
+      if isinstance(self.dst, nxm_entry):
+        assert self.dst.mask is None
+        dst = type(dst)
 
       if self.nbits is None:
         self.nbits = self.dst._get_size_hint() - self.offset
@@ -637,7 +638,40 @@ class nx_action_bundle (of.ofp_action_vendor_base):
     return p
 
   def _unpack_body (self, raw, offset, avail):
-    raise NotImplementedError()
+    given_offset = offset
+    offset, (self.subtype,
+            self.algorithm,
+            self.fields,
+            self.basis,
+            slave_type,
+            num_slaves,
+            ofs_nbits,
+            dst) \
+      = of._unpack('!HHHH4sHH4s', raw, offset)
+    offset += 4
+
+    self.offset = ofs_nbits >> 6
+    self.nbits = (ofs_nbits & 0x3f) + 1
+
+    if dst == "\x00\x00\x00\x00":
+      self.dst = None
+      self.nbits = None
+      self.offset = 0
+    else:
+      self.dst = _class_for_nxm_header(dst)
+
+    self.slave_type = _class_for_nxm_header(slave_type)
+    t,has_mask,length = nxm_entry.unpack_header(slave_type, 0)
+    self.slaves = []
+
+    for i in range(num_slaves):
+      offset, slave = nxm_entry.unpack_body(raw, offset, t, has_mask, length)
+      self.slaves.append(slave)
+
+    while (offset - given_offset) % 8:
+      offset += 1
+
+    return offset
 
   def _show (self, prefix):
     s = ''
@@ -1875,6 +1909,10 @@ class nxm_entry (object):
   def unpack_new (raw, offset):
     t,has_mask,length = nxm_entry.unpack_header(raw, offset)
     offset += 4
+    return nxm_entry.unpack_body(raw, offset, t, has_mask, length)
+
+  @staticmethod
+  def unpack_body (raw, offset, t, has_mask, length):
     offset,data = of._read(raw, offset, length)
     mask = None
     if has_mask:
