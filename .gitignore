@@ -4,6 +4,8 @@ doc/*
 *.pyo
 *.py~
 *.py.bak
+*.so
+*.dll
 old.*
 .*
 *.patch
