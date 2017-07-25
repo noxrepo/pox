@@ -572,7 +572,7 @@ class CallProxy (object):
     removeData :  The identifier used for removal of the handler
     """
     self.source = weakref.ref(source, self._forgetMe)
-    self.obj = weakref.ref(handler.im_self, self._forgetMe)
+    self.obj = weakref.ref(handler.im_self, self._forgetMe) # methods only!
     self.method = handler.im_func
     self.removeData = removeData
     self.name = str(handler)
