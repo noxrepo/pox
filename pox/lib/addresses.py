@@ -349,6 +349,17 @@ class IPAddr (object):
 
     return (self.toUnsigned() & ~((1 << (32-b))-1)) == n.toUnsigned()
 
+  def get_network (self, netmask_or_bits):
+    """
+    Gets just the network part by applying a mask or prefix length
+
+    Returns (IPAddr,preifx_bits)
+    """
+    prefix = parse_cidr("255.255.255.255/" + str(netmask_or_bits),
+                        allow_host=True)[1]
+    netmask = cidr_to_netmask(prefix).unsigned_h
+    return (IPAddr(self.unsigned_h & netmask, networkOrder=False),prefix)
+
   @property
   def is_multicast (self):
     return ((self.toSigned(networkOrder = False) >> 24) & 0xe0) == 0xe0
