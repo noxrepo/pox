@@ -12,6 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Wrapper for pcap packet capture
+
+This module was written because (at least at the time of writing), there was
+no other pcap wrapper for Python which worked on all of POX's supported
+platforms, could both capture and inject packets, had support for filters,
+and had halfway reasonable performance.
+
+The actual pcap interface is implemented as an extension module which works
+with both CPython and PyPy and must be built manually (there are scripts
+for building it under macOS, Linux, and Windows).
+
+Elsewhere in this package are utilities here for working with pcap files which
+work even without libpcap.
+"""
+
 enabled = False
 try:
   # Try platform-specific module...
