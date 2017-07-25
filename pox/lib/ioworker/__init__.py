@@ -15,9 +15,10 @@
 # limitations under the License.
 
 """
-IOWorkers provide a convenient IO abstraction.  Sends are fire-and-forget,
-and read data is buffered and you can get notifications when data is
-available.
+IOWorkers provide a convenient IO abstraction.
+
+Sends are fire-and-forget, and read data is buffered and you can get
+notifications when data is available.
 """
 
 import sys
@@ -45,6 +46,7 @@ def _call_safe (f, socket=None):
 class IOWorker (object):
   """
   Generic IOWorker class.
+
   Fire and forget semantics for send.
   Received data is queued until read.
   """

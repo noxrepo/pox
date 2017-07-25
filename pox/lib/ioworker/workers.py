@@ -167,7 +167,7 @@ class PersistentIOWorker (RecocoIOWorker, LoggerBase):
       #raise RuntimeError("Couldn't connect")
       core.callLater(self._handle_close)
       return
-    
+
     self.loop.register_worker(self)
 
   @classmethod
