@@ -301,10 +301,26 @@ class IPAddr (object):
     """
     Returns the address as an integer in either network or host (the
     default) byte order.
+
+    Deprecated.
     """
     if not networkOrder:
       return socket.htonl(self._value & 0xffFFffFF)
     return self._value & 0xffFFffFF
+
+  @property
+  def unsigned_h (self):
+    """
+    The address as an integer in host order.
+    """
+    return self.toUnsigned(networkOrder=False)
+
+  @property
+  def unsigned_n (self):
+    """
+    The address as an integer in network order.
+    """
+    return self.toUnsigned(networkOrder=True)
 
   def toStr (self):
     """ Return dotted quad representation """
