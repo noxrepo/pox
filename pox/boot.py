@@ -151,8 +151,9 @@ def _do_imports (components):
 
   return done
 
+_inst = {}
 
-def _do_launch (argv):
+def _do_launch (argv, skip_startup=False):
   component_order = []
   components = {}
 
@@ -172,22 +173,24 @@ def _do_launch (argv):
       if len(arg) == 1: arg.append(True)
       curargs[arg[0]] = arg[1]
 
-  _options.process_options(pox_options)
-  global core
-  if pox.core.core is not None:
-    core = pox.core.core
-    core.getLogger('boot').debug('Using existing POX core')
-  else:
-    core = pox.core.initialize(_options.threaded_selecthub,
-                               _options.epoll_selecthub,
-                               _options.handle_signals)
+  if not skip_startup:
+    _options.process_options(pox_options)
+    global core
+    if pox.core.core is not None:
+      core = pox.core.core
+      core.getLogger('boot').debug('Using existing POX core')
+    else:
+      core = pox.core.initialize(_options.threaded_selecthub,
+                                 _options.epoll_selecthub,
+                                 _options.handle_signals)
 
-  _pre_startup()
+    _pre_startup()
+
   modules = _do_imports(n.split("=")[0].split(':')[0] for n in component_order)
   if modules is False:
     return False
 
-  inst = {}
+  inst = _inst
   for name in component_order:
     cname = name
     inst[name] = inst.get(name, -1) + 1
