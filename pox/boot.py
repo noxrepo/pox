@@ -1,6 +1,6 @@
 #!/bin/sh -
 
-# Copyright 2011,2012,2013 James McCauley
+# Copyright 2011,2012,2013,2017 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -183,7 +183,7 @@ def _do_launch (argv):
                                _options.handle_signals)
 
   _pre_startup()
-  modules = _do_imports(n.split(':')[0] for n in component_order)
+  modules = _do_imports(n.split("=")[0].split(':')[0] for n in component_order)
   if modules is False:
     return False
 
@@ -195,6 +195,10 @@ def _do_launch (argv):
     name = name.split(":", 1)
     launch = name[1] if len(name) == 2 else "launch"
     name = name[0]
+    if "=" in name:
+      name,first_arg = name.split("=", 1)
+    else:
+      first_arg = None
 
     name,module,members = modules[name]
 
@@ -240,7 +244,11 @@ def _do_launch (argv):
         return False
 
       try:
-        if f(**params) is False:
+        if first_arg is not None:
+          pparams = (first_arg,)
+        else:
+          pparams = ()
+        if f(*pparams, **params) is False:
           # Abort startup
           return False
       except TypeError as exc:
