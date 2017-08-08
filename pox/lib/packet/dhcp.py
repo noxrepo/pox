@@ -334,6 +334,15 @@ class dhcp(packet_base):
         self._raw_options += chr(length)
         self._raw_options += val
 
+    @property
+    def msg_type (self):
+        """
+        DHCP message type or None
+        """
+        opt = self.options.get(self.MSG_TYPE_OPT)
+        if opt is None: return None
+        return opt.type
+
 
 def dhcp_option_def (msg_type):
   """
