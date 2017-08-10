@@ -150,6 +150,7 @@ class PCapSelectLoop (object):
         break
 
       rr,ww,xx = select.select(fds, [], fds, self._idle_timeout)
+      if self._quitting: break
       if rr:
         for r in rr:
           pcap = _filenos.get(r)
