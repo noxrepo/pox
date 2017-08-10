@@ -420,7 +420,7 @@ class DHCPClientBase (EventMixin):
         if self.state in (self.REQUESTING):
           self.log.info('Received ACK/NAK with wrong XID')
         else:
-          self.og.debug('Received unexpected ACK/NAK with wrong XID')
+          self.log.debug('Received unexpected ACK/NAK with wrong XID')
         return
       if self.state != self.REQUESTING:
         self.log.warn('Recieved an ACK/NAK while in state %s', self.state)
