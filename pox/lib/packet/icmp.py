@@ -251,6 +251,26 @@ class unreach(packet_base):
     def hdr(self, payload):
         return struct.pack('!HH', self.unused, self.next_mtu)
 
+    @property
+    def srcip (self):
+        """
+        srcip of referenced packet or None
+        """
+        try:
+          return self.payload.srcip
+        except Exception:
+          return None
+
+    @property
+    def dstip (self):
+        """
+        dstip of referenced packet or None
+        """
+        try:
+          return self.payload.dstip
+        except Exception:
+          return None
+
 
 class icmp(packet_base):
     "ICMP packet struct"
