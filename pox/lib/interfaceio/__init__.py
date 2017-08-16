@@ -224,13 +224,13 @@ class Interface (object):
   def ipv6_enabled (self):
     f = file("/proc/sys/net/ipv6/conf/%s/disable_ipv6" % (self.name,), "r")
     with f:
-      return f.read()[0] == "0"
+      return f.read()[0] == "0" # Note inversion!
 
   @ipv6_enabled.setter
   def ipv6_enabled (self, value):
     f = file("/proc/sys/net/ipv6/conf/%s/disable_ipv6" % (self.name,), "w")
     with f:
-      f.write("0" if value else "1")
+      f.write("0" if value else "1") # Note inversion!
 
   @property
   def ip_forwarding (self):
