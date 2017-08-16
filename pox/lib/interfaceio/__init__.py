@@ -233,6 +233,18 @@ class Interface (object):
       f.write("0" if value else "1")
 
   @property
+  def ip_forwarding (self):
+    f = file("/proc/sys/net/ipv4/conf/%s/forwarding" % (self.name,), "r")
+    with f:
+      return f.read()[0] == "1"
+
+  @ip_forwarding.setter
+  def ip_forwarding (self, value):
+    f = file("/proc/sys/net/ipv4/conf/%s/forwarding" % (self.name,), "w")
+    with f:
+      f.write("1" if value else "0")
+
+  @property
   def mtu (self):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     ifr = struct.pack(str(IFNAMESIZ) + "s", self.name)
