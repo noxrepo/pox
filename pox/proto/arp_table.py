@@ -119,8 +119,8 @@ class ARPTable (object):
     if src_ip is None: src_ip = ipp.srcip
     if src_eth is None: src_eth = eth_packet.src
 
-    if router_ip: dstip = router_ip
-    else:         dstip = ipp.dstip
+    if router_ip is not None: dstip = router_ip
+    else:                     dstip = ipp.dstip
 
     if dstip not in self.by_ip: self.add_entry(dstip)
 
