@@ -607,6 +607,14 @@ class TapInterface (Interface, EventMixin):
     if not name: self._name = self.tap.name
     self.io_loop.add(self)
 
+  @property
+  def is_tap (self):
+    return self.tap.is_tap
+
+  @property
+  def is_tun (self):
+    return self.tap.is_tun
+
   def send (self, data, flags=0, protocol=0):
     if not self.tap.is_raw:
       if flags or protocol:
