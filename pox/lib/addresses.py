@@ -272,6 +272,10 @@ class IPAddr (object):
     else:
       raise RuntimeError("Unexpected IP address format")
 
+  @staticmethod
+  def parse_cidr (addr, infer=True, allow_host=False):
+    return parse_cidr(addr, infer, allow_host)
+
   def toSignedN (self):
     """ A shortcut """
     return self.toSigned(networkOrder = True)
