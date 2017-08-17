@@ -398,7 +398,8 @@ class EventMixin (object):
     if (not event_type) and not (event_name):
       if not handler.func_name.startswith("_handle_"):
         raise RuntimeError("Could not infer event type")
-      event_name = handler.func_name[8:]
+      #event_name = handler.func_name[8:]
+      event_name = handler.func_name.rsplit('_', 1)[-1]
     by_name = True if event_name else False
     t = event_name if by_name else event_type
 
