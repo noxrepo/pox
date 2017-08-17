@@ -187,6 +187,14 @@ class Scheduler (object):
     self._thread.start()
 
   def synchronized (self):
+    """
+    Returns a Python context manager which blocks the scheduler
+
+    With this, you can write code which runs in another thread like:
+      with scheduler.synchronized():
+        # Do stuff which assumes co-op tasks aren't running
+      # Co-op tasks will resume here
+    """
     return Synchronizer(self)
 
   def schedule (self, task, first = False):
@@ -826,6 +834,7 @@ class SyncTask (BaseTask):
     self.outlock.acquire()
 
   def run (self):
+    yield 0 # Give away early first slice
     self.inlock.release()
     self.outlock.acquire()
 
