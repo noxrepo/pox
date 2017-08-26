@@ -110,7 +110,7 @@ class igmp (packet_base):
     s += self.extra
     csum = checksum(s)
     if csum != self.csum:
-      self.err("IGMP hecksums don't match")
+      self.err("IGMP checksums don't match")
     else:
       self.parsed = True
 
