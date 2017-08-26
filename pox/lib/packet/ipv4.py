@@ -85,6 +85,7 @@ class ipv4(packet_base):
         self.srcip = IP_ANY
         self.dstip = IP_ANY
         self.next  = b''
+        self.raw_options = b''
 
         if raw is not None:
             self.parse(raw)
@@ -140,6 +141,7 @@ class ipv4(packet_base):
             self.msg('(ip parse) warning: IP header is truncated')
             return
 
+        self.raw_options = raw[self.MIN_LEN:self.hl*4]
         # At this point, we are reasonably certain that we have an IP
         # packet
         self.parsed = True
@@ -168,7 +170,7 @@ class ipv4(packet_base):
                                  self.iplen, self.id,
                                  (self.flags << 13) | self.frag, self.ttl,
                                  self.protocol, 0, self.srcip.toUnsigned(),
-                                 self.dstip.toUnsigned())
+                                 self.dstip.toUnsigned()) + self.raw_options
         return checksum(data, 0)
 
 
@@ -179,4 +181,4 @@ class ipv4(packet_base):
                            self.iplen, self.id,
                            (self.flags << 13) | self.frag, self.ttl,
                            self.protocol, self.csum, self.srcip.toUnsigned(),
-                           self.dstip.toUnsigned())
+                           self.dstip.toUnsigned()) + self.raw_options
