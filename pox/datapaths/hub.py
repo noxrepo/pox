@@ -48,7 +48,7 @@ class Hub (object):
     self.rx_bytes += len(event.data)
     for port in self._ports:
       if port is event.interface: continue
-        port.write(event.data)
+      port.send(event.data)
 
 
 def launch (ports):
