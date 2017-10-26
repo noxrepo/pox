@@ -301,7 +301,10 @@ class POXCore (EventMixin):
     log.info("Going down...")
     import gc
     gc.collect()
-    self.raiseEvent(GoingDownEvent())
+    try:
+      self.raiseEvent(GoingDownEvent())
+    except:
+      log.exception("While running GoingDownEvent")
     self.callLater(self.scheduler.quit)
     for i in range(50):
       if self.scheduler._hasQuit: break
