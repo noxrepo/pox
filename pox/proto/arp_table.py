@@ -164,7 +164,9 @@ class ARPTable (object):
 
   def rx_arp_reply (self, arp):
     assert arp.opcode == arp.REPLY
+    self.rx_arp(arp)
 
+  def rx_arp (self, arp):
     if arp.protosrc not in self.by_ip:
       self.add_entry(mac=arp.hwsrc, ip=arp.protosrc)
     else:
