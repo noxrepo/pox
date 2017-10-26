@@ -106,6 +106,12 @@ class ARPTable (object):
     """
     if send_function is None: send_function = self.send_function
     ipp = eth_packet.find("ipv4")
+
+    if not ipp and eth_packet.type == eth_packet.IP_TYPE:
+      if isinstance(eth_packet.payload, bytes):
+        # Hm!  Try harder...
+        ipp = pkt.ipv4(raw=eth_packet.payload)
+
     if not ipp or eth_packet.dst.is_multicast:
       send_function(eth_packet.pack())
       return
