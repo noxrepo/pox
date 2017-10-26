@@ -2393,6 +2393,8 @@ class nxt_packet_in (nicira_base, of.ofp_packet_in):
     self.data = None
     self._total_len = None
     self._match = None
+    self.table_id = 0
+    self.cookie = 0
 
     if 'total_len' in kw:
       self._total_len = kw.pop('total_len')
