@@ -41,5 +41,5 @@ def attempt (**kwargs):
 try:
   attempt()
 except:
-  print "Trying again without selectable FD"
+  print("Trying again without selectable FD")
   attempt(selectable_fd = False)
