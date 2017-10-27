@@ -40,7 +40,9 @@ import udp as UDP
 import vlan as VLAN
 import mpls as MPLS
 import llc as LLC
+import rip as RIP
 
+from rip import *
 from arp import *
 from dhcp import *
 from dns import *
@@ -59,6 +61,7 @@ from mpls import *
 from llc import *
 
 __all__ = [
+  'rip',
   'arp',
   'dhcp',
   'dns',
@@ -77,6 +80,7 @@ __all__ = [
   'mpls',
   'llc',
 
+  'RIP',
   'ARP',
   'DHCP',
   'DNS',
