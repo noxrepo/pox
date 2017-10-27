@@ -568,6 +568,17 @@ class tcp (packet_base):
 
     return s
 
+  def find_option (self, option):
+    for i,o in enumerate(self.options):
+      if o.type == option:
+        return i
+    return None
+
+  def get_option (self, option):
+    i = self.find_option(option)
+    if i is None: return None
+    return self.options[i]
+
   def parse_options (self, raw):
 
     self.options = []
