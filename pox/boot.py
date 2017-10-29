@@ -151,7 +151,6 @@ def _do_imports (components):
 
   return done
 
-_inst = {}
 
 def _do_launch (argv, skip_startup=False):
   component_order = []
@@ -194,7 +193,7 @@ def _do_launch (argv, skip_startup=False):
   if modules is False:
     return False
 
-  inst = _inst
+  inst = {}
   for name in component_order:
     cname = name
     inst[name] = inst.get(name, -1) + 1
