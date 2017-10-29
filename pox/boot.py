@@ -162,9 +162,13 @@ def _do_launch (argv, skip_startup=False):
 
   for arg in argv:
     if not arg.startswith("-"):
+      if "=" in arg:
+        arg,first_arg = arg.split("=", 1)
+        curargs = {None:first_arg}
+      else:
+        curargs = {}
       if arg not in components:
         components[arg] = []
-      curargs = {}
       components[arg].append(curargs)
       component_order.append(arg)
     else:
@@ -198,10 +202,7 @@ def _do_launch (argv, skip_startup=False):
     name = name.split(":", 1)
     launch = name[1] if len(name) == 2 else "launch"
     name = name[0]
-    if "=" in name:
-      name,first_arg = name.split("=", 1)
-    else:
-      first_arg = None
+    first_arg = params.pop(None, None)
 
     name,module,members = modules[name]
 
