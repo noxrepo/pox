@@ -587,6 +587,9 @@ class TapIO (object):
     self._taps.append(tap)
     self._start()
 
+  def remove (self, tap):
+    self._taps.remove(tap)
+
   def _start (self):
     if not self._started:
       self._tap_task = Task(target=self._tap_task_proc)
