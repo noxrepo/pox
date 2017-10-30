@@ -571,6 +571,8 @@ class TapIO (object):
 
   TapInterface.io_loop holds the singleton
   """
+  IO_TIMEOUT = 2
+
   def __init__ (self):
     self._taps = []
     self._started = False
@@ -594,7 +596,7 @@ class TapIO (object):
   def _tap_task_proc (self):
     #log.info("TAP task starting")
     while core.running and self.running:
-      rr,ww,xx = yield Select(self._taps, [], [], 2)
+      rr,ww,xx = yield Select(self._taps, [], [], self.IO_TIMEOUT)
       for tap in rr:
         data = tap.tap.read(1600)
         flags,proto = struct.unpack("!HH", data[:4])
