@@ -611,15 +611,22 @@ class TapInterface (Interface, EventMixin):
     RXData,
   ])
 
-  io_loop = TapIO()
+  io_loop = None
 
   def __init__ (self, name="", tun=False):
+    self._start_io_loop()
     self.tap = None
     Interface.__init__(self, name)
     EventMixin.__init__(self)
     self.tap = TunTap(name, raw=False, tun=tun)
     if not name: self._name = self.tap.name
     self.io_loop.add(self)
+
+  @classmethod
+  def _start_io_loop (self):
+    if TapInterface.io_loop: return
+    TapInterface.io_loop = TapIO()
+    return TapInterface.io_loop
 
   @property
   def is_tap (self):
