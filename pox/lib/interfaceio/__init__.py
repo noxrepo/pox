@@ -598,11 +598,7 @@ class TapIO (object):
     while core.running and self.running:
       rr,ww,xx = yield Select(self._taps, [], [], self.IO_TIMEOUT)
       for tap in rr:
-        data = tap.tap.read(1600)
-        flags,proto = struct.unpack("!HH", data[:4])
-        #FIXME: This may invert the flags...
-        data = data[4:] # Cut off header
-        tap._handle_rx(flags, proto, data)
+        tap._do_rx()
     #log.info("TAP task quit")
 
 
@@ -612,6 +608,7 @@ class TapInterface (Interface, EventMixin):
   ])
 
   io_loop = None
+  max_read_size = 1600
 
   def __init__ (self, name="", tun=False):
     self._start_io_loop()
@@ -645,7 +642,11 @@ class TapInterface (Interface, EventMixin):
       data = flags + data
     self.tap.write(data)
 
-  def _handle_rx (self, flags, proto, data):
+  def _do_rx (self):
+    data = self.tap.read(self.max_read_size)
+    flags,proto = struct.unpack("!HH", data[:4])
+    #FIXME: This may invert the flags...
+    data = data[4:] # Cut off header
     self.raiseEvent(RXData, self, data)
 
   def fileno (self):
