@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2017 James McCauley
 # Copyright 2008 (C) Nicira, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,7 @@ from packet_utils import *
 from dhcp import *
 from dns  import *
 from rip  import *
+from vxlan import *
 
 from packet_base import packet_base
 
@@ -108,6 +109,9 @@ class udp(packet_base):
 #               and isinstance(self.prev, _ipv4)
 #               and self.prev.dstip == rip.RIP2_ADDRESS ):
             self.next = rip(raw=raw[udp.MIN_LEN:],prev=self)
+        elif (self.dstport == vxlan.VXLAN_PORT
+                    or self.srcport == vxlan.VXLAN_PORT):
+            self.next = vxlan(raw=raw[udp.MIN_LEN:],prev=self)
         elif dlen < self.len:
             self.msg('(udp parse) warning UDP packet data shorter than UDP len: %u < %u' % (dlen, self.len))
             return
