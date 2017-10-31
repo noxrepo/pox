@@ -123,7 +123,7 @@ class rtentry (object):
   RTF_UP        =  0x0001 # usable
   RTF_GATEWAY   =  0x0002 # dst is gateway
   RTF_HOST      =  0x0004 # host route
-  RTF_REINSTATE =  0x0008 # reinstate after timeoute
+  RTF_REINSTATE =  0x0008 # reinstate after timeout
   RTF_DYNAMIC   =  0x0010 # created dynamically (by redirect)
   RTF_MODIFIED  =  0x0020 # modified dynamically (by redirect)
   RTF_MSS       =  0x0040 # use specific MSS for this route
