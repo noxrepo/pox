@@ -565,44 +565,59 @@ class PCapInterface (Interface, EventMixin):
       self.pcap = None
 
 
-class TapIO (object):
+class ReadLoop (object):
   """
-  Singleton IO Loop for all TapInterfaces
+  Singleton IO Loop
 
-  TapInterface.io_loop holds the singleton
+  Serves "clients", which are objects with fileno() and _do_rx() methods.
+  You add clients with add() and remove them with remove().
+  This class runs a Task which selects on the clients.  When one becomes
+  readable, its _do_rx() is called.
+
+  It is intended to be run as a singleton.  A single instance is available
+  as ReadLoop.singleton.
   """
   IO_TIMEOUT = 2
 
   def __init__ (self):
-    self._taps = []
+    self._clients = []
     self._started = False
-    self._tap_task = None
+    self._task = None
     core.add_listener(self._handle_GoingDownEvent, weak=True)
     self.running = True
+
+  class _singleton_property (object):
+    def __get__ (self, instance, owner):
+      if owner._singleton is None:
+        owner._singleton = owner()
+      return owner._singleton
+  _singleton = None
+  singleton = _singleton_property()
 
   def _handle_GoingDownEvent (self, event):
     self.running = False
 
-  def add (self, tap):
-    self._taps.append(tap)
+  def add (self, client):
+    #TODO: Should these be weak refs?
+    self._clients.append(client)
     self._start()
 
-  def remove (self, tap):
-    self._taps.remove(tap)
+  def remove (self, client):
+    self._clients.remove(client)
 
   def _start (self):
     if not self._started:
-      self._tap_task = Task(target=self._tap_task_proc)
-      self._tap_task.start()
+      self._task = Task(target=self._task_proc)
+      self._task.start()
       self._started = True
 
-  def _tap_task_proc (self):
-    #log.info("TAP task starting")
+  def _task_proc (self):
+    #log.info("%s task starting", type(self).__name__)
     while core.running and self.running:
-      rr,ww,xx = yield Select(self._taps, [], [], self.IO_TIMEOUT)
-      for tap in rr:
-        tap._do_rx()
-    #log.info("TAP task quit")
+      rr,ww,xx = yield Select(self._clients, [], [], self.IO_TIMEOUT)
+      for client in rr:
+        client._do_rx()
+    #log.info("%s task quit", type(self).__name__)
 
 
 class TapInterface (Interface, EventMixin):
@@ -614,19 +629,13 @@ class TapInterface (Interface, EventMixin):
   max_read_size = 1600
 
   def __init__ (self, name="", tun=False):
-    self._start_io_loop()
     self.tap = None
+    self.io_loop = ReadLoop.singleton
     Interface.__init__(self, name)
     EventMixin.__init__(self)
     self.tap = TunTap(name, raw=False, tun=tun)
     if not name: self._name = self.tap.name
     self.io_loop.add(self)
-
-  @classmethod
-  def _start_io_loop (self):
-    if TapInterface.io_loop: return
-    TapInterface.io_loop = TapIO()
-    return TapInterface.io_loop
 
   @property
   def is_tap (self):
