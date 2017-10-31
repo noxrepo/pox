@@ -407,6 +407,23 @@ class Interface (object):
 
     If dev is unspecified, it defaults to this device
     """
+    return self._add_del_route(network, gateway, dev, metric, SIOCADDRT)
+
+  def del_route (self, network, gateway=None, dev=(), metric=0):
+    """
+    Remove a routing table entry
+
+    If dev is unspecified, it defaults to this device
+    """
+    return self._add_del_route(network, gateway, dev, metric, SIOCDELRT)
+
+  def _add_del_route (self, network, gateway=None, dev=(), metric=0,
+                      command=None):
+    """
+    Add or remove a routing table entry
+
+    If dev is unspecified, it defaults to this device
+    """
     r = rtentry()
     if isinstance(network, tuple):
       addr,mask = network
@@ -432,7 +449,7 @@ class Interface (object):
     if host: r.rt_flags |= r.RTF_HOST
     r.rt_flags |= r.RTF_UP
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    rv = ioctl(sock, SIOCADDRT, r.pack())
+    rv = ioctl(sock, command, r.pack())
 
 
 
