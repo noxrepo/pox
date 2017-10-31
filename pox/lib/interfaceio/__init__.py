@@ -598,13 +598,17 @@ class TapInterface (Interface, EventMixin):
 
   io_loop = None
   max_read_size = 1600
+  default_send_protocol = None
 
-  def __init__ (self, name="", tun=False):
+  def __init__ (self, name="", tun=False, raw=False, protocol=None):
     self.tap = None
+    self.last_flags = None
+    self.last_protocol = None
+    if protocol: self.default_send_protocol = protocol
     self.io_loop = ReadLoop.singleton
     Interface.__init__(self, name)
     EventMixin.__init__(self)
-    self.tap = TunTap(name, raw=False, tun=tun)
+    self.tap = TunTap(name, raw=raw, tun=tun)
     if not name: self._name = self.tap.name
     self.io_loop.add(self)
 
@@ -616,8 +620,11 @@ class TapInterface (Interface, EventMixin):
   def is_tun (self):
     return self.tap.is_tun
 
-  def send (self, data, flags=0, protocol=0):
+  def send (self, data, flags=0, protocol=None):
     if not self.tap.is_raw:
+      if protocol is None: protocol = self.default_send_protocol or 0
+      #FIXME: In the "0" case above, should we fall back to using the Etherype
+      #       in the packet?
       if flags or protocol:
         flags = struct.pack("!HH", flags, protocol) # Flags reversed?
       else:
@@ -627,9 +634,12 @@ class TapInterface (Interface, EventMixin):
 
   def _do_rx (self):
     data = self.tap.read(self.max_read_size)
-    flags,proto = struct.unpack("!HH", data[:4])
-    #FIXME: This may invert the flags...
-    data = data[4:] # Cut off header
+    if not self.tap.is_raw:
+      flags,proto = struct.unpack("!HH", data[:4])
+      #FIXME: This may invert the flags...
+      self.last_flags = flags
+      self.last_protocol = proto
+      data = data[4:] # Cut off header
     self.raiseEvent(RXData, self, data)
 
   def fileno (self):
