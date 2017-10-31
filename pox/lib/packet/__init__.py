@@ -41,7 +41,11 @@ import vlan as VLAN
 import mpls as MPLS
 import llc as LLC
 import rip as RIP
+import gre as GRE
+import vxlan as VXLAN
 
+from gre import *
+from vxlan import *
 from rip import *
 from arp import *
 from dhcp import *
