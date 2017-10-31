@@ -41,6 +41,7 @@ IFREQ_SIZE = 40
 
 # from linux/if_tun.h
 TUNSETIFF = 0x400454ca
+TUNGETIFF = 0x800454d2
 IFF_TUN = 0x0001
 IFF_TAP = 0x0002
 IFF_NO_PI = 0x1000
@@ -497,6 +498,14 @@ class TunTap (object):
 
     ret = ioctl(self.fileno(), TUNSETIFF, ifr)
     self.name = ret[:IFNAMESIZ]
+    iflags = flags
+    ifr = struct.pack(str(IFNAMESIZ) + "sH", name, 0)
+    ifr += "\0" * (IFREQ_SIZE - len(ifr))
+    ret = ioctl(self.fileno(), TUNGETIFF, ifr)
+    flags = struct.unpack("H", ret[IFNAMESIZ:IFNAMESIZ+2])[0]
+    self.is_tun = (flags & IFF_TUN) == IFF_TUN
+    self.is_tap = not self.is_tun
+    #self.is_raw = (flags & IFF_NO_PI) == IFF_NO_PI
 
   def fileno (self):
     return self._f
