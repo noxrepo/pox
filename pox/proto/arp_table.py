@@ -116,9 +116,12 @@ class ARPTable (object):
       send_function(eth_packet.pack())
       return
     if ipp.dstip == pkt.IPV4.IP_BROADCAST:
-      # Would be nice to do this for any multicast...
       #ipp.dstip = router_ip # Not sure what this was about
       eth_packet.dst = pkt.ETHERNET.ETHER_BROADCAST
+      send_function(eth_packet.pack())
+      return
+    if ipp.dstip.is_multicast:
+      eth_packet.dst = ipp.dstip.multicast_ethernet_address
       send_function(eth_packet.pack())
       return
 
