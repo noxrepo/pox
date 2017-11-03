@@ -92,6 +92,7 @@ ARP_REPLY_COOKIE = 2
 ARP_REQUEST_COOKIE = 3
 ARP_TABLE_COOKIE = 4
 RIP_PACKET_COOKIE = 5
+DHCP_COOKIE = 6
 
 
 # Table numbers
@@ -335,6 +336,31 @@ class OVSRIPRouter (RIPRouter):
       fm.match.dl_dst = self._conn.ports[portno].hw_addr
       for ip in self.all_ips:
         fm.match.nw_dst = ip
+        self._conn.send(fm)
+
+    if core.hasComponent("DHCPD"):
+      # INGRESS_TABLE: Send DHCP to controller
+      fm = ovs.ofp_flow_mod_table_id()
+      fm.table_id = INGRESS_TABLE
+      fm.cookie = DHCP_COOKIE
+      fm.match.dl_type = pkt.ethernet.IP_TYPE
+      fm.match.nw_proto = pkt.ipv4.UDP_PROTOCOL
+      fm.match.tp_src = pkt.dhcp.CLIENT_PORT
+      fm.match.tp_dst = pkt.dhcp.SERVER_PORT
+      fm.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
+      for portno,dhcpd in core.DHCPD.get_ports_for_dpid(self.dpid):
+        if portno not in self._conn.ports: continue
+        if dhcpd._install_flow:
+          self.log.warn("Turning off DHCP server table entry installation.")
+          self.log.warn("You probably want to configure it with no_flow.")
+          dhcpd._install_flow = False
+        fm.match.in_port = portno
+        fm.match.dl_dst = pkt.ETHERNET.ETHER_BROADCAST
+        fm.match.nw_dst = pkt.IPV4.IP_BROADCAST
+        self._conn.send(fm)
+
+        fm.match.dl_dst = self._conn.ports[portno].hw_addr
+        fm.match.nw_dst = dhcpd.ip_addr
         self._conn.send(fm)
 
     # INGRESS_TABLE: IP packets (lower priority)
