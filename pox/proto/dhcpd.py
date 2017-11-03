@@ -263,16 +263,24 @@ class DHCPD (EventMixin):
 
   def _handle_ConnectionUp (self, event):
     if self._install_flow:
-      msg = of.ofp_flow_mod()
-      msg.match = of.ofp_match()
-      msg.match.dl_type = pkt.ethernet.IP_TYPE
-      msg.match.nw_proto = pkt.ipv4.UDP_PROTOCOL
-      #msg.match.nw_dst = IP_BROADCAST
-      msg.match.tp_src = pkt.dhcp.CLIENT_PORT
-      msg.match.tp_dst = pkt.dhcp.SERVER_PORT
-      msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
-      #msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+      msg = self._get_flow_mod()
       event.connection.send(msg)
+
+  def _get_flow_mod (self, msg_type=of.ofp_flow_mod):
+    """
+    Get flow mods that will send DHCP to the controller
+    """
+    #TODO: We might over-match right now since we don't limit by port
+    msg = msg_type()
+    msg.match = of.ofp_match()
+    msg.match.dl_type = pkt.ethernet.IP_TYPE
+    msg.match.nw_proto = pkt.ipv4.UDP_PROTOCOL
+    #msg.match.nw_dst = IP_BROADCAST
+    msg.match.tp_src = pkt.dhcp.CLIENT_PORT
+    msg.match.tp_dst = pkt.dhcp.SERVER_PORT
+    msg.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
+    #msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+    return msg
 
   def _get_pool (self, event):
     """
