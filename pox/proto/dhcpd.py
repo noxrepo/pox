@@ -221,10 +221,11 @@ class SimpleAddressPool (AddressPool):
 
 class DHCPD (EventMixin):
   _eventMixin_events = set([DHCPLease])
+  _servers = []
 
   def __init__ (self, ip_address = "192.168.0.254", router_address = (),
                 dns_address = (), pool = None, subnet = None,
-                install_flow = True):
+                install_flow = True, dpid = None, ports = None):
 
     def fix_addr (addr, backup):
       if addr is None: return None
@@ -236,6 +237,23 @@ class DHCPD (EventMixin):
     self.ip_addr = IPAddr(ip_address)
     self.router_addr = fix_addr(router_address, ip_address)
     self.dns_addr = fix_addr(dns_address, self.router_addr)
+
+    if dpid is None:
+      self.dpid = None
+    else:
+      try:
+        dpid = long(dpid)
+      except:
+        dpid = util.str_to_dpid(dpid)
+      self.dpid = dpid
+
+    if ports is None:
+      self.ports = None
+    else:
+      self.ports = set(ports)
+    if self.ports:
+      assert self.dpid is not None # Doesn't make sense
+      self._servers.append(self)
 
     if pool is None:
       self.pool = [IPAddr("192.168.0."+str(x)) for x in range(100,199)]
@@ -262,6 +280,7 @@ class DHCPD (EventMixin):
     core.openflow.addListeners(self)
 
   def _handle_ConnectionUp (self, event):
+    if self.dpid is not None and self.dpid != event.dpid: return
     if self._install_flow:
       msg = self._get_flow_mod()
       event.connection.send(msg)
@@ -292,11 +311,21 @@ class DHCPD (EventMixin):
 
   def _handle_PacketIn (self, event):
     # Is it to us?  (Or at least not specifically NOT to us...)
+    if self.dpid is not None and self.dpid != event.dpid: return
+    if self.ports:
+      for p in self.ports:
+        if p == event.port: break
+        if p in event.connection.ports:
+          if event.connection.ports[p].port_no == event.port: break
+      else:
+        return
     ipp = event.parsed.find('ipv4')
     if not ipp or not ipp.parsed:
       return
     if ipp.dstip not in (IP_ANY,IP_BROADCAST,self.ip_addr):
       return
+
+    # Is it full and proper DHCP?
     nwp = ipp.payload
     if not nwp or not nwp.parsed or not isinstance(nwp, pkt.udp):
       return
@@ -493,7 +522,10 @@ def launch (no_flow = False,
             first = 1, last = None, count = None, # Address range
             ip = "192.168.0.254",
             router = (),                   # Auto
-            dns = ()):                     # Auto
+            dns = (),                      # Auto
+            dpid = None,                   # All
+            ports = None,                  # All
+            __INSTANCE__ = None):
   """
   Launch DHCP server
 
@@ -523,11 +555,19 @@ def launch (no_flow = False,
   first,last,count = map(fixint,(first,last,count))
   router,dns = map(fix,(router,dns))
 
+  if ports is not None:
+    ports = ports.split(",")
+    ports = set(int(p) if p.isdigit() else p for p in ports)
+
   pool = SimpleAddressPool(network = network, first = first, last = last,
                            count = count)
 
-  core.registerNew(DHCPD, install_flow = not no_flow, pool = pool,
-                   ip_address = ip, router_address = router,
-                   dns_address = dns)
+  inst = DHCPD(install_flow = not no_flow, pool = pool,
+               ip_address = ip, router_address = router,
+               dns_address = dns, dpid = dpid, ports = ports)
+
+  if __INSTANCE__[0] == 0:
+    # First or only instance
+    core.register(inst)
 
   log.debug("DHCP serving a%s", str(pool)[2:-1])
