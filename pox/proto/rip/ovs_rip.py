@@ -385,7 +385,10 @@ class OVSRIPRouter (RIPRouter):
     self._invalidate()
 
   def _handle_openflow_PacketIn (self, event):
-    cookie = event.ofp.cookie # Must be Nicira packet in!
+    try:
+      cookie = event.ofp.cookie # Must be Nicira packet in!
+    except:
+      return
     if cookie == RIP_PACKET_COOKIE:
       self._do_rip(event)
     elif cookie == PING_COOKIE:
