@@ -279,6 +279,51 @@ class DHCPD (EventMixin):
 
     core.openflow.addListeners(self)
 
+  @classmethod
+  def get_server_for_port (cls, dpid, port):
+    """
+    Given a dpid.port, returns DHCPD instance responsible for it or None
+
+    If there is a server, but the connection to the relevant switch is down,
+    returns None.
+    """
+    for s in cls.servers:
+      if s.dpid != dpid: continue
+      conn = core.openflow.getConnection(s.dpid)
+      if not conn: continue
+      if s.ports is None: return s
+      port_no = conn.ports.get(port)
+      if port_no is None: continue
+      port_no = port_no.port_no
+      for p in s.ports:
+        p = conn.ports.get(p)
+        if p is None: continue
+        if p.port_no == port_no:
+          return s
+    return None
+
+  @classmethod
+  def get_ports_for_dpid (cls, dpid):
+    """
+    Given a dpid, returns all port,server that are configured for it
+
+    If the switch is disconnected, returns None.
+    """
+    r = set()
+    for s in cls._servers:
+      if s.dpid != dpid: continue
+      conn = core.openflow.getConnection(s.dpid)
+      if not conn: continue
+      if s.ports is None:
+        for p in conn.ports:
+          r.add((p.port_no,s))
+      else:
+        for p in s.ports:
+          p = conn.ports.get(p)
+          if p is None: continue
+          r.add((p.port_no,s))
+    return r
+
   def _handle_ConnectionUp (self, event):
     if self.dpid is not None and self.dpid != event.dpid: return
     if self._install_flow:
