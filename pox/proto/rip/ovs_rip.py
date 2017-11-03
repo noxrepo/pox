@@ -646,6 +646,8 @@ class OVSRIPRouter (RIPRouter):
     self._mark_all_clean()
 
   def sync_table (self):
+    if not self._conn: return
+
     self._cur = {RIP_NET_TABLE:{}, RIP_PORT_TABLE:{}}
     cur = self._cur
 
