@@ -474,6 +474,105 @@ class Discovery (EventMixin):
     return True
 
 
+class DiscoveryGraph (object):
+  use_names = True
+  def __init__ (self, auto_export_file=None, use_names=None,
+                auto_export_interval=2.0):
+    self.auto_export_file = auto_export_file
+    self.auto_export_interval = auto_export_interval
+    if use_names is not None: self.use_names = use_names
+    self._export_pending = False
+    import networkx as NX
+    self.g = NX.MultiDiGraph()
+    core.listen_to_dependencies(self)
+
+    self._write_dot = None
+    if hasattr(NX, 'write_dot'):
+      self._write_dot = NX.write_dot
+    else:
+      try:
+        self._write_dot = NX.drawing.nx_pydot.write_dot
+      except ImportError:
+        self._write_dot = NX.drawing.nx_agraph.write_dot
+
+    self._auto_export_interval()
+
+  def _auto_export_interval (self):
+    if self.auto_export_interval:
+      core.call_delayed(self.auto_export_interval,
+                        self._auto_export_interval)
+      self._do_auto_export()
+
+  def _handle_openflow_discovery_LinkEvent (self, event):
+    l = event.link
+    k = (l.end[0],l.end[1])
+    if event.added:
+      self.g.add_edge(l.dpid1, l.dpid2, key=k)
+      self.g.edge[l.dpid1][l.dpid2][k]['dead'] = False
+    elif event.removed:
+      self.g.edge[l.dpid1][l.dpid2][k]['dead'] = True
+      #self.g.remove_edge(l.dpid1, l.dpid2, key=k)
+
+    self._do_auto_export()
+
+  def _handle_openflow_PortStatus (self, event):
+    self._do_auto_export()
+
+  def _do_auto_export (self):
+    if not self.auto_export_file: return
+    if self._export_pending: return
+    self._export_pending = True
+    def do_export ():
+      self._export_pending = False
+      if not self.auto_export_file: return
+      self.export_dot(self.auto_export_file)
+    core.call_delayed(0.25, do_export)
+
+  def label_nodes (self):
+    for n,d in self.g.nodes(data=True):
+      c = core.openflow.connections.get(n)
+      name = dpid_to_str(n)
+      if self.use_names:
+        if c and of.OFPP_LOCAL in c.ports:
+          name = c.ports[of.OFPP_LOCAL].name
+          if name.startswith("ovs"):
+            if "_" in name and name[3:].split("_",1)[0].isdigit():
+              name = name.split("_", 1)[-1]
+      self.g.node[n]['label'] = name
+
+  def export_dot (self, filename):
+    if self._write_dot is None:
+      log.error("Can't export graph.  NetworkX has no dot writing.")
+      log.error("You probably need to install something.")
+      return
+
+    self.label_nodes()
+
+    for u,v,k,d in self.g.edges(data=True, keys=True):
+      (d1,p1),(d2,p2) = k
+      assert d1 == u
+      con1 = core.openflow.connections.get(d1)
+      con2 = core.openflow.connections.get(d2)
+      c = ''
+      if d.get('dead') is True: c += 'gray'
+      elif not con1: c += "gray"
+      elif p1 not in con1.ports: c += "gray" # Shouldn't happen!
+      elif con1.ports[p1].config & of.OFPPC_PORT_DOWN: c += "red"
+      elif con1.ports[p1].config & of.OFPPC_NO_FWD: c += "brown"
+      elif con1.ports[p1].config & of.OFPPC_NO_FLOOD: c += "blue"
+      else: c += "green"
+      d['color'] = c
+      d['taillabel'] = str(p1)
+      d['style'] = 'dashed' if d.get('dead') else 'solid'
+    #log.debug("Exporting discovery graph to %s", filename)
+    self._write_dot(self.g, filename)
+
+
+def graph (export = None, dpids_only = False, interval = "2.0"):
+  core.registerNew(DiscoveryGraph, export, use_names = not dpids_only,
+                   auto_export_interval = float(interval))
+
+
 def launch (no_flow = False, explicit_drop = True, link_timeout = None,
             eat_early_packets = False):
   explicit_drop = str_to_bool(explicit_drop)
