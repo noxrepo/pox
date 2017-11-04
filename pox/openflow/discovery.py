@@ -87,6 +87,10 @@ class LLDPSender (object):
       self.add_port(event.dpid, event.port, event.ofp.desc.hw_addr)
     elif event.deleted:
       self.del_port(event.dpid, event.port)
+    elif event.modified:
+      if event.ofp.desc.config & of.OFPPC_PORT_DOWN == 0:
+        # It's not down, so... try sending a discovery now
+        self.add_port(event.dpid, event.port, event.ofp.desc.hw_addr, False)
 
   def _handle_openflow_ConnectionUp (self, event):
     self.del_switch(event.dpid, set_timer = False)
@@ -117,9 +121,10 @@ class LLDPSender (object):
   def add_port (self, dpid, port_num, port_addr, set_timer = True):
     if port_num > of.OFPP_MAX: return
     self.del_port(dpid, port_num, set_timer = False)
-    self._next_cycle.append(LLDPSender.SendItem(dpid, port_num,
-          self.create_packet_out(dpid, port_num, port_addr)))
+    packet = self.create_packet_out(dpid, port_num, port_addr)
+    self._next_cycle.insert(0, LLDPSender.SendItem(dpid, port_num, packet))
     if set_timer: self._set_timer()
+    core.openflow.sendToDPID(dpid, packet) # Send one immediately
 
   def _set_timer (self):
     if self._timer: self._timer.cancel()
