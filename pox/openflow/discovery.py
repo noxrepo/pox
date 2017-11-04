@@ -485,6 +485,30 @@ class Discovery (EventMixin):
 
 
 class DiscoveryGraph (object):
+  """
+  Keeps (and optionally exports) a NetworkX graph of the topology
+
+  A nice feature of this is that you can have it export the graph to a
+  GraphViz dot file, which you can then look at.  It's a bit easier than
+  setting up Gephi or POXDesk if all you want is something quick.  I
+  then a little bash script to create an image file from the dot.  If
+  you use an image viewer which automatically refreshes when the file
+  changes (e.g., Gnome Image Viewer), you have a low-budget topology
+  graph viewer.  I export the graph by running the POX component:
+
+    openflow.discovery:graph --export=foo.dot
+
+  And here's the script I use to generate the image:
+
+    touch foo.dot foo.dot.prev
+    while true; do
+      if [[ $(cmp foo.dot foo.dot.prev) ]]; then
+        cp foo.dot foo.dot.prev
+        dot -Tpng foo.dot -o foo.png
+      fi
+      sleep 2
+    done
+  """
   use_names = True
   def __init__ (self, auto_export_file=None, use_names=None,
                 auto_export_interval=2.0):
@@ -579,6 +603,14 @@ class DiscoveryGraph (object):
 
 
 def graph (export = None, dpids_only = False, interval = "2.0"):
+  """
+  Keep (and optionally export) a graph of the topology
+
+  If you pass --export=<filename>, it will periodically save a GraphViz
+  dot file containing the graph.  Normally the graph will label switches
+  using their names when possible (based on the name of their "local"
+  interface).  If you pass --dpids_only, it will just use DPIDs instead.
+  """
   core.registerNew(DiscoveryGraph, export, use_names = not dpids_only,
                    auto_export_interval = float(interval))
 
