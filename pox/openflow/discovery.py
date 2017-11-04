@@ -232,6 +232,11 @@ class Link (namedtuple("LinkBase",("dpid1","port1","dpid2","port2"))):
     return Link(pairs[0][0],pairs[0][1],pairs[1][0],pairs[1][1])
 
   @property
+  def flipped (self):
+    pairs = self.end
+    return Link(pairs[1][0],pairs[1][1],pairs[0][0],pairs[0][1])
+
+  @property
   def end (self):
     return ((self[0],self[1]),(self[2],self[3]))
 
