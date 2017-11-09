@@ -549,7 +549,7 @@ class PCapInterface (Interface, EventMixin):
     core.add_listener(self._handle_GoingDownEvent)
 
   def _handle_GoingDownEvent (self, event):
-    self.pcap.close()
+    self.close()
 
   def send (self, data):
     self.pcap.inject(data)
@@ -586,7 +586,7 @@ class PCapInterface (Interface, EventMixin):
     self.close()
 
   def close (self):
-    if pcap:
+    if self.pcap:
       self.pcap.close()
       self.pcap = None
 
