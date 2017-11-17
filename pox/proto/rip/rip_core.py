@@ -168,6 +168,8 @@ class RIPRouter (object):
   SEND_TIMER = 8#30
   TRIGGERED_TIMER = 2
 
+  DEFAULT_MTU = 1400
+
   def __init__ (self):
     if not hasattr(self, "log"):
       self.log = log
@@ -201,7 +203,7 @@ class RIPRouter (object):
     """
     raise NotImplementedError()
 
-  def get_responses (self, dests, force, static_only=False):
+  def get_responses (self, dests, force, static_only=False, mtu=DEFAULT_MTU):
     # 3.10.2
     outgoing = []
     for e in self.table.values():
@@ -221,16 +223,37 @@ class RIPRouter (object):
         re.metric = e.metric
       outgoing.append(re)
 
-    packets = []
-    while outgoing:
-      chunk = outgoing[:25]
-      del outgoing[:25]
+    return self.package_responses(outgoing, mtu=mtu)
 
-      ripp = RIP.rip()
-      ripp.version = 2
-      ripp.command = RIP.RIP_RESPONSE
-      ripp.entries = chunk
-      packets.append(ripp)
+  def package_responses (self, outgoing, mtu):
+    """
+    Split a bunch of RIP entries into RIP packets.
+    """
+    packets = []
+    entries = []
+
+    entry_len = 2+2+4+4+4+4
+    header_len = RIP.rip.MIN_LEN + pkt.ipv4.MIN_LEN + pkt.udp.MIN_LEN
+    # Maybe there will be IP options or something.  Make sure there's some
+    # extra space....
+    header_len += 12
+
+    def add (e=None, force=False):
+      cur = len(entries) * entry_len + header_len
+      if e is not None: cur += entry_len
+      if (force and len(entries) > 0) or (cur >= mtu):
+        ripp = RIP.rip()
+        ripp.version = 2
+        ripp.command = RIP.RIP_RESPONSE
+        ripp.entries.extend(entries)
+        packets.append(ripp)
+        del entries[:]
+      if e is not None: entries.append(e)
+
+    for e in outgoing:
+      add(e)
+
+    add(force=True)
 
     return packets
 
