@@ -365,6 +365,10 @@ class IPAddr (object):
     return (IPAddr(self.unsigned_h & netmask, networkOrder=False),prefix)
 
   @property
+  def is_broadcast (self):
+    return self == IP_BROADCAST
+
+  @property
   def is_multicast (self):
     return ((self.toSigned(networkOrder = False) >> 24) & 0xe0) == 0xe0
 
