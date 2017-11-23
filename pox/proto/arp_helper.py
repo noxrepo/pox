@@ -1,4 +1,4 @@
-# Copyright 2011,2012,2013 James McCauley
+# Copyright 2011,2012,2013,2017 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -136,7 +136,8 @@ class ARPRequest (Event):
     super(ARPRequest,self).__init__()
     self.connection = con
     self.request = arpp # ARP packet
-    self.reply_from = reply_from # MAC
+    self.reply_from = reply_from # MAC or special value from send_arp_request.
+                                 # Don't modify to use ARPHelper default.
     self.eat_packet = eat_packet
     self.port = port
 
@@ -187,8 +188,7 @@ class ARPHelper (EventMixin):
       src_mac = self.default_request_src_mac
     return send_arp_request(connection, ip, port, src_mac, src_ip)
 
-  def send_arp_reply (self, reply_to, mac,
-                      src_mac = _default_mac):
+  def send_arp_reply (self, reply_to, mac, src_mac = _default_mac):
     """
     Send an ARP reply
 
@@ -234,34 +234,14 @@ class ARPHelper (EventMixin):
       log.debug("%s ARP request %s => %s", dpid_to_str(dpid),
                 a.protosrc, a.protodst)
 
-      if self.use_port_mac:
-        src_mac = event.connection.ports[inport].hw_addr
-      else:
-        src_mac = event.connection.eth_addr
+      src_mac = _default_mac
       ev = ARPRequest(event.connection, a, src_mac,
                       self.eat_packets, inport)
       self.raiseEvent(ev)
       if ev.reply is not None:
-        r = arp()
-        r.hwtype = a.hwtype
-        r.prototype = a.prototype
-        r.hwlen = a.hwlen
-        r.protolen = a.protolen
-        r.opcode = arp.REPLY
-        r.hwdst = a.hwsrc
-        r.protodst = a.protosrc
-        r.protosrc = a.protodst
-        r.hwsrc = EthAddr(ev.reply)
-        e = ethernet(type=packet.type, src=ev.reply_from, dst=a.hwsrc)
-        e.payload = r
         log.debug("%s answering ARP for %s" % (dpid_to_str(dpid),
-            str(r.protosrc)))
-        msg = of.ofp_packet_out()
-        msg.data = e.pack()
-        msg.actions.append(of.ofp_action_output(port =
-                                                of.OFPP_IN_PORT))
-        msg.in_port = inport
-        event.connection.send(msg)
+            str(a.protodst)))
+        self.send_arp_reply(event, ev.reply, ev.reply_from)
         return EventHalt if ev.eat_packet else None
 
     elif a.opcode == arp.REPLY:
@@ -275,6 +255,21 @@ class ARPHelper (EventMixin):
     return EventHalt if self.eat_packets else None
 
 
-def launch (no_flow=False, eat_packets=True, use_port_mac = False):
+def launch (no_flow=False, eat_packets=True, use_port_mac=False,
+            reply_from_dst=False):
+  """
+  Start an ARP helper
+
+  If use_port_mac, use the specific port's MAC instead of the "DPID MAC".
+  If reply_from_dst, then replies will appear to come from the MAC address
+  that is used in the reply (otherwise, it comes from the same place as
+  requests).
+  """
+  use_port_mac = str_to_bool(use_port_mac)
+  reply_from_dst = str_to_bool(reply_from_dst)
+
+  request_src = True if use_port_mac else False
+  reply_src = None if reply_from_dst else request_src
+
   core.registerNew(ARPHelper, str_to_bool(no_flow), str_to_bool(eat_packets),
-                   str_to_bool(use_port_mac))
+                   request_src, reply_src)
