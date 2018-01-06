@@ -144,11 +144,18 @@ def dict_to_action (d):
     d['port'] = _fix_of_int(d['port'])
 
   t = d['type'].upper()
-  del d['type']
+
   if not t.startswith("OFPAT_"): t = "OFPAT_" + t
   t = of.ofp_action_type_rev_map[t]
   cls = of._action_type_to_class[t]
-  a = cls(**d)
+  d['type'] = t
+
+  try:
+    a = cls(**d)
+  except TypeError:
+    del d['type']
+    a = cls(**d)
+
   return a
 
 
