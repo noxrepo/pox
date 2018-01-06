@@ -214,6 +214,9 @@ class DefaultOpenFlowHandlers (OpenFlowHandlers):
   @staticmethod
   def handle_VENDOR (con, msg):
     log.info("Vendor msg: " + str(msg))
+    e = con.ofnexus.raiseEventNoErrors(Vendor, con, msg)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(Vendor, con, msg)   
 
   @staticmethod
   def handle_HELLO (con, msg): #S
@@ -726,6 +729,7 @@ class Connection (EventMixin):
     FlowRemoved,
     FeaturesReceived,
     ConfigurationReceived,
+    Vendor,
   ])
 
   # Globally unique identifier for the Connection instance
