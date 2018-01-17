@@ -41,6 +41,15 @@ Example - Make a hub:
 curl -i -X POST -d '{"method":"set_table","params":{"dpid":
  "00-00-00-00-00-01","flows":[{"actions":[{"type":"OFPAT_OUTPUT",
  "port":"OFPP_ALL"}],"match":{}}]}}' http://127.0.0.1:8000/OF/
+
+IMPORTANT NOTE:
+Per the specifiction, JSON-RPC requests without an "id" field are
+*notifications* which do not require and should not receive responses.
+In other words, if you want to get a reply to a request, you must
+include an "id" member in the request.  You can, for example, just
+set it to 1 if you don't have anything better to set it to.  If you
+are using any of the "get" functions (like get_switches), you
+surely want to do this.
 """
 
 import sys
