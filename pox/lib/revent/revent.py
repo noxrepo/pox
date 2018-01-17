@@ -100,6 +100,8 @@ import operator
 # handler set will not keep the source (publisher) alive.
 import weakref
 
+DEFAULT_PRIORITY = 0
+
 
 class ReventError (RuntimeError):
   """
@@ -228,6 +230,10 @@ class EventMixin (object):
       setattr(self, "_eventMixin_events", True)
     if not hasattr(self, "_eventMixin_handlers"):
       setattr(self, "_eventMixin_handlers", {})
+    if not hasattr(self, "_eventMixin_prioritized"):
+      setattr(self, "_eventMixin_prioritized", set())
+    #TODO: Avoid extra hash lookup by putting priority info on
+    #      the list of handlers instead of separate attribute.
 
   def raiseEventNoErrors (self, event, *args, **kw):
     """
@@ -388,7 +394,7 @@ class EventMixin (object):
     return self.addListener(*args,**kw)
 
   def add_listener (self, handler, event_type=None, event_name=None,
-                    once=False, weak=False, priority=None):
+                    once=False, weak=False, priority=DEFAULT_PRIORITY):
     """
     Add an event handler for an event triggered by this object (subscribe).
 
@@ -407,7 +413,7 @@ class EventMixin (object):
                             priority=priority)
 
   def addListener (self, eventType, handler, once=False, weak=False,
-                   priority=None, byName=False):
+                   priority=DEFAULT_PRIORITY, byName=False):
     """
     Add an event handler for an event triggered by this object (subscribe).
 
@@ -464,8 +470,10 @@ class EventMixin (object):
     entry = (priority, handler, once, eid)
 
     handlers.append(entry)
-    if priority is not None:
+    if ( (priority != DEFAULT_PRIORITY) or
+        (eventType in self._eventMixin_prioritized) ):
       # If priority is specified, sort the event handlers
+      self._eventMixin_prioritized.add(eventType)
       handlers.sort(reverse = True, key = operator.itemgetter(0))
 
     return (eventType,eid)
@@ -481,7 +489,8 @@ class EventMixin (object):
     """
     return autoBindEvents(self, source, *args, **kv)
 
-  def addListeners (self, sink, prefix='', weak=False, priority=None):
+  def addListeners (self, sink, prefix='', weak=False,
+                    priority=DEFAULT_PRIORITY):
     """
     Automatically subscribe sink to our events.
 
@@ -499,7 +508,8 @@ class EventMixin (object):
     self._eventMixin_handlers = {}
 
 
-def autoBindEvents (sink, source, prefix='', weak=False, priority=None):
+def autoBindEvents (sink, source, prefix='', weak=False,
+                    priority=DEFAULT_PRIORITY):
   """
   Automatically set up listeners on sink for events raised by source.
 
