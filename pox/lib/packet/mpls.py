@@ -56,7 +56,7 @@ class mpls(packet_base):
 
     def __str__(self):
         s = "[MPLS " + str(self.label)
-        if self.tc: s += " " + str(self.tC)
+        if self.tc: s += " " + str(self.tc)
         if self.s: s += " bos"
         s += " ttl=" + str(self.ttl) + "]"
         return s
