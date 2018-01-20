@@ -56,6 +56,7 @@ import pox.openflow.libopenflow_01 as of
 from pox.lib.packet import ethernet
 import pox.lib.packet as pkt
 import logging
+from pox.lib.util import dpid_to_str, str_to_dpid
 
 log = core.getLogger()
 
@@ -81,6 +82,18 @@ def _do_ctl2 (event):
       raise RuntimeError("Wrong number of arguments")
     return False
 
+  def get_sw (arg, fail=True):
+    r = _switches.get(arg)
+    if r is not None: return r
+    try:
+      dpid = str_to_dpid(arg)
+    except Exception:
+      raise RuntimeError("No such switch as %s" % (arg,))
+    r = core.datapaths.get(dpid)
+    if r is None and fail:
+      raise RuntimeError("No such switch as %s" % (dpid_to_str(dpid),))
+    return r
+
   try:
     if event.first == "add-port":
       ra(1,2)
@@ -89,16 +102,14 @@ def _do_ctl2 (event):
         p = args[0]
       else:
         ra(2)
-        if event.args[0] not in _switches:
-          raise RuntimeError("No such switch")
-        sw = _switches[event.args[0]]
+        sw = get_sw(args[0])
         p = args[1]
       sw.add_interface(p, start=True, on_error=errf)
     elif event.first == "del-port":
       ra(1,2)
       if len(event.args) == 1:
         for sw in _switches.values():
-          for p in sw.ports:
+          for p in sw.ports.values():
             if p.name == event.args[0]:
               sw.remove_interface(event.args[0])
               return
@@ -111,8 +122,136 @@ def _do_ctl2 (event):
       for sw in _switches.values():
         s.append("Switch %s" % (sw.name,))
         for no,p in sw.ports.iteritems():
-          s.append(" %3s %s" % (no, p.name))
+          stats = sw.port_stats[no]
+          s.append(" %3s %-16s rx:%-20s tx:%-20s" % (no, p.name,
+                     "%s (%s)" % (stats.rx_packets,stats.rx_bytes),
+                     "%s (%s)" % (stats.tx_packets,stats.tx_bytes)))
       return "\n".join(s)
+
+    elif event.first == "show-table":
+      ra(0,1)
+      sw = None
+      if len(args) == 1:
+        sw = get_sw(args[0])
+      s = []
+      for switch in _switches.values():
+        if sw is None or switch is sw:
+          s.append("== " + switch.name + " ==")
+          for entry in switch.table.entries:
+            s.append(entry.show())
+      return "\n".join(s)
+
+    elif event.first == "wire-port":
+      # Wire a virtual port to a channel: wire-port [sw] port channel
+      ra(2,3)
+      if len(event.args) == 2 and len(_switches) == 1:
+        sw = _switches[_switches.keys()[0]]
+        p = args[0]
+        c = args[1]
+      else:
+        ra(3)
+        sw = get_sw(args[0])
+        p = args[1]
+        c = args[2]
+      for port in sw.ports.values():
+        if port.name == p:
+          px = sw.px.get(port.port_no)
+          if not isinstance(px, VirtualPort):
+            raise RuntimeError("Port is not a virtual port")
+          px.channel = c
+          return
+      raise RuntimeError("No such interface")
+
+    elif event.first == "unwire-port":
+      # Unhook the virtual port: unwire-port [sw] port
+      ra(1,2)
+      if len(event.args) == 1 and len(_switches) == 1:
+        sw = _switches[_switches.keys()[0]]
+        p = args[0]
+      else:
+        ra(2)
+        sw = get_sw(args[0])
+        p = args[1]
+      for port in sw.ports.values():
+        if port.name == p:
+          px = sw.px.get(port.port_no)
+          if not isinstance(px, VirtualPort):
+            raise RuntimeError("Port is not a virtual port")
+          px.channel = None
+          return
+      raise RuntimeError("No such interface")
+
+    elif event.first == "ping":
+      # ping [sw] dst-mac dst-ip [-I src-ip] [--port src-port]
+      #      [-s byte-count] [-p pad] [-t ttl]
+      from pox.lib.addresses import EthAddr, IPAddr
+      kvs = dict(s=(int,56), p=(str,chr(0x42)), port=(str,""),
+                 I=(IPAddr,IPAddr("1.1.1.1")), t=(int,64))
+      ai = list(event.args)
+      ai.append(None)
+      args[:] = []
+      skip = False
+      for k,v in zip(ai[:-1],ai[1:]):
+        if skip:
+          skip = False
+          continue
+        if not k.startswith("-"):
+          args.append(k)
+          continue
+        k = k.lstrip("-").replace("-","_")
+        if "=" in k:
+          k,v = k.split("=", 1)
+        else:
+          if v is None:
+            raise RuntimeError("Expected argument for '%s'" % (k,))
+          skip = True
+        if k not in kvs:
+          raise RuntimeError("Unknown option '%s'" % (k,))
+        kvs[k] = (kvs[k][0],kvs[k][0](v))
+      kvs = {k:v[1] for k,v in kvs.items()}
+      ra(2,3)
+      pad = (kvs['p'] * kvs['s'])[:kvs['s']]
+      if len(args) == 2 and len(_switches) == 1:
+        sw = _switches[_switches.keys()[0]]
+        mac,ip = args
+      else:
+        ra(3)
+        sw = get_sw(args[0])
+        mac,ip = args[1:]
+      mac = EthAddr(mac)
+      ip = IPAddr(ip)
+      srcport = kvs['port']
+
+      for p in sw.ports.values():
+        if srcport == "" or p.name == srcport:
+          echo = pkt.echo()
+          echo.payload = pad
+
+          icmp = pkt.icmp()
+          icmp.type = pkt.TYPE_ECHO_REQUEST
+          icmp.payload = echo
+
+          # Make the IP packet around it
+          ipp = pkt.ipv4()
+          ipp.protocol = ipp.ICMP_PROTOCOL
+          ipp.srcip = kvs['I']
+          ipp.dstip = ip
+          ipp.ttl = kvs['t']
+          ipp.payload = icmp
+
+          # Ethernet around that...
+          e = pkt.ethernet()
+          e.src = p.hw_addr
+          e.dst = mac
+          e.type = e.IP_TYPE
+          e.payload = ipp
+
+          data = e.pack()
+
+          px = sw.px.get(p.port_no)
+          sw._pcap_rx(px, data, 0, 0, len(data))
+          return
+      raise RuntimeError("No such interface")
 
     else:
       raise RuntimeError("Unknown command")
