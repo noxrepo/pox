@@ -1473,7 +1473,7 @@ class ofp_match (ofp_base):
   def __str__ (self):
     return self.__class__.__name__ + "\n  " + self.show('  ').strip()
 
-  def show (self, prefix=''):
+  def show (self, prefix='', wildcards=False):
     def binstr (n):
       s = ''
       while True:
@@ -1502,9 +1502,10 @@ class ofp_match (ofp_base):
       return "|".join(parts)
 
     outstr = ''
-    outstr += prefix + 'wildcards: '
-    outstr += show_wildcards(self.wildcards)
-    outstr += ' (%s = %x)\n' % (binstr(self.wildcards), self.wildcards)
+    if wildcards:
+      outstr += prefix + 'wildcards: '
+      outstr += show_wildcards(self.wildcards)
+      outstr += ' (%s = %x)\n' % (binstr(self.wildcards), self.wildcards)
     def append (f, formatter=str):
       v = self.__getattr__(f)
       if v is None: return ''
