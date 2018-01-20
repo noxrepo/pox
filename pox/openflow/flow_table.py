@@ -144,8 +144,9 @@ class TableEntry (object):
     outstr += "cookie=%x, " % self.cookie
     outstr += "idle_timeout=%d, " % self.idle_timeout
     outstr += "hard_timeout=%d, " % self.hard_timeout
-    outstr += "match=%s, " % self.match
-    outstr += "actions=%s, " % repr(self.actions)
+    outstr += "match=<%s>, " % ((self.match.show().replace("\n"," ").strip()
+                               if self.match else "Empty"),)
+    outstr += "actions=%s, " % (self.actions,)
     outstr += "buffer_id=%s" % str(self.buffer_id)
     return outstr
 
