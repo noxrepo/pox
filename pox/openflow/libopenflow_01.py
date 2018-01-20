@@ -645,6 +645,20 @@ class ofp_action_base (ofp_base):
     assert (r-offset) == len(o), o
     return (r, o)
 
+  def __repr__ (self):
+    s = []
+    for k,v in vars(self).items():
+      if callable(v): continue
+      if k.startswith("_"): continue
+      if k == "type": continue
+      s.append("%s:%s" % (k,v))
+    s = " ".join(s)
+    if s: s = " " + s
+    n = type(self).__name__
+    if n.startswith("ofp_"): n = n[4:]
+    if n.startswith("action_"): n = n[7:]
+    return "<%s%s>" % (n, s)
+
 
 class ofp_queue_prop_base (ofp_base):
   """
