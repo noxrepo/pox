@@ -177,6 +177,7 @@ class SoftwareSwitchBase (object):
     return "%s.%s"%(dpid_to_str(self.dpid, True).replace('-','')[:12], port_no)
 
   def _gen_ethaddr (self, port_no):
+    # May cause problems if you have large DPIDs...
     return EthAddr("02%06x%04x" % (self.dpid % 0x00FFff, port_no % 0xffFF))
 
   def generate_port (self, port_no, name = None, ethaddr = None):
