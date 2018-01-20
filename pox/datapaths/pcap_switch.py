@@ -106,15 +106,18 @@ def launch (address = '127.0.0.1', port = 6633, max_retry_delay = 16,
     raise RuntimeError("You need PXPCap to use this component")
 
   if ctl_port:
-    if core.hasComponent('ctld'):
-      raise RuntimeError("Only one ctl_port is allowed")
-
     if ctl_port is True:
       ctl_port = DEFAULT_CTL_PORT
 
-    import ctl
-    ctl.server(ctl_port)
-    core.ctld.addListenerByName("CommandEvent", _do_ctl)
+    if core.hasComponent('ctld'):
+      if core.ctld.port != ctl_port:
+        raise RuntimeError("Only one ctl_port is allowed")
+      # We can reuse the exiting one
+    else:
+      # Create one...
+      import ctl
+      ctl.server(ctl_port)
+      core.ctld.addListenerByName("CommandEvent", _do_ctl)
 
   _ports = ports.strip()
   def up (event):
