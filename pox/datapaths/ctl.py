@@ -60,7 +60,7 @@ class ServerWorker (TCPServerWorker, RecocoIOWorker):
 
 class Worker (RecocoIOWorker):
   """
-  Worker to receive POX dpctl commands 
+  Worker to receive POX dpctl commands
   """
   def __init__ (self, *args, **kw):
     super(Worker, self).__init__(*args, **kw)
@@ -89,6 +89,7 @@ class Server (EventMixin):
   _eventMixin_events = set([CommandEvent])
 
   def __init__ (self, port = 7791):
+    self.port = port
     w = ServerWorker(child_worker_type=Worker, port = port)
     self.server_worker = w
     _ioloop.register_worker(w)
