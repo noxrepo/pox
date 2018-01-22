@@ -24,9 +24,10 @@ Config files have a format like:
   !special_directive
 
 Special directives include:
-  !ignore    Ignore this whole module (easier than commenting it out)
-  !append    Append arguments to previous module definition instead of
-             a new instance of this module
+  !ignore       Ignore this whole module (easier than commenting it out)
+  !append       Append arguments to previous module definition instead of
+                a new instance of this module
+  [!include x]  Include another config file named 'x' (See below)
 
 Config file values can have variables set with config.var and referenced
 with, e.g., "${var_name}".  For the above, you might use:
@@ -35,6 +36,7 @@ with, e.g., "${var_name}".  For the above, you might use:
 
 from pox.config.var import variables
 from pox.boot import _do_launch #TODO: Make this public
+import os
 
 
 def _var_sub (v):
@@ -65,7 +67,13 @@ def launch (file, __INSTANCE__=None):
     if line.startswith("#"): continue
     if not line: continue
     if line.startswith("[") and line.rstrip().endswith("]"):
-      section = line.strip()[1:-1]
+      section = line.strip()[1:-1].strip()
+      if section.startswith("!include "):
+        new_file = section.split(" ",1)[1]
+        new_file = os.path.join(os.path.dirname(file), new_file)
+        sections.append(("config", [("file",new_file)]))
+        args = None
+        continue
       args = []
       sections.append((section, args))
     elif args is None:
