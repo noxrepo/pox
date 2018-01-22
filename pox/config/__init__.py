@@ -164,14 +164,12 @@ def launch (file, __INSTANCE__=None):
     import pox.core
     l = pox.core.core.getLogger()
     l.error("On line %s of config file '%s':\n%s" % (lineno,file,e.message))
-    import sys
-    sys.exit(1)
+    os._exit(1)
   except Exception:
     import pox.core
     l = pox.core.core.getLogger()
     l.exception("On line %s of config file '%s'" % (lineno,file))
-    import sys
-    sys.exit(1)
+    os._exit(1)
     #print "Error on line %s of config file '%s'." % (lineno,file)
 
   variables.clear()
@@ -185,4 +183,5 @@ def launch (file, __INSTANCE__=None):
         arg += "=" + argval
       argv.append(arg)
 
-  _do_launch(argv, skip_startup=True)
+  if _do_launch(argv, skip_startup=True) is False:
+    os._exit(1)
