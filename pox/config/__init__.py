@@ -28,6 +28,7 @@ Special directives include:
   !append       Append arguments to previous module definition instead of
                 a new instance of this module
   !set foo=bar  Set variable foo to 'bar'
+  !gset foo=bar Set global variable foo to 'bar'
   [!include x]  Include another config file named 'x' (See below)
 
 Config file values can have variables set with config.var and referenced
@@ -36,6 +37,7 @@ with, e.g., "${var_name}".  For the above, you might use:
 """
 
 from pox.config.var import variables
+from pox.config.gvar import gvariables
 from pox.boot import _do_launch #TODO: Make this public
 import os
 
@@ -51,7 +53,7 @@ def _var_sub (v):
         raise RuntimeError("Unterminated variable substitution")
       var,rest = s.split("}", 1)
       if var == "": val = ""
-      else: val = variables.get(var)
+      else: val = variables.get(var,gvariables.get(var))
       if val is None:
         raise RuntimeError("Variable '%s' is not set" % (var))
       o.append(val)
@@ -90,6 +92,8 @@ def launch (file, __INSTANCE__=None):
       sections.append((section, args))
     elif line.startswith("!set "):
       _handle_var(line, variables)
+    elif line.startswith("!gset "):
+      _handle_var(line, gvariables)
     elif args is None:
       raise RuntimeError("No section specified")
     else:

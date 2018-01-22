@@ -1,4 +1,4 @@
-# Copyright 2017 James McCauley
+# Copyright 2018 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,17 +13,17 @@
 # limitations under the License.
 
 """
-Allows setting of config file variables
+Allows setting of config file global variables
 
 Variables are specified with parameters, e.g., --key=value.
 These can then be used in a config file with ${key}.
 
-These variables apply only to the current/next config file.
-See also: config.gvar
+Global variables apply to all config files.
+See also: config.var
 """
 
-variables = {}
+gvariables = {}
 
 def launch (__INSTANCE__=None, **kw):
   for k,v in kw.items():
-    variables[k] = v
+    gvariables[k] = v
