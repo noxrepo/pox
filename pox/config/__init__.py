@@ -1,4 +1,4 @@
-# Copyright 2017 James McCauley
+# Copyright 2017,2018 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ Special directives include:
   !ignore       Ignore this whole module (easier than commenting it out)
   !append       Append arguments to previous module definition instead of
                 a new instance of this module
+  !set foo=bar  Set variable foo to 'bar'
   [!include x]  Include another config file named 'x' (See below)
 
 Config file values can have variables set with config.var and referenced
@@ -59,6 +60,16 @@ def _var_sub (v):
   return v
 
 
+def _handle_var (line, vs):
+  var = line.split(" ", 1)[1].split("=",1)
+  if len(var) == 1:
+    # Unset
+    vs.pop(var[0].strip(), None)
+  elif len(var) == 2:
+    vs[var[0].strip()] = var[1].strip()
+
+
+
 def launch (file, __INSTANCE__=None):
   file = os.path.expanduser(file)
   sections = []
@@ -77,6 +88,8 @@ def launch (file, __INSTANCE__=None):
         continue
       args = []
       sections.append((section, args))
+    elif line.startswith("!set "):
+      _handle_var(line, variables)
     elif args is None:
       raise RuntimeError("No section specified")
     else:
