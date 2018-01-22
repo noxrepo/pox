@@ -28,8 +28,10 @@ Special directives include:
                 You can also do "!ignore [true|false]".
   !append       Append arguments to previous module definition instead of
                 a new instance of this module
-  !set foo=bar  Set variable foo to 'bar'
+  !set foo=bar  Set variable foo to 'bar' (or just !set for True)
+  !unset foo    Unset variable foo
   !gset foo=bar Set global variable foo to 'bar'
+  !gunset foo   Unset global variable foo
   [!include x]  Include another config file named 'x' (See below)
 
 Config file values can have variables set with config.var and referenced
@@ -74,14 +76,19 @@ def _var_sub (v, allow_bool=False):
   return v
 
 
-def _handle_var (line, vs):
+def _handle_var_set (line, vs):
   var = line.split(" ", 1)[1].split("=",1)
   if len(var) == 1:
-    # Unset
-    vs.pop(var[0].strip(), None)
+    vs[var[0].strip()] = True
   elif len(var) == 2:
     vs[var[0].strip()] = var[1].strip()
 
+
+def _handle_var_unset (line, vs):
+  var = line.split(" ", 1)[1].split("=",1)
+  if len(var) != 1:
+    raise LogError("Syntax error")
+  vs.pop(var[0].strip(), None)
 
 
 def launch (file, __INSTANCE__=None):
@@ -106,9 +113,13 @@ def launch (file, __INSTANCE__=None):
         args = []
         sections.append((section, args))
       elif line.startswith("!set "):
-        _handle_var(line, variables)
+        _handle_var_set(line, variables)
+      elif line.startswith("!unset "):
+        _handle_var_unset(line, variables)
       elif line.startswith("!gset "):
-        _handle_var(line, gvariables)
+        _handle_var_set(line, gvariables)
+      elif line.startswith("!gunset "):
+        _handle_var_unset(line, gvariables)
       elif args is None:
         raise LogError("No section specified")
       else:
