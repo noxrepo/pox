@@ -137,12 +137,13 @@ def launch (file, __INSTANCE__=None):
           if k.startswith("!ignore"):
             # Special directive
             k = k[7:]
-            if not k:
-              del sections[-1]
-            elif k[0] != ' ':
+            if k == '' or k.startswith(' '):
+              if k == '' or str_to_bool(_var_sub(k.strip())):
+                if not sections or sections[-1][0] is None:
+                  raise LogError("Nothing to !ignore")
+                sections[-1] = (None,None)
+            else:
               raise LogError("Syntax error")
-            if str_to_bool(_var_sub(k.strip())):
-              del sections[-1]
             continue
 
           if k == "!append":
@@ -176,12 +177,15 @@ def launch (file, __INSTANCE__=None):
 
   argv = []
   for sname,sargs in sections:
+    if sname is None: continue
     argv.append(sname)
     for argname,argval in sargs:
       arg = "--" + argname
       if argval is not True:
         arg += "=" + argval
       argv.append(arg)
+
+  #print "\n".join("  "+x if x.startswith("-") else x for x in argv)
 
   if _do_launch(argv, skip_startup=True) is False:
     os._exit(1)
