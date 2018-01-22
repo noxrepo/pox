@@ -44,6 +44,11 @@ from pox.lib.util import str_to_bool
 import os
 
 
+class LogError (RuntimeError):
+  pass
+
+
+
 def _var_sub (v, allow_bool=False):
   has_bool = None
   if "${" in v:
@@ -53,12 +58,12 @@ def _var_sub (v, allow_bool=False):
     for s in v:
       #FIXME: No easy way to have literal ${} in string
       if "}" not in s:
-        raise RuntimeError("Unterminated variable substitution")
+        raise LogError("Unterminated variable substitution")
       var,rest = s.split("}", 1)
       if var == "": val = ""
       else: val = variables.get(var,gvariables.get(var))
       if val is None:
-        raise RuntimeError("Variable '%s' is not set" % (var))
+        raise LogError("Variable '%s' is not set" % (var))
       if val is True or val is False:
         val = str(val)
         has_bool = val
@@ -83,62 +88,80 @@ def launch (file, __INSTANCE__=None):
   file = os.path.expanduser(file)
   sections = []
   args = None
-  for line in open(file, "r"):
-    line = line.lstrip().rstrip("\n")
-    if line.startswith("#"): continue
-    if not line: continue
-    if line.startswith("[") and line.rstrip().endswith("]"):
-      section = line.strip()[1:-1].strip()
-      if section.startswith("!include "):
-        new_file = section.split(" ",1)[1]
-        new_file = os.path.join(os.path.dirname(file), new_file)
-        sections.append(("config", [("file",new_file)]))
-        args = None
-        continue
-      args = []
-      sections.append((section, args))
-    elif line.startswith("!set "):
-      _handle_var(line, variables)
-    elif line.startswith("!gset "):
-      _handle_var(line, gvariables)
-    elif args is None:
-      raise RuntimeError("No section specified")
-    else:
-      if "=" in line:
-        k,v = line.split("=", 1)
-        assert k, "Expected argument name"
-        k = _var_sub(k)
-        if v.startswith('"') and v.rstrip().endswith('"'):
-          v = v.rstrip()[1:-1]
-        v = _var_sub(v, allow_bool=True)
+  lineno = 0
+  try:
+    for line in open(file, "r"):
+      lineno += 1
+      line = line.lstrip().rstrip("\n")
+      if line.startswith("#"): continue
+      if not line: continue
+      if line.startswith("[") and line.rstrip().endswith("]"):
+        section = line.strip()[1:-1].strip()
+        if section.startswith("!include "):
+          new_file = section.split(" ",1)[1]
+          new_file = os.path.join(os.path.dirname(file), new_file)
+          sections.append(("config", [("file",new_file)]))
+          args = None
+          continue
+        args = []
+        sections.append((section, args))
+      elif line.startswith("!set "):
+        _handle_var(line, variables)
+      elif line.startswith("!gset "):
+        _handle_var(line, gvariables)
+      elif args is None:
+        raise LogError("No section specified")
       else:
-        k = _var_sub(line.strip())
-        v = True
+        if "=" in line:
+          k,v = line.split("=", 1)
+          assert k, "Expected argument name"
+          k = _var_sub(k)
+          if v.startswith('"') and v.rstrip().endswith('"'):
+            v = v.rstrip()[1:-1]
+          v = _var_sub(v, allow_bool=True)
+        else:
+          k = _var_sub(line.strip())
+          v = True
 
-        if k.startswith("!ignore"):
-          # Special directive
-          k = k[7:]
-          if not k:
-            del sections[-1]
-          elif k[0] != ' ':
-            raise RuntimeError("Syntax error")
-          if str_to_bool(_var_sub(k.strip())):
-            del sections[-1]
-          continue
+          if k.startswith("!ignore"):
+            # Special directive
+            k = k[7:]
+            if not k:
+              del sections[-1]
+            elif k[0] != ' ':
+              raise LogError("Syntax error")
+            if str_to_bool(_var_sub(k.strip())):
+              del sections[-1]
+            continue
 
-        if k == "!append":
-          cur = sections[-1][0]
-          for oldsec,oldargs in sections:
-            if oldsec == cur:
-              oldargs.extend(args)
-              args = oldargs
-              break
-          continue
+          if k == "!append":
+            cur = sections[-1][0]
+            for oldsec,oldargs in sections:
+              if oldsec == cur:
+                oldargs.extend(args)
+                args = oldargs
+                break
+            continue
 
-      if not k: continue
+        if not k: continue
+        if k.startswith("!"):
+          raise LogError("Unknown directive '%s'" % (k,))
 
-      args.append((k,v))
-      #print('%s="%s"' % (k,v))
+        args.append((k,v))
+        #print('%s="%s"' % (k,v))
+  except LogError as e:
+    import pox.core
+    l = pox.core.core.getLogger()
+    l.error("On line %s of config file '%s':\n%s" % (lineno,file,e.message))
+    import sys
+    sys.exit(1)
+  except Exception:
+    import pox.core
+    l = pox.core.core.getLogger()
+    l.exception("On line %s of config file '%s'" % (lineno,file))
+    import sys
+    sys.exit(1)
+    #print "Error on line %s of config file '%s'." % (lineno,file)
 
   variables.clear()
 
