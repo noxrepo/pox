@@ -24,7 +24,8 @@ Config files have a format like:
   !special_directive
 
 Special directives include:
-  !ignore       Ignore this whole module (easier than commenting it out)
+  !ignore       Ignore this whole module (easier than commenting it out).
+                You can also do "!ignore [true|false]".
   !append       Append arguments to previous module definition instead of
                 a new instance of this module
   !set foo=bar  Set variable foo to 'bar'
@@ -39,6 +40,7 @@ with, e.g., "${var_name}".  For the above, you might use:
 from pox.config.var import variables
 from pox.config.gvar import gvariables
 from pox.boot import _do_launch #TODO: Make this public
+from pox.lib.util import str_to_bool
 import os
 
 
@@ -108,9 +110,15 @@ def launch (file, __INSTANCE__=None):
         k = _var_sub(line.strip())
         v = True
 
-        if k == "!ignore":
+        if k.startswith("!ignore"):
           # Special directive
-          del sections[-1]
+          k = k[7:]
+          if not k:
+            del sections[-1]
+          elif k[0] != ' ':
+            raise RuntimeError("Syntax error")
+          if str_to_bool(_var_sub(k.strip())):
+            del sections[-1]
           continue
 
         if k == "!append":
