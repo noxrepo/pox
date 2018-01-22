@@ -44,7 +44,8 @@ from pox.lib.util import str_to_bool
 import os
 
 
-def _var_sub (v):
+def _var_sub (v, allow_bool=False):
+  has_bool = None
   if "${" in v:
     o = []
     v = "${}" + v
@@ -58,9 +59,13 @@ def _var_sub (v):
       else: val = variables.get(var,gvariables.get(var))
       if val is None:
         raise RuntimeError("Variable '%s' is not set" % (var))
+      if val is True or val is False:
+        val = str(val)
+        has_bool = val
       o.append(val)
       o.append(rest)
     v = "".join(o)
+  if allow_bool and has_bool == v: return bool(v)
   return v
 
 
@@ -105,7 +110,7 @@ def launch (file, __INSTANCE__=None):
         k = _var_sub(k)
         if v.startswith('"') and v.rstrip().endswith('"'):
           v = v.rstrip()[1:-1]
-        v = _var_sub(v)
+        v = _var_sub(v, allow_bool=True)
       else:
         k = _var_sub(line.strip())
         v = True
