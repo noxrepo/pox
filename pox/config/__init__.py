@@ -60,6 +60,7 @@ def _var_sub (v):
 
 
 def launch (file, __INSTANCE__=None):
+  file = os.path.expanduser(file)
   sections = []
   args = None
   for line in open(file, "r"):
