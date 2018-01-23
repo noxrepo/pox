@@ -16,6 +16,8 @@
 A parser/evaluator meant for configuration data
 """
 
+#TODO: Rewrite as classes.
+
 import ast
 
 default_symbols = {'True':True, 'False':False, 'None':None}
@@ -23,7 +25,8 @@ default_symbols = {'True':True, 'False':False, 'None':None}
 
 def eval_list (text, result_type=list, dict_type=dict,
                 ignore_commas=True, loose_strings=True,
-                symbols = default_symbols, functions = None):
+                symbols = default_symbols, functions = None,
+                allow_hyphens=False):
   """
   Parses a list of things
 
@@ -48,13 +51,15 @@ def eval_list (text, result_type=list, dict_type=dict,
   """
   return _eval_text(text=text, result_type=result_type, dict_type=dict_type,
                      ignore_commas=ignore_commas, loose_strings=loose_strings,
-                     symbols=symbols, functions=functions)
+                     symbols=symbols, functions=functions,
+                     allow_hyphens=allow_hyphens)
 
 
 
 def eval_dict (text, result_type=None, dict_type=dict,
                 ignore_commas=True, loose_strings=True,
-                symbols = default_symbols, functions = None):
+                symbols = default_symbols, functions = None,
+                allow_hyphens=False):
   """
   Parses a string of key:value pairs into a dictionary
 
@@ -85,13 +90,15 @@ def eval_dict (text, result_type=None, dict_type=dict,
   if result_type is None: result_type = dict_type
   return _eval_text(text=text, result_type=result_type, dict_type=dict_type,
                      ignore_commas=ignore_commas, loose_strings=loose_strings,
-                     symbols=symbols, functions=functions)
+                     symbols=symbols, functions=functions,
+                     allow_hyphens=allow_hyphens)
 
 
 
 def _eval_text (text, result_type=dict, dict_type=dict,
                  ignore_commas=True, loose_strings=True,
-                 symbols = default_symbols, functions = None):
+                 symbols = default_symbols, allow_hyphens=False,
+                 functions = None):
   """
   Implements eval_list and eval_dict
 
@@ -303,7 +310,7 @@ def _eval_text (text, result_type=dict, dict_type=dict,
           need_comma = True
     elif maybe(ALPHA) or maybe("_"):
       s = peek_back()
-      while maybe(ALPHANUM) or maybe("_"):
+      while maybe(ALPHANUM) or maybe("_") or (allow_hyphens and maybe("-")):
         s += peek_back()
       if functions and s in functions and callable(functions[s]):
         f = functions[s]
