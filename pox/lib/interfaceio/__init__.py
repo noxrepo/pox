@@ -552,6 +552,7 @@ class PCapInterface (Interface, EventMixin):
     self.close()
 
   def send (self, data):
+    if self.pcap is None: return
     self.pcap.inject(data)
 
   def _pcap_cb (self, obj, data, sec, usec, length):
