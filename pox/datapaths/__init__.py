@@ -81,7 +81,9 @@ def do_launch (cls, address = '127.0.0.1', port = 6633, max_retry_delay = 16,
   else:
     dpid = str_to_dpid(dpid)
 
-  switch = cls(dpid=dpid, name="sw"+str(dpid), **kw)
+  if "name" not in kw:
+    kw['name'] = "sw"+str(dpid)
+  switch = cls(dpid=dpid, **kw)
   _switches[dpid] = switch
 
   port = int(port)
