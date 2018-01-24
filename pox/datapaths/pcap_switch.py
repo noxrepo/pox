@@ -379,6 +379,8 @@ class VirtualPort (object):
     if isinstance(data, pkt.ethernet):
       if self.hw_addr == data.dst:
         log.info("%s.%s RX: %s", self.switch.name, self.phy.name, data.dump())
+      else:
+        log.debug("%s.%s RX: %s", self.switch.name, self.phy.name, data.dump())
 
   def inject (self, data):
     #TODO: Support STP config?  Or does that go in the switch class?
