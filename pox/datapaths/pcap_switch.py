@@ -181,6 +181,29 @@ def _do_ctl2 (event):
           return
       raise RuntimeError("No such interface")
 
+    elif event.first == "sendraw":
+      # sendraw sw src-port <raw hex bytes>
+      if len(args) < 3: ra(3)
+      sw = get_sw(args[0])
+      p = args[1]
+      data = []
+      for x in args[2:]:
+        x = x.strip()
+        #print "<",x,">"
+        if len(x) < 2:
+          data.append(int(x,16))
+        else:
+          assert len(x) & 1 == 0
+          for y,z in zip(x[::2],x[1::2]):
+            data.append(int(y+z,16))
+      data = "".join(chr(x) for x in data)
+      for port in sw.ports.values():
+        if port.name == p:
+          px = sw.px.get(port.port_no)
+          sw._pcap_rx(px, data, 0, 0, len(data))
+          return
+      raise RuntimeError("No such interface")
+
     elif event.first == "ping":
       # ping [sw] dst-mac dst-ip [-I src-ip] [--port src-port]
       #      [-s byte-count] [-p pad] [-t ttl]
