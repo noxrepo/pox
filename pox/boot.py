@@ -104,9 +104,7 @@ def _do_import (name):
       message = str(sys.exc_info()[1].args[0])
       s = message.rsplit(" ", 1)
 
-      # Sadly, PyPy isn't consistent with CPython here.
-      #TODO: Check on this behavior in pypy 2.0.
-      if s[0] == "No module named" and (name.endswith(s[1]) or __pypy__):
+      if s[0] == "No module named" and (name.endswith(s[1])):
         # It was the one we tried to import itself. (Case 1)
         # If we have other names to try, try them!
         return do_import2(base_name, names_to_try)
