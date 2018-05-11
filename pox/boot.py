@@ -115,6 +115,8 @@ def _do_import (name):
         n = n.replace( os.path.sep, ".")
         if n.startswith("pox.") or n.startswith("ext."):
           n = n[4:]
+        if n.endswith(".py"):
+          n = n[:-3]
         print("Maybe you meant to run '%s'?" % (n,))
         return False
       else:
