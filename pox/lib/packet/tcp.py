@@ -647,6 +647,13 @@ class tcp (packet_base):
     self.next   = raw[self.hdr_len:]
     self.parsed = True
 
+  @property
+  def len (self):
+    return self.tcplen - self.hdr_len
+
+  def __len__ (self):
+    return self.len
+
   def hdr (self, payload, calc_checksum = True, calc_off = True):
     if calc_checksum:
       self.csum = self.checksum(payload=payload)
