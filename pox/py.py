@@ -60,6 +60,7 @@ class Interactive (object):
     core.register("Interactive", self)
     self.enabled = False
     self.completion = False
+    self.history = False
 
     #import pox.license
     import sys
@@ -85,6 +86,26 @@ class Interactive (object):
 
   def interact (self):
     """ Begin user interaction """
+
+    import os
+    if self.history is True:
+      history = ".pox_history"
+    elif history:
+      history = os.path.expanduser(history)
+    if history:
+      history = os.path.abspath(history)
+      import readline, atexit
+      _log = core.getLogger("py")
+      try:
+        readline.read_history_file(history)
+        readline.set_history_length(10000)
+        _log.debug("Read console history")
+      except Exception:
+        pass
+      def save_history ():
+        readline.write_history_file(history)
+        _log.debug("Saved console history")
+      atexit.register(save_history)
 
     if self.completion:
       import readline, rlcompleter
@@ -114,7 +135,8 @@ class Interactive (object):
     core.quit()
 
 
-def launch (disable = False, completion = None, __INSTANCE__ = None):
+def launch (disable = False, completion = None, history = False,
+            __INSTANCE__ = None):
   if not core.hasComponent("Interactive"):
     Interactive()
 
@@ -126,3 +148,5 @@ def launch (disable = False, completion = None, __INSTANCE__ = None):
   core.Interactive.enabled = not disable
   if completion is not None:
     core.Interactive.completion = str_to_bool(completion)
+  if history:
+    core.Interactive.history = history
