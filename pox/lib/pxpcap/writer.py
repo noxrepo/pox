@@ -23,9 +23,10 @@ from struct import pack
 #TODO: Incorporate the one from lib.socketcapture
 
 class PCapRawWriter (object):
-  def __init__ (self, outstream, flush = False):
+  def __init__ (self, outstream, flush = False, ip = False):
     """
     outstream is the stream to write the PCAP trace to.
+    if ip, write IP packets instead of Ethernet
     """
     self._out = outstream
     self._flush = flush
@@ -36,7 +37,7 @@ class PCapRawWriter (object):
       pytime.timezone, # TZ offset
       0,               # Accuracy of timestamps (apparently 0 is OK)
       0x7fffFFff,      # Snaplen
-      1                # Ethernet
+      101 if ip else 1 # IP or Ethernet
       ))
 
   def write (self, buf, time = None, wire_size = None):
