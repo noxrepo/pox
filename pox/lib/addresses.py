@@ -1,4 +1,4 @@
-# Copyright 2011,2012,2013,2014 James McCauley
+# Copyright 2011,2012,2013,2014,2018 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -167,6 +167,10 @@ class EthAddr (object):
   def is_multicast (self):
     return self.isMulticast()
 
+  @property
+  def is_broadcast (self):
+    return self == self.BROADCAST
+
   def toRaw (self):
     return self.raw
 
@@ -236,6 +240,9 @@ class EthAddr (object):
     if hasattr(self, '_value'):
       raise TypeError("This object is immutable")
     object.__setattr__(self, a, v)
+
+
+EthAddr.BROADCAST = EthAddr(b"\xff\xff\xff\xff\xff\xff")
 
 
 
