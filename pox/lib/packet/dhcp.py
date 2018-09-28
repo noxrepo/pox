@@ -310,6 +310,9 @@ class dhcp(packet_base):
 
         if isinstance(self.chaddr, EthAddr):
           chaddr = self.chaddr.toRaw() + (b'\x00' * 10)
+        else:
+          chaddr = self.chaddr
+          if chaddr is None:chaddr = b'\x00' * 16
         fmt = '!BBBBIHHiiii16s64s128s4s'
         return struct.pack(fmt, self.op, self.htype, self.hlen,
                            self.hops, self.xid, self.secs, self.flags,
