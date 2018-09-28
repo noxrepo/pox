@@ -151,7 +151,10 @@ class ipv4(packet_base):
         length = self.iplen
         if length > dlen:
             length = dlen # Clamp to what we've got
-        if self.protocol == ipv4.UDP_PROTOCOL:
+        if self.frag != 0:
+            # We can't parse payloads!
+            self.next =  raw[self.hl*4:length]
+        elif self.protocol == ipv4.UDP_PROTOCOL:
             self.next = udp(raw=raw[self.hl*4:length], prev=self)
         elif self.protocol == ipv4.TCP_PROTOCOL:
             self.next = tcp(raw=raw[self.hl*4:length], prev=self)
