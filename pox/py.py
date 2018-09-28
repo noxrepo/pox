@@ -125,6 +125,8 @@ class Interactive (object):
     #print("Type 'help(pox.license)' for details.")
     time.sleep(1)
 
+    if not core.running: return # A race condition, but probably okay
+
     import code
     import sys
     sys.ps1 = "POX> "
