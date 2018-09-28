@@ -67,6 +67,8 @@ class Interactive (object):
     self.variables = dict(locals())
     self.variables['core'] = core
 
+    self.variables['sync'] = False
+
     class pox_exit (object):
       def __call__ (self, code = 0):
         core.quit()
@@ -83,6 +85,7 @@ class Interactive (object):
 #      t = threading.Thread(target=self.interact)
 #      t.start()
 #    core.addListenerByName("UpEvent", start)
+
 
   def interact (self):
     """ Begin user interaction """
@@ -143,13 +146,30 @@ class Interactive (object):
     sys.ps1 = "POX> "
     sys.ps2 = " ... "
     self.running = True
-    code.interact('Ready.', local=self.variables)
+
+    console = code.InteractiveConsole(self.variables)
+
+    # Patch in the synchronized feature
+    real_runcode = console.runcode
+    def runcode (code):
+      if self.variables['sync'] and core.running:
+        with core.scheduler.synchronized():
+          return real_runcode(code)
+      return real_runcode(code)
+    console.runcode = runcode
+
+    try:
+      import readline
+    except ImportError:
+      pass
+    console.interact('Ready.')
+
     self.running = False
     core.quit()
 
 
 def launch (disable = False, completion = None, history = False,
-            __INSTANCE__ = None):
+            sync = False, __INSTANCE__ = None):
   if not core.hasComponent("Interactive"):
     Interactive()
 
@@ -163,3 +183,4 @@ def launch (disable = False, completion = None, history = False,
     core.Interactive.completion = str_to_bool(completion)
   if history:
     core.Interactive.history = history
+  core.Interactive.variables['sync'] = sync
