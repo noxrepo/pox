@@ -123,7 +123,18 @@ class Interactive (object):
     #      "is free software,")
     #print("and you are welcome to redistribute it under certain conditions.")
     #print("Type 'help(pox.license)' for details.")
-    time.sleep(1)
+
+    # Ridiculously gross code to wait for a while before showing the console
+    is_up = [False]
+    def notify_up ():
+      is_up[0] = True
+    core.call_later(notify_up)
+    while not is_up[0]:
+      time.sleep(0.2)
+    if core._openflow_wanted: # Hacky
+      time.sleep(0.6) # Long enough?
+    else:
+      time.sleep(0.2)
 
     if not core.running: return # A race condition, but probably okay
 
