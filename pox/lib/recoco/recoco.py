@@ -155,6 +155,8 @@ class Scheduler (object):
     self._callLaterTask = None
     self._allDone = False
 
+    self._threadlocal = threading.local()
+
     global defaultScheduler
     if isDefaultScheduler or (isDefaultScheduler is None and
                               defaultScheduler is None):
@@ -195,7 +197,11 @@ class Scheduler (object):
         # Do stuff which assumes co-op tasks aren't running
       # Co-op tasks will resume here
     """
-    return Synchronizer(self)
+    s = getattr(self._threadlocal, "synchronizer", None)
+    if s is None:
+      s = Synchronizer(self)
+      self._threadlocal.synchronizer = s
+    return s
 
   def schedule (self, task, first = False):
     """
