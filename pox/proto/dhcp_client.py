@@ -154,6 +154,7 @@ class DHCPClientBase (EventMixin):
     pkt.DHCP.DHCPSubnetMaskOption,
   ]
 
+  #FIXME: install_flows doesn't belong here?
   def __init__ (self,
                 port_eth = None,
                 auto_accept = False,
@@ -189,8 +190,8 @@ class DHCPClientBase (EventMixin):
     self.offer_xid = None
     self.ack_xid = None
 
-    # Accepted offer
-    self.accepted = None
+    ### Accepted offer
+    ##self.accepted = None
 
     # Requested offer
     self.requested = None
