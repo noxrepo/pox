@@ -734,8 +734,8 @@ def task_function (f):
   if not inspect.isgeneratorfunction(f):
     # Well, let's just make it one...
     real_f = f
-    def gen_f ():
-      yield real_f()
+    def gen_f (*args, **kw):
+      yield real_f(*args, **kw)
     f = gen_f
   def run (*args, **kw):
     return Again(f(*args,**kw))
