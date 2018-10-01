@@ -21,11 +21,13 @@ import threading
 from threading import Thread
 import select
 import traceback
+import sys
 import os
 import socket
 import pox.lib.util
 import random
 from types import GeneratorType
+import inspect
 from pox.lib.epoll_select import EpollSelect
 
 #TODO: Need a way to redirect the prints in here to something else (the log).
@@ -636,6 +638,108 @@ class Send (BlockingOperation):
     self._scheduler = scheduler
     task.rf = self._sendReturnFunc
     scheduler._selectHub.registerSelect(task, None, [self._fd], [self._fd])
+
+
+class AgainTask (Task):
+  def run (self):
+    parent = self.parent
+    g = parent.subtask_func
+    parent.task.rv = None
+
+    try:
+      nxt = g.send(None)
+    except Exception:
+      parent.task.re = sys.exc_info()
+    else:
+      while True:
+        if isinstance(nxt, BlockingOperation):
+          try:
+            v = yield nxt
+          except Exception as e:
+            try:
+              g.throw(*sys.exc_info())
+            except Exception:
+              parent.task.re = sys.exc_info()
+            break
+          try:
+            nxt = g.send(v)
+          except StopIteration:
+            # Iterator just ran out, so...
+            break
+          except Exception:
+            parent.task.re = sys.exc_info()
+            break
+        else:
+          # "yield" used like return
+          parent.task.rv = nxt
+          break
+    #print("reschedule",parent.task)
+    parent.scheduler.fast_schedule(parent.task)
+
+class Again (BlockingOperation):
+  """
+  A syscall that runs a subtask
+
+  Very useful in task_function decorator form (see its documentation)
+  """
+  name = "?"
+
+  def __init__ (self, subtask_func):
+    self.subtask_func = subtask_func
+    self.retval = None
+
+  def execute (self, task, scheduler):
+    fn = getattr(self.subtask_func, "__name__", "?")
+    n = "%s() from %s" % (fn, task)
+    self.name = n
+    self.subtask = AgainTask(name=n)
+    self.subtask.parent = self
+    self.task = task
+    self.scheduler = scheduler
+    self.subtask.start(scheduler=scheduler)
+
+  def __repr__ (self):
+    return "<%s %s>" % (type(self).__name__, self.name)
+
+def task_function (f):
+  """
+  A decorator for Again()
+
+  An issue with tasks is that they can't just call another function which
+  makes its own BlockingOperation syscalls.  With Python 3's yield from,
+  it's easy enough (you just need to make the sub-calls with "yield from"!),
+  but that doesn't work in Python 2.
+
+  The thing to note about such functions which make their own blocking calls
+  is that they are themselves just like a normal top-level task!  Thus, we
+  can "call" them by making a new task which runs the sub-function while
+  the caller task blocks.  When the sub-function returns, the calling task
+  unblocks.  The Again BlockingOperation does exactly this.  Additionally,
+  if the sub-function yields a value (instead of a BlockingOperation), then
+  the sub-function will stop being scheduled and that value will be Again()'s
+  return value.
+
+  The only annoying bit left is that every calling function would need to
+  call all its sub-functions with "yield Again(f(...))".  This decorator
+  just wraps its function in an Again() call for you, so when you write a
+  sub-function, put the decorator on it and it can then just be called
+  simply with "yield f(...)".
+
+  TLDR:
+   * Put this decorator on a function f()
+   * Use "yield" in f() where you would normally use "return"
+   * Have f() make calls to other Recoco blocking ops with yield (as usual)
+   * You can now call f() from a Recoco task using yield f().
+  """
+  if not inspect.isgeneratorfunction(f):
+    # Well, let's just make it one...
+    real_f = f
+    def gen_f ():
+      yield real_f()
+    f = gen_f
+  def run (*args, **kw):
+    return Again(f(*args,**kw))
+  return run
 
 
 #TODO: just merge this in with Scheduler?
