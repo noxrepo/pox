@@ -36,6 +36,9 @@ CYCLE_MAXIMUM = 2
 # moment.
 ABORT = object()
 
+# A ReturnFunction can notify that it has set .re.
+EXCEPTION = object()
+
 defaultScheduler = None
 
 nextTaskID = 0
@@ -67,6 +70,7 @@ class BaseTask  (object):
     assert isinstance(self.gen, GeneratorType), "run() method has no yield"
     self.rv = None
     self.rf = None # ReturnFunc
+    self.re = None # ReturnException
 
   def start (self, scheduler = None, priority = None, fast = False):
     """
@@ -87,8 +91,17 @@ class BaseTask  (object):
       v = self.rf(self)
       self.rf = None
       self.rv = None
+      e = self.re
+      self.re = None
       if v == ABORT:
         return False
+      elif v == EXCEPTION:
+        self.gen.throw(e)
+    elif self.re:
+      e = self.re
+      self.re = None
+      self.gen.throw(*e)
+      v = None
     else:
       v = self.rv
       self.rv = None
