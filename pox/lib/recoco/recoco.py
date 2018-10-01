@@ -315,7 +315,7 @@ class Scheduler (object):
         return True
       except:
         try:
-          print("Task", t, "caused exception and was de-scheduled")
+          print("Task", t, "caused an exception and was de-scheduled")
           traceback.print_exc()
         except:
           pass
@@ -326,8 +326,8 @@ class Scheduler (object):
           if rv.execute(t, self) is True:
             continue
         except:
-          print("Task", t, "caused exception during a blocking operation and " +
-                "was de-scheduled")
+          print("Task", t, "caused an exception during a blocking operation "
+                + "and was de-scheduled")
           traceback.print_exc()
       elif rv is False:
         # Just unschedule/sleep
@@ -379,6 +379,9 @@ class DummyOp (BlockingOperation):
   def execute (self, task, scheduler):
     scheduler.fast_schedule(task)
     task.rv = self.rv
+
+  def __repr__ (self):
+    return "%s(%s)" % (type(self).__name__, self.rv)
 
 
 class CallBlocking (BlockingOperation):
