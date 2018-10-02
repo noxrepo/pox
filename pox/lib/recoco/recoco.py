@@ -98,12 +98,11 @@ class BaseTask  (object):
       if v == ABORT:
         return False
       elif v == EXCEPTION:
-        self.gen.throw(e)
+        return self.gen.throw(e)
     elif self.re:
       e = self.re
       self.re = None
-      self.gen.throw(*e)
-      v = None
+      return self.gen.throw(*e)
     else:
       v = self.rv
       self.rv = None
@@ -641,7 +640,7 @@ class Send (BlockingOperation):
 
 
 class AgainTask (Task):
-  def run (self):
+  def run_again (self):
     parent = self.parent
     g = parent.subtask_func
     parent.task.rv = None
@@ -655,14 +654,12 @@ class AgainTask (Task):
         if isinstance(nxt, BlockingOperation):
           try:
             v = yield nxt
+            do_next = lambda: g.send(v)
           except Exception as e:
-            try:
-              g.throw(*sys.exc_info())
-            except Exception:
-              parent.task.re = sys.exc_info()
-            break
+            exc_info = sys.exc_info()
+            do_next = lambda: g.throw(*exc_info)
           try:
-            nxt = g.send(v)
+            nxt = do_next()
           except StopIteration:
             # Iterator just ran out, so...
             break
@@ -675,6 +672,7 @@ class AgainTask (Task):
           break
     #print("reschedule",parent.task)
     parent.scheduler.fast_schedule(parent.task)
+  run = run_again
 
 class Again (BlockingOperation):
   """
