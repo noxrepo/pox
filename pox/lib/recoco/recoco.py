@@ -673,7 +673,9 @@ class AgainTask (Task):
           parent.task.rv = nxt
           break
     #print("reschedule",parent.task)
-    parent.scheduler.fast_schedule(parent.task)
+    # Schedule the parent to run next, which maintains the illusion of a
+    # function return without the parent have given up its time.
+    parent.scheduler.fast_schedule(parent.task, first=True)
   run = run_again
 
 class Again (BlockingOperation):
@@ -697,7 +699,16 @@ class Again (BlockingOperation):
     self.subtask.priority = task.priority
     self.task = task
     self.scheduler = scheduler
-    self.subtask.start(scheduler=scheduler)
+
+    # Instead of using self.subtask.start(scheduler=scheduler), we schedule
+    # the subtask by hand using fast_schedule().  This is safe because 1) we
+    # can't be racing with the scheduler (we're running under it!), and
+    # 2) subtask can't already be scheduled, since it's brand new.  The
+    # reason we want to do fast_schedule() is so that we can use first to
+    # make it so that the subtask runs next -- this maintains the illusion
+    # of a function call which doesn't yield its time.
+    scheduler.fast_schedule(self.subtask, first=True)
+    #self.subtask.start(scheduler=scheduler)
 
   def __repr__ (self):
     return "<%s %s>" % (type(self).__name__, self.name)
