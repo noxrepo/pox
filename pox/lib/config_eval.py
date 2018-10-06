@@ -411,6 +411,18 @@ def _eval_text (text, result_type=dict, dict_type=dict,
 
 
 
+def eval_one (text, *args, **kw):
+  """
+  Parses a single item
+  """
+  # This implementation is a hack until the main function is refactored
+  r = eval_list(text, *args, **kw)
+  if len(r) != 1:
+    raise ValueError("Expected exactly one item, but got %s", r)
+  return r[0]
+
+
+
 if __name__ == "__main__":
   functions = dict(add=lambda a,b: a+b, num=lambda:42)
   import sys
