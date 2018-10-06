@@ -937,6 +937,9 @@ class ScheduleTask (BaseTask):
     self._scheduler = scheduler
     self._task = task
 
+  def __repr__ (self):
+    return "<%s %s>" % (type(self).__name__, self._task)
+
   def run (self):
     #TODO: Refactor the following, since it is copy/pasted from schedule().
     if self._task in self._scheduler._ready:
