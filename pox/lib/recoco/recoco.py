@@ -694,6 +694,7 @@ class Again (BlockingOperation):
     self.name = n
     self.subtask = AgainTask(name=n)
     self.subtask.parent = self
+    self.subtask.priority = task.priority
     self.task = task
     self.scheduler = scheduler
     self.subtask.start(scheduler=scheduler)
