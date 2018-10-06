@@ -169,6 +169,8 @@ class Scheduler (object):
     self._callLaterTask = None
     self._allDone = False
 
+    self._random = random.random
+
     self._threadlocal = threading.local()
 
     global defaultScheduler
@@ -302,7 +304,7 @@ class Scheduler (object):
         t = self._ready.popleft()
         if t.priority >= 1: break
         if len(self._ready) == 0: break
-        if t.priority >= random.random(): break
+        if t.priority >= self._random(): break
         self._ready.append(t)
     except IndexError:
       return False
