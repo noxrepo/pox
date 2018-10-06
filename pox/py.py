@@ -91,7 +91,8 @@ class Interactive (object):
     """ Begin user interaction """
 
     import os
-    if self.history is True:
+    history = self.history
+    if history is True:
       history = ".pox_history"
     elif history:
       history = os.path.expanduser(history)
