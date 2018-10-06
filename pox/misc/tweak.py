@@ -30,7 +30,7 @@ from pox.core import core
 log = core.getLogger()
 
 
-def launch (key, value=None):
+def launch (key, value=None, __INSTANCE__=None):
   if "=" in key:
     if value is not None:
       raise RuntimeError("Value specified twice")
