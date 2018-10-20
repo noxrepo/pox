@@ -35,7 +35,9 @@ from pox.lib.epoll_select import EpollSelect
 CYCLE_MAXIMUM = 2
 
 # A ReturnFunction can return this to skip a scheduled slice at the last
-# moment.
+# moment.  Whatever the task's current .rf is set to whill be executed
+# on the next slice (so by default, this means the same ReturnFunction will
+# be executed again).
 ABORT = object()
 
 # A ReturnFunction can notify that it has set .re.
@@ -91,13 +93,12 @@ class BaseTask  (object):
   def execute (self):
     if self.rf is not None:
       v = self.rf(self)
+      if v is ABORT: return False
       self.rf = None
       self.rv = None
       e = self.re
       self.re = None
-      if v == ABORT:
-        return False
-      elif v == EXCEPTION:
+      if v == EXCEPTION:
         return self.gen.throw(e)
     elif self.re:
       e = self.re
@@ -605,31 +606,45 @@ class RecvFrom (Recv):
       return None #
 
 class Send (BlockingOperation):
-  def __init__ (self, fd, data):
+  def __init__ (self, fd, data, timeout = None, block_size=1024*8):
+    # timeout is the amount of time between progress being made, not a total
+    # (it's possible this should change)
     self._fd = fd
     self._data = data
     self._sent = 0
     self._scheduler = None
+    self._timeout = timeout
+    self._block_size = block_size
 
   def _sendReturnFunc (self, task):
     # Select() will have placed file descriptors in rv
-    sock = task.rv[1]
-    if len(task.rv[2]) != 0:
+    if len(task.rv[2]) != 0 or len(task.rv[1]) == 0:
       # Socket error
       task.rv = None
       return self._sent
-    task.rv = None
+    sock = task.rv[1][0]
+
+    bs = self._block_size
+    data = self._data
+    if len(data) > bs: data = data[:bs]
     try:
-      if len(self._data) > 1024:
-        data = self._data[:1024]
-        self._data = self._data[1024:]
-      l = sock.send(data, flags = socket.MSG_DONTWAIT)
-      self._sent += l
-      if l == len(data) and len(self._data) == 0:
-        return self._sent
-      self._data = data[l:] + self._data
-    except:
-      pass
+      l = sock.send(data, socket.MSG_DONTWAIT)
+    except socket.error:
+      # Just try again?
+      l = 0
+
+    if l == 0:
+      # Select and try again later
+      scheduler._selectHub.registerSelect(task, None, [self._fd], [self._fd],
+                                          timeout=self._timeout)
+      return ABORT
+
+    self._sent += l
+    self._data = self._data[l:]
+    if not self._data:
+      # Done!
+      self.rv = None
+      return self._sent
 
     # Still have data to send...
     self.execute(task, self._scheduler)
@@ -638,7 +653,8 @@ class Send (BlockingOperation):
   def execute (self, task, scheduler):
     self._scheduler = scheduler
     task.rf = self._sendReturnFunc
-    scheduler._selectHub.registerSelect(task, None, [self._fd], [self._fd])
+    scheduler._selectHub.registerSelect(task, None, [self._fd], [self._fd],
+                                        timeout=self._timeout)
 
 
 class AgainTask (Task):
