@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from pox.core import core
 from pox.lib.util import str_to_bool
+from pox.lib.revent import EventMixin, Event
 import time
 
 def _monkeypatch_console ():
@@ -50,12 +51,26 @@ def _monkeypatch_console ():
     pass
 
 
-class Interactive (object):
+
+class SourceEntered (Event):
+  """
+  Event raised for each "line" of console input
+
+  If .source is set to None, the code won't be run.
+  """
+  def __init__ (self, source):
+    self.source = source
+
+
+
+class Interactive (EventMixin):
   """
   This is how other applications can interact with the interpreter.
 
   At the moment, it's really limited.
   """
+  _eventMixin_events = set([SourceEntered])
+
   def __init__ (self):
     core.register("Interactive", self)
     self.enabled = False
@@ -158,6 +173,16 @@ class Interactive (object):
           return real_runcode(code)
       return real_runcode(code)
     console.runcode = runcode
+
+    # Patch in the event hook; why don't we just subclass InteractiveConsole?!
+    real_runsource = console.runsource
+    def runsource(source, *args, **kw):
+      e = SourceEntered(source)
+      self.raiseEvent(e)
+      source = e.source
+      if source is None: return
+      return real_runsource(source, *args, **kw)
+    console.runsource = runsource
 
     try:
       import readline
