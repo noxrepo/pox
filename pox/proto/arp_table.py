@@ -74,6 +74,15 @@ class ARPTable (object):
     self.pending = [] # Packets waiting to be sent (ip,(send_args))
     self.timer = Timer(self.MAX_PENDING_TIME, self._timer_proc)
 
+  def __str__ (self):
+    sending = set(x for x,y in self.pending)
+    r = []
+    for ip,e in sorted(self.by_ip.items()):
+      m = "%-15s %16s" % (ip, e.mac)
+      if ip in sending: m += " p"
+      r.append(m)
+    return "\n".join(r)
+
   def add_entry (self, ip, mac=None):
     """
     Add an entry
