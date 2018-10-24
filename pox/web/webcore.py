@@ -459,6 +459,96 @@ class SplitThreadedServer(ThreadingMixIn, HTTPServer):
                      {'root':local_path}, True);
 
 
+class InternalContentHandler (SplitRequestHandler):
+  """
+  Serves data from inside the application, without backing files
+
+  When it receives a GET or a HEAD, it translates the path from something
+  like "/foo/bar.txt" to "foo__bar_txt".  It then tries several things:
+  1) Looking up an attribute on the handler called "GET_foo__bar_txt".
+  2) Treating self.args as a dictionary and looking for
+     self.args["/foo/bar.txt"].
+  3) Looking on self.args for an attribute called "GET_foo__bar_txt".
+  4) Looking up an attribute on the handler called "GETANY".
+  5) Looking up the key self.args[None].
+  6) Looking up the attribute "GETANY" on self.args.
+
+  Whichever of these it gets, it the result is callable, it calls it,
+  passing the request itself as the argument (so if the thing is a
+  method, it'll essentially just be self twice).
+
+  The attribute or return value is ideally a tuple of (mime-type, bytes),
+  though if you just return the bytes, it'll try to guess between HTML or
+  plain text.  It'll then send that to the client.  Easy!
+
+  When a handler is set up with set_handler(), the third argument becomes
+  self.args on the request.  So that lets you put data into an
+  InternalContentHandler without subclassing.  Or just subclass it.
+
+  For step 2 above, it will also look up the given path plus a slash.  If
+  it finds it, it'll do an HTTP redirect to it.  In this way, you can
+  provide things which look like directories by including the slashed
+  versions in the dictionary.
+  """
+  def do_GET (self):
+    self.do_response(True)
+  def do_HEAD (self):
+    self.do_response(False)
+
+  def do_response (self, is_get):
+    try:
+      path = self.path.lstrip("/").replace("/","__").replace(".","_")
+      r = getattr(self, "GET_" + path, None)
+      if r is None and self.args is not None:
+        try:
+          r = self.args[self.path]
+        except Exception:
+          try:
+            dummy = self.args[self.path + "/"]
+            # Ahh... directory without trailing slash.  Let's redirect.
+            self.send_response(302, "Redirect to directory")
+            self.send_header('Location', self.parent.path + '/')
+            self.end_headers()
+            return
+          except Exception:
+            pass
+        if r is None:
+          r = getattr(self.args, "GET_" + path, None)
+      if r is None:
+        r = getattr(self, "GETANY", None)
+        if r is None and self.args is not None:
+          try:
+            r = self.args[None]
+          except Exception:
+            pass
+          if r is None:
+            r = getattr(self.args, "GETANY", None)
+      if callable(r):
+        r = r(self)
+
+      if r is None:
+        self.send_error(404, "File not found")
+        return
+
+      if len(r) == 2 and not isinstance(r, str):
+        ct,r = r
+      else:
+        if "<html" in r[:255]:
+          ct = "text/html"
+        else:
+          ct = "text/plain"
+    except Exception:
+      self.send_error(500, "Internal server error")
+      return
+
+    self.send_response(200)
+    self.send_header("Content-type", ct)
+    self.send_header("Content-Length", str(len(r)))
+    self.end_headers()
+    if is_get:
+      self.wfile.write(r)
+
+
 def launch (address='', port=8000, static=False):
   httpd = SplitThreadedServer((address, int(port)), SplitterRequestHandler)
   core.register("WebServer", httpd)
