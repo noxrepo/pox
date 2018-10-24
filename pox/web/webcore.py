@@ -79,6 +79,63 @@ def _setAttribs (parent, child):
 
   setattr(child, 'parent', parent)
 
+
+
+import weakref
+
+class ShutdownHelper (object):
+  """
+  Shuts down sockets for reading when POX does down
+
+  Modern browsers may open (or leave open) HTTP connections without sending
+  a request for quite a while.  Python's webserver will open requests for
+  these which will then just block at the readline() in handle_one_request().
+  The downside here is that when POX tries to shut down, those threads are
+  left hanging.  We could change things so that it didn't just blindly call
+  and block on readline.  Or we could make the handler threads daemon threads.
+  But instead, we just keep track of the sockets.  When POX wants to go down,
+  we'll shutdown() the sockets for reading, which will get readline() unstuck
+  and let POX close cleanly.
+  """
+  sockets = None
+  def __init__ (self):
+    core.add_listener(self._handle_GoingDownEvent)
+
+  def _handle_GoingDownEvent (self, event):
+    if self.sockets is None: return
+    cc = dict(self.sockets)
+    self.sockets.clear()
+    #if cc: log.debug("Shutting down %s socket(s)", len(cc))
+    for s,(r,w,c) in cc.iteritems():
+      try:
+        if r and w: flags = socket.SHUT_RDWR
+        elif r: flags = socket.SHUT_RD
+        elif w: slags = socket.SHUT_WR
+        if r or w: s.shutdown(flags)
+      except Exception as e:
+        pass
+      if c:
+        try:
+          s.close()
+        except Exception:
+          pass
+    if cc: log.debug("Shut down %s socket(s)", len(cc))
+
+  def register (self, socket, read=True, write=False, close=False):
+    if self.sockets is None:
+      self.sockets = weakref.WeakKeyDictionary()
+    self.sockets[socket] = (read,write,close)
+
+  def unregister (self, socket):
+    if self.sockets is None: return
+    try:
+      del self.sockets[socket]
+    except Exception as e:
+      pass
+
+_shutdown_helper = ShutdownHelper()
+
+
 import SimpleHTTPServer
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 
@@ -370,6 +427,8 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
         weblog.warn("Broken pipe (unclean client disconnect?)")
       else:
         raise
+    finally:
+      _shutdown_helper.unregister(self.connection)
 
   def log_request (self, code = '-', size = '-'):
     weblog.debug('splitter:"%s" %s %s',
@@ -387,6 +446,7 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
                               BaseHTTPRequestHandler.version_string(self))
 
   def handle_one_request(self):
+    _shutdown_helper.register(self.connection)
     self.raw_requestline = self.rfile.readline()
     if not self.raw_requestline:
         self.close_connection = 1
