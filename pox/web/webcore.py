@@ -110,6 +110,11 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
     """
     pass
 
+  def version_string (self):
+    return "POX/%s(%s) %s" % (".".join(map(str, core.version)),
+                              core.version_name,
+                              BaseHTTPRequestHandler.version_string(self))
+
   def handle_one_request (self):
     raise RuntimeError("Not supported")
 
@@ -359,6 +364,11 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
 
   def log_message (self, fmt, *args):
     weblog.info('splitter:' + fmt % args)
+
+  def version_string (self):
+    return "POX/%s(%s) %s" % (".".join(map(str, core.version)),
+                              core.version_name,
+                              BaseHTTPRequestHandler.version_string(self))
 
   def handle_one_request(self):
     self.raw_requestline = self.rfile.readline()
