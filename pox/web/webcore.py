@@ -101,6 +101,8 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
     self.parent = parent
     self.args = args
     self.prefix = prefix
+    self.connection = parent.connection
+    self.request = parent.request
 
     self._init()
 
