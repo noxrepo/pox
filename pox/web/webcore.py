@@ -73,7 +73,7 @@ except:
 def _setAttribs (parent, child):
   attrs = ['command', 'request_version', 'close_connection',
            'raw_requestline', 'requestline', 'path', 'headers', 'wfile',
-           'rfile', 'server', 'client_address']
+           'rfile', 'server', 'client_address', 'connection', 'request']
   for a in attrs:
     setattr(child, a, getattr(parent, a))
 
@@ -101,8 +101,6 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
     self.parent = parent
     self.args = args
     self.prefix = prefix
-    self.connection = parent.connection
-    self.request = parent.request
 
     self._init()
 
