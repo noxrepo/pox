@@ -113,6 +113,20 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
     """
     pass
 
+  @classmethod
+  def format_info (cls, args):
+    """
+    Get an info string about this handler
+
+    This is displayed, for example, in the "Web Prefixes" list of the default
+    POX web server page.
+    """
+    def shorten (s, length=100):
+      s = str(s)
+      if len(s) > length: s = s[:length] + "..."
+      return s
+    return shorten(str(args))
+
   def version_string (self):
     return "POX/%s(%s) %s" % (".".join(map(str, core.version)),
                               core.version_name,
@@ -188,7 +202,7 @@ class CoreHandler (SplitRequestHandler):
       r += "<li>%s - %s</li>\n" % (cgi.escape(str(k)), cgi.escape(str(v)))
     r += "</ul>\n\n<h2>Web Prefixes</h2>"
     r += "<ul>"
-    m = [map(cgi.escape, map(str, [x[0],x[1],x[3]]))
+    m = [map(cgi.escape, map(str, [x[0],x[1],x[1].format_info(x[3])]))
          for x in self.args.matches]
     m.sort()
     for v in m:
