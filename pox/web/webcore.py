@@ -204,11 +204,6 @@ class CoreHandler (SplitRequestHandler):
 
 
 class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
-  # We slightly modify SimpleHTTPRequestHandler to serve from given
-  # directories and inherit from from Python, but
-  # modified to serve from given directories and to inherit from
-  # SplitRequestHandler.
-
   """
   A SplitRequestHandler for serving static content
 
