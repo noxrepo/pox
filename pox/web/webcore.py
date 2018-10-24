@@ -52,6 +52,7 @@ import base64
 from pox.core import core
 
 import os
+import socket
 import posixpath
 import urllib
 import cgi
@@ -353,7 +354,13 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
     #self.args = args
     #self.matches = self.matches.sort(key=lambda e:len(e[0]),reverse=True)
     #BaseHTTPRequestHandler.__init__(self, self.rec, *args[1:], **kw)
-    BaseHTTPRequestHandler.__init__(self, *args, **kw)
+    try:
+      BaseHTTPRequestHandler.__init__(self, *args, **kw)
+    except socket.error as e:
+      if e.errno == errno.EPIPE:
+        weblog.warn("Broken pipe (unclean client disconnect?)")
+      else:
+        raise
 
   def log_request (self, code = '-', size = '-'):
     weblog.debug('splitter:"%s" %s %s',
