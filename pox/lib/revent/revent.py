@@ -203,31 +203,26 @@ class EventMixin (object):
   # _eventMixin_events contains the set of events that the subclassing
   # object will raise.
   # You can't raise events that aren't in this set -- unless you set this
-  # to True in which all events are acceptable.
-  _eventMixin_events = set()
+  # to True in which case all events are acceptable.
+  _eventMixin_events = None
+
+  _eventMixin_initialized = False
 
   def _eventMixin_addEvents (self, events):
     for e in events:
       self._eventMixin_addEvent(e)
   def _eventMixin_addEvent (self, eventType):
     self._eventMixin_init()
-    assert self._eventMixin_events is not True
-    if False:
-      pass
-    #if self._eventMixin_events == True:
-    #  # Do nothing, all events already accepted!
-    #  # print warning?
-    #  return
-    elif self._eventMixin_events == None:
-      self._eventMixin_events = set()
     self._eventMixin_events.add(eventType)
 
   def __init__ (self):
     self._eventMixin_init()
 
   def _eventMixin_init (self):
-    if not hasattr(self, "_eventMixin_events"):
-      setattr(self, "_eventMixin_events", True)
+    if self._eventMixin_initialized: return
+    self._eventMixin_initialized = True
+    if self._eventMixin_events is None:
+      setattr(self, "_eventMixin_events", set())
     if not hasattr(self, "_eventMixin_handlers"):
       setattr(self, "_eventMixin_handlers", {})
     if not hasattr(self, "_eventMixin_prioritized"):
@@ -262,9 +257,9 @@ class EventMixin (object):
     Returns the event object, unless it was never created (because there
     were no listeners) in which case returns None.
     """
-    self._eventMixin_init()
+    if self._eventMixin_initialized is False:
+      self._eventMixin_init()
 
-    classCall = False
     if isinstance(event, Event):
       eventType = event.__class__
       classCall = True
@@ -283,6 +278,9 @@ class EventMixin (object):
       kw = {}
       if event.source is None:
         event.source = self
+    else:
+      classCall = False
+
     #print("raise",event,eventType)
     if (self._eventMixin_events is not True
         and eventType not in self._eventMixin_events):
