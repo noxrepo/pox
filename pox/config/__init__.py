@@ -62,8 +62,11 @@ def _var_sub (v, allow_bool=False):
       if "}" not in s:
         raise LogError("Unterminated variable substitution")
       var,rest = s.split("}", 1)
+      default = None
+      if "|" in var: var,default = var.split("|", 1)
+      var = var.strip()
       if var == "": val = ""
-      else: val = variables.get(var,gvariables.get(var))
+      else: val = variables.get(var,gvariables.get(var, default))
       if val is None:
         raise LogError("Variable '%s' is not set" % (var))
       if val is True or val is False:
