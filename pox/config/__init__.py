@@ -33,6 +33,7 @@ Special directives include:
   !gset foo=bar Set global variable foo to 'bar'
   !gunset foo   Unset global variable foo
   [!include x]  Include another config file named 'x' (See below)
+  !log[=lvl] .. Log the rest of the line at the given level (or INFO)
 
 Config file values can have variables set with config.var and referenced
 with, e.g., "${var_name}".  For the above, you might use:
@@ -123,6 +124,20 @@ def launch (file, __INSTANCE__=None):
         _handle_var_set(line, gvariables)
       elif line.startswith("!gunset "):
         _handle_var_unset(line, gvariables)
+      elif line.startswith("!log"):
+        # Is there a reason why we don't just have pox.core imported?
+        import logging
+        import pox.core
+        # This is dumb and ugly
+        level = "INFO"
+        if line.startswith("!log="):
+          level = line.split("=",1)[-1].split(None,1)[0]
+        try:
+          level = logging._levelNames.get(level)
+        except Exception:
+          level = 50 # Default to intense!
+        l = pox.core.core.getLogger()
+        l.log(level, _var_sub(line.split(None,1)[-1].strip()))
       elif args is None:
         raise LogError("No section specified")
       else:
