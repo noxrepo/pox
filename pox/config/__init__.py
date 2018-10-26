@@ -35,6 +35,9 @@ Special directives include:
   [!include x]  Include another config file named 'x' (See below)
   !log[=lvl] .. Log the rest of the line at the given level (or INFO)
 
+You can also do things conditionally depending on whether a variable is
+set or not using !ifdef/!elifdef/!ifndef/!elifndef/!else/!endif.
+
 Config file values can have variables set with config.var and referenced
 with, e.g., "${var_name}".  For the above, you might use:
   config.var --name=Jane
@@ -95,17 +98,87 @@ def _handle_var_unset (line, vs):
   vs.pop(var[0].strip(), None)
 
 
+
+class IfStack (object):
+  def __init__ (self):
+    self.stack = [1] # 0 = Unmatched, 1 = Matches-Current, 2 = Done-Matching
+    # We start off with 1 as if we were always in an "if True"
+
+  def start_if (self):
+    if self.can_execute:
+      self.stack.append(0)
+    else:
+      self.stack.append(2) # Never match
+
+  def set_match (self, matches=True):
+    if len(self.stack) == 1:
+      raise LogError("Additional conditional without 'if' expression")
+    state = self.stack[-1]
+    if state == 2:
+      return
+    elif state == 1:
+      self.stack[-1] += 1
+    elif state == 0:
+      if matches:
+        self.stack[-1] += 1
+
+  @property
+  def can_execute (self):
+    return self.stack[-1] == 1
+
+  def end_if (self, cmd):
+    self.stack.pop()
+    if not self.stack:
+      raise LogError("Unexpected " + cmd)
+
+  def finish (self):
+    assert len(self.stack) > 0
+    if len(self.stack) != 1:
+      raise LogError("Unterminated if statement")
+
+
+
 def launch (file, __INSTANCE__=None):
   file = os.path.expanduser(file)
   sections = []
   args = None
   lineno = 0
+  ifstack = IfStack()
   try:
     for line in open(file, "r"):
       lineno += 1
       line = line.lstrip().rstrip("\n")
       if line.startswith("#"): continue
       if not line: continue
+
+      #TODO: more powerful/general if statements
+      if line.startswith("!ifdef "):
+        ifstack.start_if()
+        var = line.split(None, 1)[-1].strip()
+        ifstack.set_match(var in variables or var in gvariables)
+        continue
+      elif line.startswith("!ifndef "):
+        ifstack.start_if()
+        var = line.split(None, 1)[-1].strip()
+        ifstack.set_match(not (var in variables or var in gvariables))
+        continue
+      elif line.startswith("!elifdef "):
+        var = line.split(None, 1)[-1].strip()
+        ifstack.set_match(var in variables or var in gvariables)
+        continue
+      elif line.startswith("!elifndef "):
+        var = line.split(None, 1)[-1].strip()
+        ifstack.set_match(not (var in variables or var in gvariables))
+        continue
+      elif line == "!else":
+        ifstack.set_match(True)
+        continue
+      elif line == "!endif":
+        ifstack.end_if(line)
+        continue
+      elif not ifstack.can_execute:
+        continue
+
       if line.startswith("[") and line.rstrip().endswith("]"):
         section = line.strip()[1:-1].strip()
         if section.startswith("!include "):
@@ -179,6 +252,7 @@ def launch (file, __INSTANCE__=None):
 
         args.append((k,v))
         #print('%s="%s"' % (k,v))
+    ifstack.finish()
   except LogError as e:
     import pox.core
     l = pox.core.core.getLogger()
