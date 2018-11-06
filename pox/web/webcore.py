@@ -605,7 +605,9 @@ class InternalContentHandler (SplitRequestHandler):
       if len(r) == 2 and not isinstance(r, str):
         ct,r = r
       else:
-        if "<html" in r[:255]:
+        if r.lstrip().startswith('{') and r.rstrip().endswith('}'):
+          ct = "application/json"
+        elif "<html" in r[:255]:
           ct = "text/html"
         else:
           ct = "text/plain"
