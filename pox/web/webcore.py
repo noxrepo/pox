@@ -562,6 +562,8 @@ class InternalContentHandler (SplitRequestHandler):
   provide things which look like directories by including the slashed
   versions in the dictionary.
   """
+  args_content_lookup = True # Set to false to disable lookup on .args
+
   def do_GET (self):
     self.do_response(True)
   def do_HEAD (self):
@@ -571,7 +573,7 @@ class InternalContentHandler (SplitRequestHandler):
     try:
       path = self.path.lstrip("/").replace("/","__").replace(".","_")
       r = getattr(self, "GET_" + path, None)
-      if r is None and self.args is not None:
+      if r is None and self.args is not None and self.args_content_lookup:
         try:
           r = self.args[self.path]
         except Exception:
