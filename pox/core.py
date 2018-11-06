@@ -128,7 +128,8 @@ pox.lib.revent.revent.handleEventException = _revent_exception_hook
 
 class GoingUpEvent (Event):
   """ Fired when system is going up. """
-  pass
+  def get_deferral (self):
+    return self.source._get_go_up_deferral()
 
 class GoingDownEvent (Event):
   """ Fired when system is going down. """
@@ -196,6 +197,8 @@ class POXCore (EventMixin):
     self.running = True
     self.starting_up = True
     self.components = {'core':self}
+
+    self._go_up_deferrals = set()
 
     self._openflow_wanted = False
     self._handle_signals = handle_signals
@@ -379,6 +382,30 @@ class POXCore (EventMixin):
     self.raiseEvent(GoingUpEvent())
 
     self._add_signal_handlers()
+
+    if not self._go_up_deferrals:
+      self._goUp_stage2()
+
+  def _get_go_up_deferral (self):
+    """
+    Get a GoingUp deferral
+
+    By doing this, we are deferring progress starting at the GoingUp stage.
+    The return value should be called to allow progress again.
+    """
+    o = object()
+    self._go_up_deferrals.add(o)
+    def deferral ():
+      if o not in self._go_up_deferrals:
+        raise RuntimeError("This deferral has already been executed")
+      self._go_up_deferrals.remove(o)
+      if not self._go_up_deferrals:
+        log.debug("Continuing to go up")
+        self._goUp_stage2()
+
+    return deferral
+
+  def _goUp_stage2 (self):
 
     self.raiseEvent(UpEvent())
 
