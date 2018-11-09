@@ -22,3 +22,6 @@ pox/lib/pxpcap/pxpcap_c/WpdPack
 pox/lib/pxpcap/pxpcap.so
 pypy/
 *.class
+*.conf
+*.leases
+*.bak
