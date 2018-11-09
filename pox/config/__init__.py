@@ -41,6 +41,14 @@ set or not using !ifdef/!elifdef/!ifndef/!elifndef/!else/!endif.
 Config file values can have variables set with config.var and referenced
 with, e.g., "${var_name}".  For the above, you might use:
   config.var --name=Jane
+or
+  config.gvar --name=Jane
+The difference is that the former is only valid for the next config file
+processed.  The latter stays valid for all subsequent config files.
+
+The following special variables are available:
+ _CONFIG_DIR_    The directory of the config file being processed.
+ _CURRENT_DIR_   The current working directory.
 """
 
 from pox.config.var import variables
@@ -140,6 +148,8 @@ class IfStack (object):
 
 def launch (file, __INSTANCE__=None):
   file = os.path.expanduser(file)
+  variables['_CONFIG_DIR_'] = os.path.dirname(file)
+  variables['_CURRENT_DIR_'] = os.getcwd()
   sections = []
   args = None
   lineno = 0
