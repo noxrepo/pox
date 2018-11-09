@@ -45,10 +45,7 @@ from time import sleep
 import select
 import threading
 
-import random
-import hashlib
-import base64
-import os
+from authentication import BasicAuthMixin
 
 from pox.core import core
 
@@ -415,8 +412,14 @@ class SplitCGIRequestHandler (SplitRequestHandler,
         os.chdir(olddir)
 
 
-class SplitterRequestHandler (BaseHTTPRequestHandler):
+class SplitterRequestHandler (BaseHTTPRequestHandler, BasicAuthMixin):
+  basic_auth_info = {} # username -> password
+  basic_auth_enabled = None
+
   def __init__ (self, *args, **kw):
+    if self.basic_auth_info:
+      self.basic_auth_enabled = True
+
     #self.rec = Recording(args[0])
     #self.args = args
     #self.matches = self.matches.sort(key=lambda e:len(e[0]),reverse=True)
@@ -446,6 +449,15 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
                               core.version_name,
                               BaseHTTPRequestHandler.version_string(self))
 
+  def _check_basic_auth (self, user, password):
+    if self.basic_auth_info.get(user) == password: return True
+    import web.authentication
+    web.authentication.log.warn("Authentication failure")
+    return False
+
+  def _get_auth_realm (self):
+    return "POX"
+
   def handle_one_request(self):
     _shutdown_helper.register(self.connection)
     self.raw_requestline = self.rfile.readline()
@@ -454,6 +466,8 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
         return
     if not self.parse_request(): # An error code has been sent, just exit
         return
+
+    if not self._do_auth(): return
 
     handler = None
 
