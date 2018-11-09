@@ -1,4 +1,4 @@
-# Copyright 2011,2012 James McCauley
+# Copyright 2011,2012,2018 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ import threading
 import random
 import hashlib
 import base64
+import os
 
 from pox.core import core
 
@@ -488,9 +489,29 @@ class SplitterRequestHandler (BaseHTTPRequestHandler):
 class SplitThreadedServer(ThreadingMixIn, HTTPServer):
   matches = [] # Tuples of (Prefix, TrimPrefix, Handler)
 
-#  def __init__ (self, *args, **kw):
-#    BaseHTTPRequestHandler.__init__(self, *args, **kw)
+  def __init__ (self, *args, **kw):
+    self.ssl_server_key = kw.pop("ssl_server_key", None)
+    self.ssl_server_cert = kw.pop("ssl_server_cert", None)
+    self.ssl_client_certs = kw.pop("ssl_client_certs", None)
+    HTTPServer.__init__(self, *args, **kw)
 #    self.matches = self.matches.sort(key=lambda e:len(e[0]),reverse=True)
+
+    self.ssl_enabled = False
+    if self.ssl_server_key or self.ssl_server_cert or self.ssl_client_certs:
+      import ssl
+      # The Python SSL stuff being used this way means that failing to set up
+      # SSL can hang a connection open, which is annoying if you're trying to
+      # shut down POX.  Do something about this later.
+      cert_reqs = ssl.CERT_REQUIRED
+      if self.ssl_client_certs is None:
+        cert_reqs = ssl.CERT_NONE
+      self.socket = ssl.wrap_socket(self.socket, server_side=True,
+          keyfile = self.ssl_server_key, certfile = self.ssl_server_cert,
+          ca_certs = self.ssl_client_certs, cert_reqs = cert_reqs,
+          do_handshake_on_connect = True,
+          ssl_version = ssl.PROTOCOL_TLSv1_2,
+          suppress_ragged_eofs = True)
+      self.ssl_enabled = True
 
   def set_handler (self, prefix, handler, args = None, trim_prefix = True):
     # Not very efficient
@@ -625,8 +646,19 @@ class InternalContentHandler (SplitRequestHandler):
       self.wfile.write(r)
 
 
-def launch (address='', port=8000, static=False):
-  httpd = SplitThreadedServer((address, int(port)), SplitterRequestHandler)
+def launch (address='', port=8000, static=False, ssl_server_key=None,
+            ssl_server_cert=None, ssl_client_certs=None):
+  def expand (f):
+    if isinstance(f, str): return os.path.expanduser(f)
+    return f
+  ssl_server_key = expand(ssl_server_key)
+  ssl_server_cert = expand(ssl_server_cert)
+  ssl_client_certs = expand(ssl_client_certs)
+
+  httpd = SplitThreadedServer((address, int(port)), SplitterRequestHandler,
+                              ssl_server_key=ssl_server_key,
+                              ssl_server_cert=ssl_server_cert,
+                              ssl_client_certs=ssl_client_certs)
   core.register("WebServer", httpd)
   httpd.set_handler("/", CoreHandler, httpd, True)
   #httpd.set_handler("/foo", StaticContentHandler, {'root':'.'}, True)

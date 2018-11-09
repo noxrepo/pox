@@ -18,6 +18,10 @@ This just launches the webcore component.
 Possibly, webcore should just be moved here.
 """
 
-def launch (address='', port=8000, static=False):
+def launch (address='', port=8000, static=False, ssl_server_key=None,
+            ssl_server_cert=None, ssl_client_certs=None):
   import pox.web.webcore as wc
-  wc.launch(address, port, static)
+  wc.launch(address, port, static=static,
+            ssl_server_key=ssl_server_key,
+            ssl_server_cert=ssl_server_cert,
+            ssl_client_certs=ssl_client_certs)
