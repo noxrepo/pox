@@ -688,7 +688,9 @@ def launch (address='', port=8000, static=False, ssl_server_key=None,
 
   def run ():
     try:
-      log.debug("Listening on %s:%i" % httpd.socket.getsockname())
+      msg = "https" if httpd.ssl_enabled else "http"
+      msg += "://%s:%i" % httpd.socket.getsockname()
+      log.info("Listening at " + msg)
       httpd.serve_forever()
     except:
       pass
