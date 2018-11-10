@@ -49,12 +49,14 @@ processed.  The latter stays valid for all subsequent config files.
 The following special variables are available:
  _CONFIG_DIR_    The directory of the config file being processed.
  _CURRENT_DIR_   The current working directory.
+ _POXCORE_DIR_   The directory of pox.core.
 """
 
 from pox.config.var import variables
 from pox.config.gvar import gvariables
 from pox.boot import _do_launch #TODO: Make this public
 from pox.lib.util import str_to_bool
+import pox as pox_base
 import os
 
 
@@ -146,10 +148,18 @@ class IfStack (object):
 
 
 
+def _careful_set (d, k, v):
+  if k in d: return False
+  d[k] = v
+  return True
+
+
+
 def launch (file, __INSTANCE__=None):
   file = os.path.expanduser(file)
   variables['_CONFIG_DIR_'] = os.path.dirname(file)
-  variables['_CURRENT_DIR_'] = os.getcwd()
+  _careful_set(gvariables, '_CURRENT_DIR_', os.getcwd())
+  _careful_set(gvariables, '_POXCORE_DIR_', os.path.dirname(pox_base.__file__))
   sections = []
   args = None
   lineno = 0
