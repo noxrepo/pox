@@ -275,6 +275,8 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
   # If False, don't send a switch desc request when connecting
   request_description = True
 
+  allowed_versions = (0x01,)
+
   def __init__ (self):
     self._features_request_sent = False
     self._barrier = None
@@ -325,6 +327,12 @@ class HandshakeOpenFlowHandlers (OpenFlowHandlers):
       con.description = msg.body
 
   def handle_FEATURES_REPLY (self, con, msg):
+    if msg.version not in self.allowed_versions:
+      # It's likely you won't see this message because the other side will
+      # not have sent a features reply if it doesn't support OF 1.0.
+      con.err("OpenFlow version 0x%02x not supported" % (msg.version,))
+      con.disconnect()
+      return
     connecting = con.connect_time == None
     con.features = msg
     con.original_ports._ports = set(msg.ports)

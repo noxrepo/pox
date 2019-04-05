@@ -4054,10 +4054,9 @@ class ofp_hello (ofp_header):
     packed += ofp_header.pack(self)
     return packed
 
-  #def unpack (self, raw, offset=0):
-  #  offset,length = self._unpack_header(raw, offset)
-  #  assert length == len(self)
-  #  return offset,length
+  def unpack (self, raw, offset=0):
+    newoffset,length = self._unpack_header(raw, offset)
+    return offset+length,length
 
   @staticmethod
   def __len__ ():
