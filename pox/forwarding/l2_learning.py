@@ -165,6 +165,14 @@ class LearningSwitch (object):
         # 6
         log.debug("installing flow for %s.%i -> %s.%i" %
                   (packet.src, event.port, packet.dst, port))
+        
+        ## resend packet #######################
+        msg_resend= of.ofp_packet_out()
+        msg_resend.data=event.ofp
+        action=of.ofp_action_output(port=port)
+        msg.actions.append(action)
+        connection.send(msg_resend)      
+        ###################################
         msg = of.ofp_flow_mod()
         msg.match = of.ofp_match.from_packet(packet, event.port)
         msg.idle_timeout = 10
