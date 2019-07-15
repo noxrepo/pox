@@ -660,6 +660,71 @@ class InternalContentHandler (SplitRequestHandler):
       self.wfile.write(r)
 
 
+class FileUploadHandler (SplitRequestHandler):
+  """
+  A default page to say hi from POX.
+  """
+  def do_GET (self):
+    """Serve a GET request."""
+    self.send_form(True)
+
+  def do_HEAD (self):
+    """Serve a HEAD request."""
+    self.send_form(False)
+
+  def send_form (self, is_get = False, msg = None):
+    r = "<html><head><title>POX</title></head>\n"
+    r += "<body>\n<h1>POX File Upload</h1>\n"
+    if msg:
+      r += msg
+      r += "\n<hr />\n"
+    r += "<form method='POST' enctype='multipart/form-data' action='?'>\n"
+    r += "File to upload: <input type='file' name='upload'>\n"
+    r += "<input type='submit' value='Upload!' /></form>\n"
+    r += "</body></html>\n"
+
+    self.send_response(200)
+    self.send_header("Content-type", "text/html")
+    self.send_header("Content-Length", str(len(r)))
+    self.end_headers()
+    if is_get:
+      self.wfile.write(r)
+
+  def do_POST (self):
+    mime,params = cgi.parse_header(self.headers.getheader('content-type'))
+    if mime != 'multipart/form-data':
+      self.send_error(400, "Expected form data")
+      return
+    #query = cgi.parse_multipart(self.rfile, params)
+    #data = query.get("upload")
+    data = cgi.FieldStorage( fp = self.rfile, headers = self.headers, environ={ 'REQUEST_METHOD':'POST' } )
+    if not data or "upload" not in data:
+      self.send_error(400, "Expected upload data")
+      return
+    uploadfield = data["upload"]
+
+    msg = self.on_upload(uploadfield.filename, uploadfield.file)
+
+    self.send_form(True, msg=msg)
+
+  def on_upload (self, filename, datafile):
+    data = datafile.read()
+    import hashlib
+    h = hashlib.md5()
+    h.update(data)
+    hc = h.hexdigest()
+    msg = "Received file '%s'.  bytes:%s md5:%s" % (filename, len(data), hc)
+    log.warn(msg)
+    return msg
+
+
+def upload_test ():
+  """
+  Launch a file upload test
+  """
+  core.WebServer.set_handler("/upload_test", FileUploadHandler)
+
+
 def launch (address='', port=8000, static=False, ssl_server_key=None,
             ssl_server_cert=None, ssl_client_certs=None):
   def expand (f):
