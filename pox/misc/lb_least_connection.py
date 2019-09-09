@@ -1,4 +1,4 @@
-from pox.misc.ip_load_balancer import *
+from pox.misc.ip_loadbalancer import *
 
 class iplb_least_connection(iplb):
 	def _pick_server(self, key, inport):
