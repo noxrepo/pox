@@ -1,14 +1,36 @@
 from pox.misc.iplb_base import *
 
 class iplb(iplb_base):
+
+	def __init__ (self, server, first_packet, client_port):
+		"""Extend the __init__ function with extra fields"""
+		super(iplb, self).__init__(server, first_packet, client_port)
+
+		# create dictionary to track how much load each server has
+		self.server_load = {k:0 for k in self.live_servers.keys()}
+
+		# create dictionary to track each server's 'weight'
+		self.server_weight = {k:1 for k in self.live_servers.keys()}
+
 	def _pick_server(self, key, inport):
 		"""Applies weighted least connection load balancing algorithm"""
+		log.info('Using Weighted Least Connection load balancing algorithm.')
 
-		# Get each live server's current load, as well as their weights
+		# Get dictionary of minimally loaded servers and their weights
+		minimally_loaded_servers = self.find_minimum_loads()
 
-		# Get minimum load. If there are multiple servers with this load, pick the one with the highest weight among that set
+		# pick the one with ('least' | 'greatest') weight
 
 		raise NotImplementedError
+
+	def find_minimum_loads(self):
+		"""Return dictionary of server keys (and their weights) that all have the minimum load"""
+		key_min = min(self.live_servers.values())
+
+		minimally_loaded_servers = {k:self.server_weight[k] for k in self.server_load 
+									if self.server_load[k] == key_min}
+
+		return minimally_loaded_servers
 
 
 # Remember which DPID we're operating on (first one to connect)

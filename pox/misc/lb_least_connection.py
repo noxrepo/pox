@@ -20,22 +20,24 @@ class iplb(iplb_base):
 		server = self.find_minimum_load()
 
 		# increment that server's load counter
+		# TODO: consider cases where this table may not be accurate
+		#		i.e. race conditions, connections that have been dropped, etc
+		# NOTE: When evaluating these algorithms, create a more realistic env
 		server_load[server] = server_load[server] + 1
 
 		return server
 
-	@staticmethod
-	def find_minimum_load():
+	def find_minimum_load(self):
 		"""Return the key within server_load that has the minimum load"""
 		minval = Integer.MAX_VALUE
-		result = 0
+		result = -1
 
 		for k,v in self.server_load.items():
 			if v < minval:
 				minval = v
 				result = k
 
-		if result == 0:
+		if result == -1:
 			# if result was not changed, no servers are up
 			raise Exception('Error: no servers are online!')
 
