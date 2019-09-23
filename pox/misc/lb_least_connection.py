@@ -13,11 +13,15 @@ class iplb(iplb_base):
 		"""Applies least connection load balancing algorithm"""
 		log.info('Using Least Connection load balancing algorithm.')
 
+		if not bool(self.live_servers):
+			log.error('Error: No servers are online!')
+			return
+
 		"""
 		Find the server with the least load. If several servers all have the
 		minimum load, pick the first one that was found with that min load.
 		"""
-		server = self.find_minimum_load()
+		server = min(self.server_load, key=self.server_load.get)
 
 		# increment that server's load counter
 		# TODO: consider cases where this table may not be accurate
@@ -28,7 +32,10 @@ class iplb(iplb_base):
 		return server
 
 	def find_minimum_load(self):
-		"""Return the key within server_load that has the minimum load"""
+		"""Return the key within server_load that has the minimum load
+
+		Possibly deprecated
+		"""
 		minval = Integer.MAX_VALUE
 		result = -1
 
@@ -36,10 +43,6 @@ class iplb(iplb_base):
 			if v < minval:
 				minval = v
 				result = k
-
-		if result == -1:
-			# if result was not changed, no servers are up
-			raise Exception('Error: no servers are online!')
 
 		return result
 

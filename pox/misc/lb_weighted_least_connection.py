@@ -10,6 +10,9 @@ class iplb(iplb_base):
 		self.server_load = {k:0 for k in self.live_servers.keys()}
 
 		# create dictionary to track each server's 'weight'
+		# NOTE: the 'weight' of the server refers to its computational power.
+		#		In other words, it is hardware-based and is immutable.
+		# 		Since all nodes are virtual, they will all have a weight of 1.
 		self.server_weight = {k:1 for k in self.live_servers.keys()}
 
 	def _pick_server(self, key, inport):
@@ -19,9 +22,13 @@ class iplb(iplb_base):
 		# Get dictionary of minimally loaded servers and their weights
 		minimally_loaded_servers = self.find_minimum_loads()
 
-		# pick the one with ('least' | 'greatest') weight
+		# pick the one with the greatest weight value
+		result = max(self.server_weight, key=self.server_weight.get)
 
-		raise NotImplementedError
+		# increase load
+		self.server_load[result] = self.server_load[result] + 1
+
+		return result
 
 	def find_minimum_loads(self):
 		"""Return dictionary of server keys (and their weights) that all have the minimum load"""
