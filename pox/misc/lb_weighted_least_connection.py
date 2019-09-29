@@ -17,7 +17,7 @@ class iplb(iplb_base):
 
 	def _pick_server(self, key, inport):
 		"""Applies weighted least connection load balancing algorithm"""
-		log.info('Using Weighted Least Connection load balancing algorithm.')
+		self.log.info('Using Weighted Least Connection load balancing algorithm.')
 
 		# Get dictionary of minimally loaded servers and their weights
 		minimally_loaded_servers = self.find_minimum_loads()

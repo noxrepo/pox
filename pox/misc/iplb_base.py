@@ -305,3 +305,6 @@ class iplb_base (object):
                             actions=actions,
                             match=match)
       self.con.send(msg)
+
+      # return entry so that subclasses can access it when overriding
+      return entry
