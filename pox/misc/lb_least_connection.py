@@ -61,8 +61,11 @@ class iplb(iplb_base):
         """Extending method in superclass to decrement load.
         This is a wild guess, but this might be the place to decrement the load.
         """
-        entry = super(iplb, self)._handle_PacketIn(event)
-        self._mutate_server_load(entry.server, 'dec')
+        server = super(iplb, self)._handle_PacketIn(event)
+        if(server):
+            self._mutate_server_load(server, 'dec')
+        else:
+            self.log.error('No server was chosen! Cannot decrease load counter.')
 
 
 # Remember which DPID we're operating on (first one to connect)

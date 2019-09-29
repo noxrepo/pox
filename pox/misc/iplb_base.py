@@ -233,6 +233,8 @@ class iplb_base (object):
 
     ipp = packet.find('ipv4')
 
+    return_server = None
+
     if ipp.srcip in self.servers:
       # It's FROM one of our balanced servers.
       # Rewrite it BACK to the client
@@ -285,6 +287,7 @@ class iplb_base (object):
         entry = MemoryEntry(server, packet, inport)
         self.memory[entry.key1] = entry
         self.memory[entry.key2] = entry
+        return_server = server
 
       # Update timestamp
       entry.refresh()
@@ -306,5 +309,5 @@ class iplb_base (object):
                             match=match)
       self.con.send(msg)
 
-      # return entry so that subclasses can access it when overriding
-      return entry
+      # return picked server so that subclasses can access it when overriding
+      return return_server
