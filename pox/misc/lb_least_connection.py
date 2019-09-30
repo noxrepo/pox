@@ -11,6 +11,8 @@ class iplb(iplb_base):
         # create dictionary to track how much load each server has
         self.server_load = {k: 0 for k in self.servers}
 
+        self.log.debug('server_load initial state: {}'.format(self.server_load))
+
         # create mutex used for tracking server_load table
         self.mutex = Lock()
 
