@@ -19,6 +19,7 @@ class iplb(iplb_base):
     def _pick_server(self, key, inport):
         """Applies least connection load balancing algorithm"""
         self.log.info('Using Least Connection load balancing algorithm.')
+        self.log.debug("Current Load Counter: {}".format(self.server_load))  # debug
 
         if not bool(self.live_servers):
             log.error('Error: No servers are online!')
