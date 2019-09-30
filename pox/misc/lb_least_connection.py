@@ -9,7 +9,7 @@ class iplb(iplb_base):
         super(iplb, self).__init__(server, first_packet, client_port)
 
         # create dictionary to track how much load each server has
-        self.server_load = {k: 0 for k in self.live_servers.keys()}
+        self.server_load = {k: 0 for k in self.servers.keys()}
 
         # create mutex used for tracking server_load table
         self.mutex = Lock()
