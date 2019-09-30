@@ -148,6 +148,7 @@ class iplb(iplb_base):
                     # Pick a server for this flow
                 server = self._pick_server(key, inport)
                 self.log.debug("Directing traffic to %s", server)
+                self.log.debug("Current Load Counter: {}".format(self.server_load))     #debug
                 entry = MemoryEntry(server, packet, inport)
                 self.memory[entry.key1] = entry
                 self.memory[entry.key2] = entry
