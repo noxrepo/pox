@@ -22,7 +22,7 @@ class iplb(iplb_base):
         self.log.debug("Current Load Counter: {}".format(self.server_load))  # debug
 
         if not bool(self.live_servers):
-            log.error('Error: No servers are online!')
+            self.log.error('Error: No servers are online!')
             return
 
         """
@@ -32,9 +32,6 @@ class iplb(iplb_base):
         server = min(self.server_load, key=self.server_load.get)
 
         # increment that server's load counter
-        # TODO: consider cases where this table may not be accurate
-        #       i.e. race conditions, connections that have been dropped, etc
-        #       maybe add mutex locking?
         # NOTE: When evaluating these algorithms, create a more realistic env
         self._mutate_server_load(server, 'inc')
 
