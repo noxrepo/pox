@@ -98,6 +98,8 @@ class lblc_base(iplb_base):
 
             # Server wrote back, decrease it's active load counter
             self._mutate_server_load(entry.server, 'dec')
+            self.log.debug("Decreasing load in _handle_packetIn function.")
+            self.log.debug("Current Load Counter: {}".format(self.server_load))
 
             actions = []
             actions.append(of.ofp_action_dl_addr.set_src(self.mac))
