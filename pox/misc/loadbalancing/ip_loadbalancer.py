@@ -1,4 +1,4 @@
-from pox.misc.iplb_base import *
+from pox.misc.loadbalancing.base.iplb_base import *
 
 class iplb(iplb_base):
   def _pick_server(self, key, inport):

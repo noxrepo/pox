@@ -1,4 +1,4 @@
-from pox.misc.lblc_base import *
+from pox.misc.loadbalancing.base.lblc_base import *
 
 
 class iplb(lblc_base):
