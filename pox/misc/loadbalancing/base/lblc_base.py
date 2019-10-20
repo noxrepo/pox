@@ -1,56 +1,24 @@
-from pox.misc.iplb_base import *
+from pox.misc.loadbalancing.base.iplb_base import *
 from threading import Lock
-import random
-NUM_OF_IPS = 3
 
-class iplb(iplb_base):
+
+class lblc_base(iplb_base):
+    """
+    An abstract class to make the code for Least Connection and Weighted Least Connection more DRY
+    """
 
     def __init__(self, server, first_packet, client_port):
         """Extend the __init__ function with extra fields"""
-        super(iplb, self).__init__(server, first_packet, client_port)
+        super(lblc_base, self).__init__(server, first_packet, client_port)
 
-        # create dictionary to track how much load each server has
+        # create dictionary to track how many active connections each server has
         self.server_load = {k: 0 for k in self.servers}
 
         self.log.debug('server_load initial state: {}'.format(self.server_load))
 
         # create mutex used for tracking server_load table
         self.mutex = Lock()
-        self.ip_to_servers = {ip: [] for ip in range(NUM_OF_IPS)}
-        for count,server in enumerate(self.servers):
-            ip = count%NUM_OF_IPS
-            self.ip_to_servers[ip].append(server)
 
-    def _pick_server(self, key, inport):
-        """Applies Destination Hashing load balancing algorithm"""
-        self.log.info('Using Destination Hashing load balancing algorithm.')
-        self.log.debug("Current Load Counter: {}".format(self.server_load))  # debug
-
-        if not bool(self.live_servers):
-            log.error('Error: No servers are online!')
-            return
-
-        """
-        Destintation hashing is simplified in this implementation. A random
-        IP is picked and a server is picked based on the IP's hashed index.
-        This implementation is no better then picking a random server.
-        TODO: Add a probabilistic distribution to which IP's are picked up
-        and how servers are picked.
-
-        """
-        ip = random.randint(0,NUM_OF_IPS-1)
-        server = self._dest_hashing_pick(ip)
-
-        self._mutate_server_load(server, 'inc')
-
-        return server
-    def _dest_hashing_pick(self, ip):
-        servers = self.ip_to_servers[ip]
-        num_of_servers = len(servers)
-        if num_of_servers == 0:
-           return None
-        random_server_index = random.randint(0,num_of_servers-1)
-        return servers[random_server_index]
     def _mutate_server_load(self, server, op):
         """Increments/Decrements one of the live server's load by 1. A mutex is used to prevent race conditions.
 
@@ -130,6 +98,8 @@ class iplb(iplb_base):
 
             # Server wrote back, decrease it's active load counter
             self._mutate_server_load(entry.server, 'dec')
+            self.log.debug("Decreasing load in _handle_packetIn function.")
+            self.log.debug("Current Load Counter: {}".format(self.server_load))
 
             actions = []
             actions.append(of.ofp_action_dl_addr.set_src(self.mac))
@@ -157,7 +127,7 @@ class iplb(iplb_base):
                     self.log.warn("No servers!")
                     return drop()
 
-                    # Pick a server for this flow
+                # Pick a server for this flow
                 server = self._pick_server(key, inport)
                 self.log.debug("Directing traffic to %s", server)
                 self.log.debug("Current Load Counter: {}".format(self.server_load))     #debug
@@ -165,7 +135,7 @@ class iplb(iplb_base):
                 self.memory[entry.key1] = entry
                 self.memory[entry.key2] = entry
 
-                # Update timestamp
+            # Update timestamp
             entry.refresh()
 
             # Set up table entry towards selected server
@@ -185,54 +155,3 @@ class iplb(iplb_base):
                                   match=match)
             self.con.send(msg)
 
-
-        # Remember which DPID we're operating on (first one to connect)
-_dpid = None
-
-
-def launch(ip, servers, dpid=None):
-    global _dpid
-    if dpid is not None:
-        _dpid = str_to_dpid(dpid)
-
-    servers = servers.replace(",", " ").split()
-    servers = [IPAddr(x) for x in servers]
-    ip = IPAddr(ip)
-
-    # We only want to enable ARP Responder *only* on the load balancer switch,
-    # so we do some disgusting hackery and then boot it up.
-    from proto.arp_responder import ARPResponder
-    old_pi = ARPResponder._handle_PacketIn
-
-    def new_pi(self, event):
-        if event.dpid == _dpid:
-            # Yes, the packet-in is on the right switch
-            return old_pi(self, event)
-
-    ARPResponder._handle_PacketIn = new_pi
-
-    # Hackery done.  Now start it.
-    from proto.arp_responder import launch as arp_launch
-    arp_launch(eat_packets=False, **{str(ip): True})
-    import logging
-    logging.getLogger("proto.arp_responder").setLevel(logging.WARN)
-
-    def _handle_ConnectionUp(event):
-        global _dpid
-        if _dpid is None:
-            _dpid = event.dpid
-
-        if _dpid != event.dpid:
-            log.warn("Ignoring switch %s", event.connection)
-        else:
-            if not core.hasComponent('iplb'):
-                # Need to initialize first...
-                core.registerNew(iplb, event.connection, IPAddr(ip), servers)
-                log.info("IP Load Balancer Ready.")
-            log.info("Load Balancing on %s", event.connection)
-
-            # Gross hack
-            core.iplb.con = event.connection
-            event.connection.addListeners(core.iplb)
-
-    core.openflow.addListenerByName("ConnectionUp", _handle_ConnectionUp)

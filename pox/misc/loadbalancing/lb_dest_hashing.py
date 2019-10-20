@@ -1,6 +1,7 @@
-from pox.misc.iplb_base import *
+from pox.misc.loadbalancing.base.iplb_base import *
 from threading import Lock
-
+import random
+NUM_OF_IPS = 3
 
 class iplb(iplb_base):
 
@@ -15,28 +16,41 @@ class iplb(iplb_base):
 
         # create mutex used for tracking server_load table
         self.mutex = Lock()
+        self.ip_to_servers = {ip: [] for ip in range(NUM_OF_IPS)}
+        for count,server in enumerate(self.servers):
+            ip = count%NUM_OF_IPS
+            self.ip_to_servers[ip].append(server)
 
     def _pick_server(self, key, inport):
-        """Applies least connection load balancing algorithm"""
-        self.log.info('Using Least Connection load balancing algorithm.')
+        """Applies Destination Hashing load balancing algorithm"""
+        self.log.info('Using Destination Hashing load balancing algorithm.')
         self.log.debug("Current Load Counter: {}".format(self.server_load))  # debug
 
         if not bool(self.live_servers):
-            self.log.error('Error: No servers are online!')
+            log.error('Error: No servers are online!')
             return
 
         """
-        Find the server with the least load. If several servers all have the
-        minimum load, pick the first one that was found with that min load.
-        """
-        server = min(self.server_load, key=self.server_load.get)
+        Destintation hashing is simplified in this implementation. A random
+        IP is picked and a server is picked based on the IP's hashed index.
+        This implementation is no better then picking a random server.
+        TODO: Add a probabilistic distribution to which IP's are picked up
+        and how servers are picked.
 
-        # increment that server's load counter
-        # NOTE: When evaluating these algorithms, create a more realistic env
+        """
+        ip = random.randint(0,NUM_OF_IPS-1)
+        server = self._dest_hashing_pick(ip)
+
         self._mutate_server_load(server, 'inc')
 
         return server
-
+    def _dest_hashing_pick(self, ip):
+        servers = self.ip_to_servers[ip]
+        num_of_servers = len(servers)
+        if num_of_servers == 0:
+           return None
+        random_server_index = random.randint(0,num_of_servers-1)
+        return servers[random_server_index]
     def _mutate_server_load(self, server, op):
         """Increments/Decrements one of the live server's load by 1. A mutex is used to prevent race conditions.
 
