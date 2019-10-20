@@ -1,4 +1,4 @@
-from pox.misc.lblc_base import lblc_base
+from pox.misc.lblc_base import *
 
 
 class iplb(lblc_base):
