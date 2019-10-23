@@ -33,7 +33,11 @@ class lblc_base(iplb_base):
             if op == 'inc':
                 self.server_load[server] = self.server_load[server] + 1
             elif op == 'dec':
-                self.server_load[server] = self.server_load[server] - 1
+                # NOTE: Because the server may return several packets instead of one in some machines, it is possible
+                #       that the load value of a certain server can go negative. Since this doesn't make sense, this is
+                #       a simple fix to prevent negativity. Whether this is a good solution or not remains to be seen.
+                if self.server_load[server] > 0:
+                    self.server_load[server] = self.server_load[server] - 1
             else:
                 raise ValueError('Error: Invalid op argument')
         finally:
