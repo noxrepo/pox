@@ -13,8 +13,8 @@ class iplb(lblc_base):
   def _pick_server (self,key,inport):
     # next choosen server will be simply next server in the list
     log.info('Using Round Robin load balancing algorithm.')
-    self.last_server_idx = (self.last_server_idx + 1) % len(live_servers)
-    server = live_servers[self.last_server_idx]
+    self.last_server_idx = (self.last_server_idx + 1) % len(self.live_servers)
+    server = self.live_servers[self.last_server_idx]
     return server
 
 _dpid = None
