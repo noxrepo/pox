@@ -6,7 +6,7 @@ class iplb(lblc_base):
     # Extend the __init__ function with extra fields
     # choose random server to start the job
     super(iplb, self).__init__(server, first_packet, client_port)
-    self.last_server_idx = random.randint(0, len(live_servers))
+    self.last_server_idx = random.randint(0, len(self.live_servers))
 
  
 
