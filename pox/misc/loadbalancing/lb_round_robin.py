@@ -1,6 +1,6 @@
 from pox.misc.loadbalancing.base.lblc_base import *
 
-class iplb(iplb_base):
+class iplb(lblc_base):
 
   def __init__ (self, server, first_packet, client_port):
     # Extend the __init__ function with extra fields
