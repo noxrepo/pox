@@ -1,21 +1,19 @@
 from pox.misc.loadbalancing.base.lblc_base import *
 
 class iplb(lblc_base):
-
-  def __init__ (self, server, first_packet, client_port):
-    # Extend the __init__ function with extra fields
-    # choose random server to start the job
-    super(iplb, self).__init__(server, first_packet, client_port)
-    self.last_server_idx = random.randint(0, len(self.live_servers))
-
  
-
   def _pick_server (self,key,inport):
-    # next choosen server will be simply next server in the list
     log.info('Using Round Robin load balancing algorithm.')
-    self.last_server_idx = (self.last_server_idx + 1) % len(self.live_servers)
-    server = self.live_servers[self.last_server_idx]
-    return server
+    self.last_server_idx = random.randint(0, len(self.servers))
+    
+    if not bool(self.live_servers):
+        self.log.error('Error: No servers are online')
+        return
+    else:
+        self.last_server_idx = (self.last_server_idx + 1) % len(self.servers)
+        server = self.servers[self.last_server_idx]
+        return server
+
 
 _dpid = None
 
