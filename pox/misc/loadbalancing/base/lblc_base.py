@@ -119,6 +119,9 @@ class lblc_base(iplb_base):
                                   match=match)
             self.con.send(msg)
 
+            self.log.debug("Logging packet message")
+            self.log.debug(msg)
+
         elif ipp.dstip == self.service_ip:
             # Ah, it's for our service IP and needs to be load balanced
 
