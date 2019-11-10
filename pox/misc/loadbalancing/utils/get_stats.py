@@ -36,5 +36,5 @@ for i in range(num_of_times):
     print("curl {}".format(i))
     print(m)
     #stats.append(m)
-    time.sleep(float(delay)/1000)
+    time.sleep(float(delay)/1000000)
 #print(stats)
