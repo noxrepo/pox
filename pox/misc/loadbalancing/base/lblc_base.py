@@ -121,6 +121,7 @@ class lblc_base(iplb_base):
 
             self.log.debug("Logging packet")
             self.log.debug(packet)
+            import pdb; pdb.set_trace()
 
         elif ipp.dstip == self.service_ip:
             # Ah, it's for our service IP and needs to be load balanced
