@@ -33,11 +33,10 @@ class lblc_base(iplb_base):
             if op == 'inc':
                 self.server_load[server] = self.server_load[server] + 1
             elif op == 'dec':
-                # NOTE: Because the server may return several packets instead of one in some machines, it is possible
-                #       that the load value of a certain server can go negative. Since this doesn't make sense, this is
-                #       a simple fix to prevent negativity. Whether this is a good solution or not remains to be seen.
-                if self.server_load[server] > 0:
-                    self.server_load[server] = self.server_load[server] - 1
+                self.server_load[server] = self.server_load[server] - 1
+
+                if self.server_load[server] < 0:
+                    self.log.error("Load of Server {} has gone negative!".format(server))
             else:
                 raise ValueError('Error: Invalid op argument')
         finally:
@@ -101,9 +100,11 @@ class lblc_base(iplb_base):
             mac, port = self.live_servers[entry.server]
 
             # Server wrote back, decrease it's active load counter
-            self._mutate_server_load(entry.server, 'dec')
-            self.log.debug("Decreasing load in _handle_packetIn function.")
-            self.log.debug("Current Load Counter: {}".format(self.server_load))
+            # only decrement if it is the first packet
+            if not packet.prev:
+                self._mutate_server_load(entry.server, 'dec')
+                self.log.debug("First packet detected. Decreasing load in _handle_packetIn function.")
+                self.log.debug("Current Load Counter: {}".format(self.server_load))
 
             actions = []
             actions.append(of.ofp_action_dl_addr.set_src(self.mac))
@@ -118,10 +119,6 @@ class lblc_base(iplb_base):
                                   actions=actions,
                                   match=match)
             self.con.send(msg)
-
-            self.log.debug("Logging packet")
-            self.log.debug(packet)
-            import pdb; pdb.set_trace()
 
         elif ipp.dstip == self.service_ip:
             # Ah, it's for our service IP and needs to be load balanced
