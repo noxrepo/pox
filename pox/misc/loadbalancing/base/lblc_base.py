@@ -100,8 +100,9 @@ class lblc_base(iplb_base):
             mac, port = self.live_servers[entry.server]
 
             # Server wrote back, decrease it's active load counter
-            # only decrement if it is the first packet
-            if not packet.prev:
+            # only decrement if string '</html>' is within the raw payload
+            #   NOTE: If this is true, this packet is likely the last one in a group
+            if packet.raw.find('</html>') > -1:
                 self._mutate_server_load(entry.server, 'dec')
                 self.log.debug("First packet detected. Decreasing load in _handle_packetIn function.")
                 self.log.debug("Current Load Counter: {}".format(self.server_load))
