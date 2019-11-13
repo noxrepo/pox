@@ -100,11 +100,11 @@ class lblc_base(iplb_base):
             mac, port = self.live_servers[entry.server]
 
             # Server wrote back, decrease it's active load counter
-            # only decrement if string 'HTTP' is within the raw payload
+            # only decrement if strings 'HTTP' and '<head>' is within the raw payload
             #   NOTE:   If this is true, the server sent back a response. And we are counting it once, even
             #           if multiple packets are sent back. This is to make the algorithm more machine-independent,
             #           for some write back a single packet, and others write back multiple.
-            if packet.raw.find('HTTP') > -1:
+            if packet.raw.find('HTTP') > -1 and packet.raw.find('<head>'):
                 self._mutate_server_load(entry.server, 'dec')
                 self.log.debug("Server HTTP response detected. Decreasing load in _handle_packetIn function.")
                 self.log.debug("Current Load Counter: {}".format(self.server_load))
