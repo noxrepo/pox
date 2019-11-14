@@ -29,7 +29,6 @@ class lblc_base(iplb_base):
         if op not in ['inc', 'dec']:
             raise ValueError('Error: Invalid op argument')
 
-        self.mutex.acquire()
         try:
             if op == 'inc':
                 self.server_load[server] = self.server_load[server] + 1
@@ -41,7 +40,7 @@ class lblc_base(iplb_base):
             else:
                 raise ValueError('Error: Invalid op argument')
         finally:
-            self.mutex.release()
+            pass
 
     def _handle_PacketIn(self, event):
         """Overwriting the base function. Injecting a line that decreases load counter when server writes back."""
