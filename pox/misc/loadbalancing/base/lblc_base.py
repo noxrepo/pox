@@ -101,7 +101,7 @@ class lblc_base(iplb_base):
             mac, port = self.live_servers[entry.server]
 
             # Server wrote back, decrease it's active load counter
-            if not os.environ('AWS', False):
+            if not os.environ.get('AWS', False):
                 # If this is on Mininet VM, server only writes back one packet. Decrease the load on that one.
                 self._mutate_server_load(entry.server, 'dec')
                 self.log.debug("Packet detected. Hoping it's only one. Decreasing load of {}.".format(
