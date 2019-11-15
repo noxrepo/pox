@@ -17,9 +17,6 @@ class lblc_base(iplb_base):
 
         self.log.debug('server_load initial state: {}'.format(self.server_load))
 
-        # create mutexes to be used by each server
-        self.locks = {k: Lock() for k in self.servers}
-
     def _mutate_server_load(self, server, op):
         """Increments/Decrements one of the live server's load by 1. A mutex is used to prevent race conditions.
 
@@ -29,19 +26,15 @@ class lblc_base(iplb_base):
         if op not in ['inc', 'dec']:
             raise ValueError('Error: Invalid op argument')
 
-        self.locks[server].acquire()
-        try:
-            if op == 'inc':
-                self.server_load[server] = self.server_load[server] + 1
-            elif op == 'dec':
-                self.server_load[server] = self.server_load[server] - 1
+        if op == 'inc':
+            self.server_load[server] = self.server_load[server] + 1
+        elif op == 'dec':
+            self.server_load[server] = self.server_load[server] - 1
 
-                if self.server_load[server] < 0:
-                    self.log.error("Load of Server {} has gone negative!".format(server))
-            else:
-                raise ValueError('Error: Invalid op argument')
-        finally:
-            self.locks[server].release()
+            if self.server_load[server] < 0:
+                self.log.error("Load of Server {} has gone negative!".format(server))
+        else:
+            raise ValueError('Error: Invalid op argument')
 
     def _handle_PacketIn(self, event):
         """Overwriting the base function. Injecting a line that decreases load counter when server writes back."""
@@ -110,10 +103,14 @@ class lblc_base(iplb_base):
                 self.log.debug("Current Load Counter: {}".format(self.server_load))
             else:
                 # On AWS nodes, only decrement if a certain header string is matched.
+                #   NOTE:   If testing on AWS node, make sure that there's an environemnt variable
+                #           named 'AWS' (without quotes) set to True
+
                 #   NOTE:   If this is true, the server sent back a response. And we are counting it once, even
                 #           if multiple packets are sent back. We know that multiple packets are sent per request on
                 #           Mininet topologies running on AWS ubuntu nodes. This is to make the algorithm more
                 #           machine-independent.
+
                 #   NOTE:   This method may be susceptible to packet loss
                 if re.findall(r"HTTP/\d{1}\.\d{1} \d{3}", packet.raw):
                     self._mutate_server_load(entry.server, 'dec')
