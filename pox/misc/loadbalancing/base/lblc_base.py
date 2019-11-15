@@ -17,8 +17,8 @@ class lblc_base(iplb_base):
 
         self.log.debug('server_load initial state: {}'.format(self.server_load))
 
-        # create mutex used for tracking server_load table
-        self.mutex = Lock()
+        # create mutexes to be used by each server
+        self.locks = {k: Lock() for k in self.servers}
 
     def _mutate_server_load(self, server, op):
         """Increments/Decrements one of the live server's load by 1. A mutex is used to prevent race conditions.
@@ -29,6 +29,7 @@ class lblc_base(iplb_base):
         if op not in ['inc', 'dec']:
             raise ValueError('Error: Invalid op argument')
 
+        self.locks[server].acquire()
         try:
             if op == 'inc':
                 self.server_load[server] = self.server_load[server] + 1
@@ -40,7 +41,7 @@ class lblc_base(iplb_base):
             else:
                 raise ValueError('Error: Invalid op argument')
         finally:
-            pass
+            self.locks[server].release()
 
     def _handle_PacketIn(self, event):
         """Overwriting the base function. Injecting a line that decreases load counter when server writes back."""
