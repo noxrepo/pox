@@ -1,7 +1,7 @@
 from pox.misc.loadbalancing.base.iplb_base import *
 from threading import Lock
 import re
-
+import os
 
 class lblc_base(iplb_base):
     """
@@ -101,14 +101,26 @@ class lblc_base(iplb_base):
             mac, port = self.live_servers[entry.server]
 
             # Server wrote back, decrease it's active load counter
-            # only decrement if a certain header string is matched.
-            #   NOTE:   If this is true, the server sent back a response. And we are counting it once, even
-            #           if multiple packets are sent back. This is to make the algorithm more machine-independent,
-            #           for some write back a single packet, and others write back multiple.
-            if re.findall(r"HTTP/\d{1}\.\d{1} \d{3}", packet.raw):
+            if not os.environ('AWS', False):
+                # If this is on Mininet VM, server only writes back one packet. Decrease the load on that one.
                 self._mutate_server_load(entry.server, 'dec')
-                self.log.debug("Server HTTP response detected. Decreasing load in _handle_packetIn function.")
+                self.log.debug("Packet detected. Hoping it's only one. Decreasing load of {}.".format(
+                    entry.server
+                ))
                 self.log.debug("Current Load Counter: {}".format(self.server_load))
+            else:
+                # On AWS nodes, only decrement if a certain header string is matched.
+                #   NOTE:   If this is true, the server sent back a response. And we are counting it once, even
+                #           if multiple packets are sent back. We know that multiple packets are sent per request on
+                #           Mininet topologies running on AWS ubuntu nodes. This is to make the algorithm more
+                #           machine-independent.
+                #   NOTE:   This method may be susceptible to packet loss
+                if re.findall(r"HTTP/\d{1}\.\d{1} \d{3}", packet.raw):
+                    self._mutate_server_load(entry.server, 'dec')
+                    self.log.debug("Server HTTP response detected on AWS Machine. Decreasing load of {}.".format(
+                        entry.server
+                    ))
+                    self.log.debug("Current Load Counter: {}".format(self.server_load))
 
             actions = []
             actions.append(of.ofp_action_dl_addr.set_src(self.mac))
