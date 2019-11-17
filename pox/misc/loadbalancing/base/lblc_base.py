@@ -1,6 +1,7 @@
 from pox.misc.loadbalancing.base.iplb_base import *
 from threading import Lock
-
+import re
+import os
 
 class lblc_base(iplb_base):
     """
@@ -16,9 +17,6 @@ class lblc_base(iplb_base):
 
         self.log.debug('server_load initial state: {}'.format(self.server_load))
 
-        # create mutex used for tracking server_load table
-        self.mutex = Lock()
-
     def _mutate_server_load(self, server, op):
         """Increments/Decrements one of the live server's load by 1. A mutex is used to prevent race conditions.
 
@@ -28,20 +26,15 @@ class lblc_base(iplb_base):
         if op not in ['inc', 'dec']:
             raise ValueError('Error: Invalid op argument')
 
-        self.mutex.acquire()
-        try:
-            if op == 'inc':
-                self.server_load[server] = self.server_load[server] + 1
-            elif op == 'dec':
-                # NOTE: Because the server may return several packets instead of one in some machines, it is possible
-                #       that the load value of a certain server can go negative. Since this doesn't make sense, this is
-                #       a simple fix to prevent negativity. Whether this is a good solution or not remains to be seen.
-                if self.server_load[server] > 0:
-                    self.server_load[server] = self.server_load[server] - 1
-            else:
-                raise ValueError('Error: Invalid op argument')
-        finally:
-            self.mutex.release()
+        if op == 'inc':
+            self.server_load[server] = self.server_load[server] + 1
+        elif op == 'dec':
+            self.server_load[server] = self.server_load[server] - 1
+
+            if self.server_load[server] < 0:
+                self.log.error("Load of Server {} has gone negative!".format(server))
+        else:
+            raise ValueError('Error: Invalid op argument')
 
     def _handle_PacketIn(self, event):
         """Overwriting the base function. Injecting a line that decreases load counter when server writes back."""
@@ -101,9 +94,30 @@ class lblc_base(iplb_base):
             mac, port = self.live_servers[entry.server]
 
             # Server wrote back, decrease it's active load counter
-            self._mutate_server_load(entry.server, 'dec')
-            self.log.debug("Decreasing load in _handle_packetIn function.")
-            self.log.debug("Current Load Counter: {}".format(self.server_load))
+            if not os.environ.get('AWS', False):
+                # If this is on Mininet VM, server only writes back one packet. Decrease the load on that one.
+                self._mutate_server_load(entry.server, 'dec')
+                self.log.debug("Packet detected. Hoping it's only one. Decreasing load of {}.".format(
+                    entry.server
+                ))
+                self.log.debug("Current Load Counter: {}".format(self.server_load))
+            else:
+                # On AWS nodes, only decrement if a certain header string is matched.
+                #   NOTE:   If testing on AWS node, make sure that there's an environemnt variable
+                #           named 'AWS' (without quotes) set to True
+
+                #   NOTE:   If this is true, the server sent back a response. And we are counting it once, even
+                #           if multiple packets are sent back. We know that multiple packets are sent per request on
+                #           Mininet topologies running on AWS ubuntu nodes. This is to make the algorithm more
+                #           machine-independent.
+
+                #   NOTE:   This method may be susceptible to packet loss
+                if re.findall(r"HTTP/\d{1}\.\d{1} \d{3}", packet.raw):
+                    self._mutate_server_load(entry.server, 'dec')
+                    self.log.debug("Server HTTP response detected on AWS Machine. Decreasing load of {}.".format(
+                        entry.server
+                    ))
+                    self.log.debug("Current Load Counter: {}".format(self.server_load))
 
             actions = []
             actions.append(of.ofp_action_dl_addr.set_src(self.mac))
