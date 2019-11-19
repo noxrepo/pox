@@ -1,5 +1,6 @@
 from mininet.topo import Topo
 from mininet.net import Mininet
+from mininet.cli import CLI
 from mininet.node import RemoteController
 
 
@@ -30,6 +31,8 @@ def start():
     for i in range(0, size-1):
         h = mininet.hosts[i]
         h.cmd(command)
+
+    CLI(mininet)
 
 
 if __name__ == '__main__':
