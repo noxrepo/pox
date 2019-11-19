@@ -65,6 +65,12 @@ class lblc_base(iplb_base):
                             # Ooh, new server.
                             self.live_servers[arpp.protosrc] = arpp.hwsrc, inport
                             self.log.info("Server %s up", arpp.protosrc)
+
+                            # Add this server to the load table
+                            new_server = IPAddr(arpp.protosrc)
+                            self.server_load[new_server] = 0
+                            self.log.info("New server {} added to load table!".format(new_server))
+                            self.log.debug("Current load counter: {}".format(self.server_load))
                 return
 
                 # Not TCP and not ARP.  Don't know what to do with this.  Drop it.
@@ -172,10 +178,9 @@ class lblc_base(iplb_base):
                                   match=match)
             self.con.send(msg)
 
-    def _do_expire (self):
+    def _do_expire(self):
         """
         Expire probes and "memorized" flows. Each of these should only have a limited lifetime.
-
         Extended to also remove the server's load counter, if it has any.
         """
         t = time.time()
@@ -189,7 +194,10 @@ class lblc_base(iplb_base):
                 del self.live_servers[ip]
 
                 # remove server entry from server load counter
-
+                expired_server = IPAddr(ip)
+                self.server_load.pop(expired_server, None)
+                self.log.warn("Load counter of Server {} removed".format(expired_server))
+                self.log.debug("Current load counter: {}".format(self.server_load))
 
         # Expire old flows
         c = len(self.memory)
