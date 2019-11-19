@@ -10,11 +10,27 @@ class SingleSwitchTopo(Topo):
 
         # Python's range(N) generates 0..N-1
         for h in range(n):
-            host = self.addHqost('h%s' % (h + 1))
+            host = self.addHost('h%s' % (h + 1))
             self.addLink(host, switch)
 
 
 def start():
-    topo = SingleSwitchTopo(n=6)
+    """
+    Builds default mininet topology with N nodes. N-1 of those nodes are servers, while 1 is a client, which
+    we will use as a traffic generator to test our load balancing algorithms.
+    """
+    size = 4
+    topo = SingleSwitchTopo(n=size)
+
     mininet = Mininet(topo)
     mininet.start()
+
+    command = "python -m SimpleHTTPServer 80 &"
+
+    for i in range(0, size-1):
+        h = topo.hosts[i]
+        h.cmd(command)
+
+
+if __name__ == '__main__':
+    start()
