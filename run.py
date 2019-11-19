@@ -6,12 +6,12 @@ def main():
     ip = '10.0.1.1'
     parser = argparse.ArgumentParser(description='Command line tool for quickly spinning up POX Controller')
     parser.add_argument("-n", type=int, help="number of servers")
-    parser.add_argument("-lb", type=str, help="load balancing module")
+    parser.add_argument("-lb", type=str, help="name of load balancing module")
     args = parser.parse_args()
 
     servers = ''
     numservers = args.n
-    lb_alg = args.lb
+    lb_alg = "misc.loadbalancing.{}".format(args.lb)
 
     for i in range(0, numservers):
         servers += '10.0.0.{}'.format(i+1)
