@@ -28,9 +28,12 @@ def start():
 
     command = "python -m SimpleHTTPServer 80 &"
 
+    print("Spinning up Default Loadbalancing Test Topology with {} total nodes and {} servers.".format(size, size-1))
+
     for i in range(0, size-1):
         h = mininet.hosts[i]
         h.cmd(command)
+        print("{} now running SimpleHTTPServer".format(h))
 
     CLI(mininet)
 
