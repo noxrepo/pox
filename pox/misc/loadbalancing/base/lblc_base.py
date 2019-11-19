@@ -1,5 +1,4 @@
 from pox.misc.loadbalancing.base.iplb_base import *
-from threading import Lock
 import re
 import os
 
@@ -173,3 +172,28 @@ class lblc_base(iplb_base):
                                   match=match)
             self.con.send(msg)
 
+    def _do_expire (self):
+        """
+        Expire probes and "memorized" flows. Each of these should only have a limited lifetime.
+
+        Extended to also remove the server's load counter, if it has any.
+        """
+        t = time.time()
+
+        # Expire probes
+        for ip,expire_at in self.outstanding_probes.items():
+            if t > expire_at:
+                self.outstanding_probes.pop(ip, None)
+            if ip in self.live_servers:
+                self.log.warn("Server %s down", ip)
+                del self.live_servers[ip]
+
+                # remove server entry from server load counter
+
+
+        # Expire old flows
+        c = len(self.memory)
+        self.memory = {k:v for k,v in self.memory.items()
+                       if not v.is_expired}
+        if len(self.memory) != c:
+            self.log.debug("Expired %i flows", c-len(self.memory))
