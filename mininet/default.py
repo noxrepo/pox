@@ -28,7 +28,7 @@ def start():
     command = "python -m SimpleHTTPServer 80 &"
 
     for i in range(0, size-1):
-        h = topo.hosts[i]
+        h = mininet.hosts[i]
         h.cmd(command)
 
 
