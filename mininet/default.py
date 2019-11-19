@@ -26,6 +26,9 @@ def start():
     mininet = Mininet(topo)
     mininet.start()
 
+    controller = RemoteController(name='custom_pox', port=6633)
+    controller.start()
+
     command = "python -m SimpleHTTPServer 80 &"
 
     print("Spinning up Default Loadbalancing Test Topology with {} total nodes and {} servers.".format(size, size-1))
@@ -35,7 +38,11 @@ def start():
         h.cmd(command)
         print("{} now running SimpleHTTPServer".format(h))
 
-    CLI(mininet)
+    try:
+        CLI(mininet)
+    finally:
+        mininet.stop()
+        controller.stop()
 
 
 if __name__ == '__main__':
