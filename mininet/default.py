@@ -23,10 +23,9 @@ def start():
     size = 4
     topo = SingleSwitchTopo(n=size)
 
-    mininet = Mininet(topo)
     controller = RemoteController(name='custom_pox', ip='0.0.0.0', port=6633)
-
-    mininet.start(controller=controller)
+    mininet = Mininet(topo=topo, controller=controller)
+    mininet.start()
 
     command = "python -m SimpleHTTPServer 80 &"
 
