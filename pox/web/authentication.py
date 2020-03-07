@@ -53,10 +53,6 @@ class BasicAuthMixin (object):
   and password) and again returns True for acceptable users.  If it is
   None, authentication is disabled (everyone can access the handler).
 
-  basic_auth_function should be a function which takes a username and password
-  and returns True if it's a valid user.  If it's None, authentication is
-  turned off.  You may want to set this up in _init().
-
   In your handlers (e.g., do_GET()), the first line should be something like:
     if not self._do_auth(): return
 
@@ -81,9 +77,9 @@ class BasicAuthMixin (object):
     if self._is_basic_auth_enabled is False: return True
 
     try:
-      return self.auth_function(self, user, password)
+      return self.basic_auth_function(self, user, password)
     except TypeError:
-      return self.auth_function(user, password)
+      return self.basic_auth_function(user, password)
 
   @property
   def _is_basic_auth_enabled (self):
