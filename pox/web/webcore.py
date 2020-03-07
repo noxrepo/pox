@@ -697,7 +697,8 @@ class FileUploadHandler (SplitRequestHandler):
       return
     #query = cgi.parse_multipart(self.rfile, params)
     #data = query.get("upload")
-    data = cgi.FieldStorage( fp = self.rfile, headers = self.headers, environ={ 'REQUEST_METHOD':'POST' } )
+    data = cgi.FieldStorage( fp = self.rfile, headers = self.headers,
+                             environ={ 'REQUEST_METHOD':'POST' } )
     if not data or "upload" not in data:
       self.send_error(400, "Expected upload data")
       return
