@@ -42,6 +42,12 @@ curl -i -X POST -d '{"method":"set_table","params":{"dpid":
  "00-00-00-00-00-01","flows":[{"actions":[{"type":"OFPAT_OUTPUT",
  "port":"OFPP_ALL"}],"match":{}}]}}' http://127.0.0.1:8000/OF/
 
+Note that if you are using web.authentication, you will want to
+include "--user username:password" on the above curl commandline.
+Furthermore, if you are using POX CookieGuard (the default), you
+will probably want to add something like "-L -b /dev/null".  This
+enables following redirects and the cookie engine.
+
 IMPORTANT NOTE:
 Per the specifiction, JSON-RPC requests without an "id" field are
 *notifications* which do not require and should not receive responses.
