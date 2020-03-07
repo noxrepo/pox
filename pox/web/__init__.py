@@ -19,9 +19,11 @@ Possibly, webcore should just be moved here.
 """
 
 def launch (address='', port=8000, static=False, ssl_server_key=None,
-            ssl_server_cert=None, ssl_client_certs=None):
+            ssl_server_cert=None, ssl_client_certs=None,
+            no_cookieguard=False):
   import pox.web.webcore as wc
   wc.launch(address, port, static=static,
             ssl_server_key=ssl_server_key,
             ssl_server_cert=ssl_server_cert,
-            ssl_client_certs=ssl_client_certs)
+            ssl_client_certs=ssl_client_certs,
+            no_cookieguard=no_cookieguard)

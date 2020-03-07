@@ -134,6 +134,128 @@ class ShutdownHelper (object):
 _shutdown_helper = ShutdownHelper()
 
 
+
+from Cookie import SimpleCookie
+
+POX_COOKIEGUARD_COOKIE_NAME = "POXCookieGuardCookie"
+
+def _gen_cgc ():
+  #TODO: Use Python 3 secrets module
+  import random
+  import datetime
+  import hashlib
+  try:
+    rng = random.SystemRandom()
+  except Exception:
+    log.error("Using insecure pseudorandom number for POX CookieGuard")
+    rng = random.Random()
+  data = "".join([str(rng.randint(0,9)) for _ in range(1024)])
+  data += str(datetime.datetime.now())
+  data += str(id(data))
+  return hashlib.sha256(data).hexdigest()
+
+
+import urllib
+
+class POXCookieGuardMixin (object):
+  """
+  This is a CSRF mitigation we call POX CookieGuard.  This only stops
+  CSRF with modern browsers, but has the benefit of not requiring
+  requesters to do anything particularly special.  In particular, if you
+  are doing something like using curl from the commandline to call JSON-RPCs,
+  you don't need to do anything tricky like fetch an auth token and then
+  include it in the RPC -- all you need is cookie support.  Basically this
+  works by having POX give you an authentication token in a cookie.  This
+  uses SameSite=Strict so that other sites can't convince the browser to
+  send it.
+  """
+
+  _pox_cookieguard_bouncer = "/_poxcookieguard/bounce"
+  _pox_cookieguard_secret = _gen_cgc()
+
+  def _get_cookieguard_cookie (self):
+    return self._pox_cookieguard_secret
+
+  def _do_cookieguard (self):
+    if not getattr(self, 'pox_cookieguard', True):
+      return True
+
+    requested = self.raw_requestline.split()[1]
+
+    cookies = SimpleCookie(self.headers.get('Cookie'))
+    cgc = cookies.get(POX_COOKIEGUARD_COOKIE_NAME)
+    if cgc and cgc.value == self._get_cookieguard_cookie():
+      if requested.startswith(self._pox_cookieguard_bouncer + "?"):
+        # See below for what this bouncing dumbness is
+        log.debug("POX CookieGuard cookie is valid -- bouncing")
+        qs = requested.split("?",1)[1]
+
+        self.send_response(307, "Temporary Redirect")
+        self.send_header("Set-Cookie",
+                         "%s=%s; SameSite=Strict; HttpOnly; path=/"
+                         % (POX_COOKIEGUARD_COOKIE_NAME,
+                            self._get_cookieguard_cookie()))
+        self.send_header("Location", urllib.unquote_plus(qs))
+        self.end_headers()
+        return False
+
+      log.debug("POX CookieGuard cookie is valid")
+      return True
+    else:
+      # No guard cookie or guard cookie is wrong
+      if requested.startswith(self._pox_cookieguard_bouncer + "?"):
+        # Client probably didn't save cookie
+        qs = requested.split("?",1)[1]
+        target = urllib.unquote_plus(qs)
+        bad_qs = urllib.quote_plus(target) != qs
+        if bad_qs or self.command != "GET":
+          log.warn("Bad POX CookieGuard bounce; possible attack "
+                   "(method:%s cookie:%s qs:%s)",
+                   self.command,
+                   "bad" if cgc else "missing",
+                   "bad" if bad_qs else "okay")
+          self.send_response(400, "Bad Request")
+          self.end_headers()
+          return False
+
+        log.debug("POX CookieGuard bouncer doesn't have correct cookie; "
+                  "Sending explicit continuation page")
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write("""
+          <html><head><title>POX CookieGuard</title></head>
+          <body>
+          A separate site has linked you here.  If this was intentional,
+          please <a href="%s">continue to %s</a>.
+          </body>
+          </html>
+          """ % (target, cgi.escape(target)))
+        return False
+
+      if cgc:
+        log.debug("POX CookieGuard got wrong cookie -- setting new one")
+      else:
+        log.debug("POX CookieGuard got no cookie -- setting one")
+
+      self.send_response(307, "Temporary Redirect")
+
+      #TODO: Set Secure automatically if being accessed by https.
+      #TODO: Set Path cookie attribute
+      self.send_header("Set-Cookie",
+                       "%s=%s; SameSite=Strict; HttpOnly; path=/"
+                       % (POX_COOKIEGUARD_COOKIE_NAME,
+                          self._get_cookieguard_cookie()))
+
+      # I think most or all browsers won't even follow this redirection,
+      # so I'm not even sure if the cookie value is important (though we
+      # check it anyway).
+      self.send_header("Location", self._pox_cookieguard_bouncer + "?"
+                                   + urllib.quote_plus(requested))
+      self.end_headers()
+      return False
+
+
 import SimpleHTTPServer
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 
@@ -412,9 +534,11 @@ class SplitCGIRequestHandler (SplitRequestHandler,
         os.chdir(olddir)
 
 
-class SplitterRequestHandler (BaseHTTPRequestHandler, BasicAuthMixin):
+class SplitterRequestHandler (BaseHTTPRequestHandler, BasicAuthMixin,
+                              POXCookieGuardMixin):
   basic_auth_info = {} # username -> password
   basic_auth_enabled = None
+  pox_cookieguard = True
 
   def __init__ (self, *args, **kw):
     if self.basic_auth_info:
@@ -468,6 +592,7 @@ class SplitterRequestHandler (BaseHTTPRequestHandler, BasicAuthMixin):
         return
 
     if not self._do_auth(): return
+    if not self._do_cookieguard(): return
 
     handler = None
 
@@ -727,7 +852,13 @@ def upload_test ():
 
 
 def launch (address='', port=8000, static=False, ssl_server_key=None,
-            ssl_server_cert=None, ssl_client_certs=None):
+            ssl_server_cert=None, ssl_client_certs=None,
+            no_cookieguard=False):
+
+  if no_cookieguard:
+    SplitterRequestHandler.pox_cookieguard = False
+    assert no_cookieguard is True, "--no-cookieguard takes no argument"
+
   def expand (f):
     if isinstance(f, str): return os.path.expanduser(f)
     return f
