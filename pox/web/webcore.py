@@ -854,6 +854,23 @@ def upload_test ():
 def launch (address='', port=8000, static=False, ssl_server_key=None,
             ssl_server_cert=None, ssl_client_certs=None,
             no_cookieguard=False):
+  """
+  Starts a POX webserver
+
+  --ssl_client_certs are client certificates which the browser supplies
+    basically in order to authorize the client.  This is much more
+    secure than just using HTTP authentication.
+
+  --static alone enables serving static content from POX's www_root
+    directory.  Otherwise it is a comma-separated list of prefix:paths
+    pairs to serve (that is, it will serve the path at the prefix.  If
+    there is no colon, it assumes the path and prefix are the same.  If
+    one of the pairs is empty, we'll also serve www_root.
+
+  --no-cookieguard disables POX CookieGuard.  See POXCookieGuardMixin
+    documentation for more on this, but the short story is that disabling
+    it will make your server much more vulnerable to CSRF attacks.
+  """
 
   if no_cookieguard:
     SplitterRequestHandler.pox_cookieguard = False
