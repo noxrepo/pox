@@ -113,11 +113,11 @@ class WebsocketHandler (SplitRequestHandler, object):
     def feeder ():
       data = b''
       old_op = None
+      hdr = b''
       while self._websocket_open:
-        hdr = b''
-
         while len(hdr) < 2:
-          hdr += yield True
+          newdata = yield True
+          if newdata: hdr += newdata
 
         flags_op,len1 = struct.unpack_from("!BB", hdr, 0)
         op = flags_op & 0x0f
@@ -152,7 +152,10 @@ class WebsocketHandler (SplitRequestHandler, object):
         while len(hdr) < length:
           hdr += yield True
 
-        d = b"".join(chr(ord(c) ^ mask[i % 4]) for i,c in enumerate(hdr))
+        d = hdr[:length]
+        hdr = hdr[length:]
+
+        d = b"".join(chr(ord(c) ^ mask[i % 4]) for i,c in enumerate(d))
 
         if not fin:
           if op == self.WS_CONTINUE:
@@ -185,15 +188,20 @@ class WebsocketHandler (SplitRequestHandler, object):
             pass # Do nothing for unknown type
 
     deframer = feeder()
-    deframer.send(None)
+    try:
+      deframer.send(None)
+    except StopIteration:
+      pass # PEP 479?
 
     # This is nutso, but it just might work.
     # *Try* to read individual bytes from rfile in case it has some
     # buffered.  When it fails, switch to reading from connection.
     while True:
       try:
-        dframer.send(self.rfile.read(1))
-      except Exception:
+        deframer.send(self.rfile.read(1))
+      except socket.error as e:
+        if e.errno != errno.EAGAIN:
+          raise
         break
 
     import select
