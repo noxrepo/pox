@@ -183,7 +183,7 @@ def classify_class_attrs(object):
         if inspect.isdatadescriptor(value):
             kind = 'data descriptor'
         return name, kind, cls, value
-    return map(fixup, inspect.classify_class_attrs(object))
+    return list(map(fixup, inspect.classify_class_attrs(object)))
 
 # ----------------------------------------------------- module manipulation
 
@@ -681,7 +681,7 @@ class HTMLDoc(Doc):
                 'Modules', '#ffffff', '#aa55cc', contents)
 
         if classes:
-            classlist = map(lambda key_value: key_value[1], classes)
+            classlist = [key_value[1] for key_value in classes]
             contents = [
                 self.formattree(inspect.getclasstree(classlist, 1), name)]
             for key, value in classes:
@@ -783,8 +783,8 @@ class HTMLDoc(Doc):
                     push('\n')
             return attrs
 
-        attrs = filter(lambda data: visiblename(data[0]),
-                       classify_class_attrs(object))
+        attrs = [data for data in classify_class_attrs(object)
+                 if visiblename(data[0])]
         mdict = {}
         for key, kind, homecls, value in attrs:
             mdict[key] = anchor = '#' + name + '-' + key
@@ -1007,13 +1007,13 @@ class TextDoc(Doc):
 
     def bold(self, text):
         """Format a string in bold by overstriking."""
-        return join(map(lambda ch: ch + '\b' + ch, text), '')
+        return join([ch + '\b' + ch for ch in text], '')
 
     def indent(self, text, prefix='    '):
         """Indent text by prepending a given prefix to each line."""
         if not text: return ''
         lines = split(text, '\n')
-        lines = map(lambda line, prefix=prefix: prefix + line, lines)
+        lines = list(map(lambda line, prefix=prefix: prefix + line, lines))
         if lines: lines[-1] = rstrip(lines[-1])
         return join(lines, '\n')
 
@@ -1031,7 +1031,7 @@ class TextDoc(Doc):
                 c, bases = entry
                 result = result + prefix + classname(c, modname)
                 if bases and bases != (parent,):
-                    parents = map(lambda c, m=modname: classname(c, m), bases)
+                    parents = list(map(lambda c, m=modname: classname(c, m), bases))
                     result = result + '(%s)' % join(parents, ', ')
                 result = result + '\n'
             elif type(entry) is type([]):
@@ -1107,7 +1107,7 @@ class TextDoc(Doc):
                 'SUBMODULES', join(submodules, '\n'))
 
         if classes:
-            classlist = map(lambda key_value: key_value[1], classes)
+            classlist = [key_value[1] for key_value in classes]
             contents = [self.formattree(
                 inspect.getclasstree(classlist, 1), name)]
             for key, value in classes:
@@ -1153,7 +1153,7 @@ class TextDoc(Doc):
         else:
             title = self.bold(name) + ' = class ' + realname
         if bases:
-            parents = map(makename, bases)
+            parents = list(map(makename, bases))
             title = title + '(%s)' % join(parents, ', ')
 
         doc = getdoc(object)
@@ -1212,8 +1212,7 @@ class TextDoc(Doc):
                                        name, mod, maxlen=70, doc=doc) + '\n')
             return attrs
 
-        attrs = filter(lambda data: visiblename(data[0]),
-                       classify_class_attrs(object))
+        attrs = [data for data in classify_class_attrs(object) if visiblename(data[0])]
         while attrs:
             if mro:
                 thisclass = mro.popleft()
@@ -2044,8 +2043,7 @@ def serve(port, callback=None, completer=None):
 '#ffffff', '#7799ee')
                 def bltinlink(name):
                     return '<a href="%s.html">%s</a>' % (name, name)
-                names = filter(lambda x: x != '__main__',
-                               sys.builtin_module_names)
+                names = [x for x in sys.builtin_module_names if x != '__main__']
                 contents = html.multicolumn(names, bltinlink)
                 indices = ['<p>' + html.bigsection(
                     'Built-in Modules', '#ffffff', '#ee77aa', contents)]
