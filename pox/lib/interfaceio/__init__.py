@@ -22,7 +22,7 @@ Currently limited to Linux.
 """
 
 from pox.lib.pxpcap import PCap
-from Queue import Queue
+from queue import Queue
 from pox.lib.revent import Event, EventMixin
 from pox.lib.ioworker.io_loop import ReadLoop
 from pox.core import core
