@@ -18,6 +18,7 @@ Attempts to give help on other components
 
 from __future__ import print_function
 import pox.boot as boot
+from pox.lib.util import first_of
 import inspect
 import sys
 
@@ -98,8 +99,8 @@ def launch (no_args = False, short = False, **kw):
             "Showing help for help instead.")
     kw = {'help':True}
 
-  component = kw.keys()[0]
-  launcher = kw.values()[0]
+  component = first_of(kw.keys())
+  launcher = first_of(kw.values())
 
   if component == 'help':
     # Special case!

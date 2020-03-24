@@ -19,6 +19,7 @@ ideal way to store the underlying graph, but it'll work for now.
 """
 
 from collections import defaultdict as ddict
+from pox.lib.util import first_of
 
 
 def _fix_nbunch (nbunch, cls = set):
@@ -127,7 +128,7 @@ class MultiGraph (object):
 
   def remove_edge (self, node1, node2, key=None):
     if key is None:
-      key = self._edges[node1][node2].keys()[0] # First one is fine
+      key = first_of(self._edges[node1][node2].keys()) # First one is fine
     del self._edges[node1][node2][key]
     del self._edges[node2][node1][key]
 

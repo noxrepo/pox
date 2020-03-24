@@ -39,7 +39,7 @@ import pox.core
 core = None
 
 import pox.openflow
-from pox.lib.util import str_to_bool
+from pox.lib.util import str_to_bool, first_of
 
 # Function to run on main thread
 _main_thread_function = None
@@ -293,7 +293,7 @@ def _do_launch (argv, skip_startup=False):
 
           if len(params):
             print("This component does not have a parameter named "
-                  + "'{0}'.".format(params.keys()[0]))
+                  + "'{0}'.".format(first_of(params.keys())))
             return False
           missing = [k for k,x in args.items()
                      if x[1] is EMPTY and x[0] is EMPTY]

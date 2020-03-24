@@ -30,6 +30,8 @@ import time
 import socket
 import collections
 
+from pox.lib.iter import first_of
+
 
 #FIXME: ugh, why can't I make importing pox.core work here?
 import logging

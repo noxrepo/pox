@@ -56,7 +56,7 @@ import pox.openflow.libopenflow_01 as of
 from pox.lib.packet import ethernet
 import pox.lib.packet as pkt
 import logging
-from pox.lib.util import dpid_to_str, str_to_dpid
+from pox.lib.util import dpid_to_str, str_to_dpid, first_of
 
 log = core.getLogger()
 
@@ -98,7 +98,7 @@ def _do_ctl2 (event):
     if event.first == "add-port":
       ra(1,2)
       if len(event.args) == 1 and len(_switches) == 1:
-        sw = _switches[_switches.keys()[0]]
+        sw = _switches[first_of(_switches.keys())]
         p = args[0]
       else:
         ra(2)
@@ -145,7 +145,7 @@ def _do_ctl2 (event):
       # Wire a virtual port to a channel: wire-port [sw] port channel
       ra(2,3)
       if len(event.args) == 2 and len(_switches) == 1:
-        sw = _switches[_switches.keys()[0]]
+        sw = _switches[first_of(_switches.keys())]
         p = args[0]
         c = args[1]
       else:
@@ -166,7 +166,7 @@ def _do_ctl2 (event):
       # Unhook the virtual port: unwire-port [sw] port
       ra(1,2)
       if len(event.args) == 1 and len(_switches) == 1:
-        sw = _switches[_switches.keys()[0]]
+        sw = _switches[first_of(_switches.keys())]
         p = args[0]
       else:
         ra(2)
@@ -235,7 +235,7 @@ def _do_ctl2 (event):
       ra(2,3)
       pad = (kvs['p'] * kvs['s'])[:kvs['s']]
       if len(args) == 2 and len(_switches) == 1:
-        sw = _switches[_switches.keys()[0]]
+        sw = _switches[first_of(_switches.keys())]
         mac,ip = args
       else:
         ra(3)
