@@ -55,8 +55,8 @@ sys.path.append('..')
 #     the current directory is changed with os.chdir(), an incorrect
 #     path will be displayed.
 
-import sys, imp, os, re, types, inspect, __builtin__, pkgutil
-from repr import Repr
+import sys, imp, os, re, types, inspect, builtins, pkgutil
+from reprlib import Repr
 from string import expandtabs, find, join, lower, split, strip, rfind, rstrip
 from traceback import extract_tb
 try:
@@ -1876,8 +1876,8 @@ module "pydoc_data.topics" could not be found.
         if more_xrefs:
             xrefs = (xrefs or '') + ' ' + more_xrefs
         if xrefs:
-            import StringIO, formatter
-            buffer = StringIO.StringIO()
+            import io, formatter
+            buffer = io.StringIO()
             formatter.DumbWriter(buffer).send_flowing_data(
                 'Related help topics: ' + join(split(xrefs), ', ') + '\n')
             self.output.write('\n%s\n' % buffer.getvalue())
@@ -1966,9 +1966,9 @@ class ModuleScanner:
             else:
                 loader = importer.find_module(modname)
                 if hasattr(loader,'get_source'):
-                    import StringIO
+                    import io
                     desc = source_synopsis(
-                        StringIO.StringIO(loader.get_source(modname))
+                        io.StringIO(loader.get_source(modname))
                     ) or ''
                     if hasattr(loader,'get_filename'):
                         path = loader.get_filename(modname)
@@ -2002,7 +2002,7 @@ def apropos(key):
 # --------------------------------------------------- web browser interface
 
 def serve(port, callback=None, completer=None):
-    import BaseHTTPServer, mimetools, select
+    import http.server, mimetools, select
 
     # Patch up mimetools.Message so it doesn't break if rfc822 is reloaded.
     class Message(mimetools.Message):
@@ -2014,7 +2014,7 @@ def serve(port, callback=None, completer=None):
             self.parsetype()
             self.parseplist()
 
-    class DocHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    class DocHandler(http.server.BaseHTTPRequestHandler):
         def send_document(self, title, contents):
             try:
                 self.send_response(200)
@@ -2060,7 +2060,7 @@ pydoc</strong> by Ka-Ping Yee &lt;ping@lfw.org&gt;</font>'''
 
         def log_message(self, *args): pass
 
-    class DocServer(BaseHTTPServer.HTTPServer):
+    class DocServer(http.server.HTTPServer):
         def __init__(self, port, callback):
             host = 'localhost'
             self.address = (host, port)
@@ -2079,7 +2079,7 @@ pydoc</strong> by Ka-Ping Yee &lt;ping@lfw.org&gt;</font>'''
             self.base.server_activate(self)
             if self.callback: self.callback(self)
 
-    DocServer.base = BaseHTTPServer.HTTPServer
+    DocServer.base = http.server.HTTPServer
     DocServer.handler = DocHandler
     DocHandler.MessageClass = Message
     try:
@@ -2100,20 +2100,20 @@ def gui():
             self.server = None
             self.scanner = None
 
-            import Tkinter
-            self.server_frm = Tkinter.Frame(window)
-            self.title_lbl = Tkinter.Label(self.server_frm,
+            import tkinter
+            self.server_frm = tkinter.Frame(window)
+            self.title_lbl = tkinter.Label(self.server_frm,
                 text='Starting server...\n ')
-            self.open_btn = Tkinter.Button(self.server_frm,
+            self.open_btn = tkinter.Button(self.server_frm,
                 text='open browser', command=self.open, state='disabled')
-            self.quit_btn = Tkinter.Button(self.server_frm,
+            self.quit_btn = tkinter.Button(self.server_frm,
                 text='quit serving', command=self.quit, state='disabled')
 
-            self.search_frm = Tkinter.Frame(window)
-            self.search_lbl = Tkinter.Label(self.search_frm, text='Search for')
-            self.search_ent = Tkinter.Entry(self.search_frm)
+            self.search_frm = tkinter.Frame(window)
+            self.search_lbl = tkinter.Label(self.search_frm, text='Search for')
+            self.search_ent = tkinter.Entry(self.search_frm)
             self.search_ent.bind('<Return>', self.search)
-            self.stop_btn = Tkinter.Button(self.search_frm,
+            self.stop_btn = tkinter.Button(self.search_frm,
                 text='stop', pady=0, command=self.stop, state='disabled')
             if sys.platform == 'win32':
                 # Trying to hide and show this button crashes under Windows.
@@ -2132,17 +2132,17 @@ def gui():
             self.search_ent.focus_set()
 
             font = ('helvetica', sys.platform == 'win32' and 8 or 10)
-            self.result_lst = Tkinter.Listbox(window, font=font, height=6)
+            self.result_lst = tkinter.Listbox(window, font=font, height=6)
             self.result_lst.bind('<Button-1>', self.select)
             self.result_lst.bind('<Double-Button-1>', self.goto)
-            self.result_scr = Tkinter.Scrollbar(window,
+            self.result_scr = tkinter.Scrollbar(window,
                 orient='vertical', command=self.result_lst.yview)
             self.result_lst.config(yscrollcommand=self.result_scr.set)
 
-            self.result_frm = Tkinter.Frame(window)
-            self.goto_btn = Tkinter.Button(self.result_frm,
+            self.result_frm = tkinter.Frame(window)
+            self.goto_btn = tkinter.Button(self.result_frm,
                 text='go to selected', command=self.goto)
-            self.hide_btn = Tkinter.Button(self.result_frm,
+            self.hide_btn = tkinter.Button(self.result_frm,
                 text='hide results', command=self.hide)
             self.goto_btn.pack(side='left', fill='x', expand=1)
             self.hide_btn.pack(side='right', fill='x', expand=1)
@@ -2258,9 +2258,9 @@ def gui():
             self.stop()
             self.collapse()
 
-    import Tkinter
+    import tkinter
     try:
-        root = Tkinter.Tk()
+        root = tkinter.Tk()
         # Tk will crash if pythonw.exe has an XP .manifest
         # file and the root has is not destroyed explicitly.
         # If the problem is ever fixed in Tk, the explicit
