@@ -31,7 +31,7 @@ from pox.lib.epoll_select import EpollSelect
 class TCPEcho(socketserver.StreamRequestHandler):
   def handle(self):
     data = self.rfile.readline()
-    print "got data: %s" % data
+    print("got data: %s" % data)
     self.wfile.write(data)
 
 class ForkingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

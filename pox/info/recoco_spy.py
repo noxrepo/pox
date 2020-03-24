@@ -39,7 +39,7 @@ def _tf (frame, event, arg):
   elif event == 'return':
     _frames.pop()
   elif event == 'c_call':
-    print "c_call"
+    print("c_call")
     _frames.append((frame,arg))
   elif event == 'c_exception':
     _frames.pop()

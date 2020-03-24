@@ -692,7 +692,7 @@ class TelnetHandler (StateMachine):
 
   def _rx_telnet (self, msg):
     #self.log.info(" ".join("%02x" % (ord(x),) for x in msg))
-    print " ".join("%02x" % (ord(x),) for x in msg),
+    print(" ".join("%02x" % (ord(x),) for x in msg), end=' ')
 
   @property
   def log (self):
@@ -704,7 +704,7 @@ class TelnetHandler (StateMachine):
     class O (object):
       pass
     def pr (fmt, *args):
-      print fmt % args
+      print(fmt % args)
     def nopr (*args):
       pass
     o = O()

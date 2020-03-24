@@ -679,28 +679,28 @@ def test():
   g.link((n1,0),(n2,0))
   g.link((n1,1),(n3,0))
 
-  print g.find(is_a=Node1)
-  print g.find(is_a=Node2)
-  print g.find(type=Node1)
-  print g.find(type=Node3)
-  print g.find_links()
-  print "=== NEIGHBORS ==="
-  print g.neighbors(n1)
-  print g.find_port(n1, n2)
-  print g.connected(n1, n3)
-  print g.ports_for_node(n3)
+  print(g.find(is_a=Node1))
+  print(g.find(is_a=Node2))
+  print(g.find(type=Node1))
+  print(g.find(type=Node3))
+  print(g.find_links())
+  print("=== NEIGHBORS ===")
+  print(g.neighbors(n1))
+  print(g.find_port(n1, n2))
+  print(g.connected(n1, n3))
+  print(g.ports_for_node(n3))
 
-  print [(n, x[0], x[1][0], x[1][1]) for n in g.find(is_a=Node1) for x in g.ports_for_node(n).iteritems() ]
+  print([(n, x[0], x[1][0], x[1][1]) for n in g.find(is_a=Node1) for x in g.ports_for_node(n).items() ])
 
   g.disconnect_nodes(n1, n3)
 
-  print g.find_links()
+  print(g.find_links())
   g.link((n2, 1), (n3, 1))
   g.link((n1,1), (n3, 0))
   g.link((n1,0), (n2, 0))
-  print g.find_links()
+  print(g.find_links())
   g.disconnect_node(n3)
-  print g.find_links()
+  print(g.find_links())
   import code
   code.interact(local=locals())
 

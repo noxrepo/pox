@@ -119,7 +119,7 @@ class Entity (object):
   def __init__ (self, id=None):
     if id:
       if id in Entity._all_ids:
-        print("".join(traceback.format_list(self._tb[id])))
+        print(("".join(traceback.format_list(self._tb[id]))))
         raise Exception("ID %s already taken" % str(id))
     else:
       while Entity._next_id in Entity._all_ids:

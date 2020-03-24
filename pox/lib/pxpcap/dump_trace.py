@@ -79,7 +79,7 @@ def cb (data, parser):
       msg = msg[:_max_length-3]
       msg += "..."
   #core.getLogger("dump").info(msg)
-  print msg
+  print(msg)
 
 
 def launch (infile, verbose = False, max_length = 110,

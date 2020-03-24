@@ -1533,7 +1533,7 @@ def doc(thing, title='Python Library Documentation: %s', forceload=0):
     try:
         pager(render_doc(thing, title, forceload))
     except (ImportError, ErrorDuringImport), value:
-        print value
+        print(value)
 
 def writedoc(thing, forceload=0):
     """Write HTML documentation to a file in the current directory."""
@@ -1543,9 +1543,9 @@ def writedoc(thing, forceload=0):
         file = open(name + '.html', 'w')
         file.write(page)
         file.close()
-        print 'wrote', name + '.html'
     except (ImportError, ErrorDuringImport), value:
-        print value
+        print('wrote', name + '.html')
+        print(value)
 
 def writedocs(dir, pkgpath='', done=None):
     """Write out HTML documentation for all modules in a directory tree."""
@@ -1989,7 +1989,7 @@ def apropos(key):
     def callback(path, modname, desc):
         if modname[-9:] == '.__init__':
             modname = modname[:-9] + ' (package)'
-        print modname, desc and '- ' + desc
+        print(modname, desc and '- ' + desc)
     def onerror(modname):
         # Ignore non-ImportError exceptions raised whilst trying to
         # import modules
@@ -2308,9 +2308,9 @@ def cli():
                 except ValueError:
                     raise BadUsage
                 def ready(server):
-                    print 'pydoc server ready at %s' % server.url
+                    print('pydoc server ready at %s' % server.url)
                 def stopped():
-                    print 'pydoc server stopped'
+                    print('pydoc server stopped')
                 serve(port, ready, stopped)
                 return
             if opt == '-w':
@@ -2319,7 +2319,7 @@ def cli():
         if not args: raise BadUsage
         for arg in args:
             if ispath(arg) and not os.path.exists(arg):
-                print 'file %r does not exist' % arg
+                print('file %r does not exist' % arg)
                 break
             try:
                 if ispath(arg) and os.path.isfile(arg):
@@ -2332,11 +2332,11 @@ def cli():
                 else:
                     help.help(arg)
             except ErrorDuringImport, value:
-                print value
+                print(value)
 
     except (getopt.error, BadUsage):
         cmd = os.path.basename(sys.argv[0])
-        print """pydoc - the Python documentation tool
+        print("""pydoc - the Python documentation tool
 
 %s <name> ...
     Show text documentation on something.  <name> may be the name of a
@@ -2359,6 +2359,6 @@ def cli():
     Write out the HTML documentation for a module to a file in the current
     directory.  If <name> contains a '%s', it is treated as a filename; if
     it names a directory, documentation is written for all the contents.
-""" % (cmd, os.sep, cmd, cmd, cmd, cmd, os.sep)
+""" % (cmd, os.sep, cmd, cmd, cmd, cmd, os.sep))
 
 if __name__ == '__main__': cli()

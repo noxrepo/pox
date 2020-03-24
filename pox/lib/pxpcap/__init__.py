@@ -515,25 +515,25 @@ def test (interface = "en1"):
     nbd = bytes_real - bytes_got
     if nbd != bytes_diff:
       bytes_diff = nbd
-      print "lost bytes:",nbd
+      print("lost bytes:",nbd)
     if t > total:
       total = t + 500
-      print t,"total"
+      print(t,"total")
     if d > drop:
       drop = d
-      print d, "dropped"
+      print(d, "dropped")
     p = pkt.ethernet(data)
     ip = p.find('ipv4')
     if ip:
-      print ip.srcip,"\t",ip.dstip, p
+      print(ip.srcip,"\t",ip.dstip, p)
 
-  print "\n".join(["%i. %s" % x for x in
-                  enumerate(PCap.get_device_names())])
+  print("\n".join(["%i. %s" % x for x in
+                  enumerate(PCap.get_device_names())]))
 
   if interface.startswith("#"):
     interface = int(interface[1:])
     interface = PCap.get_device_names()[interface]
-  print "Interface:",interface
+  print("Interface:",interface)
 
   p = PCap(interface, callback = cb,
            filter = "icmp")
@@ -585,11 +585,11 @@ def interfaces (verbose = False):
   Show interfaces
   """
   if not verbose:
-    print "\n".join(["%i. %s" % x for x in
-                    enumerate(PCap.get_device_names())])
+    print("\n".join(["%i. %s" % x for x in
+                    enumerate(PCap.get_device_names())]))
   else:
     import pprint
-    print pprint.pprint(PCap.get_devices())
+    print(pprint.pprint(PCap.get_devices()))
 
   from pox.core import core
   core.quit()
@@ -601,7 +601,7 @@ def launch (interface, no_incoming=False, no_outgoing=False):
   """
   def cb (obj, data, sec, usec, length):
     p = pkt.ethernet(data)
-    print p.dump()
+    print(p.dump())
 
   if interface.startswith("#"):
     interface = int(interface[1:])

@@ -52,8 +52,8 @@ makebackup = True
 
 def usage(msg=None):
     if msg is not None:
-        print >> sys.stderr, msg
-    print >> sys.stderr, __doc__
+        print(msg, file=sys.stderr)
+    print(__doc__, file=sys.stderr)
 
 def errprint(*args):
     sep = ""
@@ -94,7 +94,7 @@ def main():
 def check(file):
     if os.path.isdir(file) and not os.path.islink(file):
         if verbose:
-            print "listing directory", file
+            print("listing directory", file)
         names = os.listdir(file)
         for name in names:
             fullname = os.path.join(file, name)
@@ -106,7 +106,7 @@ def check(file):
         return
 
     if verbose:
-        print "checking", file, "...",
+        print("checking", file, "...", end=' ')
     try:
         f = open(file)
     except IOError, msg:
@@ -117,24 +117,24 @@ def check(file):
     f.close()
     if r.run():
         if verbose:
-            print "changed."
+            print("changed.")
             if dryrun:
-                print "But this is a dry run, so leaving it alone."
+                print("But this is a dry run, so leaving it alone.")
         if not dryrun:
             bak = file + ".bak"
             if makebackup:
                 shutil.copyfile(file, bak)
                 if verbose:
-                    print "backed up", file, "to", bak
+                    print("backed up", file, "to", bak)
             f = open(file, "w")
             r.write(f)
             f.close()
             if verbose:
-                print "wrote new", file
+                print("wrote new", file)
         return True
     else:
         if verbose:
-            print "unchanged."
+            print("unchanged.")
         return False
 
 def _rstrip(line, JUNK='\n \t'):

@@ -75,8 +75,8 @@ def _calc_paths ():
         a = path_map[i][j][0]
         #a = adjacency[i][j]
         if a is None: a = "*"
-        print a,
-      print
+        print(a, end=' ')
+      print()
 
   sws = switches.values()
   path_map.clear()

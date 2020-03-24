@@ -64,10 +64,10 @@ for root, dirs, files in os.walk(ROOT):
 
 def mkdir(d):
   if not os.path.exists(d):
-    print "mkdir %s" % d
+    print("mkdir %s" % d)
     os.makedirs(d)
   else:
-    print "mkdir %s [exists]" % d
+    print("mkdir %s [exists]" % d)
 
 template = Template(
 """#!/usr/bin/env python
@@ -102,7 +102,7 @@ class ${test_class_name} (unittest.TestCase):
 """)
 
 def generate_test(module):
-  print "Generating test for module: %s" % module
+  print("Generating test for module: %s" % module)
   lastdot = module.rfind(".")
   package = module[0:lastdot] if lastdot > 0 else ""
   name = module[lastdot+1:]
@@ -137,7 +137,7 @@ def generate_test(module):
         |stat.S_IXGRP|stat.S_IRGRP|stat.S_IXOTH|stat.S_IROTH)
 
   if not os.path.exists(test_file) or options.force:
-    print "Creating test %s in %s" % (test_class_name, test_file)
+    print("Creating test %s in %s" % (test_class_name, test_file))
     write_test()
   else:
     f = open(test_file, "r")
@@ -150,19 +150,19 @@ def generate_test(module):
       existing_non_hashed = re.sub(r'\n[^\n]*\n', '\n', existing, 1)
       calculated_sha1 = sha1(existing_non_hashed)
       if read_sha1 == calculated_sha1:
-        print "Updating test %s in %s" % (test_class_name, test_file)
+        print("Updating test %s in %s" % (test_class_name, test_file))
         write_test(True)
       else:
-        print ("Test for %s in %s already exists (and sha1 sums don't "
+        print(("Test for %s in %s already exists (and sha1 sums don't "
                "match: %s<=>%s)") % (test_class_name,
-               test_file, read_sha1, calculated_sha1)
+               test_file, read_sha1, calculated_sha1))
     else:
-      print ("Test for %s in %s already exists (and no autogeneration "
-             "sig found)") % (test_class_name, test_file)
+      print(("Test for %s in %s already exists (and no autogeneration "
+             "sig found)") % (test_class_name, test_file))
 
 count = 0
 for module in modules:
   if any(fnmatchcase(module,glob) for glob in args):
     count += 1
     generate_test(module)
-print "Created/updated",count,"tests"
+print("Created/updated",count,"tests")
