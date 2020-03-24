@@ -88,8 +88,8 @@ class IOWorker (object):
     self._connecting = False
     try:
       self.socket.recv(0)
-    except socket.error as (s_errno, strerror):
-      if s_errno == errno.EAGAIN or s_errno == 10035: # 10035=WSAEWOULDBLOCK
+    except socket.error as e:
+      if e.errno == errno.EAGAIN or e.errno == 10035: # 10035=WSAEWOULDBLOCK
         # On Linux, this seems to mean we're connected.
         # I think this is right for the Windows case too.
         # If we want to stay in the connecting state until
@@ -114,13 +114,13 @@ class IOWorker (object):
         loop._workers.discard(self)
       else:
         self._push_receive_data(data)
-    except socket.error as (s_errno, strerror):
-      if s_errno == errno.ENOENT:
+    except socket.error as e:
+      if e.errno == errno.ENOENT:
         # SSL library does this sometimes
         log.error("Socket %s: ENOENT", str(self))
         return
       log.error("Socket %s error %i during recv: %s", str(self),
-          s_errno, strerror)
+          e.errno, e.strerror)
       self.close()
       loop._workers.discard(self)
 
@@ -133,10 +133,10 @@ class IOWorker (object):
           self._consume_send_buf(l)
           if self._shutdown_send and len(self.send_buf) == 0:
             self.socket.shutdown(socket.SHUT_WR)
-    except socket.error as (s_errno, strerror):
-      if s_errno != errno.EAGAIN:
+    except socket.error as e:
+      if e.errno != errno.EAGAIN:
         log.error("Socket %s error %i during send: %s", str(self),
-          s_errno, strerror)
+          e.errno, e.strerror)
         self.close()
         loop._workers.discard(self)
 
@@ -297,9 +297,9 @@ class RecocoIOWorker (IOWorker):
         if l == len(self.send_buf):
           return
         data = data[l]
-      except socket.error as (s_errno, strerror):
-        if s_errno != errno.EAGAIN:
-          log.error("Socket error: " + strerror)
+      except socket.error as e:
+        if e.errno != errno.EAGAIN:
+          log.error("Socket error: " + e.strerror)
           self.close()
           return
 
