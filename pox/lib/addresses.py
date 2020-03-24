@@ -784,7 +784,7 @@ def netmask_to_cidr (dq):
   of network bits.  e.g., 255.255.255.0 -> 24
   Raise exception if subnet mask is not CIDR-compatible.
   """
-  if isinstance(dq, basestring):
+  if isinstance(dq, str):
     dq = IPAddr(dq)
   v = dq.toUnsigned(networkOrder=False)
   c = 0
