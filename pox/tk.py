@@ -96,7 +96,7 @@ class Tk (object):
       def f ():
         l = {'self':self}
         l.update(kw)
-        exec code in globals(), l
+        exec(code, globals(), l)
       r = f()
     if rv: core.callLater(rv, r)
 
