@@ -55,9 +55,9 @@
 #======================================================================
 import struct
 import string
-from packet_utils import *
+from .packet_utils import *
 
-from packet_base import packet_base
+from .packet_base import packet_base
 import pox.lib.util as util
 from pox.lib.util import is_subclass
 from pox.lib.addresses import *

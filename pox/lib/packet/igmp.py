@@ -36,8 +36,8 @@
 #TODO: Support for IGMP v3
 
 import struct
-from packet_utils import *
-from packet_base import packet_base
+from .packet_utils import *
+from .packet_base import packet_base
 from pox.lib.addresses import *
 from pox.lib.util import initHelper
 

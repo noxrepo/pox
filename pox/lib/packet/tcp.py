@@ -43,11 +43,11 @@
 #======================================================================
 
 import struct
-from packet_utils import *
+from .packet_utils import *
 from socket import htons
 from socket import htonl
 
-from packet_base import packet_base
+from .packet_base import packet_base
 
 import logging
 lg = logging.getLogger('packet')

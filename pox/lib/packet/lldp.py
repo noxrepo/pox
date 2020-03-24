@@ -60,9 +60,9 @@
 
 import struct
 import time
-from packet_utils import *
+from .packet_utils import *
 
-from packet_base import packet_base
+from .packet_base import packet_base
 from pox.lib.addresses import EthAddr
 from pox.lib.util import initHelper
 

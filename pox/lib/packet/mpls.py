@@ -29,10 +29,10 @@
 #======================================================================
 import struct
 
-from packet_base import packet_base
-from ethernet import ethernet
+from .packet_base import packet_base
+from .ethernet import ethernet
 
-from packet_utils import *
+from .packet_utils import *
 
 
 class mpls(packet_base):

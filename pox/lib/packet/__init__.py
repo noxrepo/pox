@@ -24,45 +24,45 @@ Could still use more work.
 
 # None of this is probably that big, and almost all of it gets loaded
 # under most circumstances anyway.  Let's just load all of it.
-import arp as ARP
-import dhcp as DHCP
-import dns as DNS
-import eap as EAP
-import eapol as EAPOL
-import ethernet as ETHERNET
-import ipv4 as IPV4
-import ipv6 as IPV6
-import icmp as ICMP
-import icmpv6 as ICMPV6
-import lldp as LLDP
-import tcp as TCP
-import udp as UDP
-import vlan as VLAN
-import mpls as MPLS
-import llc as LLC
-import rip as RIP
-import gre as GRE
-import vxlan as VXLAN
+from . import arp as ARP
+from . import dhcp as DHCP
+from . import dns as DNS
+from . import eap as EAP
+from . import eapol as EAPOL
+from . import ethernet as ETHERNET
+from . import ipv4 as IPV4
+from . import ipv6 as IPV6
+from . import icmp as ICMP
+from . import icmpv6 as ICMPV6
+from . import lldp as LLDP
+from . import tcp as TCP
+from . import udp as UDP
+from . import vlan as VLAN
+from . import mpls as MPLS
+from . import llc as LLC
+from . import rip as RIP
+from . import gre as GRE
+from . import vxlan as VXLAN
 
-from gre import *
-from vxlan import *
-from rip import *
-from arp import *
-from dhcp import *
-from dns import *
-from eap import *
-from eapol import *
-from ethernet import *
-from ipv6 import *
-from ipv4 import *
-from icmpv6 import *
-from icmp import *
-from lldp import *
-from tcp import *
-from udp import *
-from vlan import *
-from mpls import *
-from llc import *
+from .gre import *
+from .vxlan import *
+from .rip import *
+from .arp import *
+from .dhcp import *
+from .dns import *
+from .eap import *
+from .eapol import *
+from .ethernet import *
+from .ipv6 import *
+from .ipv4 import *
+from .icmpv6 import *
+from .icmp import *
+from .lldp import *
+from .tcp import *
+from .udp import *
+from .vlan import *
+from .mpls import *
+from .llc import *
 
 __all__ = [
   'rip',

@@ -89,10 +89,10 @@
 #   General cleaup/rewrite (code is/has gotten pretty bad)
 
 import struct
-from packet_utils import *
-from packet_utils import TruncatedException as Trunc
+from .packet_utils import *
+from .packet_utils import TruncatedException as Trunc
 
-from packet_base import packet_base
+from .packet_base import packet_base
 
 from pox.lib.addresses import IPAddr,IPAddr6,EthAddr
 

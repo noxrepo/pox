@@ -85,9 +85,9 @@
 #
 #======================================================================
 import struct
-from packet_utils       import *
+from .packet_utils       import *
 
-from packet_base import packet_base
+from .packet_base import packet_base
 
 class eap(packet_base):
     "Extensible Authentication Protocol packet"

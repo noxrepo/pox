@@ -33,13 +33,13 @@
 #                 +---------------- ...
 #======================================================================
 import struct
-from packet_utils import *
-from dhcp import *
-from dns  import *
-from rip  import *
-from vxlan import *
+from .packet_utils import *
+from .dhcp import *
+from .dns  import *
+from .rip  import *
+from .vxlan import *
 
-from packet_base import packet_base
+from .packet_base import packet_base
 
 # We grab ipv4 later to prevent cyclic dependency
 #_ipv4 = None

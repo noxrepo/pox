@@ -40,14 +40,14 @@
 
 import struct
 import time
-from packet_utils       import *
-from tcp import *
-from udp import *
-from icmp import *
-from igmp import *
-from gre import *
+from .packet_utils       import *
+from .tcp import *
+from .udp import *
+from .icmp import *
+from .igmp import *
+from .gre import *
 
-from packet_base import packet_base
+from .packet_base import packet_base
 
 from pox.lib.addresses import IPAddr, IP_ANY, IP_BROADCAST
 

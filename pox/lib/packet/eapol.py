@@ -32,11 +32,11 @@
 #
 #======================================================================
 import struct
-from packet_utils       import *
+from .packet_utils       import *
 
-from packet_base import packet_base
+from .packet_base import packet_base
 
-from eap import *
+from .eap import *
 
 class eapol(packet_base):
     "EAP over LAN packet"

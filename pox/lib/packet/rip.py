@@ -52,8 +52,8 @@
 #======================================================================
 
 import struct
-from packet_utils import *
-from packet_base import packet_base
+from .packet_utils import *
+from .packet_base import packet_base
 from pox.lib.addresses import *
 
 # RIP v2 multicast address

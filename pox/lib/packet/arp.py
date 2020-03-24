@@ -37,19 +37,19 @@
 #=====================================================================
 import struct
 
-from packet_base import packet_base
-from ipv4 import ipv4
+from .packet_base import packet_base
+from .ipv4 import ipv4
 
-from ethernet import ethernet
-from ethernet import ETHER_ANY
-from ethernet import ETHER_BROADCAST
+from .ethernet import ethernet
+from .ethernet import ETHER_ANY
+from .ethernet import ETHER_BROADCAST
 
-from ipv4 import IP_ANY
-from ipv4 import IP_BROADCAST
+from .ipv4 import IP_ANY
+from .ipv4 import IP_BROADCAST
 
 from pox.lib.addresses import IPAddr, EthAddr
 
-from packet_utils       import *
+from .packet_utils       import *
 
 class arp (packet_base):
     "ARP/RARP packet struct"
