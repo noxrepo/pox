@@ -38,6 +38,7 @@ from pox.lib.util import initHelper
 from pox.lib.util import hexdump
 from pox.lib.util import is_listlike
 from pox.lib.util import ClassicCmp
+from functools import reduce
 
 
 EMPTY_ETH = EthAddr(None)
