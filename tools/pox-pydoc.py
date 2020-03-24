@@ -1773,7 +1773,7 @@ has the same effect as typing a particular string at the help> prompt.
     def getline(self, prompt):
         """Read one line, using raw_input when available."""
         if self.input is sys.stdin:
-            return raw_input(prompt)
+            return input(prompt)
         else:
             self.output.write(prompt)
             self.output.flush()

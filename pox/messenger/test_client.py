@@ -78,7 +78,7 @@ def main (addr = "127.0.0.1", port = 7790):
   while not done:
     try:
       #print ">",
-      m = raw_input()
+      m = input()
       if len(m) == 0: continue
       m = eval(m)
       if not isinstance(m, dict):
