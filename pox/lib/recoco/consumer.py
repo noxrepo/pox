@@ -78,7 +78,7 @@ class BaseConsumer (Task):
 
   def run (self):
     while core.running and self.running:
-      for _ in xrange(min(self.batch_size, len(self.queue))):
+      for _ in range(min(self.batch_size, len(self.queue))):
         work = self.queue.pop()
         try:
           self._do_work(work)

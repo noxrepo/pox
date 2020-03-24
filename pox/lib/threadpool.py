@@ -71,7 +71,7 @@ class ThreadPool (object):
     self._tasks = Queue()
     self.maximum = maximum
     self._lock = RLock()
-    for i in xrange(initial):
+    for i in range(initial):
       self._new_worker
 
   def _new_worker (self):
@@ -98,7 +98,7 @@ class ThreadPool (object):
     self._tasks.put((func, args, kwargs))
 
     if self.available > self._total / 2 and self.total > 8:
-      for i in xrange(self._total / 2 - 1):
+      for i in range(self._total / 2 - 1):
         self._tasks.put((None,None,None))
 
     self._lock.release()

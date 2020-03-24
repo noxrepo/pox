@@ -90,7 +90,7 @@ class EthAddr (object):
             raise RuntimeError("Bad format for ethernet address")
           # Address of form xx:xx:xx:xx:xx:xx
           # Pick out the hex digits only
-          addr = ''.join((addr[x*3:x*3+2] for x in xrange(0,6)))
+          addr = b''.join((addr[x*3:x*3+2] for x in range(0,6)))
         elif len(addr) == 12:
           pass
         else:
@@ -442,7 +442,7 @@ class IPAddr6 (object):
     Factory that creates an IPAddr6 from a large integer
     """
     o = b''
-    for i in xrange(16):
+    for i in range(16):
       o = chr(num & 0xff) + o
       num >>= 8
     return cls.from_raw(o)
@@ -698,7 +698,7 @@ class IPAddr6 (object):
     (or .is_ipv4_mapped, of course).
     """
     o = [ord(lo) | (ord(hi)<<8) for hi,lo in
-         (self._value[i:i+2] for i in xrange(0,16,2))]
+         (self._value[i:i+2] for i in range(0,16,2))]
 
     if (ipv4 is None and self.is_ipv4_mapped) or ipv4:
       ip4part = o[-2:]

@@ -470,7 +470,7 @@ class SpanningForest (object):
     prev = getattr(self, "_prev", [])
     self._prev = used
     if stable:
-      for i in xrange(len(prev)-1, -1, -1):
+      for i in range(len(prev)-1, -1, -1):
         l = prev[i]
         if l.link in links:
           del links[l.link]

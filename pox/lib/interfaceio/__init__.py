@@ -568,7 +568,7 @@ class PCapInterface (Interface, EventMixin):
 
   def _queue_read (self):
     anything = False
-    for _ in xrange(10): # as most X at once
+    for _ in range(10): # as most X at once
       try:
         data = self._q.get(False)
         self._q.task_done()

@@ -455,7 +455,7 @@ def hexdump (data):
     data = [ord(c) for c in data]
   o = ""
   def chunks (data, length):
-    return (data[i:i+length] for i in xrange(0, len(data), length))
+    return (data[i:i+length] for i in range(0, len(data), length))
   def filt (c):
     if c >= 32 and c <= 126: return chr(c)
     return '.'

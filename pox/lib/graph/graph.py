@@ -474,7 +474,7 @@ class Graph (object):
       _ = np1[0]
     except:
       # portless (hacky)
-      for free in xrange(1000):
+      for free in range(1000):
         if free not in np1.ports:
           np1 = (np1,free)
           break
@@ -482,7 +482,7 @@ class Graph (object):
       _ = np2[0]
     except:
       # portless (hacky)
-      for free in xrange(1000):
+      for free in range(1000):
         if free not in np2.ports:
           np2 = (np2,free)
           break

@@ -335,7 +335,7 @@ _favicon = ("47494638396110001000c206006a5797927bc18f83ada9a1bfb49ceabda"
  + "1c038d4e27a0f2004e081e2172a4051942abba260309ea6b805ab501581ae3129d90"
  + "1275c6404b80a72f5abcd4a2454cb334dbd9e58e74693b97425e07002003b")
 _favicon = ''.join([chr(int(_favicon[n:n+2],16))
-                   for n in xrange(0,len(_favicon),2)])
+                   for n in range(0,len(_favicon),2)])
 
 class CoreHandler (SplitRequestHandler):
   """

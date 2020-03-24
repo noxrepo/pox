@@ -2177,7 +2177,7 @@ class ofp_features_reply (ofp_header):
     offset,(self.capabilities, self.actions) = _unpack("!LL", raw, offset)
     portCount = (length - 32) // len(ofp_phy_port)
     self.ports = []
-    for i in xrange(0, portCount):
+    for i in range(0, portCount):
       p = ofp_phy_port()
       offset = p.unpack(raw, offset)
       self.ports.append(p)
