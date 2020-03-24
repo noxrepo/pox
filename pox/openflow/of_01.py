@@ -996,7 +996,7 @@ class Connection (EventMixin):
 def wrap_socket (new_sock):
   fname = datetime.datetime.now().strftime("%Y-%m-%d-%I%M%p")
   fname += "_" + new_sock.getpeername()[0].replace(".", "_")
-  fname += "_" + `new_sock.getpeername()[1]` + ".pcap"
+  fname += "_" + repr(new_sock.getpeername()[1]) + ".pcap"
   pcapfile = file(fname, "w")
   try:
     new_sock = OFCaptureSocket(new_sock, pcapfile,
