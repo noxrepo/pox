@@ -41,6 +41,27 @@ _ioloop = None
 log = None
 
 
+def _chr (opt):
+  """
+  A more permissive chr()
+
+  Like chr(), but if the value is already a string, simply returns it.
+  """
+  if isinstance(opt, bytes):
+    return opt
+  else:
+    return bytes([opt])
+
+
+def _ctrl (char):
+  """
+  Makes a control character
+
+  Give it a string like "J" and it'll return b'\n'
+  """
+  return bytes([char.encode()[0] - 64])
+
+
 def _process_caps (caps):
   """
   Process textual lists of curses caps into list of pairs
@@ -454,24 +475,24 @@ class CursesCodes (object):
 
   @staticmethod
   def strip_timing (v):
-    o = ''
+    o = b''
     i = 0
     swallow = False
     while i < len(v):
-      c = v[i]
-      nc = v[i+1] if i+1 < len(v) else ''
+      c = v[i:i+1]
+      nc = v[i+1:i+2] if i+1 < len(v) else b''
 
       if swallow:
         i += 1
-        if c == '>':
+        if c == b'>':
           swallow = False
         continue
 
-      if c == '$' and nc == '$':
-        if not swallow: o += '$'
+      if c == b'$' and nc == b'$':
+        if not swallow: o += b'$'
         i += 2
         continue
-      elif c == '$' and nc == '<':
+      elif c == b'$' and nc == b'<':
         swallow = True
         i += 2
         continue
@@ -668,13 +689,13 @@ _make_consts()
 
 
 # Used by TTYPE
-IS = chr(0)
-SEND = chr(1)
+IS = _chr(0)
+SEND = _chr(1)
 
 
 # Handy definitions
-ESC = chr(27)
-BELL = chr(7)
+ESC = _chr(27)
+BELL = _chr(7)
 
 # RFC1143 stuff
 WANTYES = object()
@@ -692,7 +713,7 @@ class TelnetHandler (StateMachine):
 
   def _rx_telnet (self, msg):
     #self.log.info(" ".join("%02x" % (ord(x),) for x in msg))
-    print(" ".join("%02x" % (ord(x),) for x in msg), end=' ')
+    print(" ".join("%02x" % (x,) for x in msg), end=' ')
 
   @property
   def log (self):
@@ -731,7 +752,7 @@ class TelnetHandler (StateMachine):
     data = b''
     while True:
       r = self.__read()
-      if r == '':
+      if r == b'':
         break
       if r == IAC:
         self._state = self._state_iac
@@ -773,12 +794,12 @@ class TelnetHandler (StateMachine):
         self._handle_do(opt)
       elif r == DONT:
         self._handle_dont(opt)
-      self.log.debug("%s %s", _codename[r][1],_optname.get(opt,ord(opt)))
+      self.log.debug("%s %s", _codename[r][1],_optname.get(opt,opt))
     elif r == SB:
       self._state = self._state_sb
       return
     else:
-      self._error("Unknown command: %08x", ord(r))
+      self._error("Unknown command: %08x", r)
       return
 
     self._state = self._state_default
@@ -806,8 +827,8 @@ class TelnetHandler (StateMachine):
     o = b''
     i = 0
     while i < len(b):
-      c = b[i]
-      n = b[i+1]
+      c = b[i:i+1]
+      n = b[i+1:i+2]
       if c == IAC:
         if n == IAC:
           i += 2
@@ -828,7 +849,7 @@ class TelnetHandler (StateMachine):
     Called after receiving subnegotiation information
     """
     s = "[SB|"
-    s += " ".join("%02x" % (ord(x),) for x in sub)
+    s += " ".join("%02x" % (x,) for x in sub)
     s += "|" + repr(sub) + "]"
     self.log.debug(s)
 
@@ -921,18 +942,6 @@ class TelnetHandler (StateMachine):
   def send_wont (self, opt):
     self.log.debug(">WONT %s", _optname.get(opt, opt))
     self.send(IAC + WONT + _chr(opt))
-
-
-def _chr (opt):
-  """
-  A more permissive chr()
-
-  Like chr(), but if the value is already a string, simply returns it.
-  """
-  if isinstance(opt, basestring):
-    return opt
-  else:
-    return chr(opt)
 
 
 class QTelnetHandler (TelnetHandler):
@@ -1290,7 +1299,7 @@ class LineEdit (object):
     super(LineEdit,self).__init__(**kw)
     self.__hist = []
     self.__pos = None
-    self.__current = ''
+    self.__current = b''
     self.__cursor = 0
     self.password_mode = False
 
@@ -1306,17 +1315,17 @@ class LineEdit (object):
     line = self.__current
     if self.__current.strip():
       self.__hist.append(self.__current)
-    self.__current = ''
+    self.__current = b''
     self.__cursor = 0
     self.__pos = None
     self._accept_line(line)
 
   def do_text (self, text):
     for c in text:
-      self._do_char(c)
+      self._do_char(bytes((c,)))
 
   def _do_char (self, c):
-    if c == '\x7f' or c == '\x08':
+    if c == b'\x7f' or c == b'\x08':
       if self.__cursor == 0:
         self.send(BELL)
       else:
@@ -1324,28 +1333,28 @@ class LineEdit (object):
         self.__current = (self.__current[:self.__cursor] +
                           self.__current[self.__cursor+1:])
         self.redraw(1)
-    elif c == '\r':
+    elif c == b'\r':
       #self.erase()
       #self.send(">" + self.__current + "<\n\r")
       self.do_commit()
-    elif c == '\n':
+    elif c == b'\n':
       pass
-    elif c == '\x03':
+    elif c == b'\x03':
       self.ctrlc()
-    elif c == '\x01': # ctrl-a
+    elif c == b'\x01': # ctrl-a
       self.send(self.term.cub1 * self.__cursor)
       self.__cursor = 0
-    elif c == '\x05': # ctrl-e
+    elif c == b'\x05': # ctrl-e
       r = len(self.__current) - self.__cursor
       self.__cursor = len(self.__current)
       self.send(self.term.cuf1 * r)
-    elif c == chr(ord('W') - 64):
+    elif c == _ctrl("W"):
       self.erase()
       c = self.__cursor
       if c >= len(self.__current): c -= 1
-      while c >= 0 and self.__current[c] != ' ':
+      while c >= 0 and self.__current[c] != b' ':
         c -= 1
-      while c >= 0 and self.__current[c] == ' ':
+      while c >= 0 and self.__current[c] == b' ':
         c -= 1
       c += 1
       if c == self.__cursor:
@@ -1355,11 +1364,11 @@ class LineEdit (object):
         self.__cursor = c
 
       self.redraw(erase=False)
-    elif c == chr(ord('K') - 64):
+    elif c == _ctrl('K'):
       self.erase()
       self.__current = self.__current[:self.__cursor]
       self.redraw(erase=False)
-    elif c < ' ':
+    elif c < b' ': # control characters
       pass
     else:
       self.__current = (self.__current[:self.__cursor] + c +
@@ -1367,7 +1376,7 @@ class LineEdit (object):
       self.__cursor += 1
       if self.__cursor == len(self.__current):
         if self.password_mode:
-          self.send("*")
+          self.send(b"*")
         else:
           self.send(c)
       else:
@@ -1375,20 +1384,21 @@ class LineEdit (object):
 
   def erase (self, o=0):
     self.send(self.term.cub1 * (self.__cursor+o))
-    self.send(" " * (len(self.__current)+o))
+    self.send(b" " * (len(self.__current)+o))
     self.send(self.term.cub1 * (len(self.__current)+o))
 
   def redraw (self, o=0, erase=True):
     # Totally hacky and sloppy
     if erase: self.erase(o)
     if self.password_mode:
-      self.send("*" * len(self.__current))
+      self.send(b"*" * len(self.__current))
     else:
       self.send(self.__current)
     self.send(self.term.cub1 * len(self.__current))
     self.send(self.term.cuf1 * self.__cursor)
 
   def do_ctl (self, c, n):
+    if isinstance(n, bytes): n = n.decode()
     if n == 'kcuu1':
       if self.__pos is None:
         if not self.__hist:
@@ -1414,7 +1424,7 @@ class LineEdit (object):
       elif self.__pos == len(self.__hist) - 1:
         self.erase()
         self.__pos = None
-        self.__current = ''
+        self.__current = b''
         self.__cursor = 0
         self.redraw(erase=False)
       else:
@@ -1458,7 +1468,7 @@ class TelnetWorker (RecocoIOWorker, MyTelnetHandler, LineEdit):
 
     # The del key seems to often be set to this, but it's not in the terminfo,
     # so we'll just jam it in here and hope for the best.
-    self.term.add_key("\x1b[3~", fake='kdch1')
+    self.term.add_key(b"\x1b[3~", fake='kdch1')
 
     self.personality = personality_class(self, **personality_kwargs)
 
@@ -1467,7 +1477,7 @@ class TelnetWorker (RecocoIOWorker, MyTelnetHandler, LineEdit):
       #print "TERMINAL:",sub[2:]
       try:
         self.term = CursesCodes(sub[2:])
-        self.term.add_key("\x1b[3~", fake='kdch1') # See above
+        self.term.add_key(b"\x1b[3~", fake='kdch1') # See above
       except:
         pass
       if self.term.smkx: self.send(self.term.smkx)
@@ -1488,11 +1498,16 @@ class TelnetWorker (RecocoIOWorker, MyTelnetHandler, LineEdit):
     self.personality._handle_connect()
 
   def _accept_line (self, line):
-    self.personality._handle_line(line)
+    if self.personality.decoding:
+      try:
+        line = line.decode(self.personality.decoding)
+        self.personality._handle_line(line)
+      except Exception:
+        self.personality._handle_bad_line(line)
 
   def _rx_telnet (self, data):
     for nc in data:
-      self.__tbuf += nc
+      self.__tbuf += bytes((nc,))
       r = self.term.check_key(self.__tbuf)
       if r is True:
         #print "<",self.term.get_name(self.__tbuf),">",
@@ -1546,6 +1561,10 @@ class TelnetPersonality (object):
   You can add keyword arguments to __init__ as long as you pass the values
   into TelnetServer's personality_kwargs.
   """
+  encoding = "utf-8"
+  decoding = "utf-8"
+  crlf = True
+
   def __init__ (self, worker):
     self.worker = worker
 
@@ -1553,7 +1572,9 @@ class TelnetPersonality (object):
     """
     Send to client
     """
-    self.worker.send(msg.replace("\n","\n\r"))
+    if self.encoding and isinstance(msg, str): msg = msg.encode(self.encoding)
+    if self.crlf: msg = msg.replace(b"\n", b"\n\r")
+    self.worker.send(msg)
 
   def erase (self):
     """
@@ -1575,6 +1596,18 @@ class TelnetPersonality (object):
     Called when a line of input has been received
 
     You can override this
+    """
+    pass
+
+  def _handle_bad_line (self, line):
+    """
+    Called when a line of input has been received but has bad encoding
+
+    You can override this
+
+    If a line is received and the personality specifies a .decoding, then
+    we attempt to decode it with that character encoding.  If this fails,
+    this method is called with the raw line.
     """
     pass
 
@@ -1634,6 +1667,10 @@ class PythonTelnetPersonality (TelnetPersonality):
       self.send(self.ps1)
     else:
       self.send("Username: ")
+
+  def _handle_bad_line (self, line):
+    log.warn("Bad input")
+    self.send("\nBad input!  Try again.\n")
 
   def _handle_line (self, line):
     if not self.logged_in:
