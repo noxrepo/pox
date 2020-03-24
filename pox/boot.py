@@ -306,7 +306,7 @@ def _do_launch (argv, skip_startup=False):
         else:
           # Error is inside the function
           raise
-    elif len(params) > 0 or launch is not "launch":
+    elif len(params) > 0 or launch != "launch":
       print("Module %s has no %s(), but it was specified or passed " \
             "arguments" % (name, launch))
       return False

@@ -453,7 +453,7 @@ class Sleep (BlockingOperation):
     if self._t is None:
       # Just unschedule
       return
-    if self._t is 0 or self._t < time.time():
+    if self._t == 0 or self._t < time.time():
       # Just reschedule
       scheduler.fast_schedule(task)
       return
