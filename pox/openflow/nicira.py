@@ -2049,7 +2049,7 @@ class nxm_entry (object):
 
     r += value
     if mask is not None:
-      assert 0 == sum(ord(v)&(0xff&~ord(m)) for v,m in zip(value,mask)), \
+      assert 0 == sum(v&(0xff&~m) for v,m in zip(value,mask)), \
              "nonzero masked bits"
       r += mask
 
@@ -2091,7 +2091,7 @@ class NXM_GENERIC (_nxm_raw, nxm_entry):
   def __str__ (self):
     r = "NXM_%08x_%i" % (self.nxm_vendor, self.nxm_field)
     r += "("
-    r += "".join("%02x" % (ord(x),) for x in self.value)
+    r += "".join("%02x" % (x,) for x in self.value)
     #+ repr(self.value)
     if self.mask is not None:
       if self.mask != (b'\xff' * self._nxm_length):
@@ -2573,7 +2573,7 @@ class nx_match (object):
     return offset
 
   def pack (self, omittable = False):
-    return ''.join(x.pack(omittable) for x in self._parts)
+    return b''.join(x.pack(omittable) for x in self._parts)
 
   def __eq__ (self, other):
     if not isinstance(other, self.__class__): return False
