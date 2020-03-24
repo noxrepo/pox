@@ -677,7 +677,7 @@ class NDNeighborAdvertisement (icmp_base):
     if buf_len is None: buf_len = len(raw)
 
     try:
-      flags = ord(raw[offset])
+      flags = raw[offset]
       o.is_router = (flags & cls.ROUTER_FLAG) != 0
       o.is_solicited = (flags & cls.SOLICITED_FLAG) != 0
       o.is_override = (flags & cls.OVERRIDE_FLAG) != 0

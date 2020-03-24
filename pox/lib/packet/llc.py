@@ -118,8 +118,8 @@ class llc (packet_base):
       r += struct.pack("!B", self.control)
     else:
       #FIXME: this is sloppy
-      r += chr(self.control & 0xff)
-      r += chr((self.control>>8) & 0xff)
+      r += struct.pack("BB", self.control & 0xff,
+                             (self.control>>8) & 0xff )
     if self.has_snap:
       # SNAP
       r += self.oui

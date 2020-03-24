@@ -66,7 +66,7 @@ _type_to_name = {
 def _str_rest (s, p):
   if p.next is None:
     return s
-  if isinstance(p.next, basestring):
+  if isinstance(p.next, bytes):
     return "[%s bytes]" % (len(p.next),)
   return s+str(p.next)
 

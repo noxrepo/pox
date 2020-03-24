@@ -115,7 +115,7 @@ class igmp (packet_base):
       self.msg('packet data too short to parse')
       return None
 
-    ver_and_type = ord(raw[0])
+    ver_and_type = raw[0]
     if ver_and_type == MEMBERSHIP_REPORT_V3:
       self.ver_and_type, res1, self.csum, res2, num = \
           struct.unpack("!BBHHH", raw[:self.MIN_LEN])

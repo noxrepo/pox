@@ -95,11 +95,11 @@ class tcp_opt (object):
 
   @classmethod
   def unpack_new (cls, buf, offset = 0):
-    o = cls(ord(buf[offset]), None)
+    o = cls(buf[offset], None)
 
     arr = buf
     i = offset
-    length = ord(arr[i+1])
+    length = arr[i+1]
 
     # These should be special-cased elsewhere
     assert o.type != tcp_opt.EOL
@@ -112,7 +112,7 @@ class tcp_opt (object):
     elif o.type == tcp_opt.WSOPT:
       if length != 3:
         raise RuntimeError("WSOPT option length != 3")
-      o.val = ord(arr[i+2])
+      o.val = arr[i+2]
     elif o.type == tcp_opt.SACKPERM:
       if length != 2:
         raise RuntimeError("SACKPERM option length != 2")
@@ -182,9 +182,9 @@ class mptcp_opt (tcp_opt):
     Returns a subclass for the specific option subtype.  If the subtype
     is unknown, returns a generic mp_unknown.
     """
-    t = ord(buf[offset])
+    t = buf[offset]
     assert t == 30
-    st = (ord(buf[offset+2]) & 0xf0) >> 4
+    st = (buf[offset+2] & 0xf0) >> 4
     cls = _mptcp_opts.get(st, mp_unknown)
     return cls.unpack_new(buf, offset)
 
@@ -211,11 +211,11 @@ class mp_unknown (mptcp_opt):
   @classmethod
   def unpack_new (cls, buf, offset = 0):
     o = cls()
-    o.type = ord(buf[offset])
-    length = ord(buf[offset+1])
+    o.type = buf[offset]
+    length = buf[offset+1]
     o.data = buf[offset+2:offset+2+length]
     try:
-      self.subtype = (ord(buf[offset+2]) & 0xf0) >> 4
+      self.subtype = (buf[offset+2] & 0xf0) >> 4
     except:
       pass
 
@@ -590,9 +590,9 @@ class tcp (packet_base):
 
     while i < self.hdr_len:
       # Special case single-byte options
-      if ord(arr[i]) == tcp_opt.EOL:
+      if arr[i] == tcp_opt.EOL:
         break
-      if ord(arr[i]) == tcp_opt.NOP:
+      if arr[i] == tcp_opt.NOP:
         self.options.append(tcp_opt(tcp_opt.NOP,None))
         i += 1
         continue
@@ -600,9 +600,9 @@ class tcp (packet_base):
       # Sanity checking
       if i + 2 > dlen:
         raise RuntimeError("Very truncated TCP option")
-      if i + ord(arr[i+1]) > dlen:
+      if i + arr[i+1] > dlen:
         raise RuntimeError("Truncated TCP option")
-      if ord(arr[i+1]) < 2:
+      if arr[i+1] < 2:
         raise RuntimeError("Illegal TCP option length")
 
       i,opt = tcp_opt.unpack_new(arr, i)
