@@ -68,8 +68,11 @@ def cb (data, parser):
   else:
     p = packet
     while p:
-      if isinstance(p, basestring):
+      if isinstance(p, bytes):
         msg += "[%s bytes]" % (len(p),)
+        break
+      elif isinstance(p, str):
+        msg += "[%s chars]" % (len(p),)
         break
       msg += "[%s]" % (p.__class__.__name__,)
       p = p.next

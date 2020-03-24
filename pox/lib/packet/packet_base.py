@@ -201,6 +201,8 @@ class packet_base (object):
             return self.hdr(b'')
         elif isinstance(self.next, packet_base):
             rest = self.next.pack()
+        elif isinstance(self.next, str):
+            rest = self.next.encode()
         else:
             rest = self.next
 
