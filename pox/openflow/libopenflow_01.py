@@ -126,7 +126,7 @@ def _readzs (data, offset, length):
   #if len(d[1].replace(b"\x00", b"")) > 0:
   #  raise RuntimeError("Non-zero string padding")
   assert True if (len(d) == 1) else (len(d[1].replace(b"\x00", b"")) == 0)
-  return (offset, d[0])
+  return (offset, d[0].decode("latin-1"))
 
 def _readether (data, offset):
   (offset, d) = _read(data, offset, 6)
@@ -135,6 +135,10 @@ def _readether (data, offset):
 def _readip (data, offset, networkOrder = True):
   (offset, d) = _read(data, offset, 4)
   return (offset, IPAddr(d, networkOrder = networkOrder))
+
+def _packzs (data, length):
+  if isinstance(data, str): data = data.encode("latin-1")
+  return data.ljust(length, b'\0')
 
 # ----------------------------------------------------------------------
 
@@ -729,7 +733,7 @@ class ofp_phy_port (ofp_base, ClassicCmp):
     packed += struct.pack("!H", self.port_no)
     packed += (self.hw_addr if isinstance(self.hw_addr, bytes) else
                self.hw_addr.toRaw())
-    packed += self.name.ljust(OFP_MAX_PORT_NAME_LEN,'\0')
+    packed += _packzs(self.name, OFP_MAX_PORT_NAME_LEN)
     packed += struct.pack("!LLLLLL", self.config, self.state, self.curr,
                           self.advertised, self.supported, self.peer)
     return packed
@@ -2821,11 +2825,11 @@ class ofp_desc_stats (ofp_stats_body_base):
     assert self._assert()
 
     packed = b""
-    packed += self.mfr_desc.ljust(DESC_STR_LEN,'\0')
-    packed += self.hw_desc.ljust(DESC_STR_LEN,'\0')
-    packed += self.sw_desc.ljust(DESC_STR_LEN,'\0')
-    packed += self.serial_num.ljust(SERIAL_NUM_LEN,'\0')
-    packed += self.dp_desc.ljust(DESC_STR_LEN,'\0')
+    packed += _packzs(self.mfr_desc, DESC_STR_LEN)
+    packed += _packzs(self.hw_desc, DESC_STR_LEN)
+    packed += _packzs(self.sw_desc, DESC_STR_LEN)
+    packed += _packzs(self.serial_num, SERIAL_NUM_LEN)
+    packed += _packzs(self.dp_desc, DESC_STR_LEN)
     return packed
 
   def unpack (self, raw, offset, avail):
