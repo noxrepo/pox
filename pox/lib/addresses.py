@@ -20,13 +20,6 @@ from __future__ import print_function
 import struct
 import socket
 
-# Slightly tested attempt at Python 3 friendliness
-import sys
-if 'long' not in sys.modules['__builtin__'].__dict__:
-  long = int
-
-
-
 _eth_oui_to_name = {} # OUI (3 bytes) -> name
 
 def _load_oui_names ():
@@ -289,7 +282,7 @@ class IPAddr (_AddrBase):
         self._value = struct.unpack('i', addr)[0]
     elif isinstance(addr, IPAddr):
       self._value = addr._value
-    elif isinstance(addr, int) or isinstance(addr, long):
+    elif isinstance(addr, int):
       addr = addr & 0xffFFffFF # unsigned long
       self._value = struct.unpack("!i",
           struct.pack(('!' if networkOrder else '') + "I", addr))[0]
