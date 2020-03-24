@@ -184,6 +184,8 @@ class basics_test (unittest.TestCase):
       if issubclass(nxm_class, nx._nxm_numeric_entry):
         value = 0x0a
         mask  = 0x0f
+      elif issubclass(nxm_class, nx._nxm_numeric):
+        value = 0x0a
       elif issubclass(nxm_class, nx._nxm_raw):
         value = 'aabb'
         # Currently never check mask for raw
