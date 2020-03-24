@@ -408,9 +408,9 @@ class host_tracker (EventMixin):
         log.info("Entry %s expired", str(macEntry))
         # sanity check: there should be no IP addresses left
         if len(macEntry.ipAddrs) > 0:
-          for ip in macEntry.ipAddrs.keys():
+          for ip_addr in macEntry.ipAddrs.keys():
             log.warning("Entry %s expired but still had IP address %s",
                         str(macEntry), str(ip_addr) )
-            del macEntry.ipAddrs[ip_addr]
+          macEntry.ipAddrs.clear()
         self.raiseEventNoErrors(HostEvent, macEntry, leave=True)
         del self.entryByMAC[macEntry.macaddr]
