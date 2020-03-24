@@ -136,7 +136,7 @@ class Port (object):
 
   @property
   def any_ip (self):
-    return iter(self.ips).next()
+    return next(iter(self.ips))
 
 
 

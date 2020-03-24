@@ -88,7 +88,7 @@ class RecocoIOLoopTest(unittest.TestCase):
     # Does not actually execute run, but 'yield' a generator
     g = loop.run()
     # g.next() will call it, and get as far as the 'yield select'
-    select = g.next()
+    select = next(g)
 
     # send data on other socket half
     right.send("hallo")
@@ -127,7 +127,7 @@ class RecocoIOLoopTest(unittest.TestCase):
     # Does not actually execute run, but 'yield' a generator
     g = loop.run()
     # g.next() will call it, and get as far as the 'yield select'
-    select = g.next()
+    select = next(g)
 
     # now we emulate the return value of the select ([rlist],[wlist], [elist])
     g.send(([], [worker], []))
