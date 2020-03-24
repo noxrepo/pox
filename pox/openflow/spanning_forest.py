@@ -345,10 +345,10 @@ class Topo (object):
     Iterate links, optionally only those on a given switch
     """
     if sw is None:
-      return self.links.itervalues()
+      return iter(self.links.values())
     if sw not in self.switches:
       return ()
-    return self.switches[sw].itervalues()
+    return iter(self.switches[sw].values())
 
 
 

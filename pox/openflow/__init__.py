@@ -310,7 +310,7 @@ class OpenFlowConnectionArbiter (EventMixin):
 
 class ConnectionDict (dict):
   def __iter__ (self):
-    return self.itervalues()
+    return iter(self.values())
 
   def __contains__ (self, item):
     v = dict.__contains__(self, item)
@@ -322,7 +322,7 @@ class ConnectionDict (dict):
     return list(self.keys())
 
   def iter_dpids (self):
-    return self.iterkeys()
+    return iter(self.keys())
 
 
 class OpenFlowNexus (EventMixin):
