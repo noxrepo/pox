@@ -199,7 +199,7 @@ def launch (disable = False, completion = None, history = False,
   if not core.hasComponent("Interactive"):
     Interactive()
 
-  import boot
+  from . import boot
   if not disable:
     boot.set_main_function(core.Interactive.interact)
   else:

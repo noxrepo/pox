@@ -520,7 +520,7 @@ def is_listlike (o):
   Is this a sequence that isn't like a string or bytes?
   """
   if isinstance(o, (bytes,str,bytearray)): return False
-  return isinstance(o, collections.Iterable)
+  return isinstance(o, collections.abc.Iterable)
 
 
 def fields_of (obj, primitives_only=False,
