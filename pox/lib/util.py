@@ -311,7 +311,7 @@ def make_pinger ():
 
     def ping (self):
       if os is None: return #TODO: Is there a better fix for this?
-      os.write(self._w, ' ')
+      os.write(self._w, b' ')
 
     def fileno (self):
       return self._r
