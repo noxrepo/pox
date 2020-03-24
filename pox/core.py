@@ -371,12 +371,19 @@ class POXCore (EventMixin):
       vers = '.'.join(platform.python_version().split(".")[:2])
     except:
       vers = 'an unknown version'
-    if vers != "2.7":
+    def vwarn (*args):
       l = logging.getLogger("version")
       if not l.isEnabledFor(logging.WARNING):
         l.setLevel(logging.WARNING)
-      l.warn("POX requires Python 2.7. You're running %s.", vers)
-      l.warn("If you run into problems, try using Python 2.7 or PyPy.")
+      l.warn(*args)
+    good_versions = ("3.6", "3.7", "3.8", "3.9")
+    if vers not in good_versions:
+      vwarn("POX requires one of the following versions of Python: %s",
+             " ".join(good_versions))
+      vwarn("You're running Python %s.", vers)
+      vwarn("If you run into problems, try using a supported version.")
+    else:
+      vwarn("Support for Python 3 is experimental.")
 
     self.starting_up = False
     self.raiseEvent(GoingUpEvent())
