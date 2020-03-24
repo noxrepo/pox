@@ -21,7 +21,7 @@ Kills off up to around half of its workers when more than half are idle.
 from __future__ import print_function
 from __future__ import with_statement
 from threading import Thread, RLock
-from Queue import Queue
+from queue import Queue
 
 
 CYCLE_TIME = 3
