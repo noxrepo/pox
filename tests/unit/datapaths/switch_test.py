@@ -101,7 +101,7 @@ class SwitchImplTest (unittest.TestCase):
     c = self.conn
     s = self.switch
     received = []
-    s.addListener(DpPacketOut, lambda(event): received.append(event))
+    s.addListener(DpPacketOut, lambda event: received.append(event))
 
     packet = self.packet
     c.to_switch(ofp_packet_out(data=packet,
@@ -128,7 +128,7 @@ class SwitchImplTest (unittest.TestCase):
     c = self.conn
     s = self.switch
     received = []
-    s.addListener(DpPacketOut, lambda(event): received.append(event))
+    s.addListener(DpPacketOut, lambda event: received.append(event))
     # no flow entries -> should result in a packet_in
     s.rx_packet(self.packet, in_port=1)
     self.assertEqual(len(c.received), 1)

@@ -45,7 +45,7 @@ class ForkingTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     os.kill(self.pid, signal.SIGKILL)
 
 def sort_fdlists(rl,wl,xl) :
-  key = lambda(x): x.fileno() if hasattr(x, "fileno") else x
+  key = lambda x: x.fileno() if hasattr(x, "fileno") else x
 
   return (
             sorted(rl, key=key),

@@ -62,7 +62,7 @@ class OFSyncFlowTableTest(unittest.TestCase):
     s = self.s
 
     seen_ft_events = []
-    t.addListener(FlowTableModification, lambda(event): seen_ft_events.append(event))
+    t.addListener(FlowTableModification, lambda event: seen_ft_events.append(event))
 
     entry = TableEntry(priority=5, cookie=0x31415926, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:01")), actions=[ofp_action_output(port=5)])
     t.install(entry)
@@ -92,7 +92,7 @@ class OFSyncFlowTableTest(unittest.TestCase):
     s = self.s
 
     seen_ft_events = []
-    t.addListener(FlowTableModification, lambda(event): seen_ft_events.append(event))
+    t.addListener(FlowTableModification, lambda event: seen_ft_events.append(event))
 
     entry = TableEntry(priority=5, cookie=0x31415926, match=ofp_match(dl_src=EthAddr("00:00:00:00:00:01")), actions=[ofp_action_output(port=5)])
     t.install(entry)

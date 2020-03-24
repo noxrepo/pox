@@ -176,7 +176,7 @@ class ofp_command_test(unittest.TestCase):
 
   def _test_pack_unpack(self, o, xid, ofp_type=None):
     """ check that packing and unpacking an ofp object works, and that lengths etc. are correct """
-    show = lambda(o): o.show() if hasattr(o, "show") else str(show)
+    show = lambda o: o.show() if hasattr(o, "show") else str(show)
 
     if not ofp_type:
       ofp_type = self.ofp_type[type(o)]

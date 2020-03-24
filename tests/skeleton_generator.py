@@ -110,7 +110,7 @@ def generate_test(module):
 
   dst_dir = path.join(UNIT_TEST, *test_package.split('.'))
   mkdir(dst_dir)
-  camel_name = re.sub(r'(_|^)+(.)', lambda(m): m.group(2).upper(), name)
+  camel_name = re.sub(r'(_|^)+(.)', lambda m: m.group(2).upper(), name)
   test_class_name = camel_name + "Test"
   test_file = path.join(dst_dir, name + "_test.py")
 
