@@ -472,7 +472,7 @@ class IPAddr6 (_AddrBase):
     if addr is None:
       # Should we even allow this?  It's a weird case.
       self._value = self.UNDEFINED._value
-    elif isinstance(addr, unicode) or (isinstance(addr, bytes) and not raw):
+    elif isinstance(addr, str) or (isinstance(addr, bytes) and not raw):
       # A textual IPv6 representation
       ip4part = None
       if '.' in addr:
@@ -563,7 +563,7 @@ class IPAddr6 (_AddrBase):
   def num (self):
     o = 0
     for b in self._value:
-      o = (o << 8) | ord(b)
+      o = (o << 8) | b
     return o
 
   @property
@@ -606,7 +606,7 @@ class IPAddr6 (_AddrBase):
     of network bits.  e.g., 255.255.255.0 -> 24
     Raise exception if subnet mask is not CIDR-compatible.
     """
-    if isinstance(dq, basestring):
+    if isinstance(dq, str):
       dq = IPAddr6(dq)
     v = dq.num
     c = 0
@@ -698,7 +698,7 @@ class IPAddr6 (_AddrBase):
     by passing ipv4=True; this probably only makes sense if .is_ipv4_compatible
     (or .is_ipv4_mapped, of course).
     """
-    o = [ord(lo) | (ord(hi)<<8) for hi,lo in
+    o = [lo | (hi<<8) for hi,lo in
          (self._value[i:i+2] for i in range(0,16,2))]
 
     if (ipv4 is None and self.is_ipv4_mapped) or ipv4:
@@ -763,7 +763,7 @@ class IPAddr6 (_AddrBase):
     e = list(EthAddr(eth).toTuple())
     e[0] ^= 2
     e[3:3] = [0xff,0xfe]
-    e = ''.join(chr(b) for b in e)
+    e = bytes(e)
     return IPAddr6.from_raw(self._value[:8]+e)
 
 
