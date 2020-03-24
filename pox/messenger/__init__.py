@@ -635,13 +635,14 @@ class MessengerNexus (EventMixin):
 
     key = str(random.random()) + str(time.time()) + str(r)
     key += str(id(key)) + self._session_salt
+    key = key.encode()
 
-    key = b32encode(hashlib.md5(key).digest()).upper().replace('=','')
+    key = b32encode(hashlib.md5(key).digest()).upper().replace(b'=',b'')
 
     def alphahex (r):
       """ base 16 on digits 'a' through 'p' """
       r=hex(r)[2:].lower()
-      return ''.join(chr((10 if ord(x) >= 97 else 49) + ord(x)) for x in r)
+      return bytes(((10 if x >= 97 else 49) + x) for x in r)
 
     key = alphahex(r) + key
 
