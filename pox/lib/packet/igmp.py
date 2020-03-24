@@ -193,7 +193,7 @@ class GroupRecord (object):
     return offset,r
 
   def pack (self):
-    o = struct.pack("BBH", self.type, len(self.aux) / 4,
+    o = struct.pack("BBH", self.type, len(self.aux) // 4,
                     len(self.source_addresses))
     o += self.address.raw
     for sa in self.source_addresses:

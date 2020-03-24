@@ -97,7 +97,7 @@ class NormalExtensionHeader (ExtensionHeader):
     Returns the packed length
     """
     l = self.payload_length + 2
-    return ((l + 7) / 8) - 1
+    return ((l + 7) // 8) - 1
 
   @classmethod
   def unpack_new (cls, raw, offset = 0, max_length = None):

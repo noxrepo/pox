@@ -97,8 +97,8 @@ class ThreadPool (object):
 
     self._tasks.put((func, args, kwargs))
 
-    if self.available > self._total / 2 and self.total > 8:
-      for i in range(self._total / 2 - 1):
+    if self.available > self._total // 2 and self.total > 8:
+      for i in range(self._total // 2 - 1):
         self._tasks.put((None,None,None))
 
     self._lock.release()

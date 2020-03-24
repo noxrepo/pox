@@ -118,7 +118,7 @@ class tcp_opt (object):
         raise RuntimeError("SACKPERM option length != 2")
     elif o.type == tcp_opt.SACK:
       if length >= 2 and ((length-2) % 8) == 0:
-        num = (length - 2) / 8
+        num = (length - 2) // 8
         val = struct.unpack("!" + "II" * num, arr[i+2:])
         val = [(x,y) for x,y in zip(val[0::2],val[1::2])]
         o.val = val
@@ -671,7 +671,7 @@ class tcp (packet_base):
     assert hdr_len % 4 == 0
 
     if calc_off:
-        self.off = hdr_len / 4
+        self.off = hdr_len // 4
 
     offres = self.off << 4 | self.res
     header = struct.pack('!HHIIBBHHH',

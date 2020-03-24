@@ -396,7 +396,7 @@ class nx_flow_mod (of.ofp_flow_mod, of.ofp_vendor_base):
                           self.flags, match_len)
     packed += _PAD6
     packed += match
-    packed += _PAD * ((match_len + 7)/8*8 - match_len)
+    packed += _PAD * ((match_len + 7)//8*8 - match_len)
     for i in self.actions:
       packed += i.pack()
 
@@ -1462,7 +1462,7 @@ class _field_and_match (object):
     c = _nxm_type_to_class.get(t)
     if c is None:
       attrs = {'_nxm_type':t}
-      attrs['_nxm_length'] = length/2 if has_mask else length
+      attrs['_nxm_length'] = length//2 if has_mask else length
       c = type('nxm_type_'+str(t), (NXM_GENERIC,), attrs)
     return c
 
@@ -1917,8 +1917,8 @@ class nxm_entry (object):
     mask = None
     if has_mask:
       assert not (length & 1), "Odd length with mask"
-      mask = data[length/2:]
-      data = data[:length/2]
+      mask = data[length//2:]
+      data = data[:length//2]
 
     #NOTE: Should use _class_for_nxm_header?
     c = _nxm_type_to_class.get(t)
@@ -1928,12 +1928,12 @@ class nxm_entry (object):
       e = NXM_GENERIC()
       e._nxm_length = length
       if has_mask:
-        e._nxm_length /= 2
+        e._nxm_length //= 2
       e._nxm_type = t
 
       # Alternate approach: Generate new subclass. To do: cache gen'd types?
       #attrs = {'_nxm_type':t}
-      #attrs['_nxm_length'] = length/2 if has_mask else length
+      #attrs['_nxm_length'] = length//2 if has_mask else length
       #c = type('nxm_type_'+str(t), (NXM_GENERIC,), attrs)
       #e = c()
     else:
@@ -2429,7 +2429,7 @@ class nxt_packet_in (nicira_base, of.ofp_packet_in):
                           match_len)
     packed += _PAD6
     packed += match.pack()
-    packed += _PAD * ((match_len + 7)/8*8 - match_len)
+    packed += _PAD * ((match_len + 7)//8*8 - match_len)
     packed += _PAD2
     packed += self.packed_data
     return packed

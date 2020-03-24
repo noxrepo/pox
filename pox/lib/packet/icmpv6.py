@@ -225,7 +225,7 @@ class NDOptionBase (packet_base):
   def pack (self):
     d = self._pack_body()
     while (len(d)+2) % 8: d += "\x00" # sloppy
-    return struct.pack("BB", self.TYPE, (len(d)+2)/8) + d
+    return struct.pack("BB", self.TYPE, (len(d)+2)//8) + d
 
   @classmethod
   def _unpack_new (cls, raw, offset, t, length, prev):

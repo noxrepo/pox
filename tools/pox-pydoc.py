@@ -481,9 +481,9 @@ class HTMLDoc(Doc):
     def multicolumn(self, list, format, cols=4):
         """Format a list of items into a multi-column list."""
         result = ''
-        rows = (len(list)+cols-1)/cols
+        rows = (len(list)+cols-1)//cols
         for col in range(cols):
-            result = result + '<td width="%d%%" valign=top>' % (100/cols)
+            result = result + '<td width="%d%%" valign=top>' % (100//cols)
             for i in range(rows*col, rows*col+rows):
                 if i < len(list):
                     result = result + format(list[i]) + '<br>\n'
@@ -1817,8 +1817,8 @@ such as "spam", type "modules spam".
     def list(self, items, columns=4, width=80):
         items = items[:]
         items.sort()
-        colw = width / columns
-        rows = (len(items) + columns - 1) / columns
+        colw = width // columns
+        rows = (len(items) + columns - 1) // columns
         for row in range(rows):
             for col in range(columns):
                 i = col * rows + row
