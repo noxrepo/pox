@@ -66,7 +66,37 @@ _load_oui_names()
 
 
 
-class EthAddr (object):
+class _AddrBase (object):
+  def _compare_helper (self, other, f, rf):
+    t = type(self)
+    try:
+      if isinstance(other, t): ov = other._value
+      else: ov = t(other)._value
+      return getattr(self, f)(ov)
+    except Exception:
+      return getattr(other, rf)(self)
+
+  def __eq__(self, other):
+    return _compare_helper(self, other, '__eq__', '__ne__')
+
+  def __ne__(self, other):
+    return _compare_helper(self, other, '__ne__', '__eq__')
+
+  def __lt__(self, other):
+    return _compare_helper(self, other, '__lt__', '__gt__')
+
+  def __gt__(self, other):
+    return _compare_helper(self, other, '__gt__', '__lt__')
+
+  def __le__(self, other):
+    return _compare_helper(self, other, '__le__', '__ge__')
+
+  def __ge__(self, other):
+    return _compare_helper(self, other, '__ge__', '__le__')
+
+
+
+class EthAddr (_AddrBase):
   """
   An Ethernet (MAC) address type.
 
@@ -214,19 +244,6 @@ class EthAddr (object):
   def __str__ (self):
     return self.toStr()
 
-  def __cmp__ (self, other):
-    #TODO: Revisit this and other __cmp__ in Python 3.4
-    try:
-      if type(other) == EthAddr:
-        other = other._value
-      elif type(other) == bytes:
-        pass
-      else:
-        other = EthAddr(other)._value
-      return cmp(self._value, other)
-    except:
-      return -cmp(other, self)
-
   def __hash__ (self):
     return self._value.__hash__()
 
@@ -246,7 +263,7 @@ EthAddr.BROADCAST = EthAddr(b"\xff\xff\xff\xff\xff\xff")
 
 
 
-class IPAddr (object):
+class IPAddr (_AddrBase):
   """
   Represents an IPv4 address.
 
@@ -394,15 +411,6 @@ class IPAddr (object):
   def __str__ (self):
     return self.toStr()
 
-  def __cmp__ (self, other):
-    if other is None: return 1
-    try:
-      if not isinstance(other, IPAddr):
-        other = IPAddr(other)
-      return cmp(self.toUnsigned(), other.toUnsigned())
-    except:
-      return -other.__cmp__(self)
-
   def __hash__ (self):
     return self._value.__hash__()
 
@@ -423,7 +431,7 @@ IP_BROADCAST = IPAddr("255.255.255.255")
 
 
 
-class IPAddr6 (object):
+class IPAddr6 (_AddrBase):
   """
   Represents an IPv6 address.
 
@@ -743,15 +751,6 @@ class IPAddr6 (object):
 
   def __str__ (self):
     return self.to_str()
-
-  def __cmp__ (self, other):
-    if other is None: return 1
-    try:
-      if not isinstance(other, type(self)):
-        other = type(self)(other)
-      return cmp(self._value, other._value)
-    except:
-      return -cmp(other,self)
 
   def __hash__ (self):
     return self._value.__hash__()
