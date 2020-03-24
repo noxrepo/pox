@@ -39,26 +39,23 @@ It'd actually be great to have a version of this written against, say,
 CherryPy, but I did want to include a simple, dependency-free web solution.
 """
 
-from SocketServer import ThreadingMixIn
-from BaseHTTPServer import *
+from socketserver import ThreadingMixIn
+from http.server import *
 from time import sleep
 import select
 import threading
 
-from authentication import BasicAuthMixin
+from .authentication import BasicAuthMixin
 
 from pox.core import core
 
 import os
 import socket
 import posixpath
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import cgi
 import errno
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
+from io import StringIO
 
 log = core.getLogger()
 try:
@@ -135,7 +132,7 @@ _shutdown_helper = ShutdownHelper()
 
 
 
-from Cookie import SimpleCookie
+from http.cookies import SimpleCookie
 
 POX_COOKIEGUARD_COOKIE_NAME = "POXCookieGuardCookie"
 
@@ -256,8 +253,8 @@ class POXCookieGuardMixin (object):
       return False
 
 
-import SimpleHTTPServer
-from SimpleHTTPServer import SimpleHTTPRequestHandler
+import http.server
+from http.server import SimpleHTTPRequestHandler
 
 
 class SplitRequestHandler (BaseHTTPRequestHandler):
@@ -436,7 +433,7 @@ class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
     parts = path.rstrip("/").split("/")
     r.write('<a href="/">/</a>')
     for i,part in enumerate(parts):
-      link = urllib.quote("/".join(parts[:i+1]))
+      link = urllib.parse.quote("/".join(parts[:i+1]))
       if i > 0: part += "/"
       r.write('<a href="%s">%s</a>' % (link, cgi.escape(part)))
     r.write("\n" + "-" * (0+len(path)) + "\n")
@@ -451,7 +448,7 @@ class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
         files.append(f)
 
     def entry (n, rest=''):
-      link = urllib.quote(n)
+      link = urllib.parse.quote(n)
       name = cgi.escape(n)
       r.write('<a href="%s">%s</a>\n' % (link,name+rest))
 
@@ -515,7 +512,7 @@ def wrapRequestHandler (handlerClass):
               (SplitRequestHandler, handlerClass, object), {})
 
 
-from CGIHTTPServer import CGIHTTPRequestHandler
+from http.server import CGIHTTPRequestHandler
 class SplitCGIRequestHandler (SplitRequestHandler,
                               CGIHTTPRequestHandler, object):
   """
