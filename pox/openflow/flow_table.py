@@ -16,7 +16,7 @@
 Implementation of an OpenFlow flow table
 """
 
-from libopenflow_01 import *
+from .libopenflow_01 import *
 from pox.lib.revent import *
 
 import time

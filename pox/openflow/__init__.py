@@ -35,7 +35,7 @@ NOTE: This module is usually automatically loaded by pox.py
 
 from pox.lib.revent import *
 from pox.lib.util import dpidToStr
-import libopenflow_01 as of
+from . import libopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
 
 

@@ -2141,8 +2141,8 @@ def _make_nxm (__name, __vendor, __field, __len = None, type = None,
   t = _make_type(__vendor, __field)
   kw['_nxm_type'] = t
   if __len is not None: kw['_nxm_length'] = __len
-  import __builtin__
-  typ = __builtin__.type
+  import builtins
+  typ = builtins.type
   c = typ(__name, tuple(type), kw)
   _nxm_type_to_class[t] = c
   _nxm_name_to_type[__name] = t

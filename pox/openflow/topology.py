@@ -25,7 +25,7 @@ uses them to populate and manipulate Topology.
 import itertools
 
 from pox.lib.revent import *
-import libopenflow_01 as of
+from . import libopenflow_01 as of
 from pox.openflow import *
 from pox.core import core
 from pox.topology.topology import *
