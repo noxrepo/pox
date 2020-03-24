@@ -255,12 +255,13 @@ class Reindenter:
         return line
 
     # Line-eater for tokenize.
-    def tokeneater(self, type, token, (sline, scol), end, line,
+    def tokeneater(self, type, token, sline_and_scol, end, line,
                    INDENT=tokenize.INDENT,
                    DEDENT=tokenize.DEDENT,
                    NEWLINE=tokenize.NEWLINE,
                    COMMENT=tokenize.COMMENT,
                    NL=tokenize.NL):
+        (sline, scol) = sline_and_scol
 
         if type == NEWLINE:
             # A program statement, or ENDMARKER, will eventually follow,
