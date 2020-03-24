@@ -40,7 +40,7 @@ def _load_oui_names ():
   filename = os.path.join(os.path.dirname(inspect.stack()[0][1]), 'oui.txt')
   f = None
   try:
-    f = open(filename)
+    f = open(filename, "r", encoding = "latin-1")
     for line in f.readlines():
       if len(line) < 1:
         continue
@@ -50,7 +50,7 @@ def _load_oui_names ():
       if not '-' in split[0]:
         continue
       # grab 3-byte OUI
-      oui  = b''.join(chr(int(x,16)) for x in split[0].split('-'))
+      oui  = bytes(int(x,16) for x in split[0].split('-'))
       # strip off (hex) identifer and keep rest of name
       end = ' '.join(split[1:]).strip()
       end = end.split('\t')
