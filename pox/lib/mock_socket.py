@@ -101,7 +101,7 @@ class MessageChannel (object):
   """
   def __init__ (self):
     # Single element queue
-    self.buffer = ""
+    self.buffer = b''
     self.on_data = None
     self.on_data_running = False
     self.pending_on_datas = 0
