@@ -1814,7 +1814,7 @@ such as "spam", type "modules spam".
 ''' % sys.version[:3])
 
     def list(self, items, columns=4, width=80):
-        items = items[:]
+        items = list(items)
         items.sort()
         colw = width // columns
         rows = (len(items) + columns - 1) // columns
