@@ -35,7 +35,7 @@ def get_level_by_name (level):
   except Exception:
     pass
 
-  if not isinstance(level, (str,unicode)):
+  if not isinstance(level, str):
     return None
   if (len(level) == 0) or (len(level.strip(string.ascii_uppercase)) != 0):
     return None

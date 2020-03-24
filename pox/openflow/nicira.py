@@ -1831,7 +1831,7 @@ class _nxm_ipv6 (object):
       assert len(value) == 2
       ip = value[0]
       self.mask = value[1]
-    elif isinstance(value, (unicode,str)):
+    elif isinstance(value, str):
       ip,mask = IPAddr6.parse_cidr(value, allow_host = True)
       #self.mask = 128 if mask is None else mask
       self.mask = mask

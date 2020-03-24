@@ -380,7 +380,7 @@ def _eval_text (text, result_type=dict, dict_type=dict,
             continue
           elif ignore_commas and maybe(","):
             continue
-          elif len(result) and isinstance(result[-1], (str,unicode)):
+          elif len(result) and isinstance(result[-1], str):
             # This string extension might end with whitespace or the end of
             # the string.  We try one way and if it fails, try again the
             # other way.
