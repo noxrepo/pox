@@ -553,6 +553,14 @@ def fields_of (obj, primitives_only=False,
   return r
 
 
+def aslist (l):
+  """
+  Ensures l is a list without copying it
+  """
+  if isinstance(l, list): return l
+  return list(l)
+
+
 def eval_args (f):
   """
   A decorator which causes arguments to be interpreted as Python literals
