@@ -1728,7 +1728,7 @@ class PythonTelnetPersonality (TelnetPersonality):
     oldout = sys.stdout
     olderr = sys.stderr
     oldin = sys.stdin
-    from StringIO import StringIO
+    from io import StringIO
     sys.stdout = StringIO()
     sys.stderr = sys.stdout
     # Sometime in the future something like this may be more useful...

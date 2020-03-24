@@ -25,7 +25,7 @@ from pox.lib.revent import EventHalt
 from pox.lib.addresses import EthAddr
 import pox.openflow.libopenflow_01 as of
 
-from Tkinter import *
+from tkinter import *
 
 # Sets of blocked and unblocked MACs
 blocked = set()
