@@ -24,7 +24,7 @@ Example:
 """
 
 from pox.core import core
-from Queue import Queue
+from queue import Queue
 import pox.lib.packet as pkt
 from pox.lib.interfaceio import PCapInterface
 
