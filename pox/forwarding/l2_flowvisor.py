@@ -115,7 +115,7 @@ def _handle_PacketIn (event):
     msg.match.dl_src = packet.dst
     msg.actions.append(of.ofp_action_output(port = event.port))
     event.connection.send(msg)
-    
+
     # This is the packet that just came in -- we want to
     # install the rule and also resend the packet.
     msg = of.ofp_flow_mod()

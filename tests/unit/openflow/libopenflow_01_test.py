@@ -26,7 +26,7 @@ from pox.datapaths.switch import *
 
 def extract_num(buf, start, length):
   """ extracts a number from a raw byte string. Assumes network byteorder  """
-  # note: purposefully does /not/ use struct.unpack, because that is used by the code we validate 
+  # note: purposefully does /not/ use struct.unpack, because that is used by the code we validate
   val = 0
   for i in range(start, start+length):
     val <<= 8

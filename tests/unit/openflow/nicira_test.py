@@ -118,7 +118,7 @@ class basics_test (unittest.TestCase):
     def try_bad ():
       e = nx.NXM_OF_IP_SRC(IPAddr("192.168.56.1"),IPAddr("255.255.255.0"))
       e.pack()
-    self.assertRaisesRegexp(AssertionError, '^nonzero masked bits$', 
+    self.assertRaisesRegexp(AssertionError, '^nonzero masked bits$',
         try_bad)
 
 

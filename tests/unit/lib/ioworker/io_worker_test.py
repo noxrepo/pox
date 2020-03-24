@@ -110,7 +110,7 @@ class RecocoIOLoopTest(unittest.TestCase):
     self.assertTrue(len(loop._pending_commands) == 1,
         "Should have added pending create() command")
     worker.close()
-    # This causes the worker to be scheduled to be closed -- it also 
+    # This causes the worker to be scheduled to be closed -- it also
     # calls pinger.ping(). However, the Select task won't receive the ping
     # Until after this method has completed! Thus, we only test whether
     # worker has been added to the pending close queue
