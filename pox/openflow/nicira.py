@@ -598,7 +598,7 @@ class nx_action_bundle (of.ofp_action_vendor_base):
 
     dst = self.dst
     if dst is None:
-      dst = "\x00\x00\x00\x00"
+      dst = b'\x00\x00\x00\x00'
       assert self.nbits is None
       assert self.offset == 0
       ofs_nbits = 0
@@ -653,7 +653,7 @@ class nx_action_bundle (of.ofp_action_vendor_base):
     self.offset = ofs_nbits >> 6
     self.nbits = (ofs_nbits & 0x3f) + 1
 
-    if dst == "\x00\x00\x00\x00":
+    if dst == b'\x00\x00\x00\x00':
       self.dst = None
       self.nbits = None
       self.offset = 0
@@ -1349,7 +1349,7 @@ class nx_action_learn (of.ofp_action_vendor_base):
     for fs in self.spec:
       p += fs.pack()
     if len(p) % 8:
-      p += '\x00' * (8-(len(p)%8))
+      p += b'\x00' * (8-(len(p)%8))
     return p
 
   def _unpack_body (self, raw, offset, avail):
@@ -2025,14 +2025,14 @@ class nxm_entry (object):
     if mask is not None:
       assert len(mask) == self._nxm_length, "mask is wrong length"
 
-      if (mask.count("\x00") == self._nxm_length) and omittable:
+      if (mask.count(b'\x00') == self._nxm_length) and omittable:
         return b''
 
-      if (mask.count("\xff") == self._nxm_length):
+      if (mask.count(b'\xff') == self._nxm_length):
         mask = None
 
     if mask is None and self._force_mask:
-      mask = "\xff" * self._nxm_length
+      mask = b'\xff' * self._nxm_length
 
     if mask is not None:
       h |= (1 << 8)
@@ -2058,7 +2058,7 @@ class nxm_entry (object):
   def __str__ (self):
     r = self.__class__.__name__ + "(" + str(self.value)
     if self.mask is not None:
-      if self.mask.raw != ("\xff" * self._nxm_length):
+      if self.mask.raw != (b'\xff' * self._nxm_length):
         r += "/" + str(self.mask)
     #if self.is_reg: r += "[r]"
     return r + ")"
@@ -2094,7 +2094,7 @@ class NXM_GENERIC (_nxm_raw, nxm_entry):
     r += "".join("%02x" % (ord(x),) for x in self.value)
     #+ repr(self.value)
     if self.mask is not None:
-      if self.mask != ("\xff" * self._nxm_length):
+      if self.mask != (b'\xff' * self._nxm_length):
         r += "/" + repr(self.mask)
     return r + ")"
 
