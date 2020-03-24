@@ -55,7 +55,7 @@ import posixpath
 import urllib.request, urllib.parse, urllib.error
 import cgi
 import errno
-from io import StringIO
+from io import StringIO, BytesIO
 
 log = core.getLogger()
 try:
@@ -149,10 +149,12 @@ def _gen_cgc ():
   data = "".join([str(rng.randint(0,9)) for _ in range(1024)])
   data += str(datetime.datetime.now())
   data += str(id(data))
+  data = data.encode()
   return hashlib.sha256(data).hexdigest()
 
 
 import urllib
+from urllib.parse import quote_plus, unquote_plus
 
 class POXCookieGuardMixin (object):
   """
@@ -177,7 +179,7 @@ class POXCookieGuardMixin (object):
     if not getattr(self, 'pox_cookieguard', True):
       return True
 
-    requested = self.raw_requestline.split()[1]
+    requested = self.raw_requestline.split()[1].decode("latin-1")
 
     cookies = SimpleCookie(self.headers.get('Cookie'))
     cgc = cookies.get(POX_COOKIEGUARD_COOKIE_NAME)
@@ -192,7 +194,7 @@ class POXCookieGuardMixin (object):
                          "%s=%s; SameSite=Strict; HttpOnly; path=/"
                          % (POX_COOKIEGUARD_COOKIE_NAME,
                             self._get_cookieguard_cookie()))
-        self.send_header("Location", urllib.unquote_plus(qs))
+        self.send_header("Location", unquote_plus(qs))
         self.end_headers()
         return False
 
@@ -203,8 +205,8 @@ class POXCookieGuardMixin (object):
       if requested.startswith(self._pox_cookieguard_bouncer + "?"):
         # Client probably didn't save cookie
         qs = requested.split("?",1)[1]
-        target = urllib.unquote_plus(qs)
-        bad_qs = urllib.quote_plus(target) != qs
+        target = unquote_plus(qs)
+        bad_qs = quote_plus(target) != qs
         if bad_qs or self.command != "GET":
           log.warn("Bad POX CookieGuard bounce; possible attack "
                    "(method:%s cookie:%s qs:%s)",
@@ -220,7 +222,7 @@ class POXCookieGuardMixin (object):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
-        self.wfile.write("""
+        self.wfile.write(b"""
           <html><head><title>POX CookieGuard</title></head>
           <body>
           A separate site has linked you here.  If this was intentional,
@@ -248,7 +250,7 @@ class POXCookieGuardMixin (object):
       # so I'm not even sure if the cookie value is important (though we
       # check it anyway).
       self.send_header("Location", self._pox_cookieguard_bouncer + "?"
-                                   + urllib.quote_plus(requested))
+                                   + quote_plus(requested))
       self.end_headers()
       return False
 
@@ -334,8 +336,8 @@ _favicon = ("47494638396110001000c206006a5797927bc18f83ada9a1bfb49ceabda"
  + "4f4ffffffffffff21f904010a0007002c000000001000100000034578badcfe30b20"
  + "1c038d4e27a0f2004e081e2172a4051942abba260309ea6b805ab501581ae3129d90"
  + "1275c6404b80a72f5abcd4a2454cb334dbd9e58e74693b97425e07002003b")
-_favicon = ''.join([chr(int(_favicon[n:n+2],16))
-                   for n in range(0,len(_favicon),2)])
+_favicon = bytes(int(_favicon[n:n+2],16)
+                 for n in range(0,len(_favicon),2))
 
 class CoreHandler (SplitRequestHandler):
   """
@@ -386,7 +388,7 @@ class CoreHandler (SplitRequestHandler):
     self.send_header("Content-Length", str(len(r)))
     self.end_headers()
     if is_get:
-      self.wfile.write(r)
+      self.wfile.write(r.encode())
 
 
 class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
@@ -463,7 +465,7 @@ class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
     self.send_header("Content-Type", "text/html")
     self.send_header("Content-Length", str(len(r.getvalue())))
     self.end_headers()
-    return r
+    return BytesIO(r.read().encode())
 
   def translate_path (self, path, include_prefix = True):
     """
@@ -761,15 +763,17 @@ class InternalContentHandler (SplitRequestHandler):
         self.send_error(404, "File not found")
         return
 
-      if len(r) == 2 and not isinstance(r, str):
+      if len(r) == 2 and not isinstance(r, (str,bytes)):
         ct,r = r
       else:
-        if r.lstrip().startswith('{') and r.rstrip().endswith('}'):
+        if isinstance(r, str): r = r.encode()
+        if r.lstrip().startswith(b'{') and r.rstrip().endswith(b'}'):
           ct = "application/json"
-        elif "<html" in r[:255]:
+        elif b"<html" in r[:255]:
           ct = "text/html"
         else:
           ct = "text/plain"
+      if isinstance(r, str): r = r.encode()
     except Exception:
       self.send_error(500, "Internal server error")
       return
@@ -810,7 +814,7 @@ class FileUploadHandler (SplitRequestHandler):
     self.send_header("Content-Length", str(len(r)))
     self.end_headers()
     if is_get:
-      self.wfile.write(r)
+      self.wfile.write(r.encode())
 
   def do_POST (self):
     mime,params = cgi.parse_header(self.headers.getheader('content-type'))
