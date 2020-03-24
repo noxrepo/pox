@@ -60,6 +60,11 @@ class basics_test (unittest.TestCase):
   def _init_action_nx_action_pop_mpls (self, cls):
     return cls(ethertype=101)
 
+  def _init_action_nx_action_mpls_label (self, cls):
+    return cls(label=0)
+
+  def _init_action_nx_action_mpls_tc (self, cls):
+    return cls(tc=0)
 
   def test_unpack_weird_header (self):
     """
