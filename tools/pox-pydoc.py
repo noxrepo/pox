@@ -245,7 +245,7 @@ class ErrorDuringImport(Exception):
 
     def __str__(self):
         exc = self.exc
-        if type(exc) is types.ClassType:
+        if type(exc) is type:
             exc = exc.__name__
         return 'problem in %s - %s: %s' % (self.filename, exc, self.value)
 
@@ -1932,7 +1932,7 @@ class Scanner:
         node, children = self.state[-1]
         if not children:
             self.state.pop()
-            return self.next()
+            return next(self)
         child = children.pop(0)
         if self.descendp(child):
             self.state.append((child, self.children(child)))
