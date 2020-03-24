@@ -1,1 +1,1 @@
-from recoco import *
+from .recoco import *
