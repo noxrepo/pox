@@ -341,7 +341,7 @@ class Doc:
         """Raise an exception for unimplemented types."""
         message = "don't know how to document object%s of type %s" % (
             name and ' ' + repr(name), type(object).__name__)
-        raise TypeError, message
+        raise TypeError(message)
 
     docmodule = docclass = docroutine = docother = docproperty = docdata = fail
 
@@ -1498,7 +1498,7 @@ def resolve(thing, forceload=0):
     if isinstance(thing, str):
         object = locate(thing, forceload)
         if not object:
-            raise ImportError, 'no Python documentation found for %r' % thing
+            raise ImportError('no Python documentation found for %r' % thing)
         return object, thing
     else:
         return thing, getattr(thing, '__name__', None)
@@ -1532,7 +1532,7 @@ def doc(thing, title='Python Library Documentation: %s', forceload=0):
     """Display text documentation, given an object or a path to an object."""
     try:
         pager(render_doc(thing, title, forceload))
-    except (ImportError, ErrorDuringImport), value:
+    except (ImportError, ErrorDuringImport) as value:
         print(value)
 
 def writedoc(thing, forceload=0):
@@ -1543,8 +1543,8 @@ def writedoc(thing, forceload=0):
         file = open(name + '.html', 'w')
         file.write(page)
         file.close()
-    except (ImportError, ErrorDuringImport), value:
         print('wrote', name + '.html')
+    except (ImportError, ErrorDuringImport) as value:
         print(value)
 
 def writedocs(dir, pkgpath='', done=None):
@@ -2030,7 +2030,7 @@ def serve(port, callback=None, completer=None):
             if path and path != '.':
                 try:
                     obj = locate(path, forceload=1)
-                except ErrorDuringImport, value:
+                except ErrorDuringImport as value:
                     self.send_document(path, html.escape(str(value)))
                     return
                 if obj:
@@ -2331,7 +2331,7 @@ def cli():
                         writedoc(arg)
                 else:
                     help.help(arg)
-            except ErrorDuringImport, value:
+            except ErrorDuringImport as value:
                 print(value)
 
     except (getopt.error, BadUsage):

@@ -298,7 +298,7 @@ class dns(packet_base):
         for i in range(0,total_questions):
             try:
                 query_head = self.next_question(raw, query_head)
-            except Exception, e:
+            except Exception as e:
                 self._exc(e, 'parsing questions')
                 return None
 
@@ -306,7 +306,7 @@ class dns(packet_base):
         for i in range(0,total_answers):
             try:
                 query_head = self.next_rr(raw, query_head, self.answers)
-            except Exception, e:
+            except Exception as e:
                 self._exc(e, 'parsing answers')
                 return None
 
@@ -314,7 +314,7 @@ class dns(packet_base):
         for i in range(0,total_auth_rr):
             try:
                 query_head = self.next_rr(raw, query_head, self.authorities)
-            except Exception, e:
+            except Exception as e:
                 self._exc(e, 'parsing authoritative name servers')
                 return None
 
@@ -322,7 +322,7 @@ class dns(packet_base):
         for i in range(0,total_add_rr):
             try:
                 query_head = self.next_rr(raw, query_head, self.additional)
-            except Exception, e:
+            except Exception as e:
                 self._exc(e, 'parsing additional resource records')
                 return None
 

@@ -114,7 +114,7 @@ class rip (packet_base):
     while len(raw) >= 20:
       try:
         self.entries.append(RIPEntry(raw=raw[0:20]))
-      except Exception, e:
+      except Exception as e:
         self.err('Exception parsing RIP entries: ' + str(e))
         return None
       raw = raw[20:]
