@@ -560,11 +560,11 @@ class OFCaptureSocket (CaptureSocket):
     self._rbuf += buf
     l = len(self._rbuf)
     while l > 4:
-      if ord(self._rbuf[0]) != of.OFP_VERSION:
+      if self._rbuf[0] != of.OFP_VERSION:
         log.error("Bad OpenFlow version while trying to capture trace")
         self._enabled = False
         break
-      packet_length = ord(self._rbuf[2]) << 8 | ord(self._rbuf[3])
+      packet_length = self._rbuf[2] << 8 | self._rbuf[3]
       if packet_length > l: break
       try:
         self._writer.write(False, self._rbuf[:packet_length])
@@ -579,11 +579,11 @@ class OFCaptureSocket (CaptureSocket):
     self._sbuf += buf
     l = len(self._sbuf)
     while l > 4:
-      if ord(self._sbuf[0]) != of.OFP_VERSION:
+      if self._sbuf[0] != of.OFP_VERSION:
         log.error("Bad OpenFlow version while trying to capture trace")
         self._enabled = False
         break
-      packet_length = ord(self._sbuf[2]) << 8 | ord(self._sbuf[3])
+      packet_length = self._sbuf[2] << 8 | self._sbuf[3]
       if packet_length > l: break
       try:
         self._writer.write(True, self._sbuf[:packet_length])
@@ -913,21 +913,21 @@ class Connection (EventMixin):
     offset = 0
     while buf_len - offset >= 8: # 8 bytes is minimum OF message size
       # We pull the first four bytes of the OpenFlow header off by hand
-      # (using ord) to find the version/length/type so that we can
-      # correctly call libopenflow to unpack it.
+      # to find the version/length/type so that we can correctly call
+      # libopenflow to unpack it.
 
-      ofp_type = ord(self.buf[offset+1])
+      ofp_type = self.buf[offset+1]
 
-      if ord(self.buf[offset]) != of.OFP_VERSION:
+      if self.buf[offset] != of.OFP_VERSION:
         if ofp_type == of.OFPT_HELLO:
           # We let this through and hope the other side switches down.
           pass
         else:
           log.warning("Bad OpenFlow version (0x%02x) on connection %s"
-                      % (ord(self.buf[offset]), self))
+                      % (self.buf[offset], self))
           return False # Throw connection away
 
-      msg_length = ord(self.buf[offset+2]) << 8 | ord(self.buf[offset+3])
+      msg_length = self.buf[offset+2] << 8 | self.buf[offset+3]
 
       if buf_len - offset < msg_length: break
 
