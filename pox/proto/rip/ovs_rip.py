@@ -67,7 +67,7 @@ import pox.lib.packet.rip as RIP
 import pox.lib.packet as pkt
 from pox.lib.recoco import Timer, Task
 import socket
-from rip_core import *
+from .rip_core import *
 from pox.proto.arp_helper import send_arp_reply
 from pox.proto.arp_table import ARPTable
 from pox.lib.util import dpid_to_str

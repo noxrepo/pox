@@ -32,7 +32,7 @@ RIP = pox.lib.packet.RIP
 from pox.lib.recoco import Timer, Task, RecvFrom, Recv, Select
 import socket
 import subprocess
-from rip_core import *
+from .rip_core import *
 
 
 DEFAULT_TABLENO = 1
