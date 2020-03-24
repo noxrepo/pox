@@ -860,7 +860,7 @@ class SelectHub (object):
           if tto-now > 0.1: print("preexpired",tto,now,tto-now)
           continue
         tt = tto - now
-        if tt < timeout or timeout is None:
+        if timeout is None or tt < timeout:
           timeout = tt
           timeoutTask = t
 
