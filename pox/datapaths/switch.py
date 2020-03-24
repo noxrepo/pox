@@ -135,7 +135,7 @@ class SoftwareSwitchBase (object):
     # Set up handlers for incoming OpenFlow messages
     # That is, self.ofp_handlers[OFPT_FOO] = self._rx_foo
     self.ofp_handlers = {}
-    for value,name in ofp_type_map.iteritems():
+    for value,name in ofp_type_map.items():
       name = name.split("OFPT_",1)[-1].lower()
       h = getattr(self, "_rx_" + name, None)
       if not h: continue
@@ -146,7 +146,7 @@ class SoftwareSwitchBase (object):
     # That is, self.action_handlers[OFPAT_FOO] = self._action_foo
     #TODO: Refactor this with above
     self.action_handlers = {}
-    for value,name in ofp_action_type_map.iteritems():
+    for value,name in ofp_action_type_map.items():
       name = name.split("OFPAT_",1)[-1].lower()
       h = getattr(self, "_action_" + name, None)
       if not h: continue
@@ -157,7 +157,7 @@ class SoftwareSwitchBase (object):
     # That is, self.stats_handlers[OFPST_FOO] = self._stats_foo
     #TODO: Refactor this with above
     self.stats_handlers = {}
-    for value,name in ofp_stats_type_map.iteritems():
+    for value,name in ofp_stats_type_map.items():
       name = name.split("OFPST_",1)[-1].lower()
       h = getattr(self, "_stats_" + name, None)
       if not h: continue
@@ -167,7 +167,7 @@ class SoftwareSwitchBase (object):
     # That is, self.flow_mod_handlers[OFPFC_FOO] = self._flow_mod_foo
     #TODO: Refactor this with above
     self.flow_mod_handlers = {}
-    for name,value in ofp_flow_mod_command_rev_map.iteritems():
+    for name,value in ofp_flow_mod_command_rev_map.items():
       name = name.split("OFPFC_",1)[-1].lower()
       h = getattr(self, "_flow_mod_" + name, None)
       if not h: continue
@@ -661,12 +661,12 @@ class SoftwareSwitchBase (object):
     elif out_port == OFPP_IN_PORT:
       real_send(in_port, allow_in_port=True)
     elif out_port == OFPP_FLOOD:
-      for no,port in self.ports.iteritems():
+      for no,port in self.ports.items():
         if no == in_port: continue
         if port.config & OFPPC_NO_FLOOD: continue
         real_send(port)
     elif out_port == OFPP_ALL:
-      for no,port in self.ports.iteritems():
+      for no,port in self.ports.items():
         if no == in_port: continue
         real_send(port)
     elif out_port == OFPP_CONTROLLER:
@@ -1264,14 +1264,14 @@ class SwitchFeatures (object):
   """
   def __init__ (self, **kw):
     self._cap_info = {}
-    for val,name in ofp_capabilities_map.iteritems():
+    for val,name in ofp_capabilities_map.items():
       name = name[5:].lower() # strip OFPC_
       name = "cap_" + name
       setattr(self, name, False)
       self._cap_info[name] = val
 
     self._act_info = {}
-    for val,name in ofp_action_type_map.iteritems():
+    for val,name in ofp_action_type_map.items():
       name = name[6:].lower() # strip OFPAT_
       name = "act_" + name
       setattr(self, name, False)
@@ -1293,7 +1293,7 @@ class SwitchFeatures (object):
     Value used in features reply
     """
     return sum( (v if getattr(self, k) else 0)
-                for k,v in self._cap_info.iteritems() )
+                for k,v in self._cap_info.items() )
 
   @property
   def action_bits (self):
@@ -1301,7 +1301,7 @@ class SwitchFeatures (object):
     Value used in features reply
     """
     return sum( (1<<v if getattr(self, k) else 0)
-                for k,v in self._act_info.iteritems() )
+                for k,v in self._act_info.items() )
 
   def __str__ (self):
     l = list(k for k in self._cap_info if getattr(self, k))

@@ -851,7 +851,7 @@ class SelectHub (object):
     #TODO: Fix this.  It's pretty expensive.  There had been some code which
     #      priority heaped this, but I don't think a fully working version
     #      ever quite made it.
-    for t,trl,twl,txl,tto in tasks.itervalues():
+    for t,trl,twl,txl,tto in tasks.values():
       if tto != None:
         if tto <= now:
           # Already expired
@@ -914,7 +914,7 @@ class SelectHub (object):
         if task not in rets: rets[task] = ([],[],[])
         rets[task][2].append(i)
 
-      for t,v in rets.iteritems():
+      for t,v in rets.items():
         del tasks[t]
         self._return(t, v)
       rets.clear()

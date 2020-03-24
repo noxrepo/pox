@@ -255,7 +255,7 @@ def init_helper (obj, kw):
   Inside a class's __init__, this will copy keyword arguments to fields
   of the same name.  See libopenflow for an example.
   """
-  for k,v in kw.iteritems():
+  for k,v in kw.items():
     if not hasattr(obj, k):
       raise TypeError(obj.__class__.__name__ + " constructor got "
       + "unexpected keyword argument '" + k + "'")

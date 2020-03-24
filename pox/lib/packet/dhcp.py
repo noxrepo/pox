@@ -277,7 +277,7 @@ class dhcp(packet_base):
                 o += chr(dhcp.PAD_OPT)
             return o
 
-        for k,v in self.options.iteritems():
+        for k,v in self.options.items():
             if k == dhcp.END_OPT: continue
             if k == dhcp.PAD_OPT: continue
             if isinstance(v, DHCPOption):

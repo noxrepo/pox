@@ -87,7 +87,7 @@ class Entry (object):
 class ARPTable (dict):
   def __repr__ (self):
     o = []
-    for k,e in self.iteritems():
+    for k,e in self.items():
       t = int(e.timeout - time.time())
       if t < 0:
         t = "X"
@@ -98,7 +98,7 @@ class ARPTable (dict):
       if mac is True: mac = "<Switch MAC>"
       o.append((k,"%-17s %-20s %3s" % (k, mac, t)))
 
-    for k,t in _failed_queries.iteritems():
+    for k,t in _failed_queries.items():
       if k not in self:
         t = int(time.time() - t)
         o.append((k,"%-17s %-20s %3ss ago" % (k, '?', t)))
@@ -288,6 +288,6 @@ def launch (timeout=ARP_TIMEOUT, no_flow=False, eat_packets=True,
   _learn = not no_learn
 
   core.Interactive.variables['arp'] = _arp_table
-  for k,v in kw.iteritems():
+  for k,v in kw.items():
     _arp_table[IPAddr(k)] = Entry(v, static=True)
   core.registerNew(ARPResponder)

@@ -260,7 +260,7 @@ class OpenFlowSwitch (EventMixin, Switch):
     event.halt = False
 
   def findPortForEntity (self, entity):
-    for p in self.ports.itervalues():
+    for p in self.ports.values():
       if entity in p:
         return p
     return None

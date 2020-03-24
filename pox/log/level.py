@@ -23,7 +23,7 @@ def launch (__INSTANCE__=None, **kw):
   For example, to turn off the verbose web logging, try:
   pox.py web.webcore log.level --web.webcore=INFO
   """
-  for k,v in kw.iteritems():
+  for k,v in kw.items():
     if v is True:
       # This means they did something like log.level --DEBUG
       v = k

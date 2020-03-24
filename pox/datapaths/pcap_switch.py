@@ -121,7 +121,7 @@ def _do_ctl2 (event):
       s = []
       for sw in _switches.values():
         s.append("Switch %s" % (sw.name,))
-        for no,p in sw.ports.iteritems():
+        for no,p in sw.ports.items():
           stats = sw.port_stats[no]
           s.append(" %3s %-16s rx:%-20s tx:%-20s" % (no, p.name,
                      "%s (%s)" % (stats.rx_packets,stats.rx_bytes),
@@ -442,7 +442,7 @@ class PCapSwitch (ExpireMixin, SoftwareSwitchBase):
 
     self.log.setLevel(log_level)
 
-    for px in self.px.itervalues():
+    for px in self.px.values():
       px.start()
 
     self.t.start()
@@ -490,7 +490,7 @@ class PCapSwitch (ExpireMixin, SoftwareSwitchBase):
       if dev.get('addrs',{}).get('AF_INET') != None:
         on_error("Device %s has an IP address -- ignoring", name)
         return
-      for no,p in self.px.iteritems():
+      for no,p in self.px.items():
         if p.device == name:
           on_error("Device %s already added", name)
 
@@ -525,7 +525,7 @@ class PCapSwitch (ExpireMixin, SoftwareSwitchBase):
 
   def remove_interface (self, name_or_num):
     if isinstance(name_or_num, basestring):
-      for no,p in self.px.iteritems():
+      for no,p in self.px.items():
         if p.device == name_or_num:
           self.remove_interface(no)
           return

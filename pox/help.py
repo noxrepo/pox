@@ -55,7 +55,7 @@ def _show_args (f,name):
     out.append(" {0:25} {1:25}".format("Name", "Default"))
     out.append(" {0:25} {0:25}".format("-" * 15))
 
-    for k,v in args.iteritems():
+    for k,v in args.items():
       k = k.replace("_","-")
       out.append(" {0:25} {1:25}".format(k,str(v[0])))
 

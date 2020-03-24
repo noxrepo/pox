@@ -80,7 +80,7 @@ class EpollSelect(object):
     # you should, anyway
 
     # now execute the modify ops on the epoll object
-    for (fd, mask) in modify.iteritems():
+    for (fd, mask) in modify.items():
       if fd in self.registered:
         if mask == 0:
           self.epoll.unregister(fd)

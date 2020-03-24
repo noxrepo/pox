@@ -99,7 +99,7 @@ def _calc_spanning_tree ():
     v = q.pop(False)
     if v in done: continue
     done.add(v)
-    for w,p in adj[v].iteritems():
+    for w,p in adj[v].items():
       if w in tree: continue
       more.add(w)
       tree[v].add((w,p))
@@ -107,7 +107,7 @@ def _calc_spanning_tree ():
 
   if False:
     log.debug("*** SPANNING TREE ***")
-    for sw,ports in tree.iteritems():
+    for sw,ports in tree.items():
       #print " ", dpidToStr(sw), ":", sorted(list(ports))
       #print " ", sw, ":", [l[0] for l in sorted(list(ports))]
       log.debug((" %i : " % sw) + " ".join([str(l[0]) for l in
@@ -138,7 +138,7 @@ def _handle_ConnectionUp (event):
   if _noflood_by_default:
     con = event.connection
     log.debug("Disabling flooding for %i ports", len(con.ports))
-    for p in con.ports.itervalues():
+    for p in con.ports.values():
       if p.port_no >= of.OFPP_MAX: continue
       _prev[con.dpid][p.port_no] = False
       pm = of.ofp_port_mod(port_no=p.port_no,
@@ -186,7 +186,7 @@ def _update_tree (force_dpid = None):
   # Now modify ports as needed
   try:
     change_count = 0
-    for sw, ports in tree.iteritems():
+    for sw, ports in tree.items():
       con = core.openflow.getConnection(sw)
       if con is None: continue # Must have disconnected
       if con.connect_time is None: continue # Not fully connected
@@ -201,7 +201,7 @@ def _update_tree (force_dpid = None):
             continue
 
       tree_ports = [p[1] for p in ports]
-      for p in con.ports.itervalues():
+      for p in con.ports.values():
         if p.port_no < of.OFPP_MAX:
           flood = p.port_no in tree_ports
           if not flood:

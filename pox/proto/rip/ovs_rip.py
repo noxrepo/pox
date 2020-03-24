@@ -246,7 +246,7 @@ class OVSRIPRouter (RIPRouter):
   @property
   def all_ips (self):
     all_ips = set()
-    for portobj in self._ports.itervalues():
+    for portobj in self._ports.values():
       all_ips.update(portobj.ips)
     return all_ips
 
@@ -301,7 +301,7 @@ class OVSRIPRouter (RIPRouter):
     fm.match.dl_type = pkt.ethernet.ARP_TYPE
     fm.match.nw_proto = pkt.arp.REQUEST
     fm.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
-    for portno,portobj in self._ports.iteritems():
+    for portno,portobj in self._ports.items():
       if portno not in self._conn.ports: continue
       fm.match.in_port = portno
       for ip in portobj.ips:
@@ -315,7 +315,7 @@ class OVSRIPRouter (RIPRouter):
     fm.match.dl_type = pkt.ethernet.ARP_TYPE
     fm.match.nw_proto = pkt.arp.REPLY
     fm.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
-    for portno,portobj in self._ports.iteritems():
+    for portno,portobj in self._ports.items():
       if portno not in self._conn.ports: continue
       fm.match.in_port = portno
       fm.match.dl_dst = self._conn.ports[portno].hw_addr
@@ -330,7 +330,7 @@ class OVSRIPRouter (RIPRouter):
     fm.match.tp_src = pkt.ICMP.TYPE_ECHO_REQUEST # Type
     fm.match.tp_dst = 0 # Code
     fm.actions.append(of.ofp_action_output(port = of.OFPP_CONTROLLER))
-    for portno,portobj in self._ports.iteritems():
+    for portno,portobj in self._ports.items():
       if portno not in self._conn.ports: continue
       fm.match.in_port = portno
       fm.match.dl_dst = self._conn.ports[portno].hw_addr
@@ -724,8 +724,8 @@ class OVSRIPRouter (RIPRouter):
       cur[RIP_PORT_TABLE][(e.ip, e.size)] = fm
 
     if self._conn:
-      data1 = b''.join(x.pack() for x in self._cur[RIP_PORT_TABLE].itervalues())
-      data2 = b''.join(x.pack() for x in self._cur[RIP_NET_TABLE].itervalues())
+      data1 = b''.join(x.pack() for x in self._cur[RIP_PORT_TABLE].values())
+      data2 = b''.join(x.pack() for x in self._cur[RIP_NET_TABLE].values())
       data = data1 + data2
       if data == self._prev: return # Nothing changed
 

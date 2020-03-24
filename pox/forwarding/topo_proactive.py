@@ -75,7 +75,7 @@ def _calc_paths ():
   sws = switches_by_dpid.values()
   path_map.clear()
   for k in sws:
-    for j,port in adjacency[k].iteritems():
+    for j,port in adjacency[k].items():
       if port is None: continue
       path_map[k][j] = (1,None)
     path_map[k][k] = (0,None) # distance, intermediate
@@ -207,7 +207,7 @@ class TopoSwitch (DHCPD):
     core.openflow_discovery.install_flow(self.connection)
 
     src = self
-    for dst in switches_by_dpid.itervalues():
+    for dst in switches_by_dpid.values():
       if dst is src: continue
       p = _get_path(src, dst)
       if p is None: continue
@@ -234,7 +234,7 @@ class TopoSwitch (DHCPD):
       self.connection.send(msg)
     """
 
-    for ip,mac in self.ip_to_mac.iteritems():
+    for ip,mac in self.ip_to_mac.items():
       self._send_rewrite_rule(ip, mac)
 
     flood_ports = []
@@ -316,7 +316,7 @@ class TopoSwitch (DHCPD):
     # Disable flooding
     con = connection
     log.debug("Disabling flooding for %i ports", len(con.ports))
-    for p in con.ports.itervalues():
+    for p in con.ports.values():
       if p.port_no >= of.OFPP_MAX: continue
       pm = of.ofp_port_mod(port_no=p.port_no,
                           hw_addr=p.hw_addr,
@@ -423,7 +423,7 @@ class topo_addressing (object):
     # path that may have been broken.
     #NOTE: This could be radically improved! (e.g., not *ALL* paths break)
     clear = of.ofp_flow_mod(command=of.OFPFC_DELETE)
-    for sw in switches_by_dpid.itervalues():
+    for sw in switches_by_dpid.values():
       if sw.connection is None: continue
       sw.connection.send(clear)
     path_map.clear()
@@ -454,7 +454,7 @@ class topo_addressing (object):
           adjacency[sw1][sw2] = l.port1
           adjacency[sw2][sw1] = l.port2
 
-    for sw in switches_by_dpid.itervalues():
+    for sw in switches_by_dpid.values():
       sw.send_table()
 
 

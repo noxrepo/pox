@@ -184,7 +184,7 @@ class Call (Operator):
         ao = Literal(v)
       _self._arg.append(ao)
     _self._kw = {}
-    for k,v in kw.iteritems():
+    for k,v in kw.items():
       ao = None
       if isinstance(v, Operator):
         ao = v
@@ -197,7 +197,7 @@ class Call (Operator):
     for arg in self._arg:
       arglist.append(arg(n,li))
     kws = {}
-    for k,v in self._kw.iteritems():
+    for k,v in self._kw.items():
       kws[k] = v(n)
     func = arglist.pop(0)
     return func(*arglist, **kws)
@@ -579,7 +579,7 @@ class Graph (object):
 
   def _test_node (self, n, args=(), kw={}, link=None):
     #TODO: Should use a special value for unspecified n2
-    for k,v in kw.iteritems():
+    for k,v in kw.items():
       if k == "is_a":
         if not isinstance(n,v): return False
       elif k == "type":

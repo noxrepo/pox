@@ -1634,7 +1634,7 @@ class flow_mod_spec (object):
     dst_inst = None
     n_bits = None
 
-    for k,v in kw.iteritems():
+    for k,v in kw.items():
       # This is handy, though there's potentially future ambiguity
       s = globals().get('nx_learn_' + k)
       if not s:

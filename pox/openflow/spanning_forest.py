@@ -128,7 +128,7 @@ class Switch (object):
     old_ports = self.ports
     self.ports = {}
     if not con: return
-    for p in con.ports.itervalues():
+    for p in con.ports.values():
       if p.port_no >= of.OFPP_MAX: continue
       if p.port_no in old_ports:
         self.ports[p.port_no] = old_ports[p.port_no]
@@ -145,7 +145,7 @@ class Switch (object):
     # Get port->link
     links = {l.port(self.dpid):l for l in self.master.topo.iterlinks(self.dpid)}
 
-    for p in con.ports.itervalues():
+    for p in con.ports.values():
       if p.port_no >= of.OFPP_MAX: continue
       p = self.ports[p.port_no]
       fld = False
@@ -367,7 +367,7 @@ class SpanningForest (object):
 
   def _handle_timer (self):
     self.t = Timer(1, self._handle_timer)
-    for sw in self.switches.itervalues():
+    for sw in self.switches.values():
       sw._handle_timer()
 
   def _handle_openflow_PortStatus (self, e):
@@ -427,7 +427,7 @@ class SpanningForest (object):
     for u,v,d in tree.edges(data=True):
       self.topo.add_to_tree(d['data'])
 
-    for sw in self.switches.itervalues():
+    for sw in self.switches.values():
       sw._compute()
 
   def _compute_stable (self):
@@ -501,13 +501,13 @@ class SpanningForest (object):
     #  print sorted([hex(n)[2:] for n in x])
 
     self.log.debug("Spanning forest computed.  Components:%s  Links:%s",
-                   len(set(id(x) for x in reachable.itervalues())),len(used))
+                   len(set(id(x) for x in reachable.values())),len(used))
 
     self.topo.clear_tree()
     for l in used:
       self.topo.add_to_tree(l)
 
-    for sw in self.switches.itervalues():
+    for sw in self.switches.values():
       sw._compute()
 
 

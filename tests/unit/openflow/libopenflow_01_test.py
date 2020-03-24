@@ -39,7 +39,7 @@ class ofp_match_test(unittest.TestCase):
     m = ofp_match()
 
     # all match entries should start out as wildcarded
-    for k,v in ofp_match_data.iteritems():
+    for k,v in ofp_match_data.items():
          self.assertEquals(getattr(m, k), None, "Attr %s should be wildcarded and reported as None" % k)
          self.assertEquals(m.wildcards & v[1], v[1])
 
@@ -94,7 +94,7 @@ class ofp_match_test(unittest.TestCase):
       for w in wildcards:
         setattr(m, w, None)
 
-      for (k,v) in kw.iteritems():
+      for (k,v) in kw.items():
         m.__setattr__(k,v)
       return m
 
@@ -122,7 +122,7 @@ class ofp_match_test(unittest.TestCase):
     for changes in ( { "in_port": 15 }, { "dl_src": "12:34:56:78:90:ab", "dl_vlan": 7 }, { "tp_dst" : 22 } ):
       wild = create()
       concrete = create()
-      for (k,v) in changes.iteritems():
+      for (k,v) in changes.items():
         setattr(wild, k, None)
         setattr(concrete, k, v)
       assertMatch(wild, concrete)
@@ -265,7 +265,7 @@ class ofp_command_test(unittest.TestCase):
         question is not matched i.e., dl_type != 0x800 -> no wildcards for IP.
         Test this here """
     def show_wildcards(w):
-      parts = [ k.lower()[len("OFPFW_"):] for (k,v) in ofp_flow_wildcards_rev_map.iteritems() if v & w == v ]
+      parts = [ k.lower()[len("OFPFW_"):] for (k,v) in ofp_flow_wildcards_rev_map.items() if v & w == v ]
       nw_src_bits = (w & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT
       nw_src_bits = (w & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT
       if(nw_src_bits > 0): parts.append("nw_src(/%d)" % (32 - nw_src_bits))
@@ -309,7 +309,7 @@ class ofp_command_test(unittest.TestCase):
             self.assertEqual(unpacked.match, match)
             self.assertEqual(unpacked.command, command)
             self.assertEqual(unpacked.actions, actions)
-            for (check_attr,val) in attrs.iteritems():
+            for (check_attr,val) in attrs.items():
               self.assertEqual(getattr(unpacked, check_attr), val)
 
 class ofp_action_test(unittest.TestCase):
@@ -326,7 +326,7 @@ class ofp_action_test(unittest.TestCase):
       unpacked = cls()
       unpacked.unpack(packed)
       self.assertEqual(action, unpacked)
-      for (k, v) in kw.iteritems():
+      for (k, v) in kw.items():
         self.assertEqual(getattr(unpacked, k), v)
       return packed
 

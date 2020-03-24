@@ -158,7 +158,7 @@ class NDOptionBase (packet_base):
     ss = self._fields()
     if ss:
       s += ' '
-      s += " ".join(["%s:%s" % (k,v) for k,v in ss.iteritems()])
+      s += " ".join(["%s:%s" % (k,v) for k,v in ss.items()])
     return "[" + s + "]"
 
   @property
@@ -409,7 +409,7 @@ class icmp_base (packet_base):
     ss = self._fields()
     if ss:
       s += ' '
-      s += " ".join(["%s:%s" % (k,v) for k,v in ss.iteritems()])
+      s += " ".join(["%s:%s" % (k,v) for k,v in ss.items()])
     return s + "]"
 
   def _fields (self):

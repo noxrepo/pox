@@ -331,7 +331,7 @@ class Discovery (EventMixin):
     """
     now = time.time()
 
-    expired = [link for link,timestamp in self.adjacency.iteritems()
+    expired = [link for link,timestamp in self.adjacency.items()
                if timestamp + self._link_timeout < now]
     if expired:
       for link in expired:

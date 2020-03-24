@@ -90,7 +90,7 @@ def launch (__INSTANCE__ = None, **kw):
     h.setFormatter(formatter)
     logging.getLogger().addHandler(h)
 
-  for _k,v in kw.iteritems():
+  for _k,v in kw.items():
     k = _k
     use_kw = k.startswith("*")
     if use_kw: k = k[1:]

@@ -53,8 +53,8 @@ class MultiGraph (object):
 
     edges = {}
 
-    for e1,otherEnd in self._edges.iteritems():
-      for e2,rest in otherEnd.iteritems():
+    for e1,otherEnd in self._edges.items():
+      for e2,rest in otherEnd.items():
         if nbunch is not None:
           if e1 not in nbunch: continue
           if len(nbunch) > 1 and e2 not in nbunch: continue
@@ -65,8 +65,8 @@ class MultiGraph (object):
         edges[e] = rest
 
     r = []
-    for nodes,edgelist in edges.iteritems():
-      for k,d in edgelist.iteritems():
+    for nodes,edgelist in edges.items():
+      for k,d in edgelist.items():
         if data and keys:
           r.append((nodes[0],nodes[1],k,d)) # Is the order right?
         elif data:
@@ -139,9 +139,9 @@ class MultiGraph (object):
 
   def __getitem__ (self, node):
     o = {}
-    for k0,v0 in self._edges[node].iteritems():
+    for k0,v0 in self._edges[node].items():
       if k0 not in o: o[k0] = {}
-      for k1,v1 in v0.iteritems():
+      for k1,v1 in v0.items():
         if k1 not in o[k0]: o[k0][k1] = {}
         o[k0][k1] = v1
 

@@ -101,7 +101,7 @@ class ShutdownHelper (object):
     cc = dict(self.sockets)
     self.sockets.clear()
     #if cc: log.debug("Shutting down %s socket(s)", len(cc))
-    for s,(r,w,c) in cc.iteritems():
+    for s,(r,w,c) in cc.items():
       try:
         if r and w: flags = socket.SHUT_RDWR
         elif r: flags = socket.SHUT_RD

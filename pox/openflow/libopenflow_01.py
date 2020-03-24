@@ -1009,7 +1009,7 @@ class ofp_match (ofp_base):
 
   def clone (self):
     n = ofp_match()
-    for k,v in ofp_match_data.iteritems():
+    for k,v in ofp_match_data.items():
       setattr(n, '_' + k, getattr(self, '_' + k))
     n.wildcards = self.wildcards
     return n
@@ -1034,14 +1034,14 @@ class ofp_match (ofp_base):
   def __init__ (self, **kw):
     self._locked = False
 
-    for k,v in ofp_match_data.iteritems():
+    for k,v in ofp_match_data.items():
       setattr(self, '_' + k, v[0])
 
     self.wildcards = self._normalize_wildcards(OFPFW_ALL)
 
     # This is basically initHelper(), but tweaked slightly since this
     # class does some magic of its own.
-    for k,v in kw.iteritems():
+    for k,v in kw.items():
       if not hasattr(self, '_'+k):
         raise TypeError(self.__class__.__name__ + " constructor got "
           + "unexpected keyword argument '" + k + "'")
@@ -1489,7 +1489,7 @@ class ofp_match (ofp_base):
 
     def show_wildcards(w):
       parts = [ k.lower()[len("OFPFW_"):]
-                for (k,v) in ofp_flow_wildcards_rev_map.iteritems()
+                for (k,v) in ofp_flow_wildcards_rev_map.items()
                 if v & w == v ]
       nw_src_bits = (w & OFPFW_NW_SRC_MASK) >> OFPFW_NW_SRC_SHIFT
       if nw_src_bits > 0:
@@ -4386,7 +4386,7 @@ def _unpack_actions (b, length, offset=0):
 def _init ():
   def formatMap (name, m):
     o = name + " = {\n"
-    vk = sorted([(v,k) for k,v in m.iteritems()])
+    vk = sorted([(v,k) for k,v in m.items()])
     maxlen = 2 + len(reduce(lambda a,b: a if len(a)>len(b) else b,
                             (v for k,v in vk)))
     fstr = "  %-" + str(maxlen) + "s : %s,\n"
@@ -4411,13 +4411,13 @@ def _init ():
   return
   """
   maps = []
-  for k,v in globals().iteritems():
+  for k,v in globals().items():
     if (k.startswith("ofp_") and k.endswith("_rev_map")
         and type(v) == dict):
       maps.append((k[:-8],v))
   for name,m in maps:
     # Try to generate forward maps
-    forward = dict(((v,k) for k,v in m.iteritems()))
+    forward = dict(((v,k) for k,v in m.items()))
     if len(forward) == len(m):
       if name + "_map" not in globals():
         globals()[name + "_map"] = forward
@@ -4434,7 +4434,7 @@ def _init ():
       globals()[name] = v
 
     # Generate gobals
-    for k,v in m.iteritems():
+    for k,v in m.items():
       globals()[k] = v
 
 

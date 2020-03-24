@@ -117,7 +117,7 @@ _unfix_map['get_nw_dst'] = _unfix_ip
 def match_to_dict (m):
   d = {}
   #TODO: Use symbolic names
-  for k,func in _unfix_map.iteritems():
+  for k,func in _unfix_map.items():
     v = getattr(m, k)
     if v is None: continue
     if k.startswith('get_'): k = k[4:]
@@ -130,7 +130,7 @@ def match_to_dict (m):
 def action_to_dict (a):
   d = {}
   d['type'] = of.ofp_action_type_map.get(a.type, a.type)
-  for k,v in fields_of(a).iteritems():
+  for k,v in fields_of(a).items():
     if k in ['type','length']: continue
     if k == "port":
       v = of.ofp_port_map.get(v,v)
@@ -160,7 +160,7 @@ def flow_stats_to_list (flowstats):
   for stat in flowstats:
     s = {}
     stats.append(s)
-    for k,v in fields_of(stat).iteritems():
+    for k,v in fields_of(stat).items():
       if k == 'length': continue
       if k.startswith('pad'): continue
       if k == 'match': v = match_to_dict(v)
@@ -229,7 +229,7 @@ def dict_to_packet (d, parent=None):
   example = cls()
   del d['class']
 
-  for k,v in d.iteritems():
+  for k,v in d.items():
     assert not k.startswith('_')
     assert hasattr(example, k)
     assert k not in ['prev','next','raw','parsed']
@@ -303,7 +303,7 @@ def list_switches (ofnexus = None):
     ofnexus = core.openflow
 
   r = []
-  for dpid,con in ofnexus._connections.iteritems():
+  for dpid,con in ofnexus._connections.items():
     ports = []
     for p in con.ports.values():
       pdict = {

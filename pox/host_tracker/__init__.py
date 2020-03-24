@@ -27,7 +27,7 @@ log.setLevel(logging.INFO)
 from pox.lib.addresses import EthAddr
 
 def launch (src_mac = None, no_flow = False, **kw):
-  for k, v in kw.iteritems():
+  for k, v in kw.items():
     if k in host_tracker.timeoutSec:
       host_tracker.timeoutSec[k] = int(v)
       log.debug("Changing timer parameter: %s = %s",k,v)

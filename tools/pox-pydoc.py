@@ -1630,7 +1630,7 @@ class Helper:
         '[': 'LISTS SUBSCRIPTS SLICINGS',
         ']': 'LISTS SUBSCRIPTS SLICINGS'
     }
-    for topic, symbols_ in _symbols_inverse.iteritems():
+    for topic, symbols_ in _symbols_inverse.items():
         for symbol in symbols_:
             topics = symbols.get(symbol, topic)
             if topic not in topics:

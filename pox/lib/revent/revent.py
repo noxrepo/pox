@@ -326,7 +326,7 @@ class EventMixin (object):
     """
     Returns the number of listeners.
     """
-    return sum((len(x) for x in self._eventMixin_handlers.itervalues()))
+    return sum((len(x) for x in self._eventMixin_handlers.values()))
 
   def removeListener (self, handlerOrEID, eventType=None):
     """

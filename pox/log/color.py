@@ -97,7 +97,7 @@ def _proc (msg, level_color = "DEBUG"):
     if cmd:
       best = None
       bestlen = 0
-      for k,v in COMMANDS.iteritems():
+      for k,v in COMMANDS.items():
         if len(k) > bestlen:
           if m.startswith(k):
             best = (k,v)
@@ -108,7 +108,7 @@ def _proc (msg, level_color = "DEBUG"):
         m = m[bestlen:]
         best = None
         bestlen = 0
-      for k,v in COLORS.iteritems():
+      for k,v in COLORS.items():
         if len(k) > bestlen:
           if m.startswith(k):
             best = (k,v)

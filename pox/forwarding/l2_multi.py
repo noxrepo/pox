@@ -81,7 +81,7 @@ def _calc_paths ():
   sws = switches.values()
   path_map.clear()
   for k in sws:
-    for j,port in adjacency[k].iteritems():
+    for j,port in adjacency[k].items():
       if port is None: continue
       path_map[k][j] = (1,None)
     path_map[k][k] = (0,None) # distance, intermediate
@@ -438,7 +438,7 @@ class l2_multi (EventMixin):
     # path that may have been broken.
     #NOTE: This could be radically improved! (e.g., not *ALL* paths break)
     clear = of.ofp_flow_mod(command=of.OFPFC_DELETE)
-    for sw in switches.itervalues():
+    for sw in switches.values():
       if sw.connection is None: continue
       sw.connection.send(clear)
     path_map.clear()
@@ -473,7 +473,7 @@ class l2_multi (EventMixin):
       # If we have learned a MAC on this port which we now know to
       # be connected to a switch, unlearn it.
       bad_macs = set()
-      for mac,(sw,port) in mac_map.iteritems():
+      for mac,(sw,port) in mac_map.items():
         if sw is sw1 and port == l.port1: bad_macs.add(mac)
         if sw is sw2 and port == l.port2: bad_macs.add(mac)
       for mac in bad_macs:

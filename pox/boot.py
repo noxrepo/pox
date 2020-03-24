@@ -287,7 +287,7 @@ def _do_launch (argv, skip_startup=False):
                                                 "Active"))
             print(" {0:25} {0:25} {0:25}".format("-" * 15))
 
-            for k,v in args.iteritems():
+            for k,v in args.items():
               print(" {0:25} {1:25} {2:25}".format(k,str(v[0]),
                     str(v[1] if v[1] is not EMPTY else v[0])))
 
@@ -295,7 +295,7 @@ def _do_launch (argv, skip_startup=False):
             print("This component does not have a parameter named "
                   + "'{0}'.".format(params.keys()[0]))
             return False
-          missing = [k for k,x in args.iteritems()
+          missing = [k for k,x in args.items()
                      if x[1] is EMPTY and x[0] is EMPTY]
           if len(missing):
             print("You must specify a value for the '{0}' "
@@ -337,7 +337,7 @@ class Options (object):
     return True
 
   def process_options (self, options):
-    for k,v in options.iteritems():
+    for k,v in options.items():
       if self.set(k, v) is False:
         # Bad option!
         sys.exit(1)

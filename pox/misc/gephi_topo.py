@@ -166,7 +166,7 @@ class GephiTopo (object):
       out.append(an(s, kind='switch'))
     for e in self.links:
       out.append(ae(e[0],e[1]))
-    for h,s in self.hosts.iteritems():
+    for h,s in self.hosts.items():
       out.append(an(h, kind='host'))
       if s in self.switches:
         out.append(ae(h,s))
@@ -220,7 +220,7 @@ class GephiTopo (object):
       self.send(ae(s1,s2))
 
       # Do we have abandoned hosts?
-      for h,s in self.hosts.iteritems():
+      for h,s in self.hosts.items():
         if s == s1: self.send(ae(h,s1))
         elif s == s2: self.send(ae(h,s2))
 

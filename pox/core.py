@@ -591,7 +591,7 @@ class POXCore (EventMixin):
     if None in listen_args:
       # This means add it to all...
       args = listen_args.pop(None)
-      for k,v in args.iteritems():
+      for k,v in args.items():
         for c in components:
           if c not in listen_args:
             listen_args[c] = {}
