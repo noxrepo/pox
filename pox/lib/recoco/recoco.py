@@ -29,6 +29,7 @@ import random
 from types import GeneratorType
 import inspect
 from pox.lib.epoll_select import EpollSelect
+from pox.lib.util import aslist
 
 #TODO: Need a way to redirect the prints in here to something else (the log).
 
@@ -547,6 +548,13 @@ class Select (BlockingOperation):
   Should be very similar to Python select.select()
   """
   def __init__ (self, *args, **kw):
+    if ( (not isinstance(args[0], (type(None),list)))
+      or (not isinstance(args[1], (type(None),list)))
+      or (not isinstance(args[2], (type(None),list))) ):
+      args = list(args)
+      for i in range(3):
+        args[i] = None if args[i] is None else aslist(args[i])
+
     self._args = args
     self._kw = kw
 
