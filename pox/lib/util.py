@@ -581,6 +581,22 @@ def fields_of (obj, primitives_only=False,
   return r
 
 
+def del_values_where (d, f):
+  """
+  Deletes items from dict if f(value) is True
+
+  This is optimized for cases with few or no removals.
+  """
+  dead = None
+  for k,v in container.items():
+    if f(v):
+      if not dead: dead = [k]
+      else: dead.append(k)
+  if dead:
+    for k in dead:
+      del d[k]
+
+
 def aslist (l):
   """
   Ensures l is a list without copying it
