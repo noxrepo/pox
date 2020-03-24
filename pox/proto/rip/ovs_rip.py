@@ -758,7 +758,7 @@ class OVSRIPRouters (object):
 
 def static (dpid, __INSTANCE__=None, **kw):
   try:
-    dpid = long(dpid)
+    dpid = int(dpid)
   except:
     dpid = util.str_to_dpid(dpid)
 
@@ -786,7 +786,7 @@ def launch (dpid, __INSTANCE__=None, **kw):
     pox.openflow.nicira.launch(convert_packet_in=True)
 
   try:
-    dpid = long(dpid)
+    dpid = int(dpid)
   except:
     dpid = util.str_to_dpid(dpid)
 

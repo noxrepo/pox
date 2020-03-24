@@ -1216,7 +1216,6 @@ class ofp_match (ofp_base):
     def fix (addr):
       if addr is None: return 0
       if type(addr) is int: return addr & 0xffFFffFF
-      if type(addr) is long: return addr & 0xffFFffFF
       return addr.toUnsigned()
 
     packed += struct.pack("!LLHH", check_ip_or_arp(fix(self.nw_src)),
@@ -1384,7 +1383,7 @@ class ofp_match (ofp_base):
       v = getattr(self, f)
       if type(v) is int:
         h ^= v
-      elif type(v) is long:
+      elif type(v) is int:
         h ^= v
       else:
         h ^= hash(v)

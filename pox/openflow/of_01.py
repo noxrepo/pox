@@ -645,7 +645,7 @@ class PortCollection (object):
     return len(self.keys())
 
   def __getitem__ (self, index):
-    if isinstance(index, (int,long)):
+    if isinstance(index, int):
       for p in self._ports:
         if p.port_no == index:
           return p

@@ -337,7 +337,7 @@ class Scheduler (object):
         # Just unschedule/sleep
         #print "Unschedule", t, rv
         pass
-      elif type(rv) == int or type(rv) == long or type(rv) == float:
+      elif type(rv) == int or type(rv) == float:
         # Sleep time
         if rv == 0:
           #print "sleep 0"

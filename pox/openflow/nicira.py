@@ -1757,7 +1757,7 @@ class _nxm_tcp_flags (_nxm_numeric):
   """
   def _pack_mask (self, v):
     assert self._nxm_length == 2
-    assert isinstance(v, (int, long))
+    assert isinstance(v, int)
     if (v & 0xf000) != 0:
       raise RuntimeError("Top bits of TCP flags mask must be 0")
     return struct.pack("!H", v)
@@ -1798,7 +1798,7 @@ class _nxm_ip (object):
   def _unpack_value (self, v):
     return IPAddr(v, networkOrder=True)
   def _pack_mask (self, v):
-    if isinstance(v, (int, long)):
+    if isinstance(v, int):
       # Assume CIDR
       if v > 32: v = 32
       elif v < 0: v = 0
@@ -1845,7 +1845,7 @@ class _nxm_ipv6 (object):
   def _unpack_value (self, v):
     return IPAddr6(v, raw=True)
   def _pack_mask (self, v):
-    if isinstance(v, (int,long)):
+    if isinstance(v, int):
       # Assume CIDR
       if v > 128: v = 128
       elif v < 0: v = 0

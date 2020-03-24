@@ -181,7 +181,7 @@ class LLDPSender (object):
     """
 
     chassis_id = pkt.chassis_id(subtype=pkt.chassis_id.SUB_LOCAL)
-    chassis_id.id = bytes('dpid:' + hex(long(dpid))[2:-1])
+    chassis_id.id = bytes('dpid:' + hex(int(dpid))[2:-1])
     # Maybe this should be a MAC.  But a MAC of what?  Local port, maybe?
 
     port_id = pkt.port_id(subtype=pkt.port_id.SUB_PORT, id=str(port_num))
@@ -189,7 +189,7 @@ class LLDPSender (object):
     ttl = pkt.ttl(ttl = ttl)
 
     sysdesc = pkt.system_description()
-    sysdesc.payload = bytes('dpid:' + hex(long(dpid))[2:-1])
+    sysdesc.payload = bytes('dpid:' + hex(int(dpid))[2:-1])
 
     discovery_packet = pkt.lldp()
     discovery_packet.tlvs.append(chassis_id)
@@ -296,7 +296,7 @@ class Discovery (EventMixin):
   def install_flow (self, con_or_dpid, priority = None):
     if priority is None:
       priority = self._flow_priority
-    if isinstance(con_or_dpid, (int,long)):
+    if isinstance(con_or_dpid, int):
       con = core.openflow.connections.get(con_or_dpid)
       if con is None:
         log.warn("Can't install flow for %s", dpid_to_str(con_or_dpid))

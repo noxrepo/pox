@@ -200,7 +200,7 @@ def dpid_to_str (dpid, alwaysLong = False):
   """
   Convert a DPID from a long into into the canonical string form.
   """
-  if type(dpid) is long or type(dpid) is int:
+  if type(dpid) is int:
     # Not sure if this is right
     dpid = struct.pack('!Q', dpid)
 
@@ -506,7 +506,7 @@ def connect_socket_with_backoff (address, port, max_backoff_seconds=32):
   return sock
 
 
-_scalar_types = (int, long, basestring, float, bool)
+_scalar_types = (int, str, float, bool)
 
 def is_scalar (v):
   """
@@ -543,7 +543,7 @@ def fields_of (obj, primitives_only=False,
       if not isinstance(v, _scalar_types):
         continue
     elif primitives_and_composites_only:
-      if not isinstance(v, (int, long, str, bytes, float, bool, set,
+      if not isinstance(v, (int, str, bytes, float, bool, set,
                             dict, list)):
         continue
     #r.append((k,v))

@@ -429,7 +429,7 @@ class Interface (object):
     if isinstance(network, tuple):
       addr,mask = network
       addr = str(addr)
-      if isinstance(mask, (int,long)):
+      if isinstance(mask, int):
         mask = cidr_to_netmask(mask)
       mask = str(mask)
       network = "%s/%s" % (addr,mask)
