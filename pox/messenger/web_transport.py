@@ -22,8 +22,8 @@ NOTE: The web_transport keeps its own session IDs.  Since it was first
       Connection, and we could (but are not) reuse those.
 """
 
-from SocketServer import ThreadingMixIn
-from BaseHTTPServer import *
+from socketserver import ThreadingMixIn
+from http.server import *
 import time
 import select
 
