@@ -3790,7 +3790,7 @@ class ofp_packet_in (ofp_header):
   def data (self, data):
     assert assert_type("data", data, (packet_base, bytes))
     if data is None:
-      self._data = ''
+      self._data = b''
     elif isinstance(data, packet_base):
       self._data = data.pack()
     else:
