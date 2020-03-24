@@ -488,9 +488,9 @@ class DeferredSender (threading.Thread):
                   alldata[0] = data[l:]
                   break
                 del alldata[0]
-              except socket.error as (errno, strerror):
-                if errno != EAGAIN:
-                  con.msg("DeferredSender/Socket error: " + strerror)
+              except socket.error as e:
+                if e.errno != EAGAIN:
+                  con.msg("DeferredSender/Socket error: " + e.strerror)
                   con.disconnect()
                   del self._dataForConnection[con]
                 break
@@ -884,13 +884,13 @@ class Connection (EventMixin):
         self.msg("Didn't send complete buffer.")
         data = data[l:]
         deferredSender.send(self, data)
-    except socket.error as (errno, strerror):
-      if errno == EAGAIN:
+    except socket.error as e:
+      if e.errno == EAGAIN:
         self.msg("Out of send buffer space.  " +
                  "Consider increasing SO_SNDBUF.")
         deferredSender.send(self, data)
       else:
-        self.msg("Socket error: " + strerror)
+        self.msg("Socket error: " + e.strerror)
         self.disconnect(defer_event=True)
 
   def read (self):
@@ -1057,13 +1057,13 @@ class OpenFlow_01_Task (Task):
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
       listener.bind((self.address, self.port))
-    except socket.error as (errno, strerror):
+    except socket.error as e:
       log.error("Error %i while binding %s:%s: %s",
-                errno, self.address, self.port, strerror)
-      if errno == EADDRNOTAVAIL:
+                e.errno, self.address, self.port, e.strerror)
+      if e.errno == EADDRNOTAVAIL:
         log.error(" You may be specifying a local address which is "
                   "not assigned to any interface.")
-      elif errno == EADDRINUSE:
+      elif e.errno == EADDRINUSE:
         log.error(" You may have another controller running.")
         log.error(" Use openflow.of_01 --port=<port> to run POX on "
                   "another port.")
