@@ -40,8 +40,8 @@ class MultiGraph (object):
 
   def nodes (self, data = False):
     if not data:
-      return self._nodes.keys()
-    return self._nodes.items()
+      return list(self._nodes.keys())
+    return list(self._nodes.items())
 
   def edges (self, nbunch = None, data = False, keys = False):
     def fix (a,b):
@@ -94,7 +94,7 @@ class MultiGraph (object):
       self._nodes[node] = attr
 
   def remove_node (self, node):
-    others = self._edges[node].keys()
+    others = list(self._edges[node].keys())
     del self._edges[node]
     for other in others:
       if other == node: continue

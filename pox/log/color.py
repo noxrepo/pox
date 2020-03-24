@@ -52,7 +52,7 @@ COLORS = {
 }
 
 # Add intense/bold colors (names it capitals)
-for _c in [_n for _n,_v in COLORS.items() if _v[0] == 0]:
+for _c in [_n for _n,_v in list(COLORS.items()) if _v[0] == 0]:
   COLORS[_c.upper()] = (1,COLORS[_c][1])
 
 COMMANDS = {

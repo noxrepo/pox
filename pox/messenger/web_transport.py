@@ -102,7 +102,7 @@ class HTTPTransport (Transport):
     self._t = Timer(60*2, self._check_timeouts, recurring=True)
 
   def _check_timeouts (self):
-    for c in self._connections.values():
+    for c in list(self._connections.values()):
       c._check_timeout()
 
   def _forget (self, connection):

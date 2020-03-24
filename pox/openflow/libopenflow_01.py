@@ -4425,7 +4425,7 @@ def _init ():
       print(name + "_rev_map is not a map")
 
     # Try to generate lists
-    v = m.values()
+    v = list(m.values())
     v.sort()
     if v[-1] != len(v)-1:
       # Allow ones where the last value is a special value (e.g., VENDOR)

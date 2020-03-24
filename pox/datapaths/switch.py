@@ -286,7 +286,7 @@ class SoftwareSwitchBase (object):
                              n_tables = 1,
                              capabilities = self.features.capability_bits,
                              actions = self.features.action_bits,
-                             ports = self.ports.values())
+                             ports = list(self.ports.values()))
     self.send(msg)
 
   def _rx_flow_mod (self, ofp, connection):
@@ -1002,7 +1002,7 @@ class SoftwareSwitchBase (object):
   def _stats_port (self, ofp, connection):
     req = ofp.body
     if req.port_no == OFPP_NONE:
-      return self.port_stats.values()
+      return list(self.port_stats.values())
     else:
       return self.port_stats[req.port_no]
 

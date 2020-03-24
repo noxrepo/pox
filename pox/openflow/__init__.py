@@ -319,7 +319,7 @@ class ConnectionDict (dict):
 
   @property
   def dpids (self):
-    return self.keys()
+    return list(self.keys())
 
   def iter_dpids (self):
     return self.iterkeys()
@@ -391,7 +391,7 @@ class OpenFlowNexus (EventMixin):
       return False
 
   def _handle_DownEvent (self, event):
-    for c in self._connections.values():
+    for c in list(self._connections.values()):
       try:
         c.disconnect()
       except:

@@ -136,7 +136,7 @@ class iplb (object):
     t = time.time()
 
     # Expire probes
-    for ip,expire_at in self.outstanding_probes.items():
+    for ip,expire_at in list(self.outstanding_probes.items()):
       if t > expire_at:
         self.outstanding_probes.pop(ip, None)
         if ip in self.live_servers:
@@ -194,7 +194,7 @@ class iplb (object):
     """
     Pick a server for a (hopefully) new connection
     """
-    return random.choice(self.live_servers.keys())
+    return random.choice(list(self.live_servers.keys()))
 
   def _handle_PacketIn (self, event):
     inport = event.port

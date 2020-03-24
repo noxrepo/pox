@@ -163,7 +163,7 @@ class SwitchImplTest (unittest.TestCase):
     c = self.conn
     s = self.switch
     original_num_ports = len(self.switch.ports)
-    p = self.switch.ports.values()[0]
+    p = list(self.switch.ports.values())[0]
     s.delete_port(p)
     new_num_ports = len(self.switch.ports)
     self.assertTrue(new_num_ports == original_num_ports - 1,

@@ -197,7 +197,7 @@ def _do_launch (argv, skip_startup=False):
 
       if getattr(f, '_pox_eval_args', False):
         import ast
-        for k,v in params.items():
+        for k,v in list(params.items()):
           if isinstance(v, str):
             try:
               params[k] = ast.literal_eval(v)

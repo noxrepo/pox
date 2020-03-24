@@ -877,7 +877,7 @@ class SelectHub (object):
         self._return(t, ([],[],[]))
 
     if timeout is None: timeout = CYCLE_MAXIMUM
-    ro, wo, xo = self._select_func( rl.keys() + [self._pinger],
+    ro, wo, xo = self._select_func( list(rl.keys()) + [self._pinger],
                                     wl.keys(),
                                     xl.keys(), timeout )
 

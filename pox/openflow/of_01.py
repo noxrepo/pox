@@ -462,7 +462,7 @@ class DeferredSender (threading.Thread):
     while core.running:
 
       with self._lock:
-        cons = self._dataForConnection.keys()
+        cons = list(self._dataForConnection.keys())
 
       rlist, wlist, elist = select.select([self._waker], cons, cons, 5)
       if not core.running: break

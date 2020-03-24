@@ -159,7 +159,7 @@ class PCapSelectLoop (object):
             for pcap in must_remove:
               if pcap not in backwards: continue
               del _filenos[backwards[pcap]]
-        fds = _filenos.keys()
+        fds = list(_filenos.keys())
         fds.append(self._pinger)
 
       if len(fds) <= 1:

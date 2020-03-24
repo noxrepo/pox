@@ -483,7 +483,7 @@ class SpanningForest (object):
     else:
       self.log.debug("Computing spanning forest.      Links:%s", len(links))
 
-    links = links.values()
+    links = list(links.values())
     links.sort(key=lambda l:l.link)
 
     if randomize:

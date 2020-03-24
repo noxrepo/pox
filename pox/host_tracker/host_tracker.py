@@ -392,9 +392,9 @@ class host_tracker (EventMixin):
     """
     Checks for timed out entries
     """
-    for macEntry in self.entryByMAC.values():
+    for macEntry in list(self.entryByMAC.values()):
       entryPinged = False
-      for ip_addr, ipEntry in macEntry.ipAddrs.items():
+      for ip_addr, ipEntry in list(macEntry.ipAddrs.items()):
         if ipEntry.expired():
           if ipEntry.pings.failed():
             del macEntry.ipAddrs[ip_addr]

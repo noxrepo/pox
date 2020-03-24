@@ -138,7 +138,7 @@ def allmethods(cl):
         methods[key] = 1
     for base in cl.__bases__:
         methods.update(allmethods(base)) # all your base are belong to us
-    for key in methods.keys():
+    for key in list(methods.keys()):
         methods[key] = getattr(cl, key)
     return methods
 

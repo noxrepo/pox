@@ -127,10 +127,10 @@ class ARPTable (dict):
 
 
 def _handle_expiration ():
-  for k,e in _arp_table.items():
+  for k,e in list(_arp_table.items()):
     if e.is_expired:
       del _arp_table[k]
-  for k,t in _failed_queries.items():
+  for k,t in list(_failed_queries.items()):
     if time.time() - t > ARP_TIMEOUT:
       del _failed_queries[k]
 
