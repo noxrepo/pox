@@ -238,7 +238,7 @@ def assert_type(name, obj, types, none_ok=True):
   for cls in types:
     if isinstance(obj, cls):
       return True
-  allowed_types = "|".join(map(lambda x: str(x), types))
+  allowed_types = "|".join(str(x) for x in types)
   stack = traceback.extract_stack()
   stack_msg = "Function call %s() in %s:%d" % (stack[-2][2],
                                                stack[-3][0], stack[-3][1])

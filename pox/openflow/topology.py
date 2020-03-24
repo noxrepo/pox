@@ -381,15 +381,15 @@ class OFSyncFlowTable (EventMixin):
     if clear:
       self._pending_barrier_to_ops = {}
       self._pending_op_to_barrier = {}
-      self._pending = filter(lambda(op): op[0] == OFSyncFlowTable.ADD,
-                             self._pending)
+      self._pending = [op for op in self._pending
+                       if op[0] == OFSyncFlowTable.ADD]
 
       self.switch.send(of.ofp_flow_mod(command=of.OFPFC_DELETE,
                                        match=of.ofp_match()))
       self.switch.send(of.ofp_barrier_request())
 
-      todo = map(lambda(e): (OFSyncFlowTable.ADD, e),
-                 self.flow_table.entries) + self._pending
+      todo = [(OFSyncFlowTable.ADD, e)
+              for e in self.flow_table.entries] + self._pending
     else:
       todo = [op for op in self._pending
               if op not in self._pending_op_to_barrier

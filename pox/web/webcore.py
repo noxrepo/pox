@@ -374,7 +374,7 @@ class CoreHandler (SplitRequestHandler):
       r += "<li>%s - %s</li>\n" % (cgi.escape(str(k)), cgi.escape(str(v)))
     r += "</ul>\n\n<h2>Web Prefixes</h2>"
     r += "<ul>"
-    m = [map(cgi.escape, map(str, [x[0],x[1],x[1].format_info(x[3])]))
+    m = [list(map(cgi.escape, map(str, [x[0],x[1],x[1].format_info(x[3])])))
          for x in self.args.matches]
     m.sort()
     for v in m:
