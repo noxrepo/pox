@@ -62,7 +62,7 @@ class SwitchImplTest (unittest.TestCase):
         dst=EthAddr("00:00:00:00:00:02"),
         payload=ipv4(srcip=IPAddr("1.2.3.4"),
         dstip=IPAddr("1.2.3.5"),
-        payload=udp(srcport=1234, dstport=53, payload="haha")))
+        payload=udp(srcport=1234, dstport=53, payload=b"haha")))
 
   def test_hello(self):
     c = self.conn
@@ -245,7 +245,7 @@ class ProcessFlowModTest(unittest.TestCase):
         dst=EthAddr("00:00:00:00:00:02"),
         payload=ipv4(srcip=IPAddr("1.2.3.4"),
         dstip=IPAddr("1.2.3.5"),
-        payload=udp(srcport=1234, dstport=53, payload="haha")))
+        payload=udp(srcport=1234, dstport=53, payload=b"haha")))
 
   def test_process_flow_mod_add(self):
     """ test that simple insertion of a flow works"""

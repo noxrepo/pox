@@ -62,7 +62,7 @@ class MockIPAddrTest (unittest.TestCase):
 
   def test_byte_order (self):
     self.assertEqual(IPAddr(IPAddr('1.2.3.4').toSigned()).raw,
-        '\x01\x02\x03\x04')
+        b'\x01\x02\x03\x04')
 
 #TODO: Clean up these IPv6 tests
 class IPv6Tests (unittest.TestCase):
@@ -89,7 +89,7 @@ class IPv6Tests (unittest.TestCase):
     """
     Basic IPv6 address tests (part 2)
     """
-    h = '\xfe\x80\x00\x00\x00\x00\x00\x00\xba\x8d\x12\xff\xfe\x2a\xdd\x6e'
+    h = b'\xfe\x80\x00\x00\x00\x00\x00\x00\xba\x8d\x12\xff\xfe\x2a\xdd\x6e'
     a = IPAddr6.from_raw(h)
     assert str(a) == 'fe80::ba8d:12ff:fe2a:dd6e'
     assert a.raw == h

@@ -161,8 +161,8 @@ class basics_test (unittest.TestCase):
     good = """00 0c 00 00 08 02 00 00  00 00 08 02 00 00
               00 30 00 00 04 06 00 00  00 00 02 06 00 00
               10 10 00 00 00 02 00 00""".split()
-    good = ''.join([chr(int(x,16)) for x in good])
-    self.assertEqual(good, ''.join(x.pack() for x in learn.spec))
+    good = bytes(int(x,16) for x in good)
+    self.assertEqual(good, b''.join(x.pack() for x in learn.spec))
 
 
   def test_match_pack_unpack (self):

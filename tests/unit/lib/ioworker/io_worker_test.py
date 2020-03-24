@@ -31,9 +31,9 @@ from nose.tools import eq_
 class IOWorkerTest(unittest.TestCase):
   def test_basic_send(self):
     i = IOWorker()
-    i.send("foo")
+    i.send(b"foo")
     self.assertTrue(i._ready_to_send)
-    self.assertEqual(i.send_buf, "foo")
+    self.assertEqual(i.send_buf, b"foo")
     i._consume_send_buf(3)
     self.assertFalse(i._ready_to_send)
 
@@ -43,11 +43,11 @@ class IOWorkerTest(unittest.TestCase):
     def d(worker):
       self.data = worker.peek()
     i.rx_handler = d
-    i._push_receive_data("bar")
-    self.assertEqual(self.data, "bar")
+    i._push_receive_data(b"bar")
+    self.assertEqual(self.data, b"bar")
     # d does not consume the data
-    i._push_receive_data("hepp")
-    self.assertEqual(self.data, "barhepp")
+    i._push_receive_data(b"hepp")
+    self.assertEqual(self.data, b"barhepp")
 
   def test_receive_consume(self):
     i = IOWorker()
@@ -56,11 +56,11 @@ class IOWorkerTest(unittest.TestCase):
       self.data = worker.peek()
       worker.consume_receive_buf(len(self.data))
     i.rx_handler = consume
-    i._push_receive_data("bar")
-    self.assertEqual(self.data, "bar")
+    i._push_receive_data(b"bar")
+    self.assertEqual(self.data, b"bar")
     # data has been consumed
-    i._push_receive_data("hepp")
-    self.assertEqual(self.data, "hepp")
+    i._push_receive_data(b"hepp")
+    self.assertEqual(self.data, b"hepp")
 
 
 class RecocoIOLoopTest(unittest.TestCase):
@@ -91,14 +91,14 @@ class RecocoIOLoopTest(unittest.TestCase):
     select = next(g)
 
     # send data on other socket half
-    right.send("hallo")
+    right.send(b"hallo")
 
     # now we emulate the return value of the select ([rlist],[wlist], [elist])
     g.send(([worker], [], []))
 
     # that should result in the socket being red the data being handed
     # to the ioworker, the callback being called. Everybody happy.
-    self.assertEquals(self.received, "hallo")
+    self.assertEqual(self.received, b"hallo")
 
   def test_run_close(self):
     loop = RecocoIOLoop()
@@ -122,7 +122,7 @@ class RecocoIOLoopTest(unittest.TestCase):
     (left, right) = MockSocket.pair()
     worker = loop.new_worker(left)
 
-    worker.send("heppo")
+    worker.send(b"heppo")
     # 'start' the run (dark generator magic here).
     # Does not actually execute run, but 'yield' a generator
     g = loop.run()
@@ -133,4 +133,4 @@ class RecocoIOLoopTest(unittest.TestCase):
     g.send(([], [worker], []))
 
     # that should result in the stuff being sent on the socket
-    self.assertEqual(right.recv(), "heppo")
+    self.assertEqual(right.recv(), b"heppo")

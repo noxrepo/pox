@@ -76,7 +76,7 @@ class EpollSelectTest(unittest.TestCase):
     ret  = self.es.select([c], [c], [c], 0.1)
     self.assertEqual(([],[c],[]), ret)
     # send stuff
-    c.send("Hallo\n")
+    c.send(b"Hallo\n")
     # now we have something to read, right?
     ret  = self.es.select([c], [], [c], 0.5)
     self.assertEqual(([c],[],[]), ret)

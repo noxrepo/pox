@@ -30,7 +30,7 @@ def extract_num(buf, start, length):
   val = 0
   for i in range(start, start+length):
     val <<= 8
-    val += ord(buf[i])
+    val += buf[i]
   return val
 
 class ofp_match_test(unittest.TestCase):
@@ -252,7 +252,7 @@ class ofp_command_test(unittest.TestCase):
     xid_gen = xid_generator()
     packet = ethernet(src=EthAddr("00:00:00:00:00:01"), dst=EthAddr("00:00:00:00:00:02"),
             payload=ipv4(srcip=IPAddr("1.2.3.4"), dstip=IPAddr("1.2.3.5"),
-                payload=udp(srcport=1234, dstport=53, payload="haha"))).pack()
+                payload=udp(srcport=1234, dstport=53, payload=b"haha"))).pack()
 
     for actions in self.some_actions:
       for attrs in ( { 'data': packet }, { 'buffer_id': 5 } ):
