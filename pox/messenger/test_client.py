@@ -26,7 +26,7 @@ class JSONDestreamer (object):
   import json
   decoder = json.JSONDecoder()
   def __init__ (self, callback = None):
-    self._buf = ''
+    self._buf = b''
     self.callback = callback if callback else self.rx
 
   def push (self, data):
@@ -35,7 +35,7 @@ class JSONDestreamer (object):
     self._buf += data
     try:
       while len(self._buf) > 0:
-        r,off = self.decoder.raw_decode(self._buf)
+        r,off = self.decoder.raw_decode(self._buf.decode())
 
         self._buf = self._buf[off:].lstrip()
         self.callback(r)
@@ -53,7 +53,7 @@ def reader (socket):
   global done
   while True:
     d = socket.recv(1024)
-    if d == "":
+    if d == b"":
       done = True
       break
     jd.push(d)
