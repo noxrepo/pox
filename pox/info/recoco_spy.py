@@ -61,7 +61,7 @@ def _trace_thread_proc ():
       count = 0
       sf = f
       while sf is not None:
-        if sf.f_code == pox.lib.recoco.Scheduler.cycle.im_func.func_code:
+        if sf.f_code == pox.lib.recoco.Scheduler.cycle.__func__.__code__:
           stopAt = sf
           break
         count += 1

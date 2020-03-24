@@ -255,7 +255,7 @@ def _do_launch (argv, skip_startup=False):
           code = f.__code__
           argcount = code.co_argcount
           argnames = code.co_varnames[:argcount]
-          defaults = list((f.func_defaults) or [])
+          defaults = list((f.__defaults__) or [])
           defaults = [EMPTY] * (argcount - len(defaults)) + defaults
           args = {}
           for n, a in enumerate(argnames):

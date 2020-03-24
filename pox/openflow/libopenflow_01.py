@@ -71,7 +71,7 @@ def XIDGenerator (start = 1, stop = MAX_XID):
       i = start
 
 def xid_generator (start = 1, stop = MAX_XID):
-  return XIDGenerator(start, stop).next
+  return XIDGenerator(start, stop).__next__
 
 def user_xid_generator ():
   return xid_generator(0x80000000, 0xffFFffFF)
@@ -161,7 +161,7 @@ class _ofp_meta (type):
       return cls._MIN_LENGTH
 
 
-class ofp_base (object):
+class ofp_base (object, metaclass=_ofp_meta):
   """
   Base class for OpenFlow messages/structures
 
@@ -170,7 +170,6 @@ class ofp_base (object):
   implement a __len__ instance method and set a class level _MIN_LENGTH
   attribute to your minimum length.
   """
-  __metaclass__ = _ofp_meta
 
   def _assert (self):
     r = self._validate()

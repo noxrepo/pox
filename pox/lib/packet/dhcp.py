@@ -600,7 +600,7 @@ class DHCPParameterRequestOption (DHCPOption):
       if n is None or not hasattr(n, 'im_self'):
         n = "Opt/" + str(o)
       else:
-        n = n.im_self.__name__
+        n = n.__self__.__name__
         if n.startswith("DHCP"): n = n[4:]
         if n.endswith("Option"): n = n[:-6]
         if n == "": n = "Opt"

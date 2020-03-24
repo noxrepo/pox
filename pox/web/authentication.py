@@ -87,8 +87,8 @@ class BasicAuthMixin (object):
     if bae is True: return True
     if bae is False: return False
     try:
-      if (self._check_basic_auth.im_func.func_code is
-          BasicAuthMixin._check_basic_auth.im_func.func_code):
+      if (self._check_basic_auth.__func__.__code__ is
+          BasicAuthMixin._check_basic_auth.__func__.__code__):
         authf = getattr(self, 'basic_auth_function', None)
         if authf is None:
           self.basic_auth_enabled = False

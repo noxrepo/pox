@@ -88,7 +88,7 @@ class packet_base (object):
         #TODO: Remove?
         lg.warning(*args)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.parsed is True
 
     def __len__(self):

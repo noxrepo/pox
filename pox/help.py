@@ -32,7 +32,7 @@ def _show_args (f,name):
 
   argnames,varargs,kws,defaults = inspect.getargspec(f)
   argcount = len(argnames)
-  defaults = list((f.func_defaults) or [])
+  defaults = list((f.__defaults__) or [])
   defaults = [EMPTY] * (argcount - len(defaults)) + defaults
 
   args = {}
