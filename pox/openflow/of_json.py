@@ -23,7 +23,7 @@ from pox.lib.util import fields_of,is_scalar
 import pox.openflow.libopenflow_01 as of
 
 def _fix_of_int (n):
-  if isinstance(n, basestring):
+  if isinstance(n, str):
     return getattr(of, n, None)
   return n
 
@@ -33,7 +33,7 @@ from pox.lib.util import dpidToStr
 from pox.lib.addresses import EthAddr, IPAddr
 
 def _fix_ethertype (n):
-  if isinstance(n, basestring):
+  if isinstance(n, str):
     try:
       if n.startswith("802.3/"):
         n = n.split("/",1)[1]
@@ -47,7 +47,7 @@ def _fix_ethertype (n):
   return n
 
 def _fix_proto (n):
-  if isinstance(n, basestring):
+  if isinstance(n, str):
     if not n.endswith("_PROTOCOL"):
       n += "_PROTOCOL"
     return getattr(ipv4, n)
@@ -66,7 +66,7 @@ def _fix_ip (n):
 import socket
 
 def _fix_port (n):
-  if isinstance(n, basestring):
+  if isinstance(n, str):
     return socket.getservbyname(n)
   return n
 
@@ -218,7 +218,7 @@ _init()
 def dict_to_packet (d, parent=None):
   if isinstance(d, list):
     d = b''.join(chr(x) for x in data)
-  if isinstance(d, basestring):
+  if isinstance(d, str):
     return d
 
   payload = d.get('payload')
@@ -250,7 +250,7 @@ def fix_parsed (m):
   """
   if m is None:
     return {"type":"raw","data":[]}
-  if isinstance(m, basestring):
+  if isinstance(m, str):
     return {"type":"raw","data":[ord(b) for b in m]}
   assert isinstance(m, packet_base)
   if not m.parsed:
@@ -258,7 +258,7 @@ def fix_parsed (m):
     u['unparsed_type'] = m.__class__.__name__
     return u
   r = {}
-  for k,v in fields_of(m, primitives_only = False).iteritems():
+  for k,v in fields_of(m, primitives_only = False).items():
     if is_scalar(v):
       r[k] = v
     elif isinstance(v, (IPAddr, EthAddr)):
