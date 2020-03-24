@@ -63,7 +63,7 @@ except:
     pass
 
 from pox.lib.addresses import IPAddr, EthAddr, IPAddr6
-import parser
+from . import parser
 from threading import Thread, Lock, RLock, Semaphore
 import pox.lib.packet as pkt
 import pox.lib.util
