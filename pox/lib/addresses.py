@@ -276,12 +276,14 @@ class IPAddr (_AddrBase):
     """
 
     # Always stores as a signed network-order int
-    if isinstance(addr, (basestring, bytes, bytearray)):
+    if isinstance(addr, (bytes, bytearray)):
       if len(addr) != 4:
         # dotted quad
-        self._value = struct.unpack('i', socket.inet_aton(addr))[0]
+        self._value = struct.unpack('i', socket.inet_aton(addr.decode()))[0]
       else:
         self._value = struct.unpack('i', addr)[0]
+    elif isinstance(addr, str):
+      self._value = struct.unpack('i', socket.inet_aton(addr))[0]
     elif isinstance(addr, IPAddr):
       self._value = addr._value
     elif isinstance(addr, int):
@@ -444,11 +446,7 @@ class IPAddr6 (_AddrBase):
     """
     Factory that creates an IPAddr6 from a large integer
     """
-    o = b''
-    for i in range(16):
-      o = chr(num & 0xff) + o
-      num >>= 8
-    return cls.from_raw(o)
+    return bytes( (num >> i) & 0xff for i in range(120,-8,-8) )
 
   def __init__ (self, addr = None, raw = False, network_order = False):
     """
