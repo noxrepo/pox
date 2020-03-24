@@ -146,7 +146,7 @@ class WebsocketHandler (SplitRequestHandler, object):
         while len(hdr) < 4:
           hdr += yield True
 
-        mask = [ord(x) for x in hdr[:4]]
+        mask = [x for x in hdr[:4]]
         hdr = hdr[4:]
 
         while len(hdr) < length:
@@ -155,7 +155,7 @@ class WebsocketHandler (SplitRequestHandler, object):
         d = hdr[:length]
         hdr = hdr[length:]
 
-        d = b"".join(chr(ord(c) ^ mask[i % 4]) for i,c in enumerate(d))
+        d = bytes((c ^ mask[i % 4]) for i,c in enumerate(d))
 
         if not fin:
           if op == self.WS_CONTINUE:
