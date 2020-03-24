@@ -20,7 +20,7 @@ See host_tracker.host_tracker for more info.
 """
 
 from pox.core import core
-import host_tracker
+from . import host_tracker
 log = core.getLogger()
 import logging
 log.setLevel(logging.INFO)
