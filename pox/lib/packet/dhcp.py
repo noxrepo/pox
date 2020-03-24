@@ -428,7 +428,7 @@ class DHCPIPsOptionBase (DHCPOption):
   Superclass for options which are a list of IP addresses
   """
   def __init__ (self, addrs=[]):
-    if isinstance(addrs, (basestring,IPAddr)):
+    if isinstance(addrs, (str,bytes,IPAddr)):
       self.addrs = [IPAddr(addrs)]
     else:
       self.addrs = [IPAddr(a) for a in addrs]

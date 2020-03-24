@@ -206,7 +206,7 @@ def _process_commands (msg):
   message = msg.get("message", None)
   if message:
     level = msg.get("level", "DEBUG")
-    if isinstance(level, basestring):
+    if isinstance(level, str):
       import logging
       if not level.isalpha():
         level = logging.DEBUG

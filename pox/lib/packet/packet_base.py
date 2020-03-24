@@ -136,7 +136,7 @@ class packet_base (object):
         """
         Find the specified protocol layer based on its class type or name.
         """
-        if not isinstance(proto, basestring):
+        if not isinstance(proto, str):
             proto = proto.__name__
         if self.__class__.__name__ == proto and self.parsed:
             return self
@@ -171,7 +171,7 @@ class packet_base (object):
         elif type(payload) == bytes:
             self.next = payload
         else:
-            raise TypeError("payload must be string or packet subclass")
+            raise TypeError("payload must be bytes or packet subclass")
 
     def parse(self, raw):
         '''Override me with packet parsing code'''

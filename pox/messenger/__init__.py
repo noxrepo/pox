@@ -329,7 +329,7 @@ class Channel (EventMixin):
     associated (defaults to core.MessengerNexus).
     """
     EventMixin.__init__(self)
-    assert isinstance(name, basestring)
+    assert isinstance(name, str)
     self._name = name
 
     self._nexus = _get_nexus(nexus)

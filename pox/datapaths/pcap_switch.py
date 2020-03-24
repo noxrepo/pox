@@ -524,7 +524,7 @@ class PCapSwitch (ExpireMixin, SoftwareSwitchBase):
     return px
 
   def remove_interface (self, name_or_num):
-    if isinstance(name_or_num, basestring):
+    if isinstance(name_or_num, str):
       for no,p in self.px.items():
         if p.device == name_or_num:
           self.remove_interface(no)

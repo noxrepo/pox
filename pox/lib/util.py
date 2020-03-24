@@ -543,7 +543,7 @@ def fields_of (obj, primitives_only=False,
       if not isinstance(v, _scalar_types):
         continue
     elif primitives_and_composites_only:
-      if not isinstance(v, (int, long, basestring, float, bool, set,
+      if not isinstance(v, (int, long, str, bytes, float, bool, set,
                             dict, list)):
         continue
     #r.append((k,v))

@@ -490,7 +490,7 @@ class POXCore (EventMixin):
     if callback is None:
       callback = lambda:None
       callback.__name__ = "<None>"
-    if isinstance(components, basestring):
+    if isinstance(components, str):
       components = [components]
     elif isinstance(components, set):
       components = list(components)
@@ -584,7 +584,7 @@ class POXCore (EventMixin):
     """
     if components is None:
       components = set()
-    elif isinstance(components, basestring):
+    elif isinstance(components, str):
       components = set([components])
     else:
       components = set(components)

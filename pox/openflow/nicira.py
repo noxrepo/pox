@@ -1784,7 +1784,7 @@ class _nxm_ip (object):
       self.mask = value[1]
       #if isinstance(mask, (int,long)):
       #  self.mask = mask
-    elif isinstance(value, basestring) and len(value)>4 and '/' in value:
+    elif isinstance(value, str) and len(value)>4 and '/' in value:
       temp = parse_cidr(value, infer=False)
       ip = temp[0]
       self.mask = 32 if temp[1] is None else temp[1]
