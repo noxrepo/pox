@@ -38,6 +38,34 @@ import logging
 log = logging.getLogger("util")
 
 
+class ClassicCmp (object):
+  """
+  Helper for porting Python2 __cmp__ functions to Python 3
+
+  Override _classic__cmp__ to change how it behaves (really, you should
+  just rename an old __cmp__ to _classic__cmp__).
+  """
+
+  def __lt__ (self, other):
+    return self._classic__cmp__(other) < 0
+
+  def __gt__ (self, other):
+    return self._classic__cmp__(other) > 0
+
+  def __le__ (self, other):
+    return self._classic__cmp__(other) <= 0
+
+  def __gt__ (self, other):
+    return self._classic__cmp__(other) >= 0
+
+  def __eq__ (self, other):
+    return self._classic__cmp__(other) == 0
+
+  def __ne__ (self, other):
+    return self._classic__cmp__(other) != 0
+
+
+
 class DirtyList (list):
   """
   A list which keeps track of changes

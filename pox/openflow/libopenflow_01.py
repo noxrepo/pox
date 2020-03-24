@@ -37,6 +37,7 @@ from pox.lib.util import assert_type
 from pox.lib.util import initHelper
 from pox.lib.util import hexdump
 from pox.lib.util import is_listlike
+from pox.lib.util import ClassicCmp
 
 
 EMPTY_ETH = EthAddr(None)
@@ -672,7 +673,7 @@ class ofp_queue_prop_base (ofp_base):
 
 #2. Common Structures
 ##2.1 Port Structures
-class ofp_phy_port (ofp_base):
+class ofp_phy_port (ofp_base, ClassicCmp):
   def __init__ (self, **kw):
     self.port_no = 0
     self.hw_addr = EMPTY_ETH
@@ -759,7 +760,7 @@ class ofp_phy_port (ofp_base):
     if self.peer != other.peer: return False
     return True
 
-  def __cmp__ (self, other):
+  def _classic__cmp__ (self, other):
     if type(other) != type(self): return id(self)-id(other)
     if self.port_no < other.port_no: return -1
     if self.port_no > other.port_no: return 1
