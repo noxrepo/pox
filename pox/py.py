@@ -188,7 +188,7 @@ class Interactive (EventMixin):
       import readline
     except ImportError:
       pass
-    console.interact('Ready.')
+    console.interact('Ready.', exitmsg='')
 
     self.running = False
     core.quit()
