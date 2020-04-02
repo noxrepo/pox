@@ -727,8 +727,10 @@ class InternalContentHandler (SplitRequestHandler):
   passing the request itself as the argument (so if the thing is a
   method, it'll essentially just be self twice).
 
-  The attribute or return value is ideally a tuple of (mime-type, bytes),
-  though if you just return the bytes, it'll try to guess between HTML or
+  The attribute or return value is ideally a tuple of (mime-type, bytes,
+  headers).  You may omit the headers.  If you include it, it can either
+  be a dictionary or a list of name/value pairs.  If you return a string
+  or bytes instead of such a tuple, it'll try to guess between HTML or
   plain text.  It'll then send that to the client.  Easy!
 
   When a handler is set up with set_handler(), the third argument becomes
@@ -783,8 +785,13 @@ class InternalContentHandler (SplitRequestHandler):
         self.send_error(404, "File not found")
         return
 
-      if len(r) == 2 and not isinstance(r, (str,bytes)):
-        ct,r = r
+      response_headers = []
+
+      if len(r) >= 2 and len(r) <= 3 and not isinstance(r, (str,bytes)):
+        ct = r[0]
+        if len(r) >= 3:
+          response_headers = r[2]
+        r = r[1]
       else:
         if isinstance(r, str): r = r.encode()
         if r.lstrip().startswith(b'{') and r.rstrip().endswith(b'}'):
@@ -804,6 +811,10 @@ class InternalContentHandler (SplitRequestHandler):
     self.send_response(200)
     self.send_header("Content-type", ct)
     self.send_header("Content-Length", str(len(r)))
+    if isinstance(response_headers, dict):
+      response_headers = list(response_headers.items())
+    for hname,hval in response_headers:
+      self.send_header(hname, hval)
     self.end_headers()
     if is_get:
       self.wfile.write(r)
