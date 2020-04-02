@@ -222,14 +222,14 @@ class POXCookieGuardMixin (object):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
-        self.wfile.write(b"""
+        self.wfile.write(("""
           <html><head><title>POX CookieGuard</title></head>
           <body>
           A separate site has linked you here.  If this was intentional,
           please <a href="%s">continue to %s</a>.
           </body>
           </html>
-          """ % (target, cgi.escape(target)))
+          """ % (target, cgi.escape(target))).encode())
         return False
 
       if cgc:

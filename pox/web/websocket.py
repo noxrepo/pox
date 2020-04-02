@@ -97,8 +97,8 @@ class WebsocketHandler (SplitRequestHandler, object):
     self.send_response(101, "Switching Protocols")
     k = self.headers.get("Sec-WebSocket-Key", "")
     k += "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-    self.send_header("Sec-WebSocket-Accept",
-                     base64.b64encode(hashlib.sha1(k).digest()))
+    k = base64.b64encode(hashlib.sha1(k.encode()).digest()).decode()
+    self.send_header("Sec-WebSocket-Accept", k)
     self.send_header("Upgrade", "websocket")
     self.send_header("Connection", "Upgrade")
     self.end_headers()
@@ -198,10 +198,10 @@ class WebsocketHandler (SplitRequestHandler, object):
     # buffered.  When it fails, switch to reading from connection.
     while True:
       try:
-        deframer.send(self.rfile.read(1))
-      except socket.error as e:
-        if e.errno != errno.EAGAIN:
-          raise
+        d = self.rfile.read(1)
+        if not d: break
+        deframer.send(d)
+      except Exception:
         break
 
     import select
