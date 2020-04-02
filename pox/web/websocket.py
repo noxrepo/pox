@@ -39,6 +39,7 @@ log = core.getLogger()
 import base64
 import hashlib
 import struct
+import json
 
 from pox.web.webcore import SplitRequestHandler
 
@@ -393,6 +394,7 @@ class WebsocketHandler (SplitRequestHandler, object):
     return True
 
   def send (self, msg):
+    if isinstance(msg, dict): msg = json.dumps(msg)
     try:
       msg = self._frame(self.WS_TEXT, msg.encode())
       self._send_real(msg)
