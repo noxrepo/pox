@@ -176,6 +176,13 @@ class POXCookieGuardMixin (object):
   def _get_cookieguard_cookie (self):
     return self._pox_cookieguard_secret
 
+  def _get_cookieguard_cookie_path (self, requested):
+    """
+    Gets the path to be used for the cookie
+    """
+
+    return "/"
+
   def _do_cookieguard_explict_continuation (self, requested, target):
     """
     Sends explicit continuation page
@@ -205,9 +212,10 @@ class POXCookieGuardMixin (object):
     #TODO: Set Secure automatically if being accessed by https.
     #TODO: Set Path cookie attribute
     self.send_header("Set-Cookie",
-                     "%s=%s; SameSite=Strict; HttpOnly; path=/"
+                     "%s=%s; SameSite=Strict; HttpOnly; path=%s"
                      % (self._pox_cookieguard_cookie_name,
-                        self._get_cookieguard_cookie()))
+                        self._get_cookieguard_cookie(),
+                        self._get_cookieguard_cookie_path(requested)))
 
     self.send_header("Location", self._pox_cookieguard_bouncer + "?"
                                  + quote_plus(requested))
