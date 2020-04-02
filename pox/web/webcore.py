@@ -175,9 +175,10 @@ class POXCookieGuardMixin (object):
   def _get_cookieguard_cookie (self):
     return self._pox_cookieguard_secret
 
-  def _do_cookieguard (self):
-    if not getattr(self, 'pox_cookieguard', True):
-      return True
+  def _do_cookieguard (self, override=None):
+    do_cg = override
+    if do_cg is None: do_cg = getattr(self, 'pox_cookieguard', True)
+    if not do_cg: return True
 
     requested = self.raw_requestline.split()[1].decode("latin-1")
 
@@ -591,7 +592,6 @@ class SplitterRequestHandler (BaseHTTPRequestHandler, BasicAuthMixin,
         return
 
     if not self._do_auth(): return
-    if not self._do_cookieguard(): return
 
     handler = None
 
@@ -620,6 +620,9 @@ class SplitterRequestHandler (BaseHTTPRequestHandler, BasicAuthMixin,
           break
 
       break
+
+    override_cg = getattr(handler, "pox_cookieguard", None)
+    if not self._do_cookieguard(override_cg): return
 
     return handler._split_dispatch(self.command)
 
