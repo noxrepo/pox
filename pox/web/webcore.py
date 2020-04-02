@@ -176,6 +176,43 @@ class POXCookieGuardMixin (object):
   def _get_cookieguard_cookie (self):
     return self._pox_cookieguard_secret
 
+  def _do_cookieguard_explict_continuation (self, requested, target):
+    """
+    Sends explicit continuation page
+    """
+    log.debug("POX CookieGuard bouncer doesn't have correct cookie; "
+              "Sending explicit continuation page")
+    self.send_response(200)
+    self.send_header("Content-type", "text/html")
+    self.end_headers()
+    self.wfile.write(("""
+      <html><head><title>POX CookieGuard</title></head>
+      <body>
+      A separate site has linked you here.  If this was intentional,
+      please <a href="%s">continue to %s</a>.
+      </body>
+      </html>
+      """ % (target, cgi.escape(target))).encode())
+
+  def _do_cookieguard_set_cookie (self, requested, bad_cookie):
+    """
+    Sets the cookie and redirects
+
+    bad_cookie is True if the cookie was set but is wrong.
+    """
+    self.send_response(307, "Temporary Redirect")
+
+    #TODO: Set Secure automatically if being accessed by https.
+    #TODO: Set Path cookie attribute
+    self.send_header("Set-Cookie",
+                     "%s=%s; SameSite=Strict; HttpOnly; path=/"
+                     % (self._pox_cookieguard_cookie_name,
+                        self._get_cookieguard_cookie()))
+
+    self.send_header("Location", self._pox_cookieguard_bouncer + "?"
+                                 + quote_plus(requested))
+    self.end_headers()
+
   def _do_cookieguard (self, override=None):
     do_cg = override
     if do_cg is None: do_cg = getattr(self, 'pox_cookieguard', True)
@@ -214,19 +251,7 @@ class POXCookieGuardMixin (object):
           self.end_headers()
           return False
 
-        log.debug("POX CookieGuard bouncer doesn't have correct cookie; "
-                  "Sending explicit continuation page")
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-        self.wfile.write(("""
-          <html><head><title>POX CookieGuard</title></head>
-          <body>
-          A separate site has linked you here.  If this was intentional,
-          please <a href="%s">continue to %s</a>.
-          </body>
-          </html>
-          """ % (target, cgi.escape(target))).encode())
+        self._do_cookieguard_explict_continuation(requested, target)
         return False
 
       if cgc:
@@ -234,21 +259,7 @@ class POXCookieGuardMixin (object):
       else:
         log.debug("POX CookieGuard got no cookie -- setting one")
 
-      self.send_response(307, "Temporary Redirect")
-
-      #TODO: Set Secure automatically if being accessed by https.
-      #TODO: Set Path cookie attribute
-      self.send_header("Set-Cookie",
-                       "%s=%s; SameSite=Strict; HttpOnly; path=/"
-                       % (self._pox_cookieguard_cookie_name,
-                          self._get_cookieguard_cookie()))
-
-      # I think most or all browsers won't even follow this redirection,
-      # so I'm not even sure if the cookie value is important (though we
-      # check it anyway).
-      self.send_header("Location", self._pox_cookieguard_bouncer + "?"
-                                   + quote_plus(requested))
-      self.end_headers()
+      self._do_cookieguard_set_cookie(requested, bool(cgc))
       return False
 
 
