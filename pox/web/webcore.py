@@ -134,7 +134,7 @@ _shutdown_helper = ShutdownHelper()
 
 from http.cookies import SimpleCookie
 
-POX_COOKIEGUARD_COOKIE_NAME = "POXCookieGuardCookie"
+POX_COOKIEGUARD_DEFAULT_COOKIE_NAME = "POXCookieGuardCookie"
 
 def _gen_cgc ():
   #TODO: Use Python 3 secrets module
@@ -171,6 +171,7 @@ class POXCookieGuardMixin (object):
 
   _pox_cookieguard_bouncer = "/_poxcookieguard/bounce"
   _pox_cookieguard_secret = _gen_cgc()
+  _pox_cookieguard_cookie_name = POX_COOKIEGUARD_DEFAULT_COOKIE_NAME
 
   def _get_cookieguard_cookie (self):
     return self._pox_cookieguard_secret
@@ -183,7 +184,7 @@ class POXCookieGuardMixin (object):
     requested = self.raw_requestline.split()[1].decode("latin-1")
 
     cookies = SimpleCookie(self.headers.get('Cookie'))
-    cgc = cookies.get(POX_COOKIEGUARD_COOKIE_NAME)
+    cgc = cookies.get(self._pox_cookieguard_cookie_name)
     if cgc and cgc.value == self._get_cookieguard_cookie():
       if requested.startswith(self._pox_cookieguard_bouncer + "?"):
         log.debug("POX CookieGuard cookie is valid -- bouncing")
@@ -239,7 +240,7 @@ class POXCookieGuardMixin (object):
       #TODO: Set Path cookie attribute
       self.send_header("Set-Cookie",
                        "%s=%s; SameSite=Strict; HttpOnly; path=/"
-                       % (POX_COOKIEGUARD_COOKIE_NAME,
+                       % (self._pox_cookieguard_cookie_name,
                           self._get_cookieguard_cookie()))
 
       # I think most or all browsers won't even follow this redirection,
