@@ -48,6 +48,7 @@ import threading
 from .authentication import BasicAuthMixin
 
 from pox.core import core
+from pox.lib.revent import Event, EventMixin
 
 import os
 import socket
@@ -639,10 +640,40 @@ class SplitterRequestHandler (BaseHTTPRequestHandler, BasicAuthMixin,
     override_cg = getattr(handler, "pox_cookieguard", None)
     if not self._do_cookieguard(override_cg): return
 
-    return handler._split_dispatch(self.command)
+    event = WebRequest(self, handler)
+    self.server.raiseEventNoErrors(event)
+    if event.handler:
+      return event.handler._split_dispatch(self.command)
 
 
-class SplitThreadedServer(ThreadingMixIn, HTTPServer):
+class WebRequest (Event):
+  """
+  Hook for requests on the POX web server.
+
+  This event is fired when the webserver is going to handle a request.
+  The listener can modify the .handler to change how the event is
+  handled.  Or it can just be used to spy on requests.
+
+  If the handler is the splitter itself, then the page wasn't found.
+  """
+  splitter = None
+  handler = None
+
+  def __init__ (self, splitter, handler):
+    self.splitter = splitter
+    self.handler = handler
+
+  def set_handler (self, handler_class):
+    """
+    Set a new handler class
+    """
+    h = self.handler
+    self.handler = handler_class(h.parent, h.prefix, h.args)
+
+
+class SplitThreadedServer(ThreadingMixIn, HTTPServer, EventMixin):
+  _eventMixin_events = set([WebRequest])
+
   matches = [] # Tuples of (Prefix, TrimPrefix, Handler)
 
   def __init__ (self, *args, **kw):
