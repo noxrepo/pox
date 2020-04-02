@@ -186,15 +186,10 @@ class POXCookieGuardMixin (object):
     cgc = cookies.get(POX_COOKIEGUARD_COOKIE_NAME)
     if cgc and cgc.value == self._get_cookieguard_cookie():
       if requested.startswith(self._pox_cookieguard_bouncer + "?"):
-        # See below for what this bouncing dumbness is
         log.debug("POX CookieGuard cookie is valid -- bouncing")
         qs = requested.split("?",1)[1]
 
         self.send_response(307, "Temporary Redirect")
-        self.send_header("Set-Cookie",
-                         "%s=%s; SameSite=Strict; HttpOnly; path=/"
-                         % (POX_COOKIEGUARD_COOKIE_NAME,
-                            self._get_cookieguard_cookie()))
         self.send_header("Location", unquote_plus(qs))
         self.end_headers()
         return False
