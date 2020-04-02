@@ -424,7 +424,7 @@ class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
     path = self.translate_path(self.path)
     if os.path.isdir(path):
       if not self.path.endswith('/'):
-        self.send_response(301)
+        self.send_response(302)
         self.send_header("Location", self.prefix + self.path + "/")
         self.end_headers()
         return None
@@ -629,7 +629,7 @@ class SplitterRequestHandler (BaseHTTPRequestHandler, BasicAuthMixin,
         handler = self
         if not self.path.endswith('/'):
           # Handle splits like directories
-          self.send_response(301)
+          self.send_response(302)
           self.send_header("Location", self.path + "/")
           self.end_headers()
           break
