@@ -463,7 +463,7 @@ class dns(packet_base):
 
     # Utility classes for questions and RRs
 
-    class question:
+    class question (object):
 
         def __init__(self, name, qtype, qclass):
             self.name   = name
@@ -475,11 +475,11 @@ class dns(packet_base):
             if self.qtype in rrtype_to_str:
                 s += " " + rrtype_to_str[self.qtype]
             else:
-                s += " ??? "
+                s += " #"+str(self.qtype)
             if self.qclass in rrclass_to_str:
                 s += " " + rrclass_to_str[self.qclass]
             else:
-                s += " ??? "
+                s += " #"+str(self.qclass)
 
             return s
 
@@ -515,11 +515,11 @@ class dns(packet_base):
             if self.qtype in rrtype_to_str:
                 s += " " + rrtype_to_str[self.qtype]
             else:
-                s += " ??? "
+                s += " #" + str(self.qtype)
             if self.qclass in rrclass_to_str:
                 s += " " + rrclass_to_str[self.qclass]
             else:
-                s += " ??? "
+                s += " #" + str(self.qclass)
             s += " ttl:"+str(self.ttl)
             s += " rdlen:"+str(self.rdlen)
             s += " datalen:" + str(len(self.rddata))
