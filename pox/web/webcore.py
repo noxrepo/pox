@@ -748,6 +748,7 @@ class InternalContentHandler (SplitRequestHandler):
     self.do_response(False)
 
   def do_response (self, is_get):
+    path = "<Unknown>"
     try:
       path = self.path.lstrip("/").replace("/","__").replace(".","_")
       r = getattr(self, "GET_" + path, None)
@@ -793,8 +794,11 @@ class InternalContentHandler (SplitRequestHandler):
         else:
           ct = "text/plain"
       if isinstance(r, str): r = r.encode()
-    except Exception:
+    except Exception as exc:
       self.send_error(500, "Internal server error")
+      msg = "%s failed trying to get '%s'" % (type(self).__name__, path)
+      if str(exc): msg += ": " + str(exc)
+      log.debug(msg)
       return
 
     self.send_response(200)
