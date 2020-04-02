@@ -646,6 +646,7 @@ class SplitThreadedServer(ThreadingMixIn, HTTPServer):
   matches = [] # Tuples of (Prefix, TrimPrefix, Handler)
 
   def __init__ (self, *args, **kw):
+    self.matches = list(self.matches)
     self.ssl_server_key = kw.pop("ssl_server_key", None)
     self.ssl_server_cert = kw.pop("ssl_server_cert", None)
     self.ssl_client_certs = kw.pop("ssl_client_certs", None)
