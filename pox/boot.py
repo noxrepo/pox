@@ -54,6 +54,7 @@ def _do_import (name):
   Try to import the named component.
   Returns its module name if it was loaded or False on failure.
   """
+  #TODO: Update to use the Python 3 import facilities
 
   def show_fail ():
     traceback.print_exc()
@@ -72,7 +73,7 @@ def _do_import (name):
     try:
       __import__(name, level=0)
       return name
-    except ImportError:
+    except ModuleNotFoundError as exc:
       # There are two cases why this might happen:
       # 1. The named module could not be found
       # 2. Some dependent module (import foo) or some dependent
@@ -84,15 +85,12 @@ def _do_import (name):
       # print a stack trace so that it can be fixed.
       # Sorting out the two cases is an ugly hack.
 
-      message = str(sys.exc_info()[1].args[0])
-      s = message.rsplit(" ", 1)
-
-      if s[0] == "No module named" and (name.endswith(s[1])):
+      if exc.name and name.endswith(exc.name):
         # It was the one we tried to import itself. (Case 1)
         # If we have other names to try, try them!
         return do_import2(base_name, names_to_try)
-      elif message == "Import by filename is not supported.":
-        print(message)
+      elif name.endswith(".py"):
+        print("Import by filename is not supported.")
         import os.path
         n = name.replace("/", ".").replace("\\", ".")
         n = n.replace( os.path.sep, ".")
