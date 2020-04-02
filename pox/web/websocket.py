@@ -42,6 +42,8 @@ import struct
 
 from pox.web.webcore import SplitRequestHandler
 
+from http.cookies import SimpleCookie
+
 from collections import deque
 
 
@@ -58,6 +60,14 @@ class WebsocketHandler (SplitRequestHandler, object):
   You can send messages via send().  This should be called from the
   cooperative context.
   """
+
+  # We always set no cookieguard, because this is what the split request
+  # handler looks at, and we don't want *it* to do cookieguard.
+  pox_cookieguard = False
+
+  # This controls whether websockets actually do cookieguard.  If we
+  # set it to None, the parent's (splitter's) value is used.
+  ws_pox_cookieguard = None
 
   _websocket_open = False
   _initial_send_delay = 0.010
@@ -101,11 +111,35 @@ class WebsocketHandler (SplitRequestHandler, object):
     self.send_header("Sec-WebSocket-Accept", k)
     self.send_header("Upgrade", "websocket")
     self.send_header("Connection", "Upgrade")
+
+    do_cg = getattr(self, "ws_pox_cookieguard", None)
+    if do_cg is None: do_cg = getattr(self.parent, "pox_cookieguard", True)
+    if not do_cg:
+      cg_ok = True
+    else:
+      cookies = SimpleCookie(self.headers.get('Cookie'))
+      cgc = cookies.get(self.parent._pox_cookieguard_cookie_name)
+      if cgc and cgc.value == self.parent._get_cookieguard_cookie():
+        cg_ok = True
+      else:
+        # Cookieguard failed.
+        cookie = ("%s=%s; SameSite=Strict; HttpOnly; path=/"
+                  % (self.parent._pox_cookieguard_cookie_name,
+                     self.parent._get_cookieguard_cookie()))
+        self.send_header("Set-Cookie", cookie)
+        self.send_header("POX", "request-reconnect")
+
+        cg_ok = False
+
     self.end_headers()
 
     # Now stop using wfile and use raw socket
     self.wfile.flush()
     self.connection.settimeout(0)
+
+    if not cg_ok:
+      log.info("Bad POX CookieGuard cookie  -- closing connection")
+      return
 
     self._websocket_open = True
     self._queue_call(self._on_start)
