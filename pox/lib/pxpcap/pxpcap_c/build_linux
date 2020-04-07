@@ -3,7 +3,7 @@ cd "${0%/*}"
 OUT=../linux
 mkdir $OUT 2> /dev/null
 touch $OUT/__init__.py
-python setup.py build
+python3 setup.py build
 DEST=lib.linux*
 DEST=$(ls -d build/${DEST} | tail -1)
-cp ${DEST}/pxpcap.so .. && cp ${DEST}/pxpcap.so ${OUT}/pxpcap.so
+cp ${DEST}/pxpcap.*.so .. && cp ${DEST}/pxpcap.*.so ${OUT}

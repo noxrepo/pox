@@ -34,7 +34,7 @@ def attempt (**kwargs):
   main = Extension("pxpcap",["pxpcap.cpp"],**kw)
 
   setup(name = 'pxpcap',
-        version = '1.1',
+        version = '3.0',
         description = 'pcap for Python',
         ext_modules = [main])
 

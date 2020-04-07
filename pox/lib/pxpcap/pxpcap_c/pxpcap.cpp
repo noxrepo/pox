@@ -1,5 +1,5 @@
 /*************************************************************************
-Copyright 2011,2013 James McCauley
+Copyright 2011,2013,2020 James McCauley
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -169,7 +169,7 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
 #ifdef IPPROTO_IPV6
       else if (a->addr->sa_family == AF_INET6)
       {
-        #define GET_INET6(__f) (__f ? Py_BuildValue("s#", ((sockaddr_in6*)a->addr)->sin6_addr.s6_addr, 16) : none_ref())
+        #define GET_INET6(__f) (__f ? Py_BuildValue("y#", ((sockaddr_in6*)a->addr)->sin6_addr.s6_addr, 16) : none_ref())
         PyObject * addr_entry = Py_BuildValue("sNNNN",
           "AF_INET6",
           GET_INET6(a->addr),
@@ -185,10 +185,10 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
       else if (a->addr->sa_family == AF_LINK)
       {
         #define GET_ADDR(__f) a->__f ? (((sockaddr_dl*)a->__f)->sdl_data + ((sockaddr_dl*)a->__f)->sdl_nlen) : "", a->__f ? ((sockaddr_dl*)a->__f)->sdl_alen : 0
-        PyObject * epo = Py_BuildValue("ss#", "ethernet", GET_ADDR(addr));
+        PyObject * epo = Py_BuildValue("sy#", "ethernet", GET_ADDR(addr));
         PyList_Append(addrs, epo);
         Py_DECREF(epo);
-        PyObject * addr_entry = Py_BuildValue("ss#s#s#s#",
+        PyObject * addr_entry = Py_BuildValue("sy#y#y#y#",
           "AF_LINK",
           GET_ADDR(addr),
           GET_ADDR(netmask),
@@ -206,7 +206,7 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
         struct sockaddr_ll * dll = (struct sockaddr_ll *)a->addr;
         if (dll->sll_hatype == ARPHRD_ETHER && dll->sll_halen == 6)
         {
-          PyObject * epo = Py_BuildValue("ss#", "ethernet", dll->sll_addr, 6);
+          PyObject * epo = Py_BuildValue("sy#", "ethernet", dll->sll_addr, 6);
           PyList_Append(addrs, epo);
           Py_DECREF(epo);
         }
@@ -223,7 +223,7 @@ static PyObject * p_findalldevs (PyObject *self, PyObject *args)
       char mac[6];
       if (macForName(d->name, mac))
       {
-        PyObject * epo = Py_BuildValue("ss#", "ethernet", mac, 6);
+        PyObject * epo = Py_BuildValue("sy#", "ethernet", mac, 6);
         PyList_Append(addrs, epo);
         Py_DECREF(epo);
       }
@@ -324,7 +324,7 @@ static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h,
   else
 #endif
   {
-    args = Py_BuildValue("Os#lli",
+    args = Py_BuildValue("Oy#lli",
                          ts->user,
                          data, h->caplen,
                          (long)h->ts.tv_sec,
@@ -423,7 +423,7 @@ static PyObject * p_next_ex (PyObject *self, PyObject *args)
   }
 #endif
 
-  return Py_BuildValue("s#llii",
+  return Py_BuildValue("y#llii",
       data, h->caplen, (long)h->ts.tv_sec, (long)h->ts.tv_usec, h->len, rv);
 }
 
@@ -638,9 +638,23 @@ static PyMethodDef pxpcapmethods[] =
 
 #define ADD_CONST(_s) PyModule_AddIntConstant(m, #_s, _s);
 
-PyMODINIT_FUNC initpxpcap (void)
+
+static struct PyModuleDef moduledef = {
+  PyModuleDef_HEAD_INIT,
+  "pxpcap",
+  "POX PCap Library",
+  -1,
+  pxpcapmethods,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+};
+
+
+PyMODINIT_FUNC PyInit_pxpcap (void)
 {
-  PyObject * m = Py_InitModule("pxpcap", pxpcapmethods);
+  PyObject * m = PyModule_Create(&moduledef);
 
   //TODO: merge with similar list above
   ADD_CONST(DLT_NULL);
@@ -668,5 +682,7 @@ PyMODINIT_FUNC initpxpcap (void)
   ADD_CONST(DLT_ARCNET_LINUX);
   ADD_CONST(DLT_LINUX_IRDA);
   ADD_CONST(DLT_LINUX_LAPD);
+
+  return m;
 }
 
