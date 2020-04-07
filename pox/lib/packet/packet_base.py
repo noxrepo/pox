@@ -117,7 +117,7 @@ class packet_base (object):
                 break
               s = ''
               for t in range(min(len(p), 5)):
-                s += "%02x " % (ord(p[t]),)
+                s += "%02x " % (p[t],)
               if len(p) > 5: s += "..."
               s = s.rstrip()
               m.append("[%s bytes: " % (len(p),) + s + "]")
