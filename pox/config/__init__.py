@@ -167,7 +167,7 @@ def launch (file, __INSTANCE__=None):
   try:
     for line in open(file, "r"):
       lineno += 1
-      line = line.lstrip().rstrip("\n")
+      line = line.lstrip().replace("\r","\n").rstrip("\n")
       if line.startswith("#"): continue
       if not line: continue
 
