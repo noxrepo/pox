@@ -173,6 +173,15 @@ class POXCookieGuardMixin (object):
   _pox_cookieguard_bouncer = "/_poxcookieguard/bounce"
   _pox_cookieguard_secret = _gen_cgc()
   _pox_cookieguard_cookie_name = POX_COOKIEGUARD_DEFAULT_COOKIE_NAME
+  _pox_cookieguard_consume_post = True
+
+  def _cookieguard_maybe_consume_post (self):
+    if self._pox_cookieguard_consume_post is False: return
+    if self.command != "POST": return
+
+    # Read rest of input to avoid connection reset
+    cgi.FieldStorage( fp = self.rfile, headers = self.headers,
+                      environ={ 'REQUEST_METHOD':'POST' } )
 
   def _get_cookieguard_cookie (self):
     return self._pox_cookieguard_secret
@@ -208,6 +217,7 @@ class POXCookieGuardMixin (object):
 
     bad_cookie is True if the cookie was set but is wrong.
     """
+    self._cookieguard_maybe_consume_post()
     self.send_response(307, "Temporary Redirect")
 
     #TODO: Set Secure automatically if being accessed by https.
@@ -236,6 +246,7 @@ class POXCookieGuardMixin (object):
         log.debug("POX CookieGuard cookie is valid -- bouncing")
         qs = requested.split("?",1)[1]
 
+        self._cookieguard_maybe_consume_post()
         self.send_response(307, "Temporary Redirect")
         self.send_header("Location", unquote_plus(qs))
         self.end_headers()
