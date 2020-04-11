@@ -910,11 +910,23 @@ class FileUploadHandler (SplitRequestHandler):
     return msg
 
 
-def upload_test ():
+def upload_test (save=False):
   """
   Launch a file upload test
+
+  --save will save the file using its MD5 for the filename
   """
-  core.WebServer.set_handler("/upload_test", FileUploadHandler)
+  class SaveUploader (FileUploadHandler):
+    def on_upload (self, filename, datafile):
+      ret = super().on_upload(filename, datafile)
+      import hashlib
+      h = hashlib.md5().update(data).hexdigest().upper()
+      with open("FILE_UPLOAD_" + h, "wb") as f:
+        f.write(data)
+      return ret
+  handler = SaveUploader if save else FileUploadHandler
+
+  core.WebServer.set_handler("/upload_test", handler)
 
 
 def launch (address='', port=8000, static=False, ssl_server_key=None,
