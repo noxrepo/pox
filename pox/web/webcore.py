@@ -882,7 +882,7 @@ class FileUploadHandler (SplitRequestHandler):
       self.wfile.write(r.encode())
 
   def do_POST (self):
-    mime,params = cgi.parse_header(self.headers.getheader('content-type'))
+    mime,params = cgi.parse_header(self.headers.get('content-type'))
     if mime != 'multipart/form-data':
       self.send_error(400, "Expected form data")
       return
