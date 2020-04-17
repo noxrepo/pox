@@ -48,15 +48,37 @@ def getLogger (name=None, moreFrames=0):
   """
   if name is None:
     s = inspect.stack()[1+moreFrames]
+    # Should we always use __name__ instead?
+    fname = s[0].f_globals.get('__file__')
+    matching = False
     name = s[1]
     if name.endswith('.py'):
+      matching = name == fname
       name = name[0:-3]
+    elif name.endswith('.pyo'):
+      matching = name == (fname + "o")
+      name = name[0:-4]
     elif name.endswith('.pyc'):
+      matching = name == (fname + "c")
       name = name[0:-4]
     if name.startswith(_path):
       name = name[len(_path):]
     elif name.startswith(_ext_path):
       name = name[len(_ext_path):]
+    elif not matching:
+      # This may not work right across platforms, so be cautious.
+      n = s[0].f_globals.get('__name__')
+      if n:
+        if n.startswith("pox."): n = n[4:]
+        if n.startswith("ext."): n = n[4:]
+      else:
+        try:
+          n = os.path.basename(name)
+        except Exception:
+          n = ""
+        n = n.replace('\\','/').replace(os.path.sep,'/')
+      if n: name = n
+
     name = name.replace('/', '.').replace('\\', '.') #FIXME: use os.path or whatever
 
     # Remove double names ("topology.topology" -> "topology")
