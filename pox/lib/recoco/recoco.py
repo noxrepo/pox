@@ -185,7 +185,6 @@ class Scheduler (object):
 
   def __del__ (self):
     self._hasQuit = True
-    super(Scheduler, self).__del__()
 
   def callLater (self, func, *args, **kw):
     """
