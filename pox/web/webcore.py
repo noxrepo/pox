@@ -929,9 +929,14 @@ def upload_test (save=False):
   """
   class SaveUploader (FileUploadHandler):
     def on_upload (self, filename, datafile):
+      import io
+      data = datafile.read()
+      datafile = io.BytesIO(data)
       ret = super().on_upload(filename, datafile)
       import hashlib
-      h = hashlib.md5().update(data).hexdigest().upper()
+      h = hashlib.md5()
+      h.update(data)
+      h = h.hexdigest().upper()
       with open("FILE_UPLOAD_" + h, "wb") as f:
         f.write(data)
       return ret
