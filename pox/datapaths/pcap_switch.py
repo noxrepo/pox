@@ -291,9 +291,6 @@ def launch (address = '127.0.0.1', port = 6633, max_retry_delay = 16,
   Launches a switch
   """
 
-  if not pxpcap.enabled:
-    raise RuntimeError("You need PXPCap to use this component")
-
   if ctl_port:
     if ctl_port is True:
       ctl_port = DEFAULT_CTL_PORT
@@ -479,6 +476,9 @@ class PCapSwitch (ExpireMixin, SoftwareSwitchBase):
       if isinstance(virtual, str):
         px.channel = virtual
     else:
+      if not pxpcap.enabled:
+        on_error("Not adding port %s because PXPCap is not available", name)
+        return
       devs = pxpcap.PCap.get_devices()
       if name not in devs:
         on_error("Device %s not available -- ignoring", name)
