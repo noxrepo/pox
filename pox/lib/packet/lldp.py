@@ -353,7 +353,7 @@ class chassis_id (simple_tlv):
       assert len(self.id) == 6
       id_str = str(EthAddr(self.id))
     else:
-      id_str = ":".join(["%02x" % (ord(x),) for x in self.id])
+      id_str = ":".join(["%02x" % (x,) for x in self.id])
 
     return ''.join(['<chasis ID:',id_str,'>'])
 
@@ -381,6 +381,8 @@ class port_id (simple_tlv):
   def _init (self, kw):
     self.subtype = 0
     self.id      = None
+    if isinstance(kw.get('id'), str):
+      kw['id'] = kw['id'].encode()
 
   def _parse_data (self, data):
     if len(data) < 2:
@@ -394,7 +396,7 @@ class port_id (simple_tlv):
       assert len(self.id) == 6
       id_str = str(EthAddr(self.id))
     else:
-      id_str = ":".join(["%02x" % (ord(x),) for x in self.id])
+      id_str = ":".join(["%02x" % (x,) for x in self.id])
 
     return ''.join(['<port ID:',id_str,'>'])
 
@@ -480,7 +482,7 @@ class organizationally_specific (simple_tlv):
   tlv_type = lldp.ORGANIZATIONALLY_SPECIFIC_TLV
 
   def _init (self, kw):
-    self.oui = '\x00\x00\x00'
+    self.oui = b'\x00\x00\x00'
     self.subtype = 0
     self.payload = b''
 
