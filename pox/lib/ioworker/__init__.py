@@ -87,7 +87,7 @@ class IOWorker (object):
     if not self._connecting: return False
     self._connecting = False
     try:
-      self.socket.recv(0)
+      self.socket.recv(1, socket.MSG_PEEK)
     except socket.error as e:
       if e.errno == errno.EAGAIN or e.errno == 10035: # 10035=WSAEWOULDBLOCK
         # On Linux, this seems to mean we're connected.
