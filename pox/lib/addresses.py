@@ -58,34 +58,34 @@ def _load_oui_names ():
 _load_oui_names()
 
 
+def _compare_helper (self, other, f, rf):
+  t = type(self)
+  try:
+    if isinstance(other, t): ov = other._value
+    else: ov = t(other)._value
+    return getattr(self._value, f)(ov)
+  except Exception:
+    return getattr(other, rf)(self)
+
 
 class _AddrBase (object):
-  def _compare_helper (self, other, f, rf):
-    t = type(self)
-    try:
-      if isinstance(other, t): ov = other._value
-      else: ov = t(other)._value
-      return getattr(self, f)(ov)
-    except Exception:
-      return getattr(other, rf)(self)
-
   def __eq__(self, other):
-    return _compare_helper(self, other, '__eq__', '__ne__')
+    return _compare_helper(self, other, '__eq__', '__eq__')
 
   def __ne__(self, other):
-    return _compare_helper(self, other, '__ne__', '__eq__')
+    return _compare_helper(self, other, '__ne__', '__ne__')
 
   def __lt__(self, other):
-    return _compare_helper(self, other, '__lt__', '__gt__')
+    return _compare_helper(self, other, '__lt__', '__ge__')
 
   def __gt__(self, other):
-    return _compare_helper(self, other, '__gt__', '__lt__')
+    return _compare_helper(self, other, '__gt__', '__le__')
 
   def __le__(self, other):
-    return _compare_helper(self, other, '__le__', '__ge__')
+    return _compare_helper(self, other, '__le__', '__gt__')
 
   def __ge__(self, other):
-    return _compare_helper(self, other, '__ge__', '__le__')
+    return _compare_helper(self, other, '__ge__', '__lt__')
 
 
 
