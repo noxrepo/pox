@@ -524,12 +524,12 @@ class POXCore (EventMixin):
         components = [components]
     if name is None:
       #TODO: Use inspect here instead
-      name = getattr(callback, 'func_name')
+      name = getattr(callback, '__name__')
       if name is None:
         name = str(callback)
       else:
         name += "()"
-        if hasattr(callback, 'im_class'):
+        if hasattr(callback, '__self__'):
           name = getattr(callback.__self__.__class__,'__name__','')+'.'+name
       if hasattr(callback, '__module__'):
         # Is this a good idea?  If not here, we should do it in the
