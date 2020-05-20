@@ -542,9 +542,9 @@ class DiscoveryGraph (object):
     k = (l.end[0],l.end[1])
     if event.added:
       self.g.add_edge(l.dpid1, l.dpid2, key=k)
-      self.g.edge[l.dpid1][l.dpid2][k]['dead'] = False
+      self.g.edges[l.dpid1,l.dpid2,k]['dead'] = False
     elif event.removed:
-      self.g.edge[l.dpid1][l.dpid2][k]['dead'] = True
+      self.g.edges[l.dpid1,l.dpid2,k]['dead'] = True
       #self.g.remove_edge(l.dpid1, l.dpid2, key=k)
 
     self._do_auto_export()
