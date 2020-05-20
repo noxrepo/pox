@@ -1124,8 +1124,8 @@ class OFConnection (object):
         break
 
       # Parse head of OpenFlow message by hand
-      ofp_version = ord(message[0])
-      ofp_type = ord(message[1])
+      ofp_version = message[0]
+      ofp_type = message[1]
 
       if ofp_version != OFP_VERSION:
         info = ofp_version
@@ -1133,7 +1133,7 @@ class OFConnection (object):
         if r is False: break
         continue
 
-      message_length = ord(message[2]) << 8 | ord(message[3])
+      message_length = message[2] << 8 | message[3]
       if message_length > len(message):
         break
 
@@ -1236,7 +1236,7 @@ class OFConnection (object):
       #xid = struct.unpack_from('!L', message, 4)[0]
       message_length, xid = struct.unpack_from('!HL', message, 2)
     elif len(message) >= 4:
-      message_length = ord(message[2]) << 8 | ord(message[3])
+      message_length = message[2] << 8 | message[3]
     else:
       message_length = len(message)
     return xid
