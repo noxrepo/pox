@@ -209,13 +209,13 @@ class Interface (object):
 
   @property
   def name (self):
-    return self._name.rstrip("\0")
+    return self._name.rstrip(b"\0")
 
   @name.setter
   def name (self, value):
     if len(value) > IFNAMESIZ: raise RuntimeError("Name too long")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    ifr = struct.pack(str(IFNAMESIZ) + "s", self.name)
+    ifr = struct.pack(str(IFNAMESIZ) + "s", self.name.encode("utf8"))
     ifr += value
     ifr += "\0" * (IFREQ_SIZE - len(ifr))
     ret = ioctl(sock, SIOCSIFNAME, ifr)
@@ -249,7 +249,7 @@ class Interface (object):
   def mtu (self):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     ifr = struct.pack(str(IFNAMESIZ) + "s", self.name)
-    ifr += "\0" * (IFREQ_SIZE - len(ifr))
+    ifr += b"\0" * (IFREQ_SIZE - len(ifr))
     ret = ioctl(sock, SIOCGIFMTU, ifr)
     return struct.unpack("I", ret[IFNAMESIZ:][:4])[0]
 
@@ -257,14 +257,14 @@ class Interface (object):
   def mtu (self, value):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     ifr = struct.pack(str(IFNAMESIZ) + "sI", self.name, value)
-    ifr += "\0" * (IFREQ_SIZE - len(ifr))
+    ifr += b"\0" * (IFREQ_SIZE - len(ifr))
     ret = ioctl(sock, SIOCSIFMTU, ifr)
 
   @property
   def flags (self):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     ifr = struct.pack(str(IFNAMESIZ) + "s", self.name)
-    ifr += "\0" * (IFREQ_SIZE - len(ifr))
+    ifr += b"\0" * (IFREQ_SIZE - len(ifr))
     ret = ioctl(sock, SIOCGIFFLAGS, ifr)
     return struct.unpack("H", ret[IFNAMESIZ:IFNAMESIZ+2])[0]
 
@@ -272,7 +272,7 @@ class Interface (object):
   def flags (self, value):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     ifr = struct.pack(str(IFNAMESIZ) + "sH", self.name, value)
-    ifr += "\0" * (IFREQ_SIZE - len(ifr))
+    ifr += b"\0" * (IFREQ_SIZE - len(ifr))
     ret = ioctl(sock, SIOCSIFFLAGS, ifr)
 
   def set_flags (self, flags, on=True):
@@ -493,14 +493,14 @@ class TunTap (object):
 
     if raw: flags |= IFF_NO_PI
 
-    ifr = struct.pack(str(IFNAMESIZ) + "sH", name, flags)
-    ifr += "\0" * (IFREQ_SIZE - len(ifr))
+    ifr = struct.pack(str(IFNAMESIZ) + "sH", name.encode("utf8"), flags)
+    ifr += b"\0" * (IFREQ_SIZE - len(ifr))
 
     ret = ioctl(self.fileno(), TUNSETIFF, ifr)
     self.name = ret[:IFNAMESIZ]
     iflags = flags
-    ifr = struct.pack(str(IFNAMESIZ) + "sH", name, 0)
-    ifr += "\0" * (IFREQ_SIZE - len(ifr))
+    ifr = struct.pack(str(IFNAMESIZ) + "sH", name.encode("utf8"), 0)
+    ifr += b"\0" * (IFREQ_SIZE - len(ifr))
     ret = ioctl(self.fileno(), TUNGETIFF, ifr)
     flags = struct.unpack("H", ret[IFNAMESIZ:IFNAMESIZ+2])[0]
     self.is_tun = (flags & IFF_TUN) == IFF_TUN
@@ -629,7 +629,7 @@ class TapInterface (Interface, EventMixin):
       if flags or protocol:
         flags = struct.pack("!HH", flags, protocol) # Flags reversed?
       else:
-        flags = "\0\0\0\0"
+        flags = b"\0\0\0\0"
       data = flags + data
     self.tap.write(data)
 
