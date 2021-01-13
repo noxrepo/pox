@@ -444,7 +444,7 @@ class Interface (object):
       r.rt_gateway = IPAddr(gateway)
       r.rt_flags |= r.RTF_GATEWAY
     r.rt_metric = metric
-    if dev is (): dev = self
+    if dev == (): dev = self
     if isinstance(dev, Interface): dev = dev.name
     if dev: r.rt_dev = dev
     if host: r.rt_flags |= r.RTF_HOST
