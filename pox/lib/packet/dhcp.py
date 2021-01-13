@@ -114,6 +114,9 @@ class dhcp(packet_base):
     PAD_OPT = 0
     END_OPT = 255
 
+    PAD_OPT_BYTE = bytes([PAD_OPT])
+    END_OPT_BYTE = bytes([END_OPT])
+
     MAGIC = b'\x63\x82\x53\x63'
 
     def __init__(self, raw=None, prev=None, **kw):
@@ -163,7 +166,7 @@ class dhcp(packet_base):
         elif self.chaddr is not None:
             s += ' '.join(["{0:02x}".format(x) for x in self.chaddr])
         s += ' magic:'+' '.join(
-            ["{0:02x}".format(ord(x)) for x in self.magic])
+            ["{0:02x}".format(x) for x in self.magic])
         #s += ' options:'+' '.join(["{0:02x}".format(ord(x)) for x in
         #                          self._raw_options])
         if len(self.options):
@@ -245,7 +248,7 @@ class dhcp(packet_base):
         ofs = 0;
         l = len(barr)
         while ofs < l:
-            opt = ord(barr[ofs])
+            opt = barr[ofs]
             if opt == dhcp.END_OPT:
                 return
             ofs += 1
@@ -254,7 +257,7 @@ class dhcp(packet_base):
             if ofs >= l:
                 self.warn('DHCP option ofs extends past segment')
                 return
-            opt_len = ord(barr[ofs])
+            opt_len = barr[ofs]
             ofs += 1         # Account for the length octet
             if ofs + opt_len > l:
                 return False
@@ -269,12 +272,10 @@ class dhcp(packet_base):
     def packOptions (self):
         o = b''
         def addPart (k, v):
-            o = b''
-            o += chr(k)
-            o += chr(len(v))
+            o = struct.pack("BB", k, len(v))
             o += bytes(v)
             if len(o) & 1: # Length is not even
-                o += chr(dhcp.PAD_OPT)
+                o += dhcp.PAD_OPT_BYTE
             return o
 
         for k,v in self.options.items():
@@ -290,7 +291,7 @@ class dhcp(packet_base):
                     o += addPart(k, part)
             else:
                 o += addPart(k, v)
-        o += chr(dhcp.END_OPT)
+        o += dhcp.END_OPT_BYTE
         self._raw_options = o
 
         if isinstance(self.options, util.DirtyDict):
@@ -329,12 +330,12 @@ class dhcp(packet_base):
         to add them to the .options dictionary.
         """
 
-        self._raw_options += chr(code)
+        self._raw_options += (code).to_bytes(1, "little")
         if length is None:
             if val is None:
                 return
             length = len(val)
-        self._raw_options += chr(length)
+        self._raw_options += (length).to_bytes(1, "little")
         self._raw_options += val
 
     @property
@@ -393,10 +394,10 @@ class DHCPRawOption (DHCPOption):
 
   def __repr__ (self):
     data = self.data
-    if not all(ord(c)<127 and c in string.printable for c in data):
-      data = " ".join("%02x" % (ord(x),) for x in data)
+    if not all(c<127 and c in string.printable for c in data):
+      data = " ".join("%02x" % (x,) for x in data)
     else:
-      data = "".join(x if ord(x) >= 32 else "." for x in data)
+      data = "".join(x if x >= 32 else "." for x in data)
     if len(data) > 30:
       data = data[:30] + "..."
     n = self._name
@@ -485,11 +486,11 @@ class DHCPMsgTypeOption (DHCPOption):
   def unpack (cls, data, code = None):
     self = cls()
     if len(data) != 1: raise RuntimeError("Bad option length")
-    self.type = ord(data[0])
+    self.type = data[0]
     return self
 
   def pack (self):
-    return chr(self.type)
+    return (self.type).to_bytes(1, "little")
 
   def __repr__ (self):
     t = {
@@ -553,11 +554,11 @@ class DHCPOptionOverloadOption (DHCPOption):
   def unpack (cls, data, code = None):
     self = cls()
     if len(data) != 1: raise RuntimeError("Bad option length")
-    self.value = ord(data[0])
+    self.value = data[0]
     return self
 
   def pack (self):
-    return chr(self.value)
+    return (self.value).to_bytes(1, "little")
 
   def __repr__ (self):
     return "%s(%s)" % (self._name, self.value)
@@ -586,12 +587,12 @@ class DHCPParameterRequestOption (DHCPOption):
   @classmethod
   def unpack (cls, data, code = None):
     self = cls()
-    self.options = [ord(x) for x in data]
+    self.options = [x for x in data]
     return self
 
   def pack (self):
     opt = ((o.CODE if is_subclass(o, DHCPOption) else o) for o in self.options)
-    return b''.join(chr(x) for x in opt)
+    return bytes(x for x in opt)
 
   def __repr__ (self):
     names = []
