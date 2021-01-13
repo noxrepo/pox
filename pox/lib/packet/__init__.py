@@ -102,3 +102,10 @@ __all__ = [
   'MPLS',
   'LLC',
 ]
+
+def parse_ip (data):
+  if not data: return None
+  v = (data[0] & 0xf0) >> 4
+  if v == 4: return ipv4(data)
+  if v == 6: return ipv6(data)
+  return None
