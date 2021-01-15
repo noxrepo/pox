@@ -11,6 +11,7 @@
 # objection to the self-signed certificate.
 openssl req -newkey rsa:2048 -nodes -keyout server_key.pem -x509 -days 365 \
   -out server_cert.pem -subj "/O=POX Self-Signed"
+# Add -addext "subjectAltName = DNS:foo.com" if desired
 
 # Create a user cert so that we can demand that users authenticate themselves
 # to the server by providing a cert we trust.  You can provide the resulting
@@ -21,7 +22,7 @@ openssl req -newkey rsa:2048 -nodes -keyout server_key.pem -x509 -days 365 \
 # is horrible, but since the server stuff above means we're encrypting the
 # connection, it's not nearly as horrible as usual!
 # This also generates a .p12 file, which is imported into the web browser.
-# (The browser than sends it to the server, which verifies it using the
+# (The browser then sends it to the server, which verifies it using the
 # .pem file passed in to --client_certs.)
 openssl req -newkey rsa:4096 -keyout user_client_key.pem \
   -out user_client_key_csr.pem -nodes -days 365 \
