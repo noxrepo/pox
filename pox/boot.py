@@ -85,7 +85,7 @@ def _do_import (name):
       # print a stack trace so that it can be fixed.
       # Sorting out the two cases is an ugly hack.
 
-      if exc.name and name.endswith(exc.name):
+      if exc.name and name.startswith(exc.name):
         # It was the one we tried to import itself. (Case 1)
         # If we have other names to try, try them!
         return do_import2(base_name, names_to_try)
