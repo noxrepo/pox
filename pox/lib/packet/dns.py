@@ -198,11 +198,12 @@ class dns(packet_base):
                         len(self.authorities), len(self.additional))
 
         def makeName (labels, term):
-          o = '' #TODO: unicode
-          for l in labels.split('.'):
-            o += chr(len(l))
+          if isinstance(labels, str): labels = labels.encode("utf-8")
+          o = b'' #TODO: unicode
+          for l in labels.split(b'.'):
+            o += bytes([len(l)])
             o += l
-          if term: o += '\x00'
+          if term: o += b'\x00'
           return o
 
         name_map = {}
@@ -375,12 +376,12 @@ class dns(packet_base):
     def _read_dns_name_from_index(cls, l, index, retlist):
       try:
         while True:
-            chunk_size = ord(l[index])
+            chunk_size = l[index]
 
             # check whether we have an internal pointer
             if (chunk_size & 0xc0) == 0xc0:
                 # pull out offset from last 14 bits
-                offset = ((ord(l[index]) & 0x3) << 8 ) | ord(l[index+1])
+                offset = ((l[index] & 0x3) << 8 ) | l[index+1]
                 cls._read_dns_name_from_index(l, offset, retlist)
                 index += 1
                 break
@@ -397,7 +398,7 @@ class dns(packet_base):
     def read_dns_name_from_index(cls, l, index):
         retlist = []
         next = cls._read_dns_name_from_index(l, index, retlist)
-        return (next + 1, ".".join(retlist))
+        return (next + 1, b".".join(retlist))
 
     def next_rr(self, l, index, rr_list):
         array_len = len(l)
