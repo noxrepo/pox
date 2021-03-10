@@ -96,6 +96,16 @@ from .packet_base import packet_base
 
 from pox.lib.addresses import IPAddr,IPAddr6,EthAddr
 
+def _str (s):
+  if isinstance(s, bytes):
+    return s.decode("utf8")
+  return str(s)
+def _bytes (b):
+  if isinstance(b, str):
+    return b.encode("utf8")
+  return bytes(b)
+
+
 rrtype_to_str = {
    1: "A",  # host address
    2: "NS", #an authoritative name server
@@ -209,20 +219,20 @@ class dns(packet_base):
         name_map = {}
 
         def putName (s, name):
-          pre = ''
-          post = name
+          pre = b''
+          post = _bytes(name)
           while True:
             at = s.find(makeName(post, True))
             if at == -1:
               if post in name_map:
                 at = name_map[post]
             if at == -1:
-              post = post.split('.', 1)
-              if pre: pre += '.'
+              post = post.split(b'.', 1)
+              if pre: pre += b'.'
               pre += post[0]
               if len(post) == 1:
                 if len(pre) == 0:
-                  s += '\x00'
+                  s += b'\x00'
                 else:
                   name_map[name] = len(s)
                   s += makeName(pre, True)
@@ -472,15 +482,15 @@ class dns(packet_base):
             self.qclass = qclass
 
         def __str__(self):
-            s = self.name
+            s = _str(self.name)
             if self.qtype in rrtype_to_str:
-                s += " " + rrtype_to_str[self.qtype]
+                s += " "  + _str(rrtype_to_str[self.qtype])
             else:
-                s += " #"+str(self.qtype)
+                s += " #" + _str(self.qtype)
             if self.qclass in rrclass_to_str:
-                s += " " + rrclass_to_str[self.qclass]
+                s += " "  + _str(rrclass_to_str[self.qclass])
             else:
-                s += " #"+str(self.qclass)
+                s += " #" + _str(self.qclass)
 
             return s
 
@@ -512,20 +522,20 @@ class dns(packet_base):
             self.rddata = _rddata
 
         def __str__ (self):
-            s = self.name
+            s = _str(self.name)
             if self.qtype in rrtype_to_str:
-                s += " " + rrtype_to_str[self.qtype]
+                s += " " +  _str(rrtype_to_str[self.qtype])
             else:
-                s += " #" + str(self.qtype)
+                s += " #" + _str(self.qtype)
             if self.qclass in rrclass_to_str:
-                s += " " + rrclass_to_str[self.qclass]
+                s += " " +  _str(rrclass_to_str[self.qclass])
             else:
-                s += " #" + str(self.qclass)
-            s += " ttl:"+str(self.ttl)
-            s += " rdlen:"+str(self.rdlen)
-            s += " datalen:" + str(len(self.rddata))
+                s += " #" + _str(self.qclass)
+            s += " ttl:"  + _str(self.ttl)
+            s += " rdlen:"+ _str(self.rdlen)
+            s += " datalen:" + _str(len(self.rddata))
             if len(self.rddata) == 4:
               #FIXME: can be smarter about whether this is an IP
-              s+= " data:" + str(IPAddr(self.rddata))
+              s+= " data:" + _str(IPAddr(self.rddata))
 
             return s
