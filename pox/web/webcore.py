@@ -790,6 +790,10 @@ class InternalContentHandler (SplitRequestHandler):
   it finds it, it'll do an HTTP redirect to it.  In this way, you can
   provide things which look like directories by including the slashed
   versions in the dictionary.
+
+  POSTs are basically the same, but with POST_ and POSTANY.  Further,
+  if it calls a function to handle the result, it passes the POSTed
+  data as the second paramerer.
   """
   args_content_lookup = True # Set to false to disable lookup on .args
 
@@ -798,11 +802,11 @@ class InternalContentHandler (SplitRequestHandler):
   def do_HEAD (self):
     self.do_response(False)
 
-  def do_response (self, is_get):
+  def do_response (self, include_body, prefix="GET", data=None):
     path = "<Unknown>"
     try:
       path = self.path.lstrip("/").replace("/","__").replace(".","_")
-      r = getattr(self, "GET_" + path, None)
+      r = getattr(self, prefix + "_" + path, None)
       if r is None and self.args is not None and self.args_content_lookup:
         try:
           r = self.args[self.path]
@@ -817,18 +821,18 @@ class InternalContentHandler (SplitRequestHandler):
           except Exception:
             pass
         if r is None:
-          r = getattr(self.args, "GET_" + path, None)
+          r = getattr(self.args, prefix + "_" + path, None)
       if r is None:
-        r = getattr(self, "GETANY", None)
+        r = getattr(self, prefix + "ANY", None)
         if r is None and self.args is not None:
           try:
             r = self.args[None]
           except Exception:
             pass
           if r is None:
-            r = getattr(self.args, "GETANY", None)
+            r = getattr(self.args, prefix + "ANY", None)
       if callable(r):
-        r = r(self)
+        r = r(self, *((data,) if data is not None else ()))
 
       if r is None:
         self.send_error(404, "File not found")
@@ -865,8 +869,26 @@ class InternalContentHandler (SplitRequestHandler):
     for hname,hval in response_headers:
       self.send_header(hname, hval)
     self.end_headers()
-    if is_get:
+    if include_body:
       self.wfile.write(r)
+
+  def do_POST (self):
+    mime,params = cgi.parse_header(self.headers.get('content-type'))
+    if mime == "application/x-www-form-urlencoded":
+      pass
+    elif mime == 'multipart/form-data':
+      pass
+    else:
+      self.send_error(400, "Expected form data")
+      return
+
+    data = cgi.FieldStorage( fp = self.rfile, headers = self.headers,
+                             environ={ 'REQUEST_METHOD':'POST' } )
+    if not data:
+      self.send_error(400, "Expected upload data")
+      return
+
+    self.do_response(include_body=True, prefix="POST", data=data)
 
 
 class FileUploadHandler (SplitRequestHandler):
