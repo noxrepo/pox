@@ -123,7 +123,8 @@ class BasicAuthMixin (object):
     success = False
     if auth.lower().startswith("basic "):
       try:
-        auth = base64.decodestring(auth[6:].strip()).split(':', 1)
+        auth = base64.decodestring(auth[6:].strip().encode("utf8"))
+        auth = auth.decode("utf8").split(':', 1)
         success = self._check_basic_auth(auth[0], auth[1])
       except Exception:
         log.exception("While attempting HTTP basic authentication")
