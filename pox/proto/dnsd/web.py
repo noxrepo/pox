@@ -115,6 +115,7 @@ class DNSWebHandler (InternalContentHandler):
 
 def launch ():
   def config ():
-    core.WebServer.set_handler("/dns", DNSWebHandler, args = dict(_dns=core.DNSServer))
+    core.WebServer.set_handler("/dns", DNSWebHandler,
+                               args = dict(_dns=core.DNSServer))
 
   core.call_when_ready(config, ["WebServer", "DNSServer"])
