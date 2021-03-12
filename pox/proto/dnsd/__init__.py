@@ -95,6 +95,7 @@ class DNSServer (object):
     name = self._fixname(name)
     if not name: return False
     try:
+      v = str(v)
       if v.count(".") != 3: raise RuntimeError()
       v = IPAddr(v)
       r = DNSRecord(name, v, RR.A_TYPE, self.DEFAULT_TTL)
