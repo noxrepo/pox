@@ -60,7 +60,7 @@ class BasicAuthMixin (object):
   is by overriding the _get_auth_realm() method, which lets you do whatever
   you want.  Alternatively, you can change the auth_realm attribute to
   whatever you like.  There are two magic values.  If it's None (the
-  default), the realm will be the path the split, so that each prefix split
+  default), the realm will be the path split, so that each prefix split
   gets its own realm.  If it's True, the realm will be the name of the
   handler class (with a trailing "Handler" removed, if any).
   """
