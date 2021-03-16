@@ -481,8 +481,8 @@ def hexdump (data):
   """
   Converts raw data to a hex dump
   """
-  if isinstance(data, (str,bytes)):
-    data = [ord(c) for c in data]
+  if isinstance(data, str):
+    data = data.encode("utf8")
   o = ""
   def chunks (data, length):
     return (data[i:i+length] for i in range(0, len(data), length))
