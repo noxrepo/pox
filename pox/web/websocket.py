@@ -167,11 +167,11 @@ class WebsocketHandler (SplitRequestHandler, object):
             length = len1
             break
           elif len1 == 0x7e and len(hdr) >= 2:
-            length = struct.unpack_from("!H", hdr, 0)
+            length = struct.unpack_from("!H", hdr, 0)[0]
             hdr = hdr[2:]
             break
           elif len1 == 0x7f and len(hdr) >= 8:
-            length = struct.unpack_from("!Q", hdr, 0)
+            length = struct.unpack_from("!Q", hdr, 0)[0]
             hdr = hdr[8:]
             break
           else:
