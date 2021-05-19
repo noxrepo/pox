@@ -397,7 +397,7 @@ class dns(packet_base):
     def read_dns_name_from_index(cls, l, index):
         retlist = []
         next = cls._read_dns_name_from_index(l, index, retlist)
-        return (next + 1, ".".join(retlist))
+        return (next + 1, b".".join(retlist))
 
     def next_rr(self, l, index, rr_list):
         array_len = len(l)
