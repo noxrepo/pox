@@ -224,7 +224,7 @@ class NDOptionBase (packet_base):
 
   def pack (self):
     d = self._pack_body()
-    while (len(d)+2) % 8: d += "\x00" # sloppy
+    while (len(d)+2) % 8: d += b"\x00" # sloppy
     return struct.pack("BB", self.TYPE, (len(d)+2)//8) + d
 
   @classmethod
@@ -368,7 +368,7 @@ class NDOptPrefixInformation (NDOptionBase):
   def pack (self):
     s = struct.pack("!BBII", self.prefix_length, self.flags,
         self.valid_lifetime,self.preferred_lifetime)
-    s += '\x00' * 4
+    s += b'\x00' * 4
     s += self.prefix.raw
     return s
 
@@ -509,7 +509,7 @@ class NDRouterSolicitation (icmp_base):
     return offset,o
 
   def pack (self):
-    o = '\x00' * 4 # _PAD4
+    o = b'\x00' * 4 # _PAD4
     for opt in self.options:
       o += opt.pack()
     return o
@@ -578,7 +578,7 @@ class NDRouterAdvertisement (icmp_base):
     return f
 
   def pack (self):
-    o = '\x00' * 4 # _PAD4
+    o = b'\x00' * 4 # _PAD4
 
     o += struct.pack("!BBHII", self.hop_limit, self.flags, self.lifetime,
         self.reachable, self.retrans_time)
@@ -630,7 +630,7 @@ class NDNeighborSolicitation (icmp_base):
     return offset,o
 
   def pack (self):
-    o = '\x00' * 4 # _PAD4
+    o = b'\x00' * 4 # _PAD4
     o += self.target.raw
     for opt in self.options:
       o += opt.pack()
@@ -700,8 +700,8 @@ class NDNeighborAdvertisement (icmp_base):
     if self.is_router: o |= self.ROUTER_FLAG
     if self.is_solicited: o |= self.SOLICITED_FLAG
     if self.is_override : o |= self.OVERRIDE_FLAG
-    o = chr(o)
-    o += '\x00' * 3 # _PAD3
+    o = bytes([o])
+    o += b'\x00' * 3 # _PAD3
     o += self.target.raw
     for opt in self.options:
       o += opt.pack()
