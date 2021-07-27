@@ -292,6 +292,82 @@ class POXCookieGuardMixin (object):
 
 import http.server
 from http.server import SimpleHTTPRequestHandler
+def _add_mime ():
+  """
+  Adds some more mime types
+  """
+  m = SimpleHTTPRequestHandler.extensions_map
+  def add (k):
+    k = k.split("#", 1)[0]
+    k = k.strip()
+    if not k: return
+    if not k.startswith('.'): k = '.' + k
+    k,v = k.split()
+    if k in m: return
+    m[k] = v
+  types = """
+  csv    text/csv
+  doc    application/msword
+  docx   application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  pdf    application/pdf
+  txt    text/plain
+
+  bz2    application/x-bzip2
+  gz     application/gzip
+  rar    application/vnd.rar
+  tar    application/x-tar
+  tgz    application/gzip
+  zip    application/zip
+  7z     application/x-7z-compressed
+
+  css    text/css
+  html   text/html
+  js     text/javascript
+  json   application/json
+  jsonld application/ld+json
+  wasm   application/wasm
+  xhtml  application/xhtml+xml
+  xml    text/xml # Or application/xml if not easily human-readable (RFC 3023)
+
+  aac    audio/aac
+  aifc   audio/aiff
+  aiff   audio/aiff
+  au     audio/basic
+  mid    audio/midi
+  midi   audio/midi
+  mp3    audio/mpeg
+  oga    audio/ogg
+  opus   audio/opus
+  wav    audio/wav
+  weba   audio/webm
+
+  avi    video/x-msvideo
+  mp4    video/mp4
+  mpeg   video/mpeg
+  ogv    video/ogg
+  ts     video/mp2t
+  3gp    video/3gpp  # Could be audio instead, but no way to know
+  3g2    video/3gpp2 # Could be audio instead, but no way to know
+
+  eot    application/vnd.ms-fontobject
+  otf    font/otf
+  ttf    font/ttf
+  woff   font/woff
+  woff2  font/woff2
+
+  avif   image/avif
+  gif    image/gif
+  jpg    image/jpeg
+  jpeg   image/jpeg
+  png    image/png
+  svg    image/svg+xml
+  webp   image/webp
+  """.strip().split("\n")
+  for x in types:
+    add(x)
+
+
+_add_mime()
 
 
 class SplitRequestHandler (BaseHTTPRequestHandler):
