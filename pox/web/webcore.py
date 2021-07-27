@@ -1,4 +1,4 @@
-# Copyright 2011,2012,2018 James McCauley
+# Copyright 2011,2012,2018,2020,2021 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -382,8 +382,85 @@ class SplitRequestHandler (BaseHTTPRequestHandler):
   """
   # Also a StreamRequestHandler
 
+  # The following is Access Control / CORS stuff which mostly impact
+  # the behavior of the send_ac_headers() method (and therefore some
+  # headers that get sent).  See also: set_permissive_cors()
+
+  # If False, we don't do automatic sending of access control headers
+  ac_headers = True
+
+  # If True, automatically allow permissive CORS.  This is dangerous
+  # in general, but can be useful for development/debugging.
+  ac_permissive_cors = False
+
+  ac_allow_origin = None
+  # This may be: None (no Access-Control-Allow-Origin)
+  #              True (automatically use the Origin request header)
+  #              all  (automatically use the Origin request header or
+  #                    fall back on * if there isn't one)
+  #              "*"  (Send the * wildcard)
+  #              A specific origin (URL)
+
+  ac_allow_methods = None #set("GET", "OPTIONS")
+  ac_allow_headers = None
+  ac_max_age = 86400 # Or None to not send
+
+  def end_headers (self):
+    # Overriden so that we can send access control headers automatically
+    self.send_ac_headers()
+
+    super().end_headers()
+
+  def set_permissive_cors (self):
+    """
+    Sets up for fairly permissive CORS
+
+    You might want to, e.g., call this in your _init()
+    """
+    self.ac_allow_origin = "*"
+    if self.ac_allow_methods is None: self.ac_allow_methods = set()
+    self.ac_allow_methods.update(["GET", "OPTIONS", "POST"])
+    if self.ac_allow_headers is None: self.ac_allow_headers = set()
+    self.ac_allow_headers.update(["Content-Type"])
+
+  def send_ac_headers (self):
+    """
+    Send Access-Control headers
+
+    By default, this crafts headers for CORS using the various ac_ instance
+    variables.  You can override it for more subtle handling.
+    """
+    ao = self.ac_allow_origin
+    if ao:
+      if ao is True:
+        # Try to use Origin header but try to fall back on wildcard (which
+        # will fail if the request uses credentials).
+        ao = self.headers.get("origin", "*")
+      elif ao is all:
+        ao = self.headers.get("origin", None)
+      if ao:
+        self.send_header("Access-Control-Allow-Origin", ao)
+
+    am = self.ac_allow_methods
+    if am:
+      self.send_header("Access-Control-Allow-Methods", ", ".join(am))
+
+    ah = self.ac_allow_headers
+    if ah:
+      self.send_header("Access-Control-Allow-Headers", ", ".join(ah))
+
+    if self.ac_max_age is not None:
+      self.send_header("Access-Control-Allow-Max-Age", str(self.ac_max_age))
+
   def __init__ (self, parent, prefix, args):
     _setAttribs(parent, self)
+    if self.ac_allow_methods is not None:
+      self.ac_allow_methods = set(self.ac_allow_methods)
+    if self.ac_allow_headers is not None:
+      self.ac_allow_headers = set(self.ac_allow_headers)
+
+    if self.ac_permissive_cors:
+      self.set_permissive_cors()
 
     self.parent = parent
     self.args = args
@@ -1052,7 +1129,8 @@ def upload_test (save=False):
 
 def launch (address='', port=8000, static=False, ssl_server_key=None,
             ssl_server_cert=None, ssl_client_certs=None,
-            no_cookieguard=False):
+            no_cookieguard=False,
+            cors=False):
   """
   Starts a POX webserver
 
@@ -1069,11 +1147,22 @@ def launch (address='', port=8000, static=False, ssl_server_key=None,
   --no-cookieguard disables POX CookieGuard.  See POXCookieGuardMixin
     documentation for more on this, but the short story is that disabling
     it will make your server much more vulnerable to CSRF attacks.
+
+  --cors=permissive will set fairly permissive CORS policy.  See the
+    CORS/Access-Control related documentation of SplitRequestHandler for
+    details.  Note that this is probably a bad idea in general because
+    it will allow lots of cross-origin access.  It should probably only
+    be done during development / if you know what you are doing.
   """
 
   if no_cookieguard:
     SplitterRequestHandler.pox_cookieguard = False
     assert no_cookieguard is True, "--no-cookieguard takes no argument"
+    log.warn("Cookieguard disabled; this may be insecure.")
+
+  if str(cors).lower() == "permissive":
+    SplitRequestHandler.ac_permissive_cors = True
+    log.warn("Using permissive CORS policy; this may be insecure.")
 
   def expand (f):
     if isinstance(f, str): return os.path.expanduser(f)
