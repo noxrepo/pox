@@ -216,16 +216,20 @@ class POXCore (EventMixin):
   def __init__ (self, threaded_selecthub=True, epoll_selecthub=False,
                 handle_signals=True):
     self.debug = False
+    self.up = False
     self.running = True
     self.starting_up = True
     self.components = {'core':self}
 
+    import threading
+
+    self._deferral_lock = threading.Lock()
     self._go_up_deferrals = set()
+    self._ready_to_go_up = False
 
     self._openflow_wanted = False
     self._handle_signals = handle_signals
 
-    import threading
     self.quit_condition = threading.Condition()
 
     print(self.banner)
@@ -407,13 +411,12 @@ class POXCore (EventMixin):
     else:
       vwarn("Support for Python 3 is experimental.")
 
+    self._add_signal_handlers()
+
     self.starting_up = False
     self.raiseEvent(GoingUpEvent())
 
-    self._add_signal_handlers()
-
-    if not self._go_up_deferrals:
-      self._goUp_stage2()
+    self.callLater(self._goUp_stage2, main=True)
 
   def _get_go_up_deferral (self):
     """
@@ -422,19 +425,31 @@ class POXCore (EventMixin):
     By doing this, we are deferring progress starting at the GoingUp stage.
     The return value should be called to allow progress again.
     """
-    o = object()
-    self._go_up_deferrals.add(o)
-    def deferral ():
-      if o not in self._go_up_deferrals:
-        raise RuntimeError("This deferral has already been executed")
-      self._go_up_deferrals.remove(o)
-      if not self._go_up_deferrals:
-        log.debug("Continuing to go up")
-        self._goUp_stage2()
+    with self._deferral_lock:
+      o = object()
+      self._go_up_deferrals.add(o)
+      def deferral ():
+        def execute ():
+          if o not in self._go_up_deferrals:
+            raise RuntimeError("This deferral has already been executed")
+          self._go_up_deferrals.remove(o)
+          if not self._go_up_deferrals:
+            log.debug("Continuing to go up")
+            self._goUp_stage2()
+        self.callLater(execute)
 
     return deferral
 
-  def _goUp_stage2 (self):
+  def _goUp_stage2 (self, main=False):
+    with self._deferral_lock:
+      if main: self._ready_to_go_up = True
+      if not self._ready_to_go_up: return
+
+      if self._go_up_deferrals:
+        return
+
+      if self.up: return
+      self.up = True
 
     self.raiseEvent(UpEvent())
 
