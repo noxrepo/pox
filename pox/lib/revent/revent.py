@@ -543,11 +543,14 @@ def autoBindEvents (sink, source, prefix='', weak=False,
       events[e.__name__] = e
 
   listeners = []
+  sinktype = type(sink)
   # for each method in sink
-  for m in dir(sink):
+  for m in dir(sinktype):
     # get the method object
-    a = getattr(sink, m)
-    if callable(a):
+    if callable(getattr(sinktype, m)):
+      a = getattr(sink, m, None)
+      if not callable(a): continue
+
       # if it has the revent prefix signature,
       if m.startswith("_handle" + prefix + "_"):
         event = m[8+len(prefix):]
