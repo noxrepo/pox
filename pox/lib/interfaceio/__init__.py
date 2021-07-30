@@ -30,7 +30,7 @@ import struct
 
 from fcntl import ioctl
 import socket
-from pox.lib.addresses import EthAddr, IPAddr
+from pox.lib.addresses import EthAddr, IPAddr, IPAddr6
 from pox.lib.addresses import parse_cidr, cidr_to_netmask
 import os
 import ctypes
@@ -357,6 +357,17 @@ class Interface (object):
   @broadcast_addr.setter
   def broadcast_addr (self, value):
     return self._ioctl_set_ipv4(SIOCSIFBRDADDR, value)
+
+  @property
+  def ip_addr6 (self):
+    # Currently readonly because we don't support netlink (yet?)
+    with open("/proc/net/if_inet6", "r") as f:
+      for l in f:
+        l = l.split()
+        if len(l) != 6: continue
+        if l[-1] == self.name:
+          return IPAddr6(l[0])
+    return None
 
   @property
   def eth_addr (self):
