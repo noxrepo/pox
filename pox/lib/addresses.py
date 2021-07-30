@@ -463,6 +463,7 @@ class IPAddr6 (_AddrBase):
     # When we move to Python 3, we can use bytes to infer raw.  For now, we
     # have the 'raw' argument, which we'll take as either a boolean indicating
     # that addr is raw, or we'll take it as the raw address itself.
+    #FIXME: Update for Python3!
     if addr is None and isinstance(raw, (bytes,bytearray)):
       # Allow passing in raw value using either addr=address + raw=True or
       # addr=None + raw=address
@@ -474,6 +475,7 @@ class IPAddr6 (_AddrBase):
       self._value = self.UNDEFINED._value
     elif isinstance(addr, str) or (isinstance(addr, bytes) and not raw):
       # A textual IPv6 representation
+      if isinstance(addr, bytes): addr = addr.decode("ASCII")
       ip4part = None
       if '.' in addr:
         # It contains a dot, so it is in "mixed notation"
@@ -485,6 +487,10 @@ class IPAddr6 (_AddrBase):
         if ':' in ip4part:
           raise RuntimeError('Bad address format')
         addr += ':0:0'
+      else:
+        if ':' not in addr and len(addr) == 32:
+          # Just one big hex, hopefully.
+          addr = ':'.join(addr[i:i+4] for i in range(0, 32, 4))
 
       segs = addr.split(':')
       if addr.count('::') > 1:
