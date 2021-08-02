@@ -518,7 +518,7 @@ class TunTap (object):
     ifr += b"\0" * (IFREQ_SIZE - len(ifr))
 
     ret = ioctl(self.fileno(), TUNSETIFF, ifr)
-    self.name = ret[:IFNAMESIZ]
+    self.name = ret[:IFNAMESIZ].split(b"\0",1)[0].decode()
     iflags = flags
     ifr = struct.pack(str(IFNAMESIZ) + "sH", name.encode("utf8"), 0)
     ifr += b"\0" * (IFREQ_SIZE - len(ifr))
