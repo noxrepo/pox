@@ -720,7 +720,7 @@ class TimeExceeded (icmp_base):
     self._init(kw)
 
   def _fields (self):
-    f = ['mtu']
+    f = []#'mtu']
     r = {}
     for ff in f:
       r[ff] = getattr(self, ff)
@@ -747,7 +747,7 @@ class TimeExceeded (icmp_base):
     o.prev = prev
     return offset,o
 
-  def hdr (self, payload):
+  def pack (self):
     return struct.pack('!I', 0) # Unused
 
 
@@ -793,7 +793,7 @@ class PacketTooBig (icmp_base):
     o.prev = prev
     return offset,o
 
-  def hdr (self, payload):
+  def pack (self):
     return struct.pack('!I', self.mtu)
 
 
