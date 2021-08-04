@@ -286,7 +286,7 @@ class ipv6 (packet_base):
     self.flow  = 0
     self.payload_length = 0
     self.next_header_type = None
-    self.hop_limit = 0
+    self.hop_limit = 127
     self.srcip = IPAddr6.UNDEFINED
     self.dstip = IPAddr6.UNDEFINED
     self.extension_headers = []
