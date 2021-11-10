@@ -912,7 +912,7 @@ class unreach (packet_base, unpack_new_adapter):
     from . import ipv6
     # xxx We're assuming this is IPv6!
     if dlen >= 8 + ipv6.MIN_LEN:
-      self.next = ipv6.ipv6(raw=raw[unreach.MIN_LEN:],prev=self)
+      self.next = ipv6(raw=raw[unreach.MIN_LEN:],prev=self)
     else:
       self.next = raw[unreach.MIN_LEN:]
 
