@@ -219,6 +219,7 @@ class POXCore (EventMixin):
     self.up = False
     self.running = True
     self.starting_up = True
+    self._exit_code = 0
     self.components = {'core':self}
 
     import threading
@@ -304,10 +305,13 @@ class POXCore (EventMixin):
     """
     return getLogger(moreFrames=1,*args, **kw)
 
-  def quit (self):
+  def quit (self, exit_code=None):
     """
     Shut down POX.
     """
+    if exit_code is not None:
+      self._exit_code = exit_code
+
     import threading
     if (self.starting_up or
         threading.current_thread() is self.scheduler._thread):

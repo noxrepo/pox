@@ -569,3 +569,5 @@ def boot (argv = None):
     pox.core.core.quit()
   except:
     pass
+
+  sys.exit(pox.core.core._exit_code)
