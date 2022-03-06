@@ -963,7 +963,7 @@ class SplitThreadedServer(ThreadingMixIn, HTTPServer, EventMixin):
     log.debug("Serving %s at %s", local_path, www_path)
 
     self.set_handler(www_path, StaticContentHandler,
-                     {'root':local_path}, True);
+                     {'root':local_path}, True)
 
 
 class InternalContentHandler (SplitRequestHandler):
