@@ -65,6 +65,12 @@ except Exception:
 import errno
 from io import StringIO, BytesIO
 
+try:
+  import zipfile
+except Exception:
+  pass
+
+
 log = core.getLogger()
 try:
   weblog = log.getChild("server")
@@ -586,9 +592,14 @@ class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
   This is largely the same as the Python SimpleHTTPRequestHandler, but
   we modify it to serve from arbitrary directories at arbitrary
   positions in the URL space.
+
+  If zip_directories is True, you can download the contents of a directory
+  (non-recursively) as a zip file.  This zips the file on demand and in
+  memory, so it should be enabled with caution.
   """
 
   server_version = "StaticContentHandler/1.0"
+  zip_directories = False
 
   def send_head (self):
     # We override this and handle the directory redirection case because
@@ -600,7 +611,48 @@ class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
         self.send_header("Location", self.prefix + self.path + "/")
         self.end_headers()
         return None
+    elif ( (not os.path.exists(path)) and path.endswith("/.zip")
+           and self.zip_directories and self.path.endswith("/.zip") ):
+      path = path.rsplit("/", 1)[0]
+      if os.path.isdir(path):
+        fn = os.path.basename(self.path.rsplit("/", 1)[0])
+        if not fn:
+          fn = self.prefix
+        fn = os.path.basename(fn)
+        if fn:
+          return self.download_directory(path, fn + ".zip")
+
     return SimpleHTTPRequestHandler.send_head(self)
+
+  def download_directory (self, dirpath, filename):
+    try:
+      d = os.listdir(dirpath)
+    except OSError as e:
+      if e.errno == errno.EACCES:
+        self.send_error(403, "This directory is not listable")
+      elif e.errno == errno.ENOENT:
+        self.send_error(404, "This directory does not exist")
+      else:
+        self.send_error(400, "Unknown error")
+      return None
+
+    r = BytesIO()
+    with zipfile.ZipFile(r, "w", zipfile.ZIP_DEFLATED, False) as zip:
+      for f in d:
+        f = os.path.join(dirpath, f)
+        if os.path.islink(f): continue
+        if not os.path.isfile(f): continue
+        zip.write(f, os.path.basename(f))
+
+    disp = f'attachment; filename="{filename}"'
+
+    r.seek(0)
+    self.send_response(200)
+    self.send_header("Content-Type", "application/zip")
+    self.send_header("Content-Length", str(len(r.getvalue())))
+    self.send_header("Content-Disposition", disp)
+    self.end_headers()
+    return r
 
   def list_directory (self, dirpath):
     # dirpath is an OS path
@@ -626,7 +678,10 @@ class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
       link = urllib.parse.quote("/".join(parts[:i+1]))
       if i > 0: part += "/"
       r.write('<a href="%s">%s</a>' % (link, cgi_escape(part)))
-    r.write("\n" + "-" * (0+len(path)) + "\n")
+      if self.zip_directories and i == len(parts)-1:
+        r.write(' <a href="%s/.zip">[zip]</a>' % (link,))
+
+    r.write("\n" + "-" * ((6 if self.zip_directories else 0)+len(path)) + "\n")
 
     dirs = []
     files = []
