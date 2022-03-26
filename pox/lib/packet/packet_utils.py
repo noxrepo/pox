@@ -102,7 +102,10 @@ def checksum (data, start = 0, skip_word = None):
       start +=  arr[i]
 
   if len(data) % 2 != 0:
-    start += struct.unpack('H', data[-1]+'\0')[0] # Specify order?
+    if type(data[-1]) == type(str()): 
+      start += struct.unpack('H', data[-1]+'\0')[0] # python2
+    else:
+      start += data[-1] # python3
 
   start  = (start >> 16) + (start & 0xffff)
   start += (start >> 16)
