@@ -381,17 +381,24 @@ class POXCore (EventMixin):
     if not isinstance(threading.current_thread(), threading._MainThread):
       raise RuntimeError("add_signal_handers must be called from MainThread")
 
+    self._install_signal_handler(signal.SIGTERM, self._signal_handler_SIGTERM)
     try:
-      previous = signal.getsignal(signal.SIGHUP)
-      signal.signal(signal.SIGHUP, self._signal_handler_SIGHUP)
-      if previous != signal.SIG_DFL:
-        log.warn('Redefined signal handler for SIGHUP')
+      self._install_signal_handler(signal.SIGHUP, self._signal_handler_SIGHUP)
     except (AttributeError, ValueError):
       # SIGHUP is not supported on some systems (e.g., Windows)
       log.debug("Didn't install handler for SIGHUP")
 
+  def _install_signal_handler (self, signum, handler):
+    previous = signal.getsignal(signum)
+    signal.signal(signum, handler)
+    if previous != signal.SIG_DFL:
+      log.warn('Redefined signal handler for ' + signum.name)
+
   def _signal_handler_SIGHUP (self, signal, frame):
     self.raiseLater(core, RereadConfiguration)
+
+  def _signal_handler_SIGTERM (self, signal, frame):
+    core.call_later(core.quit)
 
   def goUp (self):
     log.debug(self.version_string + " going up...")
