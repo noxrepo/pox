@@ -29,6 +29,7 @@ import inspect
 import time
 import os
 import signal
+import sys
 
 _path = inspect.stack()[0][1]
 _ext_path = _path[0:_path.rindex(os.sep)]
@@ -233,7 +234,8 @@ class POXCore (EventMixin):
 
     self.quit_condition = threading.Condition()
 
-    print(self.banner)
+    if sys.stdout.isatty():
+      print(self.banner)
 
     self.scheduler = recoco.Scheduler(daemon=True,
                                       threaded_selecthub=threaded_selecthub,
