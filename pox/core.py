@@ -389,6 +389,7 @@ class POXCore (EventMixin):
       log.debug("Didn't install handler for SIGHUP")
 
   def _install_signal_handler (self, signum, handler):
+    signum = signal.Signals(signum)
     previous = signal.getsignal(signum)
     signal.signal(signum, handler)
     if previous != signal.SIG_DFL:
