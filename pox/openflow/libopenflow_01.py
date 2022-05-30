@@ -1264,7 +1264,7 @@ class ofp_match (ofp_base):
     if self.dl_type == 0x0800:
         # IP
         if  self.nw_proto not in (1,6,17):
-          # not TCP/UDP/ICMP -> Clear TP wildcards for the wire
+          # not ICMP/TCP/UDP -> Clear TP wildcards for the wire
           return wildcards & ~(OFPFW_TP_SRC | OFPFW_TP_DST)
         else:
           return wildcards
@@ -1291,7 +1291,7 @@ class ofp_match (ofp_base):
     if self.dl_type == 0x0800:
         # IP
         if  self.nw_proto not in (1,6,17):
-          # not TCP/UDP/ICMP -> Clear TP wildcards for the wire
+          # not ICMP/TCP/UDP -> Clear TP wildcards for the wire
           self.tp_src = None
           self.tp_dst = None
           return
@@ -1327,7 +1327,7 @@ class ofp_match (ofp_base):
     if self._dl_type == 0x0800:
         # IP
         if  self._nw_proto not in (1,6,17):
-          # not TCP/UDP/ICMP -> Set TP wildcards for the object
+          # not ICMP/TCP/UDP -> Set TP wildcards for the object
           return wildcards | (OFPFW_TP_SRC | OFPFW_TP_DST)
         else:
           return wildcards
