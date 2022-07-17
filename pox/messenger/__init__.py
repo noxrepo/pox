@@ -114,7 +114,7 @@ class MissingChannel (Event):
 
 class MessageReceived (Event):
   """
-  Fired by a channel when a message has been receieved.
+  Fired by a channel when a message has been received.
 
   Always fired on the Connection itself.  Also fired on the corresponding
   Channel object as specified by the CHANNEL key.

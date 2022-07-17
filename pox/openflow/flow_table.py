@@ -30,7 +30,7 @@ class TableEntry (object):
   """
   Models a flow table entry, with a match, actions, and options/flags/counters.
 
-  Note: The current time can either be specified explicitely with the optional
+  Note: The current time can either be specified explicitly with the optional
         'now' parameter or is taken from time.time()
   """
   def __init__ (self, priority=OFP_DEFAULT_PRIORITY, cookie=0, idle_timeout=0,
