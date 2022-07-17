@@ -416,7 +416,7 @@ class POXCore (EventMixin):
       if not l.isEnabledFor(logging.WARNING):
         l.setLevel(logging.WARNING)
       l.warn(*args)
-    good_versions = ("3.6", "3.7", "3.8", "3.9")
+    good_versions = ("3.6", "3.7", "3.8", "3.9", "3.10")
     if vers not in good_versions:
       vwarn("POX requires one of the following versions of Python: %s",
              " ".join(good_versions))
