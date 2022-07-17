@@ -16,7 +16,7 @@
 An L2 learning switch.
 
 It is derived from one written live for an SDN crash course.
-It is somwhat similar to NOX's pyswitch in that it installs
+It is somewhat similar to NOX's pyswitch in that it installs
 exact-match rules for each flow.
 """
 
@@ -70,7 +70,7 @@ class LearningSwitch (object):
      Yes:
         5a) Drop packet and similar ones for a while
   6) Install flow table entry in the switch so that this
-     flow goes out the appopriate port
+     flow goes out the appropriate port
      6a) Send the packet out appropriate port
   """
   def __init__ (self, connection, transparent):

@@ -1131,7 +1131,7 @@ class OpenFlow_01_Task (Task):
                 new_sock = wrap_socket(new_sock)
               new_sock.setblocking(0)
               # Note that instantiating a Connection object fires a
-              # ConnectionUp event (after negotation has completed)
+              # ConnectionUp event (after negotiation has completed)
               newcon = Connection(new_sock)
               sockets.append( newcon )
               #print str(newcon) + " connected"
