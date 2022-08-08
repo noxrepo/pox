@@ -1,4 +1,4 @@
-# Copyright 2011-2021 James McCauley
+# Copyright 2011-2022 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -211,8 +211,8 @@ class POXCore (EventMixin):
     RereadConfiguration,
   ])
 
-  version = (0,7,0)
-  version_name = "gar"
+  version = (0,8,0)
+  version_name = "halosaur"
 
   def __init__ (self, threaded_selecthub=True, epoll_selecthub=False,
                 handle_signals=True):
@@ -245,7 +245,7 @@ class POXCore (EventMixin):
 
   @property
   def banner (self):
-    return "{0} / Copyright 2011-2021 James McCauley, et al.".format(
+    return "{0} / Copyright 2011-2022 James McCauley, et al.".format(
      self.version_string)
 
   @property
