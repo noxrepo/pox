@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2022 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -64,8 +64,11 @@ COMMANDS = {
   'bright:' : 1,
   'dull:' : 2,
   'blink' : 5,
+  'noblink' : 25,
   'BLINK' : 6,
+  'NOBLINK' : 26,
   'invert' : 7,
+  'noinvert' : 27,
   'bg:' : -1, # Special
   'level' : -2, # Special -- color of current level
   'normal' : 22,
@@ -123,6 +126,8 @@ def _proc (msg, level_color = "DEBUG"):
             if special[1] == -1:
               brightness = None
               color += 10
+            elif special[1] in (1,2):
+              brightness = special[1]
           color += 30
           if not _strip_only:
             r += CSI
@@ -140,13 +145,52 @@ def _proc (msg, level_color = "DEBUG"):
   return r
 
 
-def launch (entire=False):
+def launch (entire=False, autolevels=True):
   """
-  If --entire then the whole message is color-coded, otherwise just the
-  log level.
+  Enables color logging.
 
-  Also turns on interpretation of some special sequences in the log
-  format string.  For example, try:
+  This does two things.  First, it enables the interpretation of some special
+  color-related sequences in the log format string.  Secondly, it applies
+  some default colorization to log formats.
+
+  Starting with the second aspect, this can be controlled a bit.  By default,
+  the log level name is colorized (entire=False, autolevels=True), and the
+  rest of the log message is unaltered (though note that this will require you
+  to adjust padding on the %(levelname) part of the log if you use it).
+  Setting entire=True will colorize the entire log message based on the log
+  level color.  To turn off all auto colorization and just enable the special
+  color sequences, set entire=False and autolevels=False.
+
+  The special log sequences all start with "@@@".  The most basic ones are
+  just some colors:
+    black, red, green, yellow, blue, magenta, cyan, gray, darkgray
+    pink, white
+
+  There is also a special "color":
+    level - A color based on the log level (e.g., red for errors)
+
+  There are modifier prefixes that you can use with colors.  "bg" and
+  "bright" probably almost always work.  "dull" is a maybe.  Examples:
+    bg:red
+    bright:green
+    dull:blue
+
+  You can make text more or less intense.  Depending on the terminal, this
+  might either change the boldness of the text or the brightness (or both!):
+    bright/bold - Make text brighter or bolder
+    dim/dull    - Make text dimmer or duller
+    normal      - Make text normal brightness/boldness
+
+  There are some modifiers you can switch on or off:
+    blink/noblink
+    invert/noinvert
+    underline/nounderline
+
+  To get things entirely back to normal in one step (and this may be the
+  only way to restore brightness/dullness):
+    reset
+
+  For example, try:
    log --format="%(levelname)s: @@@bold%(message)s@@@normal" log.color
   """
 
@@ -155,6 +199,9 @@ def launch (entire=False):
 
   from pox.core import core
   log = core.getLogger()
+
+  from pox.lib.util import str_to_bool
+  autolevels = str_to_bool(autolevels)
 
   windows_hack = False
 
@@ -182,6 +229,8 @@ def launch (entire=False):
 
   # Monkeypatch in a new format function...
   old_format = dlf.format
+  global _old_format
+  _old_format = old_format
   if entire:
     def new_format (record):
       msg = _proc(old_format(record), record.levelname)
@@ -193,8 +242,8 @@ def launch (entire=False):
     def new_format (record):
       color = LEVEL_COLORS.get(record.levelname)
       oldlevelname = record.levelname
-      if color is not None:
-        record.levelname = _color(color, record.levelname)
+      if (color is not None) and autolevels:
+        record.levelname = "@@@level" + record.levelname + "@@@reset"
       r = _proc(old_format(record), oldlevelname)
       record.levelname = oldlevelname
       return r
@@ -207,3 +256,12 @@ def launch (entire=False):
         enabled = True
   else:
     enabled = True
+
+
+def disable ():
+  global enabled
+  if not enabled: return
+
+  import pox.core as core
+  core._default_log_handler.format = _old_format
+  enabled = False
