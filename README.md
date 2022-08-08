@@ -67,6 +67,12 @@ as options to the openflow._01 component:
   ./pox.py openflow.of_01 --address=10.1.1.1 --port=6634
 
 
+## Special Thanks
+
+GitHub users @gtataranni and @larabr deserve special thanks for helping to
+get the ball rolling on the conversion to Python 3.
+
+
 ## Further Documentation
 
 The full POX documentation is available on GitHub at
