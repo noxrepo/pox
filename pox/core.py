@@ -422,8 +422,6 @@ class POXCore (EventMixin):
              " ".join(good_versions))
       vwarn("You're running Python %s.", vers)
       vwarn("If you run into problems, try using a supported version.")
-    else:
-      vwarn("Support for Python 3 is experimental.")
 
     self._add_signal_handlers()
 
