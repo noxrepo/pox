@@ -30,6 +30,7 @@ check this.
 */
 
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #ifdef WIN32
 
@@ -331,7 +332,7 @@ static void ld_callback (u_char * my_thread_state, const struct pcap_pkthdr * h,
                          (long)h->ts.tv_usec,
                          h->len);
   }
-  rv = PyEval_CallObject(ts->pycallback, args);
+  rv = PyObject_CallObject(ts->pycallback, args);
   Py_DECREF(args);
   if (rv)
   {
