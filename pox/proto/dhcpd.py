@@ -392,9 +392,9 @@ class DHCPDBase (EventMixin):
       if src in self.offers:
         if wanted_ip != self.offers[src]:
           pool.append(self.offers[src])
-          del self.offers[src]
         else:
           got_ip = self.offers[src]
+        del self.offers[src]
     if got_ip is None:
       if wanted_ip in pool:
         pool.remove(wanted_ip)
