@@ -249,7 +249,7 @@ class DHCPDBase (EventMixin):
 
     def fix_addr (addr, backup):
       if addr is None: return None
-      if addr is (): return IPAddr(backup)
+      if addr == (): return IPAddr(backup)
       return IPAddr(addr)
 
     self.ip_addr = IPAddr(ip_address)
