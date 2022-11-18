@@ -515,6 +515,8 @@ class PCapSwitch (ExpireMixin, SoftwareSwitchBase):
       # We create the MAC based on the port_no, so we have to do it here
       # and not earlier.
       phy.hw_addr = self._gen_ethaddr(phy.port_no)
+    else:
+      px.port_no = port_no
 
     self.add_port(phy)
 
