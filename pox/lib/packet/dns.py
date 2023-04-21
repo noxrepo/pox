@@ -89,6 +89,7 @@
 #   General cleaup/rewrite (code is/has gotten pretty bad)
 
 import struct
+import sys
 from .packet_utils import *
 from .packet_utils import TruncatedException as Trunc
 
@@ -375,19 +376,24 @@ class dns(packet_base):
     def _read_dns_name_from_index(cls, l, index, retlist):
       try:
         while True:
-            chunk_size = ord(l[index])
+            chunk_size = ord(l[index]) if sys.version_info[0] < 3 else l[index]
 
             # check whether we have an internal pointer
             if (chunk_size & 0xc0) == 0xc0:
                 # pull out offset from last 14 bits
-                offset = ((ord(l[index]) & 0x3) << 8 ) | ord(l[index+1])
+                proc_l_index = ord(l[index]) if sys.version_info[0] < 3 else l[index]
+                proc_l_indp1 = ord(l[index + 1]) if sys.version_info[0] < 3 else l[index + 1]
+                offset = ((proc_l_index & 0x3) << 8 ) | proc_l_indp1
                 cls._read_dns_name_from_index(l, offset, retlist)
                 index += 1
                 break
             if chunk_size == 0:
                 break
             index += 1
-            retlist.append(l[index : index + chunk_size])
+            if sys.version_info[0] < 3:
+                retlist.append(l[index : index + chunk_size])
+            else:
+                retlist.append(l[index : index + chunk_size].decode())
             index += chunk_size
         return index
       except IndexError:
