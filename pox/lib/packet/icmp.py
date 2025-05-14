@@ -179,7 +179,7 @@ class time_exceeded (packet_base):
         if dlen >= 28:
             # xxx We're assuming this is IPv4!
             from . import ipv4
-            self.next = ipv4.ipv4(raw=raw[self.MIN_LEN:],prev=self)
+            self.next = ipv4(raw=raw[self.MIN_LEN:],prev=self)
         else:
             self.next = raw[self.MIN_LEN:]
 
@@ -244,7 +244,7 @@ class unreach(packet_base):
         if dlen >= 28:
             # xxx We're assuming this is IPv4!
             from . import ipv4
-            self.next = ipv4.ipv4(raw=raw[unreach.MIN_LEN:],prev=self)
+            self.next = ipv4(raw=raw[unreach.MIN_LEN:],prev=self)
         else:
             self.next = raw[unreach.MIN_LEN:]
 
