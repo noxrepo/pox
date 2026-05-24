@@ -54,8 +54,10 @@ import os
 import socket
 import posixpath
 import urllib.request, urllib.parse, urllib.error
-import cgi
+import html
 import errno
+from email.message import Message
+from email.parser import BytesParser
 from io import StringIO, BytesIO
 
 log = core.getLogger()
@@ -65,6 +67,75 @@ except:
   # I'm tired of people running Python 2.6 having problems with this.
   #TODO: Remove this someday.
   weblog = core.getLogger("webcore.server")
+
+
+def _parse_header (value):
+  """
+  Parse a MIME-style header value into its main value and parameters.
+  """
+  if not value: return "", {}
+  msg = Message()
+  msg["x"] = value
+  parts = msg.get_params(header="x")
+  if not parts: return "", {}
+  value = (parts[0][0] or "").lower()
+  params = dict((k.lower(),v) for k,v in parts[1:] if k)
+  return value, params
+
+
+def _read_request_body (rfile, headers):
+  length = headers.get("content-length")
+  try:
+    length = int(length)
+  except (TypeError, ValueError):
+    length = 0
+  if length <= 0: return b""
+  return rfile.read(length)
+
+
+class _FormField (object):
+  def __init__ (self, filename, data):
+    self.filename = filename
+    self.file = BytesIO(data)
+
+
+def _parse_multipart_form (headers, body):
+  content_type = headers.get("content-type")
+  if not content_type: return {}
+
+  raw = (b"Content-Type: " + content_type.encode("latin-1") +
+         b"\r\nMIME-Version: 1.0\r\n\r\n" + body)
+  msg = BytesParser().parsebytes(raw)
+  if not msg.is_multipart(): return {}
+
+  fields = {}
+  for part in msg.walk():
+    if part.is_multipart(): continue
+
+    disposition, params = _parse_header(part.get("content-disposition"))
+    if disposition != "form-data": continue
+    name = params.get("name")
+    if not name: continue
+
+    data = part.get_payload(decode=True)
+    if data is None:
+      data = part.get_payload()
+      if isinstance(data, str):
+        data = data.encode(part.get_content_charset() or "utf-8", "replace")
+      else:
+        data = b""
+
+    field = _FormField(params.get("filename"), data)
+    if name in fields:
+      old = fields[name]
+      if isinstance(old, list):
+        old.append(field)
+      else:
+        fields[name] = [old, field]
+    else:
+      fields[name] = field
+  return fields
+
 
 def _setAttribs (parent, child):
   attrs = ['command', 'request_version', 'close_connection',
@@ -180,8 +251,7 @@ class POXCookieGuardMixin (object):
     if self.command != "POST": return
 
     # Read rest of input to avoid connection reset
-    cgi.FieldStorage( fp = self.rfile, headers = self.headers,
-                      environ={ 'REQUEST_METHOD':'POST' } )
+    _read_request_body(self.rfile, self.headers)
 
   def _get_cookieguard_cookie (self):
     return self._pox_cookieguard_secret
@@ -202,6 +272,7 @@ class POXCookieGuardMixin (object):
     self.send_response(200)
     self.send_header("Content-type", "text/html")
     self.end_headers()
+    safe_target = html.escape(target)
     self.wfile.write(("""
       <html><head><title>POX CookieGuard</title></head>
       <body>
@@ -209,7 +280,7 @@ class POXCookieGuardMixin (object):
       please <a href="%s">continue to %s</a>.
       </body>
       </html>
-      """ % (target, cgi.escape(target))).encode())
+      """ % (safe_target, safe_target)).encode())
 
   def _do_cookieguard_set_cookie (self, requested, bad_cookie):
     """
@@ -401,10 +472,10 @@ class CoreHandler (SplitRequestHandler):
     r += "<ul>"
     for k in sorted(core.components):
       v = core.components[k]
-      r += "<li>%s - %s</li>\n" % (cgi.escape(str(k)), cgi.escape(str(v)))
+      r += "<li>%s - %s</li>\n" % (html.escape(str(k)), html.escape(str(v)))
     r += "</ul>\n\n<h2>Web Prefixes</h2>"
     r += "<ul>"
-    m = [list(map(cgi.escape, map(str, [x[0],x[1],x[1].format_info(x[3])])))
+    m = [list(map(html.escape, map(str, [x[0],x[1],x[1].format_info(x[3])])))
          for x in self.args.matches]
     m.sort()
     for v in m:
@@ -457,7 +528,7 @@ class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
     d.sort(key=str.lower)
     r = StringIO()
     r.write("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2 Final//EN\">\n")
-    path = posixpath.join(self.prefix, cgi.escape(self.path).lstrip("/"))
+    path = posixpath.join(self.prefix, html.escape(self.path).lstrip("/"))
     r.write("<html><head><title>" + path + "</title></head>\n")
     r.write("<body><pre>")
     parts = path.rstrip("/").split("/")
@@ -465,7 +536,7 @@ class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
     for i,part in enumerate(parts):
       link = urllib.parse.quote("/".join(parts[:i+1]))
       if i > 0: part += "/"
-      r.write('<a href="%s">%s</a>' % (link, cgi.escape(part)))
+      r.write('<a href="%s">%s</a>' % (link, html.escape(part)))
     r.write("\n" + "-" * (0+len(path)) + "\n")
 
     dirs = []
@@ -479,7 +550,7 @@ class StaticContentHandler (SplitRequestHandler, SimpleHTTPRequestHandler):
 
     def entry (n, rest=''):
       link = urllib.parse.quote(n)
-      name = cgi.escape(n)
+      name = html.escape(n)
       r.write('<a href="%s">%s</a>\n' % (link,name+rest))
 
     for f in dirs:
@@ -893,18 +964,19 @@ class FileUploadHandler (SplitRequestHandler):
       self.wfile.write(r.encode())
 
   def do_POST (self):
-    mime,params = cgi.parse_header(self.headers.get('content-type'))
+    mime,params = _parse_header(self.headers.get('content-type'))
     if mime != 'multipart/form-data':
       self.send_error(400, "Expected form data")
       return
-    #query = cgi.parse_multipart(self.rfile, params)
-    #data = query.get("upload")
-    data = cgi.FieldStorage( fp = self.rfile, headers = self.headers,
-                             environ={ 'REQUEST_METHOD':'POST' } )
+    data = _parse_multipart_form(self.headers,
+                                 _read_request_body(self.rfile,
+                                                    self.headers))
     if not data or "upload" not in data:
       self.send_error(400, "Expected upload data")
       return
     uploadfield = data["upload"]
+    if isinstance(uploadfield, list):
+      uploadfield = uploadfield[0]
 
     msg = self.on_upload(uploadfield.filename, uploadfield.file)
 
