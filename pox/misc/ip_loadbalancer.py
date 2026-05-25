@@ -20,6 +20,12 @@ Run it with --ip=<Service IP> --servers=IP1,IP2,...
 By default, it will do load balancing on the first switch that connects.  If
 you want, you can add --dpid=<dpid> to specify a particular switch.
 
+By default, ip_loadbalancer uses the switch's DPID-derived Ethernet address as
+its load balancer MAC.  This is used for service-IP ARP replies, server
+liveness probes, and reverse-flow rewrites.  You can override it with
+--mac=<Ethernet address>.  This can be useful with OVS in-band control, which
+may consume ARP replies sent to the local port's MAC before POX sees them.
+
 Please submit improvements. :)
 """
 
@@ -96,11 +102,11 @@ class iplb (object):
 
   We probe the servers to see if they're alive by sending them ARPs.
   """
-  def __init__ (self, connection, service_ip, servers = []):
+  def __init__ (self, connection, service_ip, servers = [], mac = None):
     self.service_ip = IPAddr(service_ip)
     self.servers = [IPAddr(a) for a in servers]
     self.con = connection
-    self.mac = self.con.eth_addr
+    self.mac = self.con.eth_addr if mac is None else EthAddr(mac)
     self.live_servers = {} # IP -> MAC,port
 
     try:
@@ -311,7 +317,7 @@ class iplb (object):
 _dpid = None
 
 
-def launch (ip, servers, dpid = None):
+def launch (ip, servers, dpid = None, mac = None):
   global _dpid
   if dpid is not None:
     _dpid = str_to_dpid(dpid)
@@ -319,6 +325,8 @@ def launch (ip, servers, dpid = None):
   servers = servers.replace(","," ").split()
   servers = [IPAddr(x) for x in servers]
   ip = IPAddr(ip)
+  if mac is not None:
+    mac = EthAddr(mac)
 
 
   # We only want to enable ARP Responder *only* on the load balancer switch,
@@ -333,7 +341,8 @@ def launch (ip, servers, dpid = None):
 
   # Hackery done.  Now start it.
   from proto.arp_responder import launch as arp_launch
-  arp_launch(eat_packets=False,**{str(ip):True})
+  arp_mac = True if mac is None else mac
+  arp_launch(eat_packets=False,**{str(ip):arp_mac})
   import logging
   logging.getLogger("proto.arp_responder").setLevel(logging.WARN)
 
@@ -348,7 +357,7 @@ def launch (ip, servers, dpid = None):
     else:
       if not core.hasComponent('iplb'):
         # Need to initialize first...
-        core.registerNew(iplb, event.connection, IPAddr(ip), servers)
+        core.registerNew(iplb, event.connection, IPAddr(ip), servers, mac)
         log.info("IP Load Balancer Ready.")
       log.info("Load Balancing on %s", event.connection)
 
