@@ -141,20 +141,26 @@ OpenFlow é um protocolo binário: cada estrutura é uma sequência exata de byt
 em **network byte order** (big-endian). É isso que veremos no Wireshark. Vamos
 desenhar as três estruturas que o trabalho cita.
 
-### 4.1 `ofp_action_output` — a ação de saída (8 bytes)
+### 4.1 `ofp_action_output` — a ação de saída (16 bytes)
 
-Esta é a folha da árvore. **Igual no 1.0 e no 1.1** (boa notícia: já existe no
-POX e serve de modelo).
+Esta é a folha da árvore. **Atenção: mudou do 1.0 para o 1.1.** No 1.0 a porta
+era de 16 bits e a ação tinha 8 bytes. No 1.1 a porta cresceu para **32 bits**,
+então a ação tem **16 bytes** (com 6 bytes de padding para manter o alinhamento
+de 8 bytes).
 
 ```
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 ┌───────────────────────────────┬───────────────────────────────┐
-│   type = OFPAT_OUTPUT (0)      │      len = 8                   │   ← 16+16 bits
-├───────────────────────────────┼───────────────────────────────┤
-│   port (porta de saída)        │      max_len                  │   ← 16+16 bits
-└───────────────────────────────┴───────────────────────────────┘
-   formato struct: "!HHHH"   →   4 campos de 16 bits = 8 bytes
+│   type = OFPAT_OUTPUT (0)      │      len = 16                  │   ← 16+16 bits
+├───────────────────────────────┴───────────────────────────────┤
+│                    port (porta de saída, 32 bits)              │   ← 32 bits
+├───────────────────────────────┬───────────────────────────────┤
+│   max_len (16 bits)           │   padding (parte dos 48 bits)  │
+├───────────────────────────────┴───────────────────────────────┤
+│                  padding restante (total 6 bytes)             │
+└────────────────────────────────────────────────────────────────┘
+   formato struct: "!HHIH6x"   →   type, len, port(32b), max_len, 6 pad = 16 bytes
 ```
 
 ### 4.2 `ofp_instruction` — o cabeçalho genérico de instrução (4 bytes)
@@ -201,13 +207,14 @@ mensagem.
 
 ```
 OFPT_FLOW_MOD
-  └─ ofp_instruction_actions (type=APPLY_ACTIONS, len=16)
+  └─ ofp_instruction_actions (type=APPLY_ACTIONS, len=24)
        ├─ padding (4 bytes zero)
-       └─ ofp_action_output (type=OUTPUT, len=8, port=2, max_len=0)
+       └─ ofp_action_output (type=OUTPUT, len=16, port=2, max_len=0)
 
-bytes:  04 00 00 10   00 00 00 00   00 00 00 08   00 02 00 00
-        └─instr.hdr┘  └─padding──┘  └out.hdr+...─────────────┘
-         type len      zeros         type len  port max_len
+bytes:  00 04 00 18   00 00 00 00   00 00 00 10   00 00 00 02   00 00   00 00 00 00 00 00
+        └─instr.hdr┘  └─padding──┘  └ out: type len ┘ └ port(32b) ┘ max_len  └─ pad 6 ─┘
+
+(len 0x18 = 24 bytes no total; a ação OUTPUT são 16 bytes; 0x10 = 16)
 ```
 
 É essa árvore — `FlowMod → Instructions → Apply_Actions → Action_Output` — que

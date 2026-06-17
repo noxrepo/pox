@@ -74,8 +74,8 @@ n   = len(instr)          # total length in bytes (header + padding + actions)
 |---|---|---|
 | `OFPIT_APPLY_ACTIONS` | constant | value `4` (OF 1.1) |
 | `OFPAT_OUTPUT` | constant | value `0` |
-| `OFP_VERSION_11` | constant | value `0x02` (OF 1.1 wire version) |
-| `ofp_action_output(port=..., max_len=...)` | class | `pack()` → 8 bytes `!HHHH` (type, len, port, max_len) |
+| `OFP_VERSION` | constant | value `0x02` (OF 1.1 wire version; same name idiom as `libopenflow_01`) |
+| `ofp_action_output(port=..., max_len=...)` | class | `pack()` → 16 bytes `!HHIH6x` (type, len, port(32b), max_len, 6 pad) |
 | `ofp_instruction_actions(type=OFPIT_APPLY_ACTIONS, actions=[...])` | class | `pack()` → 4-byte header + 4-byte padding + packed actions |
 | `.pack()` | method on every class | returns `bytes`, network byte order |
 | `.__len__()` | method on every class | returns total byte length |
@@ -102,10 +102,12 @@ Target hierarchy captured in Wireshark:
 `FlowMod → Instructions → Apply_Actions → Action_Output`.
 
 ```
-ofp_action_output            (8 bytes)   struct "!HHHH"
-  ┌────────────┬────────────┬────────────┬────────────┐
-  │ type=0     │ len=8      │ port       │ max_len=0  │
-  └────────────┴────────────┴────────────┴────────────┘
+ofp_action_output            (16 bytes)  struct "!HHIH6x"  (port is 32-bit in 1.1)
+  ┌────────────┬────────────┬─────────────────────────┐
+  │ type=0     │ len=16     │ port (32 bits)           │
+  ├────────────┼────────────┴─────────────────────────┤
+  │ max_len=0  │ padding (6 bytes total)              │
+  └────────────┴──────────────────────────────────────┘
 
 ofp_instruction_actions      (8 + actions)
   ┌────────────┬────────────┐
@@ -113,12 +115,12 @@ ofp_instruction_actions      (8 + actions)
   ├────────────┴────────────┤
   │ padding = 00 00 00 00   │   alignment (4 bytes)
   ├─────────────────────────┤
-  │ packed actions here ... │   e.g. one ofp_action_output (8 bytes)
+  │ packed actions here ... │   e.g. one ofp_action_output (16 bytes)
   └─────────────────────────┘
 
-Example bytes for APPLY_ACTIONS{ OUTPUT(port=2) }, total len = 16:
-  04 00 00 10   00 00 00 00   00 00 00 08   00 02 00 00
-  └instr hdr┘   └ padding ┘   └─ action OUTPUT (type,len,port,max_len) ─┘
+Example bytes for APPLY_ACTIONS{ OUTPUT(port=2) }, total len = 24 (0x18):
+  00 04 00 18  00 00 00 00  00 00 00 10 00 00 00 02 00 00 00 00 00 00 00 00
+  └instr hdr┘  └ padding ┘  └─ action OUTPUT: type len port(32b) max_len pad6 ─┘
 ```
 
 > Note: 8-byte alignment is mandatory in OpenFlow. The instruction header is only
@@ -131,9 +133,9 @@ Example bytes for APPLY_ACTIONS{ OUTPUT(port=2) }, total len = 16:
 
 **Part A (Gabriel) — done when:**
 - [ ] `libopenflow_11.py` exists with the classes/constants from section 3.
-- [ ] `ofp_action_output(port=2).pack()` returns the correct 8 bytes.
+- [ ] `ofp_action_output(port=2).pack()` returns the correct 16 bytes.
 - [ ] `ofp_instruction_actions(actions=[ofp_action_output(port=2)]).pack()`
-      returns the 16-byte sequence in section 4.
+      returns the 24-byte sequence in section 4.
 - [ ] `len()` matches the `len` field written inside `pack()`.
 - [ ] A tiny self-test (print + assert hex) runs without POX, no switch needed.
 
