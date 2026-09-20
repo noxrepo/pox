@@ -253,7 +253,7 @@ class DHCPDBase (EventMixin):
       if addr == (): return IPAddr(backup)
       return IPAddr(addr)
 
-    self.ip_addr = IPAddr(ip_address)
+    self.ip_addr = IPAddr(ip_address) if ip_address is not None else None
     self.router_addr = fix_addr(router_address, ip_address)
     self.dns_addr = fix_addr(dns_address, self.router_addr)
 
@@ -287,6 +287,11 @@ class DHCPDBase (EventMixin):
     """
     return self.pool
 
+  def _is_my_addr (self, ip):
+    if ip not in (IP_ANY,IP_BROADCAST,self.ip_addr):
+      return False
+    return True
+
   def _process_message (self, ctxt):
     """
     Subclasses should call this to process incoming DHCP messages
@@ -294,7 +299,7 @@ class DHCPDBase (EventMixin):
     ipp = ctxt.parsed.find('ipv4')
     if not ipp or not ipp.parsed:
       return
-    if ipp.dstip not in (IP_ANY,IP_BROADCAST,self.ip_addr):
+    if not self._is_my_addr(ipp.dstip):
       return
 
     # Is it full and proper DHCP?
