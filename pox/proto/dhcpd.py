@@ -26,7 +26,7 @@ import pox.lib.packet as pkt
 from pox.lib.addresses import IPAddr,EthAddr,parse_cidr
 from pox.lib.addresses import IP_BROADCAST, IP_ANY
 from pox.lib.revent import *
-from pox.lib.util import dpid_to_str
+from pox.lib.util import dpid_to_str, str_to_dpid
 
 log = core.getLogger()
 
@@ -517,8 +517,8 @@ class DHCPD (DHCPDBase):
     else:
       try:
         dpid = int(dpid)
-      except:
-        dpid = util.str_to_dpid(dpid)
+      except Exception:
+        dpid = str_to_dpid(dpid)
       self.dpid = dpid
 
     if ports is None:
