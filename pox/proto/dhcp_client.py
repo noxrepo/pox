@@ -218,6 +218,10 @@ class DHCPClientBase (EventMixin):
     self.request_timeout = request_timeout or self.REQUEST_TIMEOUT
     self.request_timer = None
 
+    # How long to wait for renewals
+    self.renew_timeout = None # Dynamic based on lease
+    self.renew_timer = None
+
     # We add and remove the PacketIn listener.  This is its event ID
     self._packet_listener = None
 
@@ -262,21 +266,31 @@ class DHCPClientBase (EventMixin):
       killtimer('offer')
     elif old == self.REQUESTING:
       killtimer('request')
-      self.requested = None
+      if state != self.BOUND:
+        self.requested = None
+    elif old == self.BOUND:
+      killtimer('renew')
+    elif old == self.RENEWING:
+      killtimer('request')
 
     self._state_transition(old, state)
 
     self._state = state
 
+    # Clean up total_timer if we reach any finished/terminal state
+    if state in (self.BOUND, self.ERROR, self.IDLE):
+      killtimer('total')
+
     if state == self.INIT:
-      assert old in (self.NEW,self.INIT)
-      # We transition INIT->INIT when discovery times out
-      if old == self.NEW:
+      assert old in (self.NEW,self.INIT,self.REQUESTING,self.RENEWING,self.BOUND)
+      #NOTE: We transition INIT->INIT when discovery times out
+      if old in (self.NEW, self.RENEWING, self.BOUND):
         # In this case, we want to set a total timeout
         killtimer('total')
         self.total_timer = recoco.Timer(self.total_timeout,
                                         self._do_total_timeout)
         self._start = time.time()
+
       self._discover()
       self.discover_timer = recoco.Timer(self.discover_timeout,
                                          set_state(self.INIT))
@@ -290,16 +304,37 @@ class DHCPClientBase (EventMixin):
       self._request()
       self.request_timer = recoco.Timer(self.request_timeout,
                                         set_state(self.INIT,info='Timeout'))
-    elif state == self.BOUND:
-      killtimer('total')
-      ev = DHCPLeased(self.bound)
-      routers = ','.join(str(g) for g in self.bound.routers)
-      if not routers: routers = "(No routers)"
-      self.log.info("Got %s/%s -> %s",
-                    self.bound.address, self.bound.subnet_mask, routers)
 
-      self.raiseEventNoErrors(ev)
-      #TODO: Handle expiring leases
+    elif state == self.RENEWING:
+      assert old == self.BOUND
+      self.log.info("Renewing lease for %s...", self.bound.address)
+
+      # Send message according to RFC 2131 section 4.3.6
+      msg = pkt.dhcp()
+      msg.ciaddr = self.bound.address
+      self.request_xid = self._send(msg, msg.REQUEST_MSG)
+
+      self.request_timer = recoco.Timer(self.request_timeout,
+                                        set_state(self.INIT,
+                                        info="Renewal timeout"))
+
+    elif state == self.BOUND:
+      if old != self.RENEWING:
+        ev = DHCPLeased(self.bound)
+        routers = ','.join(str(g) for g in self.bound.routers)
+        if not routers: routers = "(No routers)"
+        self.log.info("Got %s/%s -> %s",
+                      self.bound.address, self.bound.subnet_mask, routers)
+
+        self.raiseEventNoErrors(ev)
+      else:
+        self.log.info("Lease renewed for %s (TTL:%s)",
+                      self.bound.address, self.bound.seconds)
+
+      self.renew_timeout = int(self.bound.seconds * 0.5)
+      self.renew_timeout = max(10, self.renew_timeout)
+      self.renew_timer = recoco.Timer(self.renew_timeout,
+                                      set_state(self.RENEWING))
 
     elif state == self.ERROR:
       #TODO: Error info
@@ -416,18 +451,18 @@ class DHCPClientBase (EventMixin):
         # First offer switches states
         self.state = self.SELECTING
       if self.state != self.SELECTING:
-        self.log.warn('Recieved an offer while in state %s', self.state)
+        self.log.warn('Received an offer while in state %s', self.state)
         return
       self._exec_offer(p)
     elif t.type in (p.ACK_MSG, p.NAK_MSG):
       if p.xid != self.request_xid:
-        if self.state in (self.REQUESTING):
+        if self.state in (self.REQUESTING,self.RENEWING):
           self.log.info('Received ACK/NAK with wrong XID')
         else:
           self.log.debug('Received unexpected ACK/NAK with wrong XID')
         return
-      if self.state != self.REQUESTING:
-        self.log.warn('Recieved an ACK/NAK while in state %s', self.state)
+      if self.state not in (self.REQUESTING,self.RENEWING):
+        self.log.warn('Received an ACK/NAK while in state %s', self.state)
         return
       if t.type == p.NAK_MSG:
         self._exec_request_nak(p)
@@ -445,11 +480,20 @@ class DHCPClientBase (EventMixin):
       self._do_accept()
 
   def _exec_request_ack (self, p):
-    self.bound = self.requested
+    if self.state == self.REQUESTING:
+      self.bound = self.requested
+    else:
+      # Update the time
+      #TODO: It's possible we should just create a new DHCPOffer from p and
+      #      raise some event if things like the server had changed.
+      o = p.options.get(p.REQUEST_LEASE_OPT)
+      o = o.seconds if o is not None else 86400 # Hmmm...
+      self.bound.seconds = o
+
     self.state = self.BOUND
 
   def _exec_request_nak (self, p):
-    self.log.warn('DHCP server NAKed our attempted acceptance of an offer')
+    self.log.warn('DHCP server NAKed our request')
 
     # Try again...
     self.state = self.INIT
