@@ -640,7 +640,7 @@ class DHCPD (DHCPDBase):
       if not conn: continue
       if s.ports is None:
         for p in conn.ports:
-          r.add((p.port_no,s))
+          r.add((p,s))
       else:
         for p in s.ports:
           p = conn.ports.get(p)
