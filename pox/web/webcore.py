@@ -92,6 +92,16 @@ def _setAttribs (parent, child):
 
 
 
+# String objects have this by default in Python 3.9, but we use our own
+# because we still want to support pypy 7.3.9 since it's what is
+# being shipped in Ubuntu 22.04 which isn't EOL until mid 2027.
+def _removesuffix (s, suffix):
+  if suffix and s.endswith(suffix):
+    return s[:-len(suffix)]
+  return s
+
+
+
 def cgi_parse_header (s):
   """
   Modern replacement for cgi.parse_header()
@@ -283,7 +293,7 @@ class POXCookieGuardMixin (object):
     if cgc and cgc.value == self._get_cookieguard_cookie():
       if requested.endswith(self._pox_cookieguard_bouncer):
         log.debug("POX CookieGuard cookie is valid -- bouncing")
-        loc = requested.removesuffix(self._pox_cookieguard_bouncer)
+        loc = _removesuffix(requested, self._pox_cookieguard_bouncer)
 
         self._cookieguard_maybe_consume_post()
         self.send_response(307, "Temporary Redirect")
@@ -297,7 +307,7 @@ class POXCookieGuardMixin (object):
       # No guard cookie or guard cookie is wrong
       if requested.endswith(self._pox_cookieguard_bouncer):
         # Client probably didn't save cookie
-        target = requested.removesuffix(self._pox_cookieguard_bouncer)
+        target = _removesuffix(requested, self._pox_cookieguard_bouncer)
         if self.command != "GET":
           log.warn("Bad POX CookieGuard bounce; possible attack "
                    "(method:%s cookie:%s)",
