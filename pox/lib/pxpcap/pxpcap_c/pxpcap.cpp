@@ -50,8 +50,17 @@ check this.
 #include <linux/if_arp.h>
 #endif
 
-
 #endif
+
+#ifndef USE_OPEN_LIVE
+  #ifdef PCAP_ERROR_PROMISC_PERM_DENIED
+    // If that's defined, I think we're in pcap 1.5+, so use new codepath
+    #define USE_OPEN_LIVE 0
+  #else
+    #define USE_OPEN_LIVE 1
+  #endif
+#endif
+
 
 struct num_name_pair
 {
@@ -266,13 +275,31 @@ static PyObject * p_open_live (PyObject *self, PyObject *args)
 
   if (!PyArg_ParseTuple(args, "siii", &dev_name, &snaplen, &promisc, &timeout)) return NULL;
 
+#if USE_OPEN_LIVE
   pcap_t * ppcap = pcap_open_live(dev_name, snaplen, promisc, timeout, errbuf);
+#else
+  pcap_t * ppcap = pcap_create(dev_name, errbuf);
+#endif
 
   if (!ppcap)
   {
     PyErr_SetString(PyExc_RuntimeError, errbuf);
     return NULL;
   }
+
+#if ! USE_OPEN_LIVE
+  pcap_set_snaplen(ppcap, snaplen);
+  pcap_set_promisc(ppcap, promisc);
+  pcap_set_timeout(ppcap, timeout);
+  pcap_set_immediate_mode(ppcap, 1);
+
+  if (pcap_activate(ppcap) < 0)
+  {
+    PyErr_SetString(PyExc_RuntimeError, pcap_geterr(ppcap));
+    pcap_close(ppcap);
+    return NULL;
+  }
+#endif
 
   return Py_BuildValue("l", (long)ppcap);
 }
