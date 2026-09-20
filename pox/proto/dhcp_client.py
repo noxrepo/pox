@@ -310,10 +310,18 @@ class DHCPClientBase (EventMixin):
       self.log.info("Renewing lease for %s...", self.bound.address)
 
       # Send message according to RFC 2131 section 4.3.6
+      # We actually should try unicasting it first, but don't.
       msg = pkt.dhcp()
       msg.ciaddr = self.bound.address
       self.request_xid = self._send(msg, msg.REQUEST_MSG)
 
+      # If this times out, go all the way back to INIT.
+      # We actually should switch to broadcasting here, and
+      # only switch to INIT if *that* fails.  But as noted
+      # above, we *already* broadcast.  So we basically
+      # get more dramatic faster than we need to.
+      # We could fix it with a more faithful implementation
+      # of the T1/T2 times in RFC 2131 4.4.5.
       self.request_timer = recoco.Timer(self.request_timeout,
                                         set_state(self.INIT,
                                         info="Renewal timeout"))
@@ -486,6 +494,8 @@ class DHCPClientBase (EventMixin):
       # Update the time
       #TODO: It's possible we should just create a new DHCPOffer from p and
       #      raise some event if things like the server had changed.
+      #      However, this may not have all the options of the original, so
+      #      we may have to manually merge them.  Ignore for now.
       o = p.options.get(p.REQUEST_LEASE_OPT)
       o = o.seconds if o is not None else 86400 # Hmmm...
       self.bound.seconds = o
