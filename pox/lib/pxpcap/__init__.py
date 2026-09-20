@@ -37,14 +37,13 @@ class _pcapc_warning (object):
   described in the manual, and this little class tries to point users in the
   right direction to getting the module built successfully.
   The short version is like:
-    cd pox/lib/pxpcap/pxpcap_c
-    ./build_linux # or ./build_mac or build_win.bat
+    pox/lib/pxpcap/pxpcap_c/build_linux # or build_mac or build_win.bat
   """
   def __getattr__ (self, *args):
     raise RuntimeError("The pxpcap extension module is not available.  See "
                        "the manual for how to build it.\nShort version: "
-                       "cd pox/lib/pxpcap/pxpcap_c ; ./build_linux # or "
-                       "./build_mac or build_win.bat")
+                       "pox/lib/pxpcap/pxpcap_c/build_linux # or "
+                       "build_mac or build_win.bat")
 pcapc = _pcapc_warning()
 try:
   # Try platform-specific module...
