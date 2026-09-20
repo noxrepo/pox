@@ -611,7 +611,7 @@ class DHCPD (DHCPDBase):
     If there is a server, but the connection to the relevant switch is down,
     returns None.
     """
-    for s in cls.servers:
+    for s in cls._servers:
       if s.dpid != dpid: continue
       conn = core.openflow.getConnection(s.dpid)
       if not conn: continue
