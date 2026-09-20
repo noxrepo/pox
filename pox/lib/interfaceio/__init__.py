@@ -149,7 +149,9 @@ class rtentry (object):
 
   def pack (self):
     if self.rt_dev:
-      s = ctypes.c_char_p(self.rt_dev + b"\0") # Null terminator necessary?
+      s = self.rt_dev
+      if isinstance(s, str): s = s.encode("utf-8")
+      s = ctypes.c_char_p(s + b"\0") # Null terminator necessary?
       dev = ctypes.cast(s, ctypes.c_void_p).value
       self._buf = s # You must use the resulting packed string before changing
                     # rt_dev!
