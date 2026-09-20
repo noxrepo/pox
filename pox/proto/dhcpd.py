@@ -158,6 +158,7 @@ class SimpleAddressPool (AddressPool):
     return self.last - self.first + 1
 
   def __contains__ (self, item):
+    if item is None: return False
     item = IPAddr(item)
     if item in self.removed: return False
     n = item.toUnsigned()
