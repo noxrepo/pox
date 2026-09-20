@@ -28,6 +28,8 @@ from pox.lib.addresses import IP_BROADCAST, IP_ANY
 from pox.lib.revent import *
 from pox.lib.util import dpid_to_str, str_to_dpid
 
+import time
+
 log = core.getLogger()
 
 
@@ -234,6 +236,20 @@ class DHCPPacketContextBase (object):
     return "<DHCP Request>"
 
 
+class Lease:
+  def __init__ (self, addr, pool, expiration):
+    self.addr = addr
+    self.pool = pool
+    if expiration: expiration += time.time()
+    self.expiration = expiration
+
+  @property
+  def is_expired (self):
+    if self.expiration is None:
+      return False
+    return self.expiration < time.time()
+
+
 class DHCPDBase (EventMixin):
   """
   DHCP server base class
@@ -244,6 +260,9 @@ class DHCPDBase (EventMixin):
     * Call _process_message(), passing it the context
   """
   _eventMixin_events = set([DHCPLease])
+
+  lease_time = 60 * 60 # An hour
+  offer_time = 60 * 2  # Two minutes
 
   def __init__ (self, ip_address = "192.168.0.254", router_address = (),
                 dns_address = (), pool = None, subnet = None):
@@ -269,15 +288,30 @@ class DHCPDBase (EventMixin):
         raise RuntimeError("You must specify a subnet mask or use a "
                            "pool with a subnet hint")
 
-    self.lease_time = 60 * 60 # An hour
-    #TODO: Actually make them expire :)
-
     self.offers = {} # Eth -> IP we offered
     self.leases = {} # Eth -> IP we leased
 
     if self.ip_addr in self.pool:
       log.debug("Removing my own IP (%s) from address pool", self.ip_addr)
       self.pool.remove(self.ip_addr)
+
+  def _gc (self):
+    def clean (group, group_name):
+      garbage = []
+
+      for eth,lease in group.items():
+        if lease.is_expired:
+          garbage.append((eth,lease))
+
+      for eth,lease in garbage:
+        del group[eth]
+        lease.pool.append(lease.addr)
+
+      if garbage:
+        log.debug(f"{len(garbage)} {group_name}(s) expired")
+
+    clean(self.leases, "lease")
+    clean(self.offers, "offer")
 
   def _get_pool (self, ctxt):
     """
@@ -332,6 +366,8 @@ class DHCPDBase (EventMixin):
     if pool is None:
       return
 
+    self._gc()
+
     if t.type == p.DISCOVER_MSG:
       self.exec_discover(ctxt, p, pool)
     elif t.type == p.REQUEST_MSG:
@@ -374,7 +410,7 @@ class DHCPDBase (EventMixin):
     if src != p.chaddr:
       log.warn("%s tried to release %s with bad chaddr" % (src,p.ciaddr))
       return
-    if self.leases.get(p.chaddr) != p.ciaddr:
+    if p.chaddr not in self.leases or self.leases[p.chaddr].addr != p.ciaddr:
       log.warn("%s tried to release unleased %s" % (src,p.ciaddr))
       return
     del self.leases[p.chaddr]
@@ -389,17 +425,17 @@ class DHCPDBase (EventMixin):
     src = ctxt.client_eth
     got_ip = None
     if src in self.leases:
-      if wanted_ip != self.leases[src]:
-        pool.append(self.leases[src])
+      if wanted_ip != self.leases[src].addr:
+        pool.append(self.leases[src].addr)
         del self.leases[src]
       else:
-        got_ip = self.leases[src]
+        got_ip = self.leases[src].addr
     if got_ip is None:
       if src in self.offers:
-        if wanted_ip != self.offers[src]:
-          pool.append(self.offers[src])
+        if wanted_ip != self.offers[src].addr:
+          pool.append(self.offers[src].addr)
         else:
-          got_ip = self.offers[src]
+          got_ip = self.offers[src].addr
         del self.offers[src]
     if got_ip is None:
       if wanted_ip in pool:
@@ -411,7 +447,7 @@ class DHCPDBase (EventMixin):
       return
 
     assert got_ip == wanted_ip
-    self.leases[src] = got_ip
+    self.leases[src] = Lease(got_ip, pool, self.lease_time + 60) # 1 extra min
     ev = DHCPLease(src, got_ip)
     self.raiseEvent(ev)
     if ev._nak:
@@ -436,9 +472,9 @@ class DHCPDBase (EventMixin):
     reply.add_option(pkt.DHCP.DHCPMsgTypeOption(p.OFFER_MSG))
     src = ctxt.client_eth
     if src in self.leases:
-      offer = self.leases[src]
+      offer = self.leases[src].addr
       del self.leases[src]
-      self.offers[src] = offer
+      self.offers[src] = Lease(offer, pool, self.offer_time)
     else:
       offer = self.offers.get(src)
       if offer is None:
@@ -453,7 +489,9 @@ class DHCPDBase (EventMixin):
           if wanted_ip in pool:
             offer = wanted_ip
         pool.remove(offer)
-        self.offers[src] = offer
+        self.offers[src] = Lease(offer, pool, self.offer_time)
+      else:
+        offer = offer.addr
     reply.yiaddr = offer
     reply.siaddr = ctxt.ip_addr
 
