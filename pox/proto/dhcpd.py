@@ -451,6 +451,11 @@ class DHCPDBase (EventMixin):
     ev = DHCPLease(src, got_ip)
     self.raiseEvent(ev)
     if ev._nak:
+      if src in self.leases and self.leases[src].addr == got_ip:
+        del self.leases[src]
+      if src in self.offers and self.offers[src].addr == got_ip:
+        del self.offers[src]
+      pool.append(got_ip)
       self.nak(ctxt)
       return
     log.info("Leased %s to %s" % (got_ip, src))
