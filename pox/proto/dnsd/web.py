@@ -281,7 +281,7 @@ class DNSHistoryHandler (InternalContentHandler):
         out.append(row)
       except Exception:
         log.exception("Exception while processing history '%s,%s,%s'",
-                      str(ts), str(query), str(asker))
+                      str(ts), str(query), str(askers))
 
     try:
       row = []
