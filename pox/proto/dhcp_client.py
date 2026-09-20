@@ -722,6 +722,7 @@ class PCapDHCPClient (DHCPClientBase, LoggingHandlers):
   def __init__ (self, iface_name, do_bind, **kw):
     self.do_bind = do_bind
     self.iface = PCapInterface(iface_name)
+    self.set_default_route = False
 
     # An even better filter would specify our address, but this is
     # better than nothing!
@@ -748,6 +749,7 @@ class PCapDHCPClient (DHCPClientBase, LoggingHandlers):
       if e.lease.routers:
         try:
           self.iface.add_default_route(gateway = e.lease.routers[0])
+          self.set_default_route = True
         except FileExistsError:
           # Happens when route is already set; hopefully it's the exact same!
           self.log.info(f"Couldn't set default route to {e.lease.routers[0]}.")
