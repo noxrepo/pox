@@ -702,7 +702,11 @@ class PCapDHCPClient (DHCPClientBase, LoggingHandlers):
       self.iface.ip_addr = e.lease.address
       self.iface.netmask = e.lease.subnet_mask
       if e.lease.routers:
-        self.iface.add_default_route(gateway = e.lease.routers[0])
+        try:
+          self.iface.add_default_route(gateway = e.lease.routers[0])
+        except FileExistsError:
+          # Happens when route is already set; hopefully it's the exact same!
+          self.log.info(f"Couldn't set default route to {e.lease.routers[0]}.")
 
 
 def client (iface, do_bind=False):
