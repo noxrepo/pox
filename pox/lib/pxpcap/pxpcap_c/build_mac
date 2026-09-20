@@ -3,7 +3,10 @@ cd "${0%/*}"
 OUT=../darwin
 mkdir $OUT 2> /dev/null
 touch $OUT/__init__.py
-python3 setup.py build
-DEST=lib.macosx*
-DEST=$(ls -d build/${DEST} | tail -1)
-cp ${DEST}/pxpcap.so .. && cp ${DEST}/pxpcap.so ${OUT}/pxpcap.so
+
+python3 setup.py build_ext --inplace
+if command -v pypy3 > /dev/null 2>&1; then
+  pypy3 setup.py build_ext --inplace
+fi
+
+cp pxpcap*-darwin.so "$OUT/"
