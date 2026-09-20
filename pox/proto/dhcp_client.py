@@ -188,9 +188,9 @@ class DHCPClientBase (EventMixin):
     # We keep track of all offers we received
     self.offers = []
 
-    # XID that messages should have to us should have
+    # XID that messages to us should have
     self.offer_xid = None
-    self.ack_xid = None
+    self.request_xid = None
 
     ### Accepted offer
     ##self.accepted = None
@@ -317,6 +317,7 @@ class DHCPClientBase (EventMixin):
     msg.add_option(req)
 
   def _discover (self):
+    self.log.debug("Doing a discover...")
     self.offers = []
 
     msg = pkt.dhcp()
@@ -451,7 +452,7 @@ class DHCPClientBase (EventMixin):
     self.log.warn('DHCP server NAKed our attempted acceptance of an offer')
 
     # Try again...
-    self.state = INIT
+    self.state = self.INIT
 
   def _do_accept (self):
     ev = DHCPOffers(self.offers)
@@ -502,7 +503,7 @@ class OFDHCPClient (DHCPClientBase):
       dpid = dpid.dpid
     self.dpid = dpid
 
-    super(OpenFlowDHCPClient,self).__init__(**kw)
+    super(OFDHCPClient,self).__init__(**kw)
 
     self._try_start()
     if self.state != self.INIT:
