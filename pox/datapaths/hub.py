@@ -1,4 +1,4 @@
-# Copyright 2017 James McCauley
+# Copyright 2017, 2026 James McCauley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,11 @@ Launch it with a number of interface names, and it will pass packets
 between them.  Requires pxpcap to be built -- see "Building pxpcap"
 in the POX manual.
 
+Adding the --fix-checksum option will recompute TCP and UDP
+checksums, which is very slow and can mask corruption... *but*, it
+will make TCP and UDP work even on things like veth pairs when
+Linux disables checksum computation.
+
 Example:
   ./pox.py datapaths.hub --ports=eth0,eth1,eth2
 """
@@ -33,9 +38,11 @@ class Hub (object):
   """
   A simple hub
   """
-  def __init__ (self, ports=[]):
+  def __init__ (self, ports=[], fix_checksum=False):
     self._ports = set()
     self.rx_bytes = 0
+    if fix_checksum:
+      self._handle_RXData = self._handle_RXData_fix
     for p in ports:
       self.add_port(p)
 
@@ -50,10 +57,20 @@ class Hub (object):
       if port is event.interface: continue
       port.send(event.data)
 
+  def _handle_RXData_fix (self, event):
+    self.rx_bytes += len(event.data)
+    data = event.data
+    eth = pkt.ethernet(data)
+    if eth.find('tcp') or eth.find('udp'):
+      data = eth.pack()
+    for port in self._ports:
+      if port is event.interface: continue
+      port.send(data)
 
-def launch (ports):
+
+def launch (ports, fix_checksum=False):
   ports = ports.replace(","," ").split()
-  l = Hub()
+  l = Hub(fix_checksum=fix_checksum)
   core.register("hub", l)
   for p in ports:
     l.add_port(p)
