@@ -671,14 +671,17 @@ class PCapDHCPClient (DHCPClientBase, LoggingHandlers):
   """
   Performs DHCP on an arbitrary Ethernet-like interface via pcap.
   """
-  #TODO: Currently this captures ALL data to the port, which is surely not
-  #      what we want.  We should probably filter it, and we should probably
-  #      switch off capture altogether when we're not waiting for replies.
-  #      As it stands, this is only useful for testing.
+  #TODO: We should probably switch off capture altogether when we're not
+  #      waiting for replies.
 
   def __init__ (self, iface_name, do_bind, **kw):
     self.do_bind = do_bind
     self.iface = PCapInterface(iface_name)
+
+    # An even better filter would specify our address, but this is
+    # better than nothing!
+    self.iface.pcap.set_filter("udp port 67")
+
     self.iface.add_listener(self._handle_RXData)
     if 'port_eth' not in kw:
       kw['port_eth'] = self.iface.eth_addr
