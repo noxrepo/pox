@@ -60,5 +60,15 @@ def launch (key, value=None, __INSTANCE__=None):
   value = eval_one(value)
 
   modparts = key.split(".")
-  for split_at in range(len(modparts)-1,0,-1):
-    if try_tweak(modparts[:split_at],modparts[split_at:]): break
+  def try_tweaks (modparts):
+    for split_at in range(len(modparts)-1,0,-1):
+      if try_tweak(modparts[:split_at],modparts[split_at:]): return True
+    return False
+
+  if try_tweaks(modparts): return
+
+  if modparts[0] != 'pox':
+    modparts.insert(0, 'pox')
+    if try_tweaks(modparts): return
+
+  log.error(f"Could not tweak {key}")
