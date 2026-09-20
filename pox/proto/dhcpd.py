@@ -418,10 +418,14 @@ class DHCPDBase (EventMixin):
     log.info("%s released %s" % (src,p.ciaddr))
 
   def exec_request (self, ctxt, p, pool):
-    if not p.REQUEST_IP_OPT in p.options:
+    if p.REQUEST_IP_OPT in p.options:
+      wanted_ip = p.options[p.REQUEST_IP_OPT].addr
+    elif p.ciaddr and p.ciaddr != IP_ANY:
+      wanted_ip = p.ciaddr
+    else:
       # Uhhh...
       return
-    wanted_ip = p.options[p.REQUEST_IP_OPT].addr
+
     src = ctxt.client_eth
     got_ip = None
     if src in self.leases:
