@@ -59,6 +59,7 @@ class DHCPOffer (Event):
     self.dns_servers = o.addrs if o else []
     o = p.options.get(p.REQUEST_LEASE_OPT)
     o = o.seconds if o is not None else 86400 # Hmmm...
+    self.seconds = o
 
     self._accept = None
 
@@ -660,7 +661,7 @@ class LoggingHandlers:
 
   def _handle_dhcp_DHCPLeased (self, e):
     self._dhcplog.info(f"Leased {e.lease.address} from "
-                       + f"{e.lease.server}.")
+                       + f"{e.lease.server} (TTL:{e.lease.seconds}).")
 
   def _handle_dhcp_DHCPClientError (self, e):
     self._dhcplog.error("DHCP client error")
