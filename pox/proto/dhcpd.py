@@ -341,9 +341,9 @@ class DHCPDBase (EventMixin):
     msg.htype = 1
     msg.hlen = 6
     msg.xid = orig.xid
-    msg.add_option(pkt.DHCP.DHCPServerIdentifierOption(self.ip_addr))
+    msg.add_option(pkt.DHCP.DHCPServerIdentifierOption(ctxt.ip_addr))
 
-    ipp = pkt.ipv4(srcip = self.ip_addr)
+    ipp = pkt.ipv4(srcip = ctxt.ip_addr)
     ipp.dstip = ctxt.parsed.find('ipv4').srcip
     if broadcast:
       ipp.dstip = IP_BROADCAST
@@ -360,7 +360,7 @@ class DHCPDBase (EventMixin):
     if msg is None:
       msg = pkt.dhcp()
     msg.add_option(pkt.DHCP.DHCPMsgTypeOption(msg.NAK_MSG))
-    msg.siaddr = self.ip_addr
+    msg.siaddr = ctxt.ip_addr
     self.reply(ctxt, msg)
 
   def exec_release (self, ctxt, p, pool):
@@ -416,7 +416,7 @@ class DHCPDBase (EventMixin):
     reply = pkt.dhcp()
     reply.add_option(pkt.DHCP.DHCPMsgTypeOption(p.ACK_MSG))
     reply.yiaddr = wanted_ip
-    reply.siaddr = self.ip_addr
+    reply.siaddr = ctxt.ip_addr
 
     wanted_opts = set()
     if p.PARAM_REQ_OPT in p.options:
@@ -449,7 +449,7 @@ class DHCPDBase (EventMixin):
         pool.remove(offer)
         self.offers[src] = offer
     reply.yiaddr = offer
-    reply.siaddr = self.ip_addr
+    reply.siaddr = ctxt.ip_addr
 
     wanted_opts = set()
     if p.PARAM_REQ_OPT in p.options:
@@ -472,10 +472,11 @@ class DHCPDBase (EventMixin):
 
 
 class OpenFlowDHCPPacketContext (DHCPPacketContextBase):
-  def __init__ (self, event):
+  def __init__ (self, event, server_ip_addr):
     self.event = event
     self.parsed = event.parsed
     self.client_eth = self.parsed.src
+    self.ip_addr = server_ip_addr
 
   def __str__ (self):
     return str(self.event.connection)
@@ -546,7 +547,7 @@ class DHCPD (DHCPDBase):
       else:
         return
 
-    ctxt = OpenFlowDHCPPacketContext(event)
+    ctxt = OpenFlowDHCPPacketContext(event, self.ip_addr)
     self._process_message(ctxt)
 
   @classmethod
