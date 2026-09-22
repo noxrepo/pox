@@ -9,7 +9,7 @@ for the Open vSwitch/Nicira extensions.
 
 POX versions are named.  Starting with POX "gar", POX officially requires
 Python 3.  The last version with support for Python 2 was POX "fangtooth".
-POX should run under Linux, Mac OS, and Windows.  (And just about anywhere
+POX should run under Linux, macOS, and Windows.  (And just about anywhere
 else -- we've run it on Android phones, under FreeBSD, Haiku, and elsewhere.
 All you need is Python!)  Some features are not available on all platforms.
 Linux is the most featureful.
@@ -36,7 +36,9 @@ This is followed by the name of a POX component, which may be followed by
 options for that component.  This may be followed by further components
 and their options.
 
-  ./pox.py [pox-options...] [component] [component-options...] ...
+```bash
+./pox.py [pox-options...] [component] [component-options...] ...
+```
 
 ### POX Options
 
@@ -56,15 +58,19 @@ POX components are basically Python modules with a few POX-specific
 conventions.  They are looked for everywhere that Python normally looks, plus
 the `pox` and `ext` directories.  Thus, you can do the following:
 
-  ./pox.py forwarding.l2_learning
+```bash
+./pox.py forwarding.l2_learning
+```
 
 As mentioned above, you can pass options to the components by specifying
 options after the component name.  These are passed to the corresponding
 module's `launch()` funcion.  For example, if you want to run POX as an
 OpenFlow controller and control address or port it uses, you can pass those
-as options to the openflow._01 component:
+as options to the `openflow.of_01` component:
 
-  ./pox.py openflow.of_01 --address=10.1.1.1 --port=6634
+```bash
+./pox.py openflow.of_01 --address=10.1.1.1 --port=6634
+```
 
 
 ## Special Thanks
@@ -76,4 +82,4 @@ get the ball rolling on the conversion to Python 3.
 ## Further Documentation
 
 The full POX documentation is available on GitHub at
-https://noxrepo.github.io/pox-doc/html/
+<https://noxrepo.github.io/pox-doc/html/>
